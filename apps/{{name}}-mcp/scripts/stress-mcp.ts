@@ -218,8 +218,7 @@ async function caseMalformedSchema(): Promise<void> {
     const text = r.result?.content?.[0]?.text ?? "";
     record(
       "malformed schema rejected",
-      text.toLowerCase().includes("invalid arguments") ||
-        text.toLowerCase().includes("expected"),
+      text.toLowerCase().includes("invalid arguments") || text.toLowerCase().includes("expected"),
       text.slice(0, 80),
     );
   } finally {
@@ -240,7 +239,11 @@ async function caseForcedTimeout(): Promise<void> {
     await c.initialize();
     const r = await c.request("tools/call", { name: "noop", arguments: { input: "x" } });
     const text = r.result?.content?.[0]?.text ?? "";
-    record("MCP_TOOL_TIMEOUT_FORCE_MS=1 produces timeout", text.includes("Timed out"), text.slice(0, 80));
+    record(
+      "MCP_TOOL_TIMEOUT_FORCE_MS=1 produces timeout",
+      text.includes("Timed out"),
+      text.slice(0, 80),
+    );
   } finally {
     c.kill();
     await c.waitExit();
@@ -299,7 +302,10 @@ async function caseHttpTransport(): Promise<void> {
 
   // Wait for "listening on" stderr message
   await new Promise<void>((resolveReady, rejectReady) => {
-    const timer = setTimeout(() => rejectReady(new Error("HTTP server did not start in 5s")), 5_000);
+    const timer = setTimeout(
+      () => rejectReady(new Error("HTTP server did not start in 5s")),
+      5_000,
+    );
     timer.unref();
     proc.stderr.on("data", (chunk: Buffer) => {
       if (chunk.toString().includes("listening on")) {
@@ -318,7 +324,10 @@ async function caseHttpTransport(): Promise<void> {
 
     const unauthorized = await fetch(`${base}/mcp`, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+      },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
     });
     record("HTTP /mcp without bearer returns 401", unauthorized.status === 401);

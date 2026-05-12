@@ -22,14 +22,14 @@ BAZ=qux
   });
 
   it("strips matching quotes", () => {
-    expect(parseEnvFile('NAME="George"\nPATH=\'/usr/bin\'')).toEqual({
+    expect(parseEnvFile("NAME=\"George\"\nPATH='/usr/bin'")).toEqual({
       NAME: "George",
       PATH: "/usr/bin",
     });
   });
 
   it("preserves mismatched quotes", () => {
-    expect(parseEnvFile(`MIX="trailing'`)).toEqual({ MIX: '"trailing\'' });
+    expect(parseEnvFile(`MIX="trailing'`)).toEqual({ MIX: "\"trailing'" });
   });
 
   it("does not interpolate variables", () => {

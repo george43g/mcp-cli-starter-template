@@ -22,7 +22,10 @@ export interface DevStats {
 
 const SAMPLE_INTERVAL_MS = 2000;
 
-function readNow(prevCpu: NodeJS.CpuUsage | null, prevHrTime: bigint | null): {
+function readNow(
+  prevCpu: NodeJS.CpuUsage | null,
+  prevHrTime: bigint | null,
+): {
   stats: DevStats;
   cpu: NodeJS.CpuUsage;
   hrTime: bigint;

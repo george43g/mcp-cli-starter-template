@@ -74,12 +74,7 @@ export function loadEnv(opts: LoadEnvOptions = {}): LoadedEnv {
   const cwd = opts.cwd ?? process.cwd();
   const mode = opts.mode ?? process.env.NODE_ENV ?? "development";
 
-  const candidates = [
-    ".env",
-    ".env.local",
-    `.env.${mode}`,
-    `.env.${mode}.local`,
-  ];
+  const candidates = [".env", ".env.local", `.env.${mode}`, `.env.${mode}.local`];
 
   const env: Record<string, string> = {};
   const files: string[] = [];

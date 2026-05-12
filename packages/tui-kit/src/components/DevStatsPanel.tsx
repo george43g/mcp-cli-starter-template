@@ -50,12 +50,8 @@ export function DevStatsPanel({ visible, engine }: DevStatsPanelProps) {
       <Text color={issuesColor}>
         evt-loop p99 {stats.eventLoopP99Ms}ms (max {stats.eventLoopMaxMs}ms)
       </Text>
-      <Text color={theme.palette.fgDim}>
-        last activity {stats.lastActivityAgoSec}s ago
-      </Text>
-      {stats.killReason ? (
-        <Text color={theme.palette.danger}>kill: {stats.killReason}</Text>
-      ) : null}
+      <Text color={theme.palette.fgDim}>last activity {stats.lastActivityAgoSec}s ago</Text>
+      {stats.killReason ? <Text color={theme.palette.danger}>kill: {stats.killReason}</Text> : null}
     </Box>
   );
 }

@@ -115,11 +115,7 @@ function emit(entry: LogEntry): void {
 
 // ── Public API ─────────────────────────────────────────────────────────
 
-function buildEntry(
-  level: LogLevel,
-  msg: string,
-  data?: Record<string, unknown>,
-): LogEntry {
+function buildEntry(level: LogLevel, msg: string, data?: Record<string, unknown>): LogEntry {
   const entry: LogEntry = {
     ts: new Date().toISOString(),
     level,

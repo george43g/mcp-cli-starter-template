@@ -54,11 +54,7 @@ export interface BuildDispatcherOptions {
   engineLabel?: () => string;
 }
 
-export type Dispatch = (
-  name: string,
-  args: unknown,
-  signal?: AbortSignal,
-) => Promise<ToolResult>;
+export type Dispatch = (name: string, args: unknown, signal?: AbortSignal) => Promise<ToolResult>;
 
 function defaultTimeoutMs(): number {
   return envNum("MCP_TOOL_TIMEOUT_DEFAULT_MS", 30_000);
@@ -113,7 +109,12 @@ export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
       const result = await withTimeout(name, () => def.handler(parsed.data, signal), timeoutMs);
       const dur = span.end({ engine: opts.engineLabel?.() ?? "ts" });
       return {
-        content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result, null, 2) }],
+        content: [
+          {
+            type: "text",
+            text: typeof result === "string" ? result : JSON.stringify(result, null, 2),
+          },
+        ],
         structuredContent: result,
         _meta: {
           engine: opts.engineLabel?.() ?? "ts",
@@ -130,7 +131,7 @@ export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
       const message =
         err instanceof ToolTimeoutError
           ? `Timed out after ${err.timeoutMs}ms. The server has unblocked; the underlying work may still be running.`
-          : (err as Error)?.message ?? String(err);
+          : ((err as Error)?.message ?? String(err));
       return {
         content: [{ type: "text", text: wrapToolError(name, message) }],
         isError: true,

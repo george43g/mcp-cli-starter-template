@@ -1,5 +1,6 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+  "root": false,
+  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -29,7 +30,9 @@
         "noImplicitAnyLet": "off",
         "noTemplateCurlyInString": "off",
         "noControlCharactersInRegex": "off",
-        "noEmptyBlockStatements": "off"
+        "noEmptyBlockStatements": "off",
+        "useIterableCallbackReturn": "off",
+        "noSelfCompare": "off"
       },
       "style": {
         "noNonNullAssertion": "off",
@@ -39,8 +42,6 @@
         "noParameterAssign": "off"
       },
       "correctness": {
-        "useIterableCallbackReturn": "off",
-        "noSelfCompare": "off",
         "noUnusedImports": "warn",
         "noUnusedVariables": "warn"
       },

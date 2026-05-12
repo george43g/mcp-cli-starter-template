@@ -1,14 +1,7 @@
 export {
-  brighten,
-  DEFAULT_ACCENT,
-  derivePalette,
-  fgFor,
-  type Palette,
-} from "./palette.js";
-export {
   contrastRatio,
-  hexToHsl,
   type Hsl,
+  hexToHsl,
   hslToHex,
   relativeLuminance,
   rotateHue,
@@ -17,4 +10,17 @@ export {
   withS,
 } from "./color.js";
 export { GLYPH_PRESETS, type GlyphPreset, type GlyphSet } from "./glyphs.js";
-export { makeTheme, type MakeThemeArgs, type Theme, ThemeProvider, useTheme } from "./ThemeContext.js";
+export {
+  brighten,
+  DEFAULT_ACCENT,
+  derivePalette,
+  fgFor,
+  type Palette,
+} from "./palette.js";
+export {
+  type MakeThemeArgs,
+  makeTheme,
+  type Theme,
+  ThemeProvider,
+  useTheme,
+} from "./ThemeContext.js";

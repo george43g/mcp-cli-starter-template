@@ -18,7 +18,12 @@
 import { envJsonSource } from "./env-json.js";
 import { fileSource } from "./file.js";
 import { onepasswordSource } from "./onepassword.js";
-import { MissingSecretError, type ResolvedSecret, type SecretRef, type SecretSource } from "./types.js";
+import {
+  MissingSecretError,
+  type ResolvedSecret,
+  type SecretRef,
+  type SecretSource,
+} from "./types.js";
 
 export { envJsonSource } from "./env-json.js";
 export { fileSource } from "./file.js";

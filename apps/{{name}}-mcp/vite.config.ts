@@ -1,7 +1,7 @@
 import { builtinModules } from "node:module";
 import { resolve } from "node:path";
-import { defineConfig } from "vite";
 import banner from "rollup-plugin-banner2";
+import { defineConfig } from "vite";
 
 /**
  * Vite library-mode build with three entry points.

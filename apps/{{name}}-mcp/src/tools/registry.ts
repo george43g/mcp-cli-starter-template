@@ -8,8 +8,8 @@
  *   4. If lifecycle-affecting, add a stress case in `scripts/stress-mcp.ts`.
  */
 
-import { envBool } from "@george43g/robustness";
 import { makeRegistry, type ToolRegistry } from "@george43g/mcp-kit";
+import { envBool } from "@george43g/robustness";
 import { getLogsTool } from "./get-logs.js";
 import { healthCheckTool } from "./health-check.js";
 import { noopTool } from "./noop.js";

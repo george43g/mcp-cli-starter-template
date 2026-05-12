@@ -24,12 +24,7 @@ export const shared = defineConfig({
       reporter: ["text", "lcov", "html"],
       reportsDirectory: "./coverage",
       include: ["src/**/*.ts"],
-      exclude: [
-        "src/**/*.test.ts",
-        "src/**/*.d.ts",
-        "src/**/index.ts",
-        "src/**/types.ts",
-      ],
+      exclude: ["src/**/*.test.ts", "src/**/*.d.ts", "src/**/index.ts", "src/**/types.ts"],
       thresholds: {
         statements: 80,
         branches: 70,

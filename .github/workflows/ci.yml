@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: ${{ matrix.os }} · node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: ["24"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build (TS workspace + optional native)
+        run: pnpm build
+
+      - name: Test (default — native path when built)
+        run: pnpm test
+
+      - name: Test (TS fallback path)
+        env:
+          MCP_DISABLE_NATIVE: "1"
+        run: pnpm test:no-native
+
+      - name: Verify npm tarball is publishable
+        run: pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run
+
+      - name: Stress harness (9 cases including HTTP)
+        run: pnpm --filter "@george43g/*-mcp" stress
+
+      - name: Upload stress report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-report-${{ matrix.os }}
+          path: apps/**/stress-*-report.json
+          if-no-files-found: ignore

@@ -5,7 +5,14 @@
   "description": "Optional Rust acceleration via napi-rs v3. Hand-mirrored types match @george43g/shared-types; CI drift-check enforces parity.",
   "main": "index.js",
   "types": "index.d.ts",
-  "files": ["index.js", "index.d.ts", "*.node", "Cargo.toml", "src", "build.rs"],
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "*.node",
+    "Cargo.toml",
+    "src",
+    "build.rs"
+  ],
   "napi": {
     "binaryName": "rust-accel",
     "targets": [

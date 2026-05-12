@@ -9,17 +9,11 @@
  * dev stats; `q` or Esc quits.
  */
 
+import { DevStatsPanel, HelpBar, StatusBar, useTheme, useVimKeys } from "@george43g/tui-kit";
 import { Box, Text, useApp, useInput } from "ink";
 import { useState } from "react";
-import {
-  DevStatsPanel,
-  HelpBar,
-  StatusBar,
-  useTheme,
-  useVimKeys,
-} from "@george43g/tui-kit";
-import { engineLabel } from "../native-bridge.js";
 import { APP_NAME, APP_VERSION } from "../meta.js";
+import { engineLabel } from "../native-bridge.js";
 
 const ITEMS = Array.from({ length: 30 }, (_, i) => ({
   id: i + 1,

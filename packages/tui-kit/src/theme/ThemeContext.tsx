@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useContext, useMemo } from "react";
-import { type GlyphPreset, GLYPH_PRESETS, type GlyphSet } from "./glyphs.js";
+import { GLYPH_PRESETS, type GlyphPreset, type GlyphSet } from "./glyphs.js";
 import { DEFAULT_ACCENT, derivePalette, type Palette } from "./palette.js";
 
 export interface Theme {

@@ -20,11 +20,5 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true
   },
-  "exclude": [
-    "node_modules",
-    "**/dist",
-    "**/build",
-    "**/coverage",
-    "**/*.tsbuildinfo"
-  ]
+  "exclude": ["node_modules", "**/dist", "**/build", "**/coverage", "**/*.tsbuildinfo"]
 }

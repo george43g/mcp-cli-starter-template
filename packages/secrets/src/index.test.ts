@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  loadSecret,
-  MissingSecretError,
-  type SecretRef,
-  type SecretSource,
-} from "./index.js";
+import { loadSecret, MissingSecretError, type SecretRef, type SecretSource } from "./index.js";
 
 const TOOL = "starter";
 const NAME = "credentials";

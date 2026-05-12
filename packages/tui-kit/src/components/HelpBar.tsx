@@ -26,7 +26,7 @@ export function HelpBar({ hints }: HelpBarProps) {
           <Text color={theme.palette.accent} bold>
             {h.key}
           </Text>
-          <Text color={theme.palette.fgDim}>{" "}{h.label}</Text>
+          <Text color={theme.palette.fgDim}> {h.label}</Text>
           {i < hints.length - 1 ? <Text color={theme.palette.borderDim}> · </Text> : null}
         </Box>
       ))}

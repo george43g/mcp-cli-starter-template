@@ -11,17 +11,11 @@
  *     loop than most users want
  */
 
-import { getFileLogLines, getLogs } from "@george43g/robustness";
-import {
-  GetLogsInputSchema,
-  GetLogsOutputSchema,
-} from "@george43g/shared-types";
 import type { ToolDefinition } from "@george43g/mcp-kit";
+import { getFileLogLines, getLogs } from "@george43g/robustness";
+import { GetLogsInputSchema, GetLogsOutputSchema } from "@george43g/shared-types";
 
-export const getLogsTool: ToolDefinition<
-  typeof GetLogsInputSchema,
-  typeof GetLogsOutputSchema
-> = {
+export const getLogsTool: ToolDefinition<typeof GetLogsInputSchema, typeof GetLogsOutputSchema> = {
   name: "get_logs",
   description:
     "Return recent log lines from the MCP server. Source: 'memory' (in-process ring buffer, " +

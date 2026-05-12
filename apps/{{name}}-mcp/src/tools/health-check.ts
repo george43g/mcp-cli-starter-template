@@ -10,12 +10,9 @@
  * tools hang. Cap timeout at 5s.
  */
 
-import { snapshotHealth } from "@george43g/robustness";
-import {
-  HealthCheckInputSchema,
-  HealthSnapshotSchema,
-} from "@george43g/shared-types";
 import type { ToolDefinition } from "@george43g/mcp-kit";
+import { snapshotHealth } from "@george43g/robustness";
+import { HealthCheckInputSchema, HealthSnapshotSchema } from "@george43g/shared-types";
 import { getCounters } from "../counters.js";
 
 export const healthCheckTool: ToolDefinition<

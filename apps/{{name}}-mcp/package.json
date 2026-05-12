@@ -10,7 +10,10 @@
     "{{name}}-cli": "./dist/cli.js",
     "{{name}}-tui": "./dist/tui.js"
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "engines": {
     "node": ">=24"
   },
@@ -62,6 +65,10 @@
     "vite": "^7.0.0",
     "vitest": "^2.1.0"
   },
-  "keywords": ["mcp", "cli", "tui"],
+  "keywords": [
+    "mcp",
+    "cli",
+    "tui"
+  ],
   "author": "George G"
 }

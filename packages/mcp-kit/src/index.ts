@@ -1,4 +1,9 @@
-export type { BuildDispatcherOptions, Dispatch, DispatcherCounters, ToolResult } from "./dispatch.js";
+export type {
+  BuildDispatcherOptions,
+  Dispatch,
+  DispatcherCounters,
+  ToolResult,
+} from "./dispatch.js";
 export { buildDispatcher } from "./dispatch.js";
 export {
   type WrapInstructionsResult,

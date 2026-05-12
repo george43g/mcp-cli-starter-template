@@ -35,7 +35,10 @@ export interface WrapInstructionsResult {
   uuid: string;
 }
 
-export function wrapInstructions(text: string, uuid: string = randomUUID()): WrapInstructionsResult {
+export function wrapInstructions(
+  text: string,
+  uuid: string = randomUUID(),
+): WrapInstructionsResult {
   return {
     text: `<instructions uuid="${uuid}">\n${text}\n</instructions>`,
     uuid,

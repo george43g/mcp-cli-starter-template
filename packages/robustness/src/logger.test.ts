@@ -1,12 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  clearLogs,
-  getLogs,
-  info,
-  perf,
-  _resetForTests as resetLogger,
-  warn,
-} from "./logger.js";
+import { clearLogs, getLogs, info, perf, _resetForTests as resetLogger, warn } from "./logger.js";
 
 beforeEach(() => {
   resetLogger();

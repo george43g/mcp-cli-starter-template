@@ -32,13 +32,17 @@ describe("isCI", () => {
     expect(isCI()).toBe(false);
   });
 
-  it.each(["CI", "GITHUB_ACTIONS", "GITLAB_CI", "CIRCLECI", "TRAVIS", "BUILDKITE"])(
-    "returns true when %s set",
-    (key) => {
-      process.env[key] = "true";
-      expect(isCI()).toBe(true);
-    },
-  );
+  it.each([
+    "CI",
+    "GITHUB_ACTIONS",
+    "GITLAB_CI",
+    "CIRCLECI",
+    "TRAVIS",
+    "BUILDKITE",
+  ])("returns true when %s set", (key) => {
+    process.env[key] = "true";
+    expect(isCI()).toBe(true);
+  });
 });
 
 describe("colorEnabled", () => {

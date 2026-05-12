@@ -63,10 +63,7 @@ describe("withRetry", () => {
   });
 
   it("respects custom shouldRetry predicate", async () => {
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("retry me"))
-      .mockResolvedValueOnce("ok");
+    const fn = vi.fn().mockRejectedValueOnce(new Error("retry me")).mockResolvedValueOnce("ok");
     const timer = vi.fn((cb: () => void) => cb());
     const result = await withRetry(fn, {
       maxAttempts: 2,

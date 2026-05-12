@@ -11,9 +11,9 @@
 //  8. Add a test in tests/integration.test.ts; add a stress case if lifecycle-affecting.
 //  9. If you mirror the schema in Rust, register it in MIRRORED_SCHEMAS.
 
-import { NoopInputSchema, NoopOutputSchema } from "@george43g/shared-types";
 import type { ToolDefinition } from "@george43g/mcp-kit";
 import { sanitize } from "@george43g/mcp-kit";
+import { NoopInputSchema, NoopOutputSchema } from "@george43g/shared-types";
 import { tryLoadNative } from "../native-bridge.js";
 
 /**

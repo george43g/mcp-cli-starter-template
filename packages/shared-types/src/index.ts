@@ -18,19 +18,14 @@ import { z } from "zod";
  */
 export const NoopInputSchema = z.object({
   input: z.string().describe("Arbitrary string. Will be echoed back."),
-  upper: z
-    .boolean()
-    .default(false)
-    .describe("If true, return the echoed string in upper-case."),
+  upper: z.boolean().default(false).describe("If true, return the echoed string in upper-case."),
 });
 
 export type NoopInput = z.infer<typeof NoopInputSchema>;
 
 export const NoopOutputSchema = z.object({
   echo: z.string().describe("The echoed (possibly upper-cased) string."),
-  engine: z
-    .enum(["ts", "rust"])
-    .describe("Which implementation path produced the result."),
+  engine: z.enum(["ts", "rust"]).describe("Which implementation path produced the result."),
   durationMicros: z.number().int().describe("Wall-clock duration in microseconds."),
 });
 

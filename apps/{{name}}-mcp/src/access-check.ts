@@ -10,8 +10,8 @@
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { hasNativeModule } from "./native-bridge.js";
 import { APP_NAME } from "./meta.js";
+import { hasNativeModule } from "./native-bridge.js";
 
 export type CheckStatus = "ok" | "warn" | "error" | "info";
 
@@ -118,9 +118,7 @@ export function formatAccessReport(report: AccessReport): string {
     error: "✗",
     info: "ℹ",
   };
-  const lines = report.items.map(
-    (i) => `  ${glyph[i.status]}  ${i.label} — ${i.detail}`,
-  );
+  const lines = report.items.map((i) => `  ${glyph[i.status]}  ${i.label} — ${i.detail}`);
   lines.unshift(report.ok ? "Doctor: all clear." : "Doctor: issues found.");
   return lines.join("\n");
 }

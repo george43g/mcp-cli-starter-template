@@ -16,9 +16,9 @@
 
 import { color, isInteractive } from "@george43g/cli-kit";
 import { Command } from "commander";
-import { runMcpServer } from "./index.js";
 import { checkLocalAccess, formatAccessReport } from "./access-check.js";
 import { callMcpTool } from "./dispatcher.js";
+import { runMcpServer } from "./index.js";
 import { APP_NAME, APP_VERSION } from "./meta.js";
 
 async function printResult(result: Awaited<ReturnType<typeof callMcpTool>>, json: boolean) {
@@ -66,7 +66,9 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
     .description("Launch the Ink TUI")
     .action(async () => {
       if (!isInteractive()) {
-        process.stderr.write(`${color.yellow("Refusing to launch TUI: stdin or stdout is not a TTY.")}\n`);
+        process.stderr.write(
+          `${color.yellow("Refusing to launch TUI: stdin or stdout is not a TTY.")}\n`,
+        );
         process.exit(1);
       }
       const { runTui } = await import("./tui/index.js");
@@ -114,7 +116,10 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
         dispatcher: {
           async listTools() {
             const { makeAppRegistry } = await import("./tools/registry.js");
-            return makeAppRegistry().tools.map((t) => ({ name: t.name, description: t.description }));
+            return makeAppRegistry().tools.map((t) => ({
+              name: t.name,
+              description: t.description,
+            }));
           },
           async callTool(name, args) {
             return callMcpTool(name, args);

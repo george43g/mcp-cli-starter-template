@@ -10,7 +10,10 @@ import {
 describe("schema round-trip", () => {
   it("NoopInputSchema applies the upper default", () => {
     expect(NoopInputSchema.parse({ input: "hi" })).toEqual({ input: "hi", upper: false });
-    expect(NoopInputSchema.parse({ input: "hi", upper: true })).toEqual({ input: "hi", upper: true });
+    expect(NoopInputSchema.parse({ input: "hi", upper: true })).toEqual({
+      input: "hi",
+      upper: true,
+    });
   });
 
   it("NoopInputSchema rejects non-string input", () => {

@@ -11,7 +11,7 @@
  */
 
 import type { Tool, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import type { z, ZodTypeAny } from "zod";
+import type { ZodTypeAny, z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 export interface ToolDefinition<

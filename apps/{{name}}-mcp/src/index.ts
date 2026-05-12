@@ -12,16 +12,10 @@
  * To remove the dev-only get_logs tool: drop it from src/tools/registry.ts.
  */
 
+import { startHttpServer, startStdio } from "@george43g/mcp-kit";
+import { envBool, envNum, envStr, registerCleanup, setLogFilePrefix } from "@george43g/robustness";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import {
-  envBool,
-  envNum,
-  envStr,
-  registerCleanup,
-  setLogFilePrefix,
-} from "@george43g/robustness";
-import { startHttpServer, startStdio } from "@george43g/mcp-kit";
 import { getCounters } from "./counters.js";
 import { getDispatcher } from "./dispatcher.js";
 import { APP_NAME, APP_VERSION } from "./meta.js";

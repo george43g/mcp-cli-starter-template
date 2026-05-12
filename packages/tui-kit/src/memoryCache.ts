@@ -96,9 +96,7 @@ export class MemoryCache<V> {
 
   /** Evict the least-recently-used half. Called on memory pressure. */
   evictLruHalf(): number {
-    const sorted = Array.from(this.map.entries()).sort(
-      (a, b) => a[1].lastAccess - b[1].lastAccess,
-    );
+    const sorted = Array.from(this.map.entries()).sort((a, b) => a[1].lastAccess - b[1].lastAccess);
     const half = Math.floor(sorted.length / 2);
     for (let i = 0; i < half; i++) {
       const entry = sorted[i];

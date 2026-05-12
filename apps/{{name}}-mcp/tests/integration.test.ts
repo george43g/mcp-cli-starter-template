@@ -10,8 +10,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { callMcpTool } from "../src/dispatcher.js";
 import { _resetCounters } from "../src/counters.js";
+import { callMcpTool } from "../src/dispatcher.js";
 import { makeAppRegistry } from "../src/tools/registry.js";
 
 beforeEach(() => {

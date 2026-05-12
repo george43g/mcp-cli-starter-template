@@ -19,8 +19,8 @@ import {
   startHeapMonitor,
 } from "@george43g/robustness";
 import { renderFullScreen, ThemeProvider } from "@george43g/tui-kit";
-import { App } from "./App.js";
 import { APP_NAME } from "../meta.js";
+import { App } from "./App.js";
 
 export async function runTui(): Promise<void> {
   const slug = APP_NAME.replace(/^@[^/]+\//, "");
