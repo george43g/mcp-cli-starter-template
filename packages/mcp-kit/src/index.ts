@@ -7,7 +7,7 @@ export {
   wrapUntrusted,
 } from "./prompt-injection.js";
 export { sanitize } from "./sanitize.js";
-export type { ToolDefinition, ToolRegistry } from "./tool-registry.js";
+export type { AnyToolDefinition, ToolDefinition, ToolRegistry } from "./tool-registry.js";
 export { makeRegistry } from "./tool-registry.js";
 export type { HttpServerHandle, HttpServerOptions } from "./transports/http.js";
 export { startHttpServer } from "./transports/http.js";

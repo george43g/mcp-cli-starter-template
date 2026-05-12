@@ -39,14 +39,21 @@ export interface ToolDefinition<
   handler: (input: z.infer<TInput>, signal?: AbortSignal) => Promise<z.infer<TOutput>>;
 }
 
+// AnyToolDefinition widens both Zod generic params so the registry can hold
+// tools with narrow input/output schemas under a single uniform array type.
+// Tool authors keep their narrow types at the declaration site; this is the
+// boundary alias used internally.
+// biome-ignore lint/suspicious/noExplicitAny: registry boundary; widening is intentional.
+export type AnyToolDefinition = ToolDefinition<any, any>;
+
 export interface ToolRegistry {
-  readonly tools: readonly ToolDefinition[];
-  get(name: string): ToolDefinition | undefined;
+  readonly tools: readonly AnyToolDefinition[];
+  get(name: string): AnyToolDefinition | undefined;
   /** Convert all tools (or just enabled ones) to MCP SDK shape. */
   toMcpTools(includeDevOnly?: boolean): Tool[];
 }
 
-export function makeRegistry(defs: ToolDefinition[]): ToolRegistry {
+export function makeRegistry(defs: AnyToolDefinition[]): ToolRegistry {
   const byName = new Map(defs.map((d) => [d.name, d]));
   return {
     tools: defs,

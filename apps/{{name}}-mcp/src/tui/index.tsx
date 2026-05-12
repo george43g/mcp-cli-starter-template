@@ -1,0 +1,62 @@
+/**
+ * TUI entry — wraps the App in ThemeProvider + fullscreen-ink, installs
+ * the shutdown registry, and returns once the user quits.
+ *
+ * Bin: `{{name}}-tui` (also `pnpm tui`, `pnpm dev:tui`).
+ *
+ * To remove TUI support: delete this file + `src/tui/`, drop the
+ * `{{name}}-tui` bin entry from package.json, drop the `tui` subcommand
+ * from src/cli.ts.
+ */
+
+import {
+  envStr,
+  installShutdownHandlers,
+  installWatchdog,
+  logStartup,
+  registerCleanup,
+  setLogFilePrefix,
+  startHeapMonitor,
+} from "@george43g/robustness";
+import { renderFullScreen, ThemeProvider } from "@george43g/tui-kit";
+import { App } from "./App.js";
+import { APP_NAME } from "../meta.js";
+
+export async function runTui(): Promise<void> {
+  const slug = APP_NAME.replace(/^@[^/]+\//, "");
+  setLogFilePrefix(slug);
+
+  installShutdownHandlers();
+  installWatchdog();
+  startHeapMonitor();
+  logStartup(`${APP_NAME}-tui`);
+
+  const preset = envStr("MCP_TUI_THEME", "safe") as "safe" | "powerline";
+  const accent = envStr("MCP_TUI_ACCENT", "#1982FC");
+
+  const screen = await renderFullScreen(
+    <ThemeProvider preset={preset} accent={accent}>
+      <App />
+    </ThemeProvider>,
+  );
+
+  registerCleanup(() => screen.unmount());
+
+  await screen.waitUntilExit();
+}
+
+const isMain = (() => {
+  try {
+    const arg = process.argv[1] ?? "";
+    return arg.endsWith("/dist/tui.js") || arg.endsWith("/src/tui/index.tsx");
+  } catch {
+    return false;
+  }
+})();
+
+if (isMain) {
+  runTui().catch((err) => {
+    process.stderr.write(`${APP_NAME}-tui: ${(err as Error).message}\n`);
+    process.exit(1);
+  });
+}

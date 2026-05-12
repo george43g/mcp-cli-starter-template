@@ -1,5 +1,5 @@
 import { defineConfig, mergeConfig } from "vitest/config";
-import { shared } from "./vitest.shared.js";
+import { shared } from "./vitest.shared.ts";
 
 /**
  * Vitest preset for `apps/*` (orchestration code).
