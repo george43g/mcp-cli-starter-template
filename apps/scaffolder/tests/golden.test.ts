@@ -48,12 +48,27 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   ["08-app/lib", "apps/{{name}}-mcp"],
   ["09-rust-accel/lib", "apps/rust-accel"],
   ["10-docs-readme/lib/docs", "docs"],
-  ["10-docs-readme/lib/README.md", "README.md"],
+  // 10-docs-readme/lib/README.md is the CLONED-TOOL's README (with {{name}}
+  // placeholders). The repo root's README.md describes the scaffolder itself
+  // — different content by design. Exempt from byte-equality check; see
+  // EXEMPT_PATHS below.
   ["10-docs-readme/lib/LICENSE", "LICENSE"],
   ["10-docs-readme/lib/llms-install.md", "llms-install.md"],
   ["11-agent-files/lib", "."],
   ["12-ci-release/lib", "."],
 ];
+
+/**
+ * Lib paths (relative to PHASES_DIR) that are KNOWN to diverge from their
+ * canonical sibling — usually because the lib version is a template for
+ * the cloned tool, while the canonical is the scaffolder repo's own.
+ *
+ * Adding entries here should always come with a comment justifying why.
+ */
+const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
+  // Root README — see LIB_TO_CANONICAL comment.
+  "10-docs-readme/lib/README.md",
+]);
 
 async function walkFiles(root: string, acc: string[] = []): Promise<string[]> {
   let entries: import("node:fs").Dirent[];
@@ -103,6 +118,8 @@ describe("golden-output drift", () => {
     const mismatches: Array<{ lib: string; canonical: string; reason: string }> = [];
 
     for (const libAbs of libFiles) {
+      const libRel = relative(PHASES_DIR, libAbs);
+      if (EXEMPT_LIB_PATHS.has(libRel)) continue;
       const canonicalAbs = libToCanonical(libAbs);
       if (!canonicalAbs) {
         mismatches.push({

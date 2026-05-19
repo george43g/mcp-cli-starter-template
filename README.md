@@ -1,162 +1,128 @@
 <div align="center">
 
-# {{name}}
+# mcp-cli-starter-template
 
-**MCP server + CLI + TUI — one bin, three surfaces, production-ready from commit 1.**
+**A programmable MCP+CLI+TUI starter for Node.js — and the scaffolder that ships it.**
 
 [![CI](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml/badge.svg)](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@george43g/{{name}}-mcp.svg)](https://www.npmjs.com/package/@george43g/{{name}}-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=24](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)](https://nodejs.org)
 
-[Install](#install) · [Tools](#tools) · [Connect from your editor](#one-click-install) · [Docs](#docs) · [Skill for AI agents](#install-the-companion-skill)
-
-![{{name}} TUI](docs/screenshots/overview.gif)
-
 </div>
 
----
+This repo is two things at once:
 
-> **This README is a scaffold.** Once you've replaced `{{name}}` / `{{NAME_UPPER}}` placeholders (see `scripts/init-template.mjs`), edit this file to describe what your tool actually does. The structure below — install snippets, tool table, IDE integrations, skill install — is the recommended public-style format.
+1. **A static starter template** — clone, run a rename script, and you have a working MCP server with single-bin CLI/TUI/REPL surfaces, optional Rust acceleration, robustness harness (watchdog + logger + shutdown + retry), CI matrix, and Mintlify-ready docs.
 
-## Install
+2. **A programmable scaffolder/migrator** (`apps/scaffolder/`, bin `mcp-scaffold`) — runs the same template assembly as 21 ordered migrations across 12 phases. Generates fresh starters into empty directories, OR retrofits subsets of the rules to existing MCP servers.
 
-```bash
-# Run directly (no install needed)
-npx @george43g/{{name}}-mcp mcp
+Both produce the same output. The scaffolder exists because copy-and-rename works once; selective retrofit against existing MCP servers (like `imsg-mcp` or `Gmail-MCP-Server`) needs something programmable.
 
-# Or install globally
-npm  install -g @george43g/{{name}}-mcp
-pnpm add  -g @george43g/{{name}}-mcp
-```
-
-After install, `{{name}}` is on your PATH. All subcommands route through that single bin:
+## Quickstart — scaffold a new tool
 
 ```bash
-{{name}} mcp              # run the MCP server (stdio)
-{{name}} mcp --http       # run via Streamable HTTP (requires MCP_HTTP_TOKEN)
-{{name}} tui              # launch the Ink TUI
-{{name}} doctor           # preflight checks (Node version, native deps, env)
-{{name}} repl             # interactive REPL — same dispatcher as MCP
-{{name}} health           # one-shot health snapshot
-{{name}} noop --input hi  # call any tool directly from the CLI
+# Future (once published)
+npx @george43g/mcp-scaffold init my-tool --name foo
+
+# Today (clone-and-run)
+git clone https://github.com/george43g/mcp-cli-starter-template.git
+cd mcp-cli-starter-template
+mise install
+pnpm install
+pnpm --filter @george43g/mcp-scaffold build
+node apps/scaffolder/dist/cli.js init /path/to/new-tool --name foo
 ```
 
-## One-click install
-
-Paste these into your MCP host's config. The bin name is `{{name}}` once installed via npm; the `npx` form works without a local install.
-
-### Claude Desktop / Code (`claude_desktop_config.json` or `.mcp.json`)
-
-```json
-{
-  "mcpServers": {
-    "{{name}}": {
-      "command": "npx",
-      "args": ["-y", "@george43g/{{name}}-mcp", "mcp"]
-    }
-  }
-}
-```
-
-### Cursor (`.cursor/mcp.json`)
-
-```json
-{
-  "mcpServers": {
-    "{{name}}": {
-      "command": "npx",
-      "args": ["-y", "@george43g/{{name}}-mcp", "mcp"]
-    }
-  }
-}
-```
-
-### Warp / Codex / OpenCode
-
-Identical JSON snippet — they all consume the same shape under `mcpServers`. See `opencode.json` and `.cursor/mcp.json` in this repo for working examples (with relative paths for local dev).
-
-## Tools
-
-The starter ships two demo tools plus a dev-only log inspector. Replace these with your own — declare a `ToolDefinition` in `src/tools/<name>.ts`, register it in `src/tools/registry.ts`, and it'll appear in MCP `tools/list`, the CLI as a subcommand, and the REPL automatically.
-
-| Tool | Description | Annotations |
-|---|---|---|
-| `health_check` | Returns server/runtime/transport snapshot. Never touches external I/O. | read-only, idempotent |
-| `noop` | Echo a string (optionally upper-cased). Demonstrates the Rust acceleration fallback path. | read-only, idempotent |
-| `get_logs` | **Dev-mode only** (`{{NAME_UPPER}}_DEV=1`). Returns the last N lines from the in-memory ring buffer. | read-only |
-
-## Install the companion skill
-
-This repo ships with a Claude skill that teaches an AI agent how to use your tool end-to-end. The skill lives at `skills/{{name}}/SKILL.md` and is meant to be rewritten by you (or by the AI itself, after first reading the tool) to document the tool's actual behavior.
+Then in the new tool's directory:
 
 ```bash
-# Copy the skill into your global Claude skills dir
-mkdir -p ~/.claude/skills/{{name}}
-cp skills/{{name}}/SKILL.md ~/.claude/skills/{{name}}/
-
-# Or symlink (so updates from this repo show up automatically)
-ln -s "$(pwd)/skills/{{name}}/SKILL.md" ~/.claude/skills/{{name}}/SKILL.md
+cd /path/to/new-tool
+pnpm install
+pnpm build
+pnpm test
+pnpm --filter @george43g/foo-mcp doctor   # preflight
+node apps/foo-mcp/dist/cli.js mcp          # run the MCP server
 ```
 
-## Docs
+## What the scaffolder produces
 
-| File | What it covers |
-|---|---|
-| [`AGENTS.md`](AGENTS.md) | Canonical agent guide (also `CLAUDE.md`, `.cursorrules` as symlinks) |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How packages fit together; which to delete if you don't need a surface |
-| [`docs/HTTP_MODE.md`](docs/HTTP_MODE.md) | Streamable HTTP transport: bearer auth, `/health`, reverse-proxy patterns |
-| [`docs/RUST_ACCELERATION.md`](docs/RUST_ACCELERATION.md) | napi-rs build, `.node` binary handling, drift-check between Zod and serde |
-| [`docs/TUI_DESIGN.md`](docs/TUI_DESIGN.md) | Theme system, keybindings, dev stats, cache invariants |
-| [`docs/GUARDRAILS_MCP_RESPONSES.md`](docs/GUARDRAILS_MCP_RESPONSES.md) | UUID-gated instructions + prompt-injection defense |
-| [`docs/RELEASE.md`](docs/RELEASE.md) | Enabling semantic-release for npm publish |
+Twelve phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffold list` for the full ordered list, or `skills/mcp-starter-architect/SKILL.md` for the canonical AI-readable guide describing every rule + how to apply it manually.
 
-## What's inside (template author's eyes only)
+| Phase | Scope |
+|-------|-------|
+| 01-bootstrap | Mode, package manager, name, monorepo skeleton |
+| 02-toolchain | mise, node version, git, .gitignore (with LFS anti-footgun), .gitattributes |
+| 03-configs | Shared tsconfig + biome + vitest packages + full turbo.json (30+ env vars) |
+| 04-robustness | env + NDJSON logger + watchdog (event-loop + memory + idle) + shutdown registry + withTimeout + health + retry + rate-limit |
+| 05-utility-pkgs | env-loader, secrets (env-JSON → 1Password → file), cli-kit, tui-kit |
+| 06-mcp-kit | tool-registry, dispatcher (6 invariants), stdio + Streamable HTTP transports, sanitize, prompt-injection guardrails |
+| 07-shared-types | Zod schemas + Rust drift-check |
+| 08-app | The user-facing tool — single bin, MCP/CLI/TUI/REPL surfaces, dev MCP proxy, 9-case stress harness |
+| 09-rust-accel | Optional napi-rs v3 crate with hand-mirrored types |
+| 10-docs-readme | Mintlify config + MDX scaffold + reference markdown + public-style README |
+| 11-agent-files | AGENTS.md (canonical) + CLAUDE.md/.cursorrules symlinks + .mcp.json + Claude/Cursor/OpenCode skill files |
+| 12-ci-release | matrix CI + (disabled) semantic-release + screenshots CI + .releaserc + .npmignore |
 
-This section is for the engineer running the scaffolder — delete it once you've made the tool your own.
+## Scaffolder usage
+
+```
+mcp-scaffold init [target]              fresh scaffold (defaults to cwd)
+mcp-scaffold apply [--target <dir>]     retrofit an existing repo (dry-run by default; --execute to apply)
+mcp-scaffold plan  [--target <dir>]     dry-run preview only
+mcp-scaffold migrate <id>               run a single migration or one whole phase
+mcp-scaffold list                       list discovered phases + migrations
+```
+
+Feature opt-outs (init/apply/plan):
+
+```
+--no-tui                 skip Ink/React TUI
+--no-http                skip Streamable HTTP transport
+--no-rust-accel          skip napi-rs crate
+--no-semantic-release    skip semantic-release workflow
+```
+
+## Repo layout
 
 ```
 apps/
-  {{name}}-mcp/             your tool — clone-and-rename target
+  {{name}}-mcp/           the live "golden output" — referenced + diffed in CI
+  rust-accel/             optional napi-rs v3 crate
+  scaffolder/             the programmable scaffolder/migrator
     src/
-      cli.ts                THE SINGLE BIN — commander dispatch
-      index.ts              runMcpServer() + callMcpTool() (library exports)
-      commands/http.ts      HTTP transport wiring (delete file to drop HTTP)
-      tui/                  Ink TUI — delete dir + the `tui` subcmd if not needed
-      tools/                health_check + noop demo + dev-only get_logs
-      dispatcher.ts         invariants block; withTimeout + perf + abort + error wrap
-      native-bridge.ts      tryLoadNative() with MCP_DISABLE_NATIVE escape
-    scripts/
-      mcp-dev-proxy.ts      handshake-replay proxy for live source-reload
-      stress-mcp.ts         9-case robustness harness
-      screenshots/          VHS .tape files driving docs/screenshots/*.gif
-    .usage.kdl              CLI spec → completions + manpage + markdown docs
-  rust-accel/               napi-rs crate (optional acceleration)
+      core/               Migration base + IoC config + phase runner + helpers
+      phases/             01-bootstrap … 12-ci-release (21 migrations, 145 lib files)
+      ui/                 banner, recap, progress
+    bin/cli.ts            commander dispatch
+    scripts/              build-templates.mjs (codegen: lib/** → src/generated/templates.ts)
+    .usage.kdl            CLI spec → completions + manpage + markdown docs
+    mise.toml             docs/completions/manpage tasks
 
 packages/
   robustness, mcp-kit, cli-kit, tui-kit, env-loader, secrets, shared-types,
   tsconfig, biome-config, vitest-config
 
-mise.toml                   toolchain pins (node, pnpm) + named tasks
-.github/workflows/          ci.yml, release.yml (disabled by default), readme-check.yml, screenshots.yml
-docs/                       Mintlify-ready (docs.json + MDX pages)
-skills/{{name}}/             Repo-installable companion skill (rewrite at scaffold time)
+completions/scaffolder/   bash + zsh + fish completions for mcp-scaffold
+docs/                     Mintlify config + MDX pages + reference markdown
+docs/scaffolder-cli/      generated per-subcommand markdown
+man/                      generated mcp-scaffold(1) manpage
+skills/
+  mcp-starter-architect/  comprehensive AI guide — every rule, every retrofit step
+  {{name}}/               cloned-tool's project skill scaffold
 ```
 
-## Quickstart for cloning this template
+## Development
 
-```bash
-git clone https://github.com/george43g/mcp-cli-starter-template.git my-new-tool
-cd my-new-tool
-mise install            # installs node + pnpm at pinned versions
+```
 pnpm install
-mise run rename -- --name my-tool   # or: pnpm tsx scripts/init-template.mjs --name my-tool
-pnpm verify             # lint + typecheck + test + build
-pnpm stress             # 9-case robustness harness
+pnpm verify                                 # lint + typecheck + test + build
+pnpm --filter @george43g/mcp-scaffold test  # golden-output drift test + unit tests
+mise run --cd apps/scaffolder smoke         # full end-to-end: init + install + test
+mise run --cd apps/scaffolder docs          # regenerate docs/scaffolder-cli/*.md
+mise run --cd apps/scaffolder completions   # regenerate completions/scaffolder/*
+mise run --cd apps/scaffolder manpage       # regenerate man/mcp-scaffold.1
 ```
-
-After rename, `scripts/init-template.mjs` self-deletes. Review changes with `git diff --cached`, commit, push.
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
