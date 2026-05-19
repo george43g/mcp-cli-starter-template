@@ -10,5 +10,7 @@
 
 import type { Phase } from "../core/migration.js";
 import { phase as p01Bootstrap } from "./01-bootstrap/index.js";
+import { phase as p02Toolchain } from "./02-toolchain/index.js";
+import { phase as p03Configs } from "./03-configs/index.js";
 
-export const PHASES: readonly Phase[] = [p01Bootstrap];
+export const PHASES: readonly Phase[] = [p01Bootstrap, p02Toolchain, p03Configs];

@@ -1,0 +1,81 @@
+/**
+ * 02-toolchain/m1-mise — write mise.toml at repo root.
+ *
+ * Pins node + pnpm, defines named tasks (build/dev/test/etc.). Replaces
+ * .nvmrc / .node-version for tools that respect mise, but we keep those
+ * files too in m2 for tools that don't.
+ */
+
+import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import { nameUpperOf, substitute } from "../../core/templating.js";
+
+const MISE_TOML = `# mise — toolchain pin + task runner.
+#
+# \`mise install\` bootstraps a fresh clone (installs the pinned node + pnpm).
+# \`mise run <task>\` invokes a named task with proper dep ordering.
+# Replaces .nvmrc / .node-version / Volta; package.json's "packageManager"
+# remains the source-of-truth for corepack-aware tools.
+#
+# Docs: https://mise.jdx.dev
+
+[tools]
+node = "24"
+pnpm = "10.29.3"
+
+[env]
+# Default to non-dev mode unless overridden. Test runs flip it via .env.test.
+MCP_DEV = "0"
+
+[tasks.install]
+description = "Install workspace dependencies"
+run = "pnpm install"
+
+[tasks.build]
+description = "Turbo: build all packages (TS + optional native)"
+depends = ["install"]
+run = "pnpm build"
+
+[tasks.dev]
+description = "Turbo: watch mode across packages"
+run = "pnpm dev"
+
+[tasks.test]
+description = "Run all tests"
+run = "pnpm test"
+
+[tasks.lint]
+description = "Biome check"
+run = "pnpm lint"
+
+[tasks.typecheck]
+description = "Typecheck every package"
+run = "pnpm typecheck"
+
+[tasks.verify]
+description = "lint + typecheck + test + build (CI shape)"
+run = "pnpm verify"
+
+[tasks.stress]
+description = "Run the 9-case MCP stress harness"
+depends = ["build"]
+run = "pnpm stress"
+
+[tasks.screenshots]
+description = "Regenerate TUI/CLI screenshots via VHS"
+run = "pnpm --filter @george43g/{{name}}-mcp screenshots"
+`;
+
+export default class MiseMigration extends Migration {
+  readonly id = "02-toolchain/m1-mise";
+  readonly title = "Write mise.toml (toolchain pin + tasks)";
+  readonly appliesTo = "both" as const;
+
+  async apply(ctx: MigrationContext): Promise<MigrationResult> {
+    const name = ctx.config.global.repoName.peek() ?? "mcp-starter";
+    const content = substitute(MISE_TOML, { name, nameUpper: nameUpperOf(name) });
+    const outcome = await ctx.fs.writeIfChanged("mise.toml", content);
+    return outcome === "unchanged"
+      ? { status: "noop", notes: ["mise.toml already up-to-date"] }
+      : { status: "applied", filesChanged: ["mise.toml"], notes: [outcome] };
+  }
+}
