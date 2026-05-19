@@ -1,0 +1,9 @@
+{
+  "extends": "@george43g/tsconfig/node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["bin", "src", "tests"]
+}

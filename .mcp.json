@@ -8,6 +8,10 @@
         "MCP_DEV_CMD": "pnpm tsx apps/{{name}}-mcp/src/index.ts",
         "MCP_DEV_WATCH_DIR": "apps/{{name}}-mcp/src"
       }
+    },
+    "mise": {
+      "command": "mise",
+      "args": ["mcp"]
     }
   }
 }
