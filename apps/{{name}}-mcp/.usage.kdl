@@ -1,0 +1,43 @@
+// usage spec — drives completions (bash/zsh/fish/pwsh) + manpage + markdown docs.
+// Generate: `usage g completion <shell> .usage.kdl` / `usage g markdown .usage.kdl`.
+// Docs: https://usage.jdx.dev/spec
+//
+// Keep this in sync with the commander program in src/cli.ts. The scaffolder
+// phase will eventually auto-generate this from the unified registry.
+
+name "{{name}}"
+bin "{{name}}"
+about "{{name}} — MCP server + CLI + TUI (single bin, subcommand dispatch)"
+version "{{NAME_UPPER}}_VERSION"
+
+flag "--json" help="Emit machine-readable JSON output"
+flag "-q --quiet" help="Suppress non-error output"
+flag "-v --verbose" help="Log debug-level info to stderr"
+flag "--no-color" help="Disable colors"
+
+cmd "mcp" help="Run the MCP server (stdio default; --http for Streamable HTTP)" {
+  flag "--http" help="Use Streamable HTTP transport (requires MCP_HTTP_TOKEN)"
+  flag "--port" help="HTTP port (default 8080)" {
+    arg "<port>" type="integer"
+  }
+  flag "--bind" help="HTTP bind addr (default 127.0.0.1)" {
+    arg "<host>" type="string"
+  }
+}
+
+cmd "tui" help="Launch the Ink TUI"
+
+cmd "doctor" help="Run preflight checks (Node version, native module, config dir)"
+
+cmd "repl" help="Drop into the interactive REPL driving the in-process dispatcher" {
+  alias "console"
+}
+
+cmd "health" help="Print server health snapshot (calls health_check in-process)"
+
+cmd "noop" help="Demo: call the noop tool" {
+  flag "--input" required=true help="Input string to echo" {
+    arg "<text>" type="string"
+  }
+  flag "--upper" help="Return upper-cased"
+}

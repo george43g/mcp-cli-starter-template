@@ -4,14 +4,18 @@ import banner from "rollup-plugin-banner2";
 import { defineConfig } from "vite";
 
 /**
- * Vite library-mode build with three entry points.
+ * Vite library-mode build with two entry points.
  *
- *   src/index.ts       → dist/index.js     (MCP server, also a bin)
- *   src/cli.ts         → dist/cli.js       (Commander bin)
- *   src/tui/index.tsx  → dist/tui.js       (Ink TUI bin)
+ *   src/index.ts       → dist/index.js   (library — runMcpServer/callMcpTool exports;
+ *                                          also runnable directly: stress harness spawns it)
+ *   src/cli.ts         → dist/cli.js     (the SINGLE BIN — subcommands: mcp/tui/doctor/repl/...)
  *
- * All three get a `#!/usr/bin/env node` shebang via rollup-plugin-banner2
- * so they're directly executable when symlinked into `node_modules/.bin`.
+ * Bin shebang is added only to dist/cli.js. dist/index.js is a library
+ * file (no shebang); it's still directly invokable via `node dist/index.js`
+ * which is how the stress harness uses it.
+ *
+ * The TUI is loaded by cli.ts via dynamic `await import("./tui/index.js")` —
+ * vite will chunk it into dist/ automatically; it does NOT need to be a bin.
  *
  * Externals: every dependency stays an `import` in the built output —
  * Node will resolve them at runtime. We never bundle our own packages
@@ -28,7 +32,6 @@ export default defineConfig({
       entry: {
         index: resolve(__dirname, "src/index.ts"),
         cli: resolve(__dirname, "src/cli.ts"),
-        tui: resolve(__dirname, "src/tui/index.tsx"),
       },
       formats: ["es"],
     },
@@ -52,11 +55,8 @@ export default defineConfig({
       },
       plugins: [
         banner((chunk) => {
-          // Shebang on bin entries only (the three named entries) so other
-          // chunks aren't accidentally marked executable.
-          if (["index", "cli", "tui"].includes(chunk.name)) {
-            return "#!/usr/bin/env node\n";
-          }
+          // Shebang on the single bin entry only.
+          if (chunk.name === "cli") return "#!/usr/bin/env node\n";
           return undefined;
         }),
       ],

@@ -6,9 +6,7 @@
   "license": "MIT",
   "main": "./dist/index.js",
   "bin": {
-    "{{name}}-mcp": "./dist/index.js",
-    "{{name}}-cli": "./dist/cli.js",
-    "{{name}}-tui": "./dist/tui.js"
+    "{{name}}": "./dist/cli.js"
   },
   "files": [
     "dist",
@@ -22,13 +20,13 @@
     "build:ts": "vite build",
     "build:native:optional": "(pnpm --filter @george43g/rust-accel build 2>/dev/null) || (echo '⚠️  Rust native build skipped (rustc not installed or rust-accel missing). TS fallback will be used.' && exit 0)",
     "dev": "vite build --watch",
-    "dev:mcp": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local src/index.ts",
+    "dev:mcp": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local src/cli.ts mcp",
     "dev:cli": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local src/cli.ts",
-    "dev:tui": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local src/tui/index.tsx",
-    "mcp": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/index.js",
-    "mcp:test": "node --env-file-if-exists=.env.test dist/index.js",
+    "dev:tui": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local src/cli.ts tui",
     "cli": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/cli.js",
-    "tui": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/tui.js",
+    "mcp": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/cli.js mcp",
+    "mcp:test": "node --env-file-if-exists=.env.test dist/cli.js mcp",
+    "tui": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/cli.js tui",
     "doctor": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/cli.js doctor",
     "test": "vitest run",
     "test:no-native": "MCP_DISABLE_NATIVE=1 vitest run",

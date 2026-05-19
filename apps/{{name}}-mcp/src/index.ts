@@ -1,22 +1,26 @@
 /**
- * MCP server entry — stdio by default, --http for Streamable HTTP.
+ * MCP server entry — stdio by default, --http delegates to commands/http.ts.
  *
- * Bin: `{{name}}-mcp` (also invoked via `pnpm mcp` or `pnpm dev:mcp`).
+ * This file is BOTH a library entry (exports `runMcpServer`, `callMcpTool`
+ * for in-process consumers) AND a direct-invocation entry (the stress
+ * harness and other tooling spawns `tsx src/index.ts` directly, falling
+ * through to the `isMain` block below).
+ *
+ * The single bin (`dist/cli.js`) does NOT route through this file — it
+ * imports `runMcpServer` and calls it directly.
  *
  * INVARIANT: never console.log after the stdio transport opens. All output
  * goes through @george43g/robustness/logger.
  *
- * To remove HTTP support: delete the --http branch + the transports/http
- * import. The MCP_HTTP_TOKEN env var doc in .env.example can also go.
- *
+ * To remove HTTP support: see `src/commands/http.ts` (delete-this-file header).
  * To remove the dev-only get_logs tool: drop it from src/tools/registry.ts.
  */
 
-import { startHttpServer, startStdio } from "@george43g/mcp-kit";
-import { envBool, envNum, envStr, registerCleanup, setLogFilePrefix } from "@george43g/robustness";
+import { startStdio } from "@george43g/mcp-kit";
+import { envBool, setLogFilePrefix } from "@george43g/robustness";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { getCounters } from "./counters.js";
+import { runHttpMcp } from "./commands/http.js";
 import { getDispatcher } from "./dispatcher.js";
 import { APP_NAME, APP_VERSION } from "./meta.js";
 import { devModeEnabled, makeAppRegistry } from "./tools/registry.js";
@@ -47,22 +51,14 @@ export async function runMcpServer(opts: { transport?: "stdio" | "http" } = {}):
   });
 
   if (transport === "http") {
-    const port = envNum("MCP_HTTP_PORT", 8080);
-    const bind = envStr("MCP_HTTP_BIND", "127.0.0.1");
-    const handle = await startHttpServer({
-      server,
-      port,
-      bind,
-      getCounters,
-    });
-    registerCleanup(() => handle.close());
+    await runHttpMcp({ server });
   } else {
     await startStdio({ server, entrypoint: APP_NAME });
   }
 }
 
-// Run when invoked directly (bin entry). Importers (tests, CLI, TUI) call
-// runMcpServer() explicitly.
+// Run when invoked directly (stress harness, manual node invocation).
+// The bin (dist/cli.js) goes through cli.ts and never trips this branch.
 const isMain = (() => {
   try {
     const arg = process.argv[1] ?? "";

@@ -1,103 +1,161 @@
-# mcp-cli-starter-template
+<div align="center">
 
-Turborepo starter for building **MCP + CLI + TUI** tools with optional **Rust acceleration**.
+# {{name}}
 
-Each tool ships three surfaces from a single workspace:
+**MCP server + CLI + TUI — one bin, three surfaces, production-ready from commit 1.**
 
-- **`{{name}}-mcp`** — Model Context Protocol server (stdio default, Streamable HTTP opt-in)
-- **`{{name}}-cli`** — Commander-based CLI for humans and scripts
-- **`{{name}}-tui`** — Ink/React full-screen terminal UI
+[![CI](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml/badge.svg)](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@george43g/{{name}}-mcp.svg)](https://www.npmjs.com/package/@george43g/{{name}}-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js >=24](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)](https://nodejs.org)
 
-Plus a **`rust-accel`** napi-rs module that any tool can call into for hot paths, with a transparent TypeScript fallback.
+[Install](#install) · [Tools](#tools) · [Connect from your editor](#one-click-install) · [Docs](#docs) · [Skill for AI agents](#install-the-companion-skill)
 
-## Why this template
+![{{name}} TUI](docs/screenshots/overview.gif)
 
-The template extracts every reusable pattern from two production MCP servers (`imsg-mcp`, `Gmail-MCP-Server`) so every new tool starts at parity, not from scratch. You get:
+</div>
 
-- **Robustness harness**: event-loop watchdog (spike + sustained-lag), RSS/heap leak detector, idle-restart, shutdown registry trapping SIGINT/TERM/HUP/QUIT + stdin EOF + orphan reparent detection
-- **Structured logging**: NDJSON files + 500-line ring buffer + perf spans + heartbeat
-- **MCP best practices**: per-tool timeouts via `withTimeout`, `AbortSignal` honored, structured error wrapping, prompt-injection guardrails, sanitization
-- **Both transports**: stdio (default) + Streamable HTTP with bearer auth + `/health` for reverse-proxy probes
-- **Dev workflow**: MCP dev proxy with handshake replay (Cursor/Claude/Warp keep their session across source-file restarts), 9-case stress harness, VHS screenshot tape
-- **Rust acceleration**: napi-rs v3 module with hand-mirrored types and a CI drift-check test
-- **Multi-env env loading**: Vite-style precedence (`.env` → `.env.local` → `.env.[mode]` → `.env.[mode].local`)
-- **Secrets**: env-JSON → 1Password (opt-in) → file chain
-- **Agent-ready**: `AGENTS.md` (canonical), `CLAUDE.md` + `.cursorrules` symlinks, `.mcp.json` + `opencode.json` + `.cursor/mcp.json` with relative paths, pre-baked `mcp-tool-author` and `pr-review-sop` Claude skills
+---
 
-## Quickstart
+> **This README is a scaffold.** Once you've replaced `{{name}}` / `{{NAME_UPPER}}` placeholders (see `scripts/init-template.mjs`), edit this file to describe what your tool actually does. The structure below — install snippets, tool table, IDE integrations, skill install — is the recommended public-style format.
+
+## Install
+
+```bash
+# Run directly (no install needed)
+npx @george43g/{{name}}-mcp mcp
+
+# Or install globally
+npm  install -g @george43g/{{name}}-mcp
+pnpm add  -g @george43g/{{name}}-mcp
+```
+
+After install, `{{name}}` is on your PATH. All subcommands route through that single bin:
+
+```bash
+{{name}} mcp              # run the MCP server (stdio)
+{{name}} mcp --http       # run via Streamable HTTP (requires MCP_HTTP_TOKEN)
+{{name}} tui              # launch the Ink TUI
+{{name}} doctor           # preflight checks (Node version, native deps, env)
+{{name}} repl             # interactive REPL — same dispatcher as MCP
+{{name}} health           # one-shot health snapshot
+{{name}} noop --input hi  # call any tool directly from the CLI
+```
+
+## One-click install
+
+Paste these into your MCP host's config. The bin name is `{{name}}` once installed via npm; the `npx` form works without a local install.
+
+### Claude Desktop / Code (`claude_desktop_config.json` or `.mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "{{name}}": {
+      "command": "npx",
+      "args": ["-y", "@george43g/{{name}}-mcp", "mcp"]
+    }
+  }
+}
+```
+
+### Cursor (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "{{name}}": {
+      "command": "npx",
+      "args": ["-y", "@george43g/{{name}}-mcp", "mcp"]
+    }
+  }
+}
+```
+
+### Warp / Codex / OpenCode
+
+Identical JSON snippet — they all consume the same shape under `mcpServers`. See `opencode.json` and `.cursor/mcp.json` in this repo for working examples (with relative paths for local dev).
+
+## Tools
+
+The starter ships two demo tools plus a dev-only log inspector. Replace these with your own — declare a `ToolDefinition` in `src/tools/<name>.ts`, register it in `src/tools/registry.ts`, and it'll appear in MCP `tools/list`, the CLI as a subcommand, and the REPL automatically.
+
+| Tool | Description | Annotations |
+|---|---|---|
+| `health_check` | Returns server/runtime/transport snapshot. Never touches external I/O. | read-only, idempotent |
+| `noop` | Echo a string (optionally upper-cased). Demonstrates the Rust acceleration fallback path. | read-only, idempotent |
+| `get_logs` | **Dev-mode only** (`{{NAME_UPPER}}_DEV=1`). Returns the last N lines from the in-memory ring buffer. | read-only |
+
+## Install the companion skill
+
+This repo ships with a Claude skill that teaches an AI agent how to use your tool end-to-end. The skill lives at `skills/{{name}}/SKILL.md` and is meant to be rewritten by you (or by the AI itself, after first reading the tool) to document the tool's actual behavior.
+
+```bash
+# Copy the skill into your global Claude skills dir
+mkdir -p ~/.claude/skills/{{name}}
+cp skills/{{name}}/SKILL.md ~/.claude/skills/{{name}}/
+
+# Or symlink (so updates from this repo show up automatically)
+ln -s "$(pwd)/skills/{{name}}/SKILL.md" ~/.claude/skills/{{name}}/SKILL.md
+```
+
+## Docs
+
+| File | What it covers |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | Canonical agent guide (also `CLAUDE.md`, `.cursorrules` as symlinks) |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How packages fit together; which to delete if you don't need a surface |
+| [`docs/HTTP_MODE.md`](docs/HTTP_MODE.md) | Streamable HTTP transport: bearer auth, `/health`, reverse-proxy patterns |
+| [`docs/RUST_ACCELERATION.md`](docs/RUST_ACCELERATION.md) | napi-rs build, `.node` binary handling, drift-check between Zod and serde |
+| [`docs/TUI_DESIGN.md`](docs/TUI_DESIGN.md) | Theme system, keybindings, dev stats, cache invariants |
+| [`docs/GUARDRAILS_MCP_RESPONSES.md`](docs/GUARDRAILS_MCP_RESPONSES.md) | UUID-gated instructions + prompt-injection defense |
+| [`docs/RELEASE.md`](docs/RELEASE.md) | Enabling semantic-release for npm publish |
+
+## What's inside (template author's eyes only)
+
+This section is for the engineer running the scaffolder — delete it once you've made the tool your own.
+
+```
+apps/
+  {{name}}-mcp/             your tool — clone-and-rename target
+    src/
+      cli.ts                THE SINGLE BIN — commander dispatch
+      index.ts              runMcpServer() + callMcpTool() (library exports)
+      commands/http.ts      HTTP transport wiring (delete file to drop HTTP)
+      tui/                  Ink TUI — delete dir + the `tui` subcmd if not needed
+      tools/                health_check + noop demo + dev-only get_logs
+      dispatcher.ts         invariants block; withTimeout + perf + abort + error wrap
+      native-bridge.ts      tryLoadNative() with MCP_DISABLE_NATIVE escape
+    scripts/
+      mcp-dev-proxy.ts      handshake-replay proxy for live source-reload
+      stress-mcp.ts         9-case robustness harness
+      screenshots/          VHS .tape files driving docs/screenshots/*.gif
+    .usage.kdl              CLI spec → completions + manpage + markdown docs
+  rust-accel/               napi-rs crate (optional acceleration)
+
+packages/
+  robustness, mcp-kit, cli-kit, tui-kit, env-loader, secrets, shared-types,
+  tsconfig, biome-config, vitest-config
+
+mise.toml                   toolchain pins (node, pnpm) + named tasks
+.github/workflows/          ci.yml, release.yml (disabled by default), readme-check.yml, screenshots.yml
+docs/                       Mintlify-ready (docs.json + MDX pages)
+skills/{{name}}/             Repo-installable companion skill (rewrite at scaffold time)
+```
+
+## Quickstart for cloning this template
 
 ```bash
 git clone https://github.com/george43g/mcp-cli-starter-template.git my-new-tool
 cd my-new-tool
+mise install            # installs node + pnpm at pinned versions
 pnpm install
-pnpm tsx scripts/init-template.mjs --name my-tool
+mise run rename -- --name my-tool   # or: pnpm tsx scripts/init-template.mjs --name my-tool
+pnpm verify             # lint + typecheck + test + build
+pnpm stress             # 9-case robustness harness
 ```
 
-The init script:
-1. Validates the name (kebab-case)
-2. Replaces `{{name}}` / `{{NAME_UPPER}}` across every tracked file
-3. Renames `apps/{{name}}-mcp/` and a few placeholder paths
-4. Updates all `package.json` names + bin maps
-5. Deletes itself
-6. Stages everything with `git add -A` so you can review with `git diff --cached`
-
-Then:
-
-```bash
-pnpm install   # re-resolve workspace links after rename
-pnpm build     # build everything
-pnpm test      # run unit + integration tests
-pnpm stress    # run 9-case MCP stress harness
-```
-
-## What's in the box
-
-```
-apps/
-  {{name}}-mcp/           # your tool — clone-and-rename target
-    src/
-      index.ts            # MCP entry (stdio + --http)
-      cli.ts              # commander bin (mcp/http/tui/doctor/health/noop/cli REPL)
-      tui/                # Ink TUI — delete if not needed
-      tools/              # health_check + noop demo + dev-only get_logs
-      dispatcher.ts       # invariants comment-block; withTimeout + perf + abort + error wrap
-      native-bridge.ts    # tryLoadNative() with MCP_DISABLE_NATIVE escape
-    scripts/
-      mcp-dev-proxy.ts    # handshake-replay proxy for dev workflow
-      stress-mcp.ts       # 9-case robustness harness
-      screenshots/        # VHS .tape files
-  rust-accel/             # napi-rs crate (optional acceleration)
-
-packages/
-  robustness/             # env + logger + watchdog + shutdown + with-timeout + health + retry + rate-limit
-  mcp-kit/                # tool-registry + dispatch + stdio/http transports + sanitize + prompt-injection
-  cli-kit/                # commander helpers + tty/color/output + env↔flag binder + REPL
-  tui-kit/                # ink themes + hooks (useDevStats, useMouse, useVimKeys) + components
-  env-loader/             # Vite-style .env precedence in plain Node
-  secrets/                # env-json → 1Password → file chain (no keychain)
-  shared-types/           # Zod schemas + Rust mirror + drift-check
-  tsconfig/               # base + node + react TS configs
-  biome-config/           # single biome.json source
-  vitest-config/          # shared preset with c8 coverage
-```
-
-## Removing surfaces you don't need
-
-The template demos all three surfaces (MCP + CLI + TUI). Each is opt-out:
-
-- **No TUI**: delete `src/tui/`, remove `{{name}}-tui` from `apps/{{name}}-mcp/package.json` `bin`, drop the `tui` import from `src/cli.ts`. Delete `packages/tui-kit/` from `pnpm-workspace.yaml` if no other app uses it.
-- **No HTTP**: delete `src/commands/http.ts` from the CLI, remove the `--http` flag handler from `src/index.ts`, drop HTTP case 9 from `scripts/stress-mcp.ts`.
-- **No Rust**: delete `apps/rust-accel/`, delete `src/native-bridge.ts`, remove the rust path from `src/tools/noop.ts`.
-
-## Docs
-
-- `AGENTS.md` — canonical agent guide (also at `CLAUDE.md`, `.cursorrules` as symlinks)
-- `docs/ARCHITECTURE.md` — how packages fit together
-- `docs/HTTP_MODE.md` — Streamable HTTP transport details
-- `docs/RUST_ACCELERATION.md` — napi build, binary handling, drift-check
-- `docs/TUI_DESIGN.md` — theme system, keybindings, dev stats, cache invariants
-- `docs/GUARDRAILS_MCP_RESPONSES.md` — UUID-gated instruction pattern for prompt-injection defense
-- `docs/RELEASE.md` — enabling semantic-release for npm publish
+After rename, `scripts/init-template.mjs` self-deletes. Review changes with `git diff --cached`, commit, push.
 
 ## License
 

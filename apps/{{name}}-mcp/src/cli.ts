@@ -1,22 +1,23 @@
 /**
- * {{name}}-cli — Commander bin.
+ * {{name}} — the single bin. Commander dispatch over subcommands.
  *
  * Subcommands:
- *   mcp                 Run the MCP stdio server
- *   http [--port] ...   Run the MCP via Streamable HTTP
+ *   mcp [--http]        Run the MCP server (stdio default; --http via Streamable HTTP)
  *   tui                 Launch the Ink TUI
  *   doctor              Run preflight checks
  *   health              Print a health snapshot (calls health_check in-process)
  *   noop --input ...    Demo: call the noop tool in-process
- *   cli                 Drop into an interactive REPL driving the dispatcher
+ *   repl                Drop into an interactive REPL driving the dispatcher
  *
- * To remove HTTP support: delete the `http` subcommand below.
- * To remove TUI support: delete the `tui` subcommand below.
+ * To remove HTTP support: delete `src/commands/http.ts` and the
+ *   `registerHttpCommand(program)` call below.
+ * To remove TUI support: delete the `tui` subcommand below + `src/tui/`.
  */
 
 import { color, isInteractive } from "@george43g/cli-kit";
 import { Command } from "commander";
 import { checkLocalAccess, formatAccessReport } from "./access-check.js";
+import { applyHttpEnvFromOpts, registerHttpCommand } from "./commands/http.js";
 import { callMcpTool } from "./dispatcher.js";
 import { runMcpServer } from "./index.js";
 import { APP_NAME, APP_VERSION } from "./meta.js";
@@ -34,32 +35,29 @@ async function printResult(result: Awaited<ReturnType<typeof callMcpTool>>, json
 
 export async function main(argv: readonly string[] = process.argv): Promise<void> {
   const program = new Command();
+  // Bin name = the tool name (no -cli suffix). Subcommands route to MCP/TUI/etc.
   program
-    .name(APP_NAME.replace(/^@[^/]+\//, "").replace(/-mcp$/, "-cli"))
-    .description("{{name}} — CLI surface for the MCP server (same dispatcher, in-process).")
+    .name(APP_NAME.replace(/^@[^/]+\//, "").replace(/-mcp$/, ""))
+    .description("{{name}} — single bin; subcommands run the MCP server, TUI, doctor, etc.")
     .version(APP_VERSION, "-V, --version")
     .option("--json", "Emit machine-readable JSON")
     .option("-q, --quiet", "Suppress non-error output")
     .option("-v, --verbose", "Log debug-level info to stderr")
     .option("--no-color", "Disable colors");
 
-  program
+  const mcpCmd = program
     .command("mcp")
-    .description("Run the MCP stdio server")
-    .action(async () => {
-      await runMcpServer({ transport: "stdio" });
+    .description("Run the MCP server (stdio by default; --http for Streamable HTTP)")
+    .action(async (opts: { http?: boolean; port?: string; bind?: string }) => {
+      if (opts.http) {
+        applyHttpEnvFromOpts(opts);
+        await runMcpServer({ transport: "http" });
+      } else {
+        await runMcpServer({ transport: "stdio" });
+      }
     });
-
-  program
-    .command("http")
-    .description("Run the MCP via Streamable HTTP (requires MCP_HTTP_TOKEN)")
-    .option("--port <port>", "Port to bind", "8080")
-    .option("--bind <host>", "Bind address", "127.0.0.1")
-    .action(async (opts) => {
-      if (opts.port) process.env.MCP_HTTP_PORT = String(opts.port);
-      if (opts.bind) process.env.MCP_HTTP_BIND = String(opts.bind);
-      await runMcpServer({ transport: "http" });
-    });
+  // HTTP wiring lives in commands/http.ts — delete that file to drop HTTP support.
+  registerHttpCommand(mcpCmd);
 
   program
     .command("tui")
@@ -105,7 +103,7 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
     });
 
   program
-    .command("cli")
+    .command("repl")
     .alias("console")
     .description("Interactive REPL driving the in-process dispatcher")
     .action(async () => {
