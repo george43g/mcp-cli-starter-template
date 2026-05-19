@@ -7,7 +7,12 @@
  * don't pollute "changed files" review noise.
  */
 
-import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import {
+  appliedStatus,
+  Migration,
+  type MigrationContext,
+  type MigrationResult,
+} from "../../core/migration.js";
 
 const GITATTRIBUTES = `# Anti-footgun: never auto-track *.db with Git LFS.
 # Synthetic fixtures should be regenerated, not committed; real DBs are user data.
@@ -32,6 +37,6 @@ export default class GitattributesMigration extends Migration {
     const outcome = await ctx.fs.writeIfChanged(".gitattributes", GITATTRIBUTES);
     return outcome === "unchanged"
       ? { status: "noop" }
-      : { status: "applied", filesChanged: [".gitattributes"] };
+      : { status: appliedStatus(ctx.dryRun), filesChanged: [".gitattributes"] };
   }
 }

@@ -6,7 +6,12 @@
  *   vitest.app.ts    — lower thresholds (50/40/40/40) for apps/*
  */
 
-import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import {
+  appliedStatus,
+  Migration,
+  type MigrationContext,
+  type MigrationResult,
+} from "../../core/migration.js";
 
 const PKG_JSON = (scope: string) => `{
   "name": "${scope}/vitest-config",
@@ -114,6 +119,8 @@ export default class VitestPkgMigration extends Migration {
       if (outcome !== "unchanged") filesChanged.push(path);
     }
 
-    return filesChanged.length === 0 ? { status: "noop" } : { status: "applied", filesChanged };
+    return filesChanged.length === 0
+      ? { status: "noop" }
+      : { status: appliedStatus(ctx.dryRun), filesChanged };
   }
 }

@@ -67,9 +67,12 @@ export async function portPackage(
     if (outcome !== "unchanged") filesChanged.push(targetPath);
   }
 
-  return filesChanged.length === 0
-    ? { status: "noop" }
-    : { status: "applied", filesChanged, notes: [`${filesChanged.length} files written`] };
+  if (filesChanged.length === 0) {
+    return { status: "noop" };
+  }
+  const status = ctx.dryRun ? "would-apply" : "applied";
+  const verb = ctx.dryRun ? "would write" : "wrote";
+  return { status, filesChanged, notes: [`${verb} ${filesChanged.length} files`] };
 }
 
 /** Standard tsconfig.json for a node-target package (most common). */

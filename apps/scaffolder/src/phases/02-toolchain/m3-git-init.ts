@@ -5,7 +5,12 @@
  * new-mode we always init unless the user did it manually first.
  */
 
-import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import {
+  appliedStatus,
+  Migration,
+  type MigrationContext,
+  type MigrationResult,
+} from "../../core/migration.js";
 
 export default class GitInitMigration extends Migration {
   readonly id = "02-toolchain/m3-git-init";
@@ -17,9 +22,13 @@ export default class GitInitMigration extends Migration {
   }
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
-    if (ctx.dryRun)
-      return { status: "applied", notes: ["[dry-run] would: git init --initial-branch=main"] };
+    if (ctx.dryRun) {
+      return {
+        status: appliedStatus(ctx.dryRun),
+        notes: ["would: git init --initial-branch=main"],
+      };
+    }
     await ctx.git.init();
-    return { status: "applied", notes: ["git init --initial-branch=main"] };
+    return { status: appliedStatus(ctx.dryRun), notes: ["git init --initial-branch=main"] };
   }
 }

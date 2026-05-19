@@ -7,7 +7,12 @@
  * test:no-native/stress/dev/clean) with inputs + outputs declared properly.
  */
 
-import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import {
+  appliedStatus,
+  Migration,
+  type MigrationContext,
+  type MigrationResult,
+} from "../../core/migration.js";
 
 const TURBO_JSON = `{
   "$schema": "https://turbo.build/schema.json",
@@ -105,6 +110,6 @@ export default class TurboFullMigration extends Migration {
     const outcome = await ctx.fs.writeIfChanged("turbo.json", TURBO_JSON);
     return outcome === "unchanged"
       ? { status: "noop" }
-      : { status: "applied", filesChanged: ["turbo.json"] };
+      : { status: appliedStatus(ctx.dryRun), filesChanged: ["turbo.json"] };
   }
 }

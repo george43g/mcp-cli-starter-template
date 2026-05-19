@@ -6,7 +6,12 @@
  * files too in m2 for tools that don't.
  */
 
-import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import {
+  appliedStatus,
+  Migration,
+  type MigrationContext,
+  type MigrationResult,
+} from "../../core/migration.js";
 import { nameUpperOf, substitute } from "../../core/templating.js";
 
 const MISE_TOML = `# mise — toolchain pin + task runner.
@@ -76,6 +81,6 @@ export default class MiseMigration extends Migration {
     const outcome = await ctx.fs.writeIfChanged("mise.toml", content);
     return outcome === "unchanged"
       ? { status: "noop", notes: ["mise.toml already up-to-date"] }
-      : { status: "applied", filesChanged: ["mise.toml"], notes: [outcome] };
+      : { status: appliedStatus(ctx.dryRun), filesChanged: ["mise.toml"], notes: [outcome] };
   }
 }

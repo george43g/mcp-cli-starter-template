@@ -6,7 +6,12 @@
  * cruft, turbo, semantic-release, and on-demand-regenerated screenshots.
  */
 
-import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import {
+  appliedStatus,
+  Migration,
+  type MigrationContext,
+  type MigrationResult,
+} from "../../core/migration.js";
 
 const GITIGNORE = `# Dependencies
 node_modules/
@@ -82,6 +87,6 @@ export default class GitignoreMigration extends Migration {
     const outcome = await ctx.fs.writeIfChanged(".gitignore", GITIGNORE);
     return outcome === "unchanged"
       ? { status: "noop" }
-      : { status: "applied", filesChanged: [".gitignore"] };
+      : { status: appliedStatus(ctx.dryRun), filesChanged: [".gitignore"] };
   }
 }

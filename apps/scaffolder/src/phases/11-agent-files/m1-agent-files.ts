@@ -18,7 +18,12 @@
  * after the lib copy.
  */
 
-import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import {
+  appliedStatus,
+  Migration,
+  type MigrationContext,
+  type MigrationResult,
+} from "../../core/migration.js";
 import { portPackage } from "../../core/package-port.js";
 
 export default class AgentFilesMigration extends Migration {
@@ -45,6 +50,6 @@ export default class AgentFilesMigration extends Migration {
 
     return allChanged.length === 0
       ? { status: "noop" }
-      : { status: "applied", filesChanged: allChanged, notes };
+      : { status: appliedStatus(ctx.dryRun), filesChanged: allChanged, notes };
   }
 }

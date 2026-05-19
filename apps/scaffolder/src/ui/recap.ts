@@ -3,6 +3,7 @@ import type { PhaseRunResult } from "../core/phase-runner.js";
 
 const GLYPH: Record<string, string> = {
   applied: kleur.green("✓"),
+  "would-apply": kleur.yellow("?"),
   skipped: kleur.dim("·"),
   noop: kleur.dim("·"),
   failed: kleur.red("✗"),
@@ -18,6 +19,7 @@ export function drawRecap(phases: readonly PhaseRunResult[]): void {
   process.stdout.write(`\n${kleur.bold("Recap")}\n`);
 
   let applied = 0;
+  let wouldApply = 0;
   let skipped = 0;
   let failed = 0;
   for (const phase of phases) {
@@ -27,6 +29,7 @@ export function drawRecap(phases: readonly PhaseRunResult[]): void {
       const duration = `${row.durationMs}ms`;
       process.stdout.write(`    ${glyph} ${row.migrationId} ${kleur.dim(`(${duration})`)}\n`);
       if (row.result.status === "applied") applied++;
+      else if (row.result.status === "would-apply") wouldApply++;
       else if (row.result.status === "skipped" || row.result.status === "noop") skipped++;
       else if (row.result.status === "failed") {
         failed++;
@@ -37,9 +40,11 @@ export function drawRecap(phases: readonly PhaseRunResult[]): void {
     }
   }
 
-  process.stdout.write(
-    `\n  ${kleur.green(`${applied} applied`)} · ${kleur.dim(`${skipped} skipped`)} · ${
-      failed > 0 ? kleur.red(`${failed} failed`) : kleur.dim(`${failed} failed`)
-    }\n\n`,
-  );
+  const parts: string[] = [];
+  if (applied) parts.push(kleur.green(`${applied} applied`));
+  if (wouldApply)
+    parts.push(kleur.yellow(`${wouldApply} would apply (dry-run; --execute to apply)`));
+  if (skipped) parts.push(kleur.dim(`${skipped} skipped`));
+  parts.push(failed > 0 ? kleur.red(`${failed} failed`) : kleur.dim(`${failed} failed`));
+  process.stdout.write(`\n  ${parts.join(" · ")}\n\n`);
 }

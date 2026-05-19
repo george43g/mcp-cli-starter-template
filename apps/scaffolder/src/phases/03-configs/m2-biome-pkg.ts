@@ -6,7 +6,12 @@
  * sibling with `root: true` that points at the shared one.
  */
 
-import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import {
+  appliedStatus,
+  Migration,
+  type MigrationContext,
+  type MigrationResult,
+} from "../../core/migration.js";
 
 const PKG_JSON = (scope: string) => `{
   "name": "${scope}/biome-config",
@@ -170,6 +175,8 @@ export default class BiomePkgMigration extends Migration {
       if (outcome !== "unchanged") filesChanged.push(path);
     }
 
-    return filesChanged.length === 0 ? { status: "noop" } : { status: "applied", filesChanged };
+    return filesChanged.length === 0
+      ? { status: "noop" }
+      : { status: appliedStatus(ctx.dryRun), filesChanged };
   }
 }

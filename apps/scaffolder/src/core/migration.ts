@@ -41,7 +41,7 @@ export interface MigrationContext {
   dryRun: boolean;
 }
 
-export type MigrationStatus = "applied" | "skipped" | "noop" | "failed";
+export type MigrationStatus = "applied" | "would-apply" | "skipped" | "noop" | "failed";
 
 export interface MigrationResult {
   status: MigrationStatus;
@@ -51,6 +51,11 @@ export interface MigrationResult {
   filesChanged?: string[];
   /** If status === 'failed', the error. */
   error?: Error;
+}
+
+/** Pick "applied" vs "would-apply" based on the run mode. */
+export function appliedStatus(dryRun: boolean): "applied" | "would-apply" {
+  return dryRun ? "would-apply" : "applied";
 }
 
 /**
