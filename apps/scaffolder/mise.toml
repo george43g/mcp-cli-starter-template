@@ -1,0 +1,63 @@
+# mise tasks for the scaffolder dev loop.
+#
+# Run with `mise run <task>` from inside apps/scaffolder/ (or via
+# `mise run --cd apps/scaffolder <task>` from the repo root).
+#
+# Docs: https://mise.jdx.dev
+
+[tasks.build]
+description = "Codegen + vite build"
+run = "pnpm build"
+
+[tasks.dev]
+description = "Watch-mode build"
+run = "pnpm dev"
+
+[tasks.typecheck]
+description = "tsc --noEmit"
+run = "pnpm typecheck"
+
+[tasks.test]
+description = "Run vitest"
+run = "pnpm test"
+
+[tasks.smoke]
+description = "End-to-end smoke: scaffold into /tmp + assert tests pass"
+run = """
+  set -euo pipefail
+  rm -rf /tmp/scaffold-smoke
+  mkdir /tmp/scaffold-smoke
+  node dist/cli.js init /tmp/scaffold-smoke --name smoke --no-banner
+  cd /tmp/scaffold-smoke
+  pnpm install --silent
+  pnpm test
+"""
+
+[tasks.docs]
+description = "Generate markdown docs for each subcommand"
+depends = ["build"]
+run = """
+  mkdir -p ../../docs/scaffolder-cli
+  usage g markdown .usage.kdl --out-dir ../../docs/scaffolder-cli/
+"""
+
+[tasks."completions:bash"]
+description = "Generate bash completion script"
+run = "usage g completion bash .usage.kdl > completions/mcp-scaffold.bash"
+
+[tasks."completions:zsh"]
+description = "Generate zsh completion script"
+run = "usage g completion zsh .usage.kdl > completions/_mcp-scaffold"
+
+[tasks."completions:fish"]
+description = "Generate fish completion script"
+run = "usage g completion fish .usage.kdl > completions/mcp-scaffold.fish"
+
+[tasks.completions]
+description = "Generate completions for bash, zsh, and fish"
+depends = ["completions:bash", "completions:zsh", "completions:fish"]
+run = "echo 'completions generated in completions/'"
+
+[tasks.manpage]
+description = "Generate man page"
+run = "mkdir -p man && usage g manpage .usage.kdl > man/mcp-scaffold.1"
