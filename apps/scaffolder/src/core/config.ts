@@ -66,14 +66,24 @@ export class Config {
       repoName: configLeaf<string>({
         ask: async () =>
           input({
-            message: "Tool name (kebab-case, e.g. wm-stack-mcp)?",
-            validate: (v) =>
-              /^[a-z][a-z0-9-]*$/.test(v) || "kebab-case lowercase, starts with letter",
+            message:
+              "Tool name (kebab-case, BARE — no -mcp suffix; we add it to the dir, e.g. 'wm-stack' → apps/wm-stack-mcp)?",
+            validate: (v) => {
+              if (!/^[a-z][a-z0-9-]*$/.test(v)) return "kebab-case lowercase, starts with letter";
+              if (v.endsWith("-mcp"))
+                return "drop the -mcp suffix — we append it for you (e.g. 'foo', not 'foo-mcp')";
+              return true;
+            },
           }),
         skipIf: (c) => c.global.mode.peek() === "existing",
         validate: (v) => {
           if (!/^[a-z][a-z0-9-]*$/.test(v)) {
             throw new Error(`Invalid repoName "${v}" — must be kebab-case`);
+          }
+          if (v.endsWith("-mcp")) {
+            throw new Error(
+              `repoName "${v}" must NOT end in '-mcp' — we append it for you. Pass --name ${v.slice(0, -4)} instead.`,
+            );
           }
         },
       })(this),

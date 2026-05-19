@@ -8,16 +8,17 @@
 
 import { TEMPLATES } from "../generated/templates.js";
 import type { MigrationContext, MigrationResult } from "./migration.js";
+import { nameUpperOf, substitute } from "./templating.js";
 
 export interface PackagePortOptions {
   /** Target subdir, e.g. "packages/robustness". */
   pkgDir: string;
-  /** package.json content (a function that returns the string given the scope). */
-  packageJson: (scope: string) => string;
-  /** tsconfig.json content. Most packages use the node.json shape. */
-  tsconfig: (scope: string) => string;
-  /** vitest.config.ts content. Most packages just re-export the shared preset. */
-  vitestConfig: (scope: string) => string;
+  /** package.json content. Omit if package.json is shipped under lib/. */
+  packageJson?: (scope: string) => string;
+  /** tsconfig.json content. Omit if shipped under lib/. */
+  tsconfig?: (scope: string) => string;
+  /** vitest.config.ts content. Omit if shipped under lib/. */
+  vitestConfig?: (scope: string) => string;
   /** TEMPLATES key prefix to strip — e.g. "05-utility-pkgs/lib/env-loader/". */
   libPrefix: string;
   /** Optional: additional inline files (rare). */
@@ -31,23 +32,37 @@ export async function portPackage(
   const scope = ctx.config.global.scope.peek() ?? "@george43g";
   const filesChanged: string[] = [];
 
-  const metaFiles: Array<[string, string]> = [
-    [`${opts.pkgDir}/package.json`, opts.packageJson(scope)],
-    [`${opts.pkgDir}/tsconfig.json`, opts.tsconfig(scope)],
-    [`${opts.pkgDir}/vitest.config.ts`, opts.vitestConfig(scope)],
-    ...(opts.extraFiles ?? []),
-  ];
+  const metaFiles: Array<[string, string]> = [];
+  if (opts.packageJson) {
+    metaFiles.push([`${opts.pkgDir}/package.json`, opts.packageJson(scope)]);
+  }
+  if (opts.tsconfig) {
+    metaFiles.push([`${opts.pkgDir}/tsconfig.json`, opts.tsconfig(scope)]);
+  }
+  if (opts.vitestConfig) {
+    metaFiles.push([`${opts.pkgDir}/vitest.config.ts`, opts.vitestConfig(scope)]);
+  }
+  if (opts.extraFiles) {
+    metaFiles.push(...opts.extraFiles);
+  }
 
   for (const [path, content] of metaFiles) {
     const outcome = await ctx.fs.writeIfChanged(path, content);
     if (outcome !== "unchanged") filesChanged.push(path);
   }
 
+  const name = ctx.config.global.repoName.peek() ?? "mcp-starter";
+  const vars = { name, nameUpper: nameUpperOf(name), scope };
+
   for (const key of Object.keys(TEMPLATES)) {
     if (!key.startsWith(opts.libPrefix)) continue;
     const rel = key.slice(opts.libPrefix.length); // e.g. "src/index.ts"
     const targetPath = `${opts.pkgDir}/${rel}`;
-    const outcome = await ctx.fs.writeIfChanged(targetPath, TEMPLATES[key] ?? "");
+    // substitute() is no-op when none of {{name}}, {{NAME_UPPER}}, @george43g
+    // appear in the source — so this is safe for all packages, not just the
+    // user-facing app.
+    const content = substitute(TEMPLATES[key] ?? "", vars);
+    const outcome = await ctx.fs.writeIfChanged(targetPath, content);
     if (outcome !== "unchanged") filesChanged.push(targetPath);
   }
 
