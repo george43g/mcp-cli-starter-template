@@ -68,6 +68,10 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
 const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
   // Root README — see LIB_TO_CANONICAL comment.
   "10-docs-readme/lib/README.md",
+  // AGENTS.md at the repo root describes the SCAFFOLDER (the meta-tool);
+  // the lib copy is the CLONED-TOOL's agent guide with {{name}} placeholders.
+  // Different content by design.
+  "11-agent-files/lib/AGENTS.md",
 ]);
 
 async function walkFiles(root: string, acc: string[] = []): Promise<string[]> {
