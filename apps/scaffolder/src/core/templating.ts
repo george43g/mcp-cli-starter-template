@@ -3,8 +3,9 @@
  *
  * Convention from plan §4 step 2:
  *   Templates ship in each migration's `lib/` subfolder. Placeholders use
- *   `{{name}}` and `{{NAME_UPPER}}` markers — same convention as the static
- *   template's `scripts/init-template.mjs`.
+ *   `{{name}}` and `{{NAME_UPPER}}` markers — same convention as the legacy
+ *   `scripts/init-template.mjs` sed-based renamer (still shipped as a
+ *   no-build clone-and-run alternative).
  *
  * For structured edits (package.json, tsconfig.json), prefer the canonical
  * CLI (`pnpm pkg set ...`) over JSON-stringify round-trips that lose

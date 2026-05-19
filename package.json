@@ -2,7 +2,7 @@
   "name": "mcp-cli-starter-template",
   "version": "0.0.0",
   "private": true,
-  "description": "Turborepo starter template for building MCP+CLI+TUI tools with an optional Rust acceleration layer. Clone, run `pnpm tsx scripts/init-template.mjs --name <your-name>`, and you have a working tool with stdio/HTTP transports, robustness harness, dev MCP proxy, stress tests, and CI.",
+  "description": "Turborepo starter for MCP+CLI+TUI tools + the programmable scaffolder (`mcp-scaffold`) that generates and retrofits them. Includes robustness harness (watchdog/logger/shutdown), dispatcher invariants, stdio + Streamable HTTP transports, optional Rust acceleration, Mintlify docs, and matrix CI.",
   "type": "module",
   "engines": {
     "node": ">=24"

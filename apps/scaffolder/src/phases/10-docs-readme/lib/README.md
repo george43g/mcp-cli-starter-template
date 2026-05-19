@@ -17,7 +17,7 @@
 
 ---
 
-> **This README is a scaffold.** Once you've replaced `{{name}}` / `{{NAME_UPPER}}` placeholders (see `scripts/init-template.mjs`), edit this file to describe what your tool actually does. The structure below — install snippets, tool table, IDE integrations, skill install — is the recommended public-style format.
+> **This README is a scaffold.** Edit it to describe what your tool actually does. The structure below — install snippets, tool table, IDE integrations, skill install — is the recommended public-style format.
 
 ## Install
 
@@ -142,20 +142,6 @@ mise.toml                   toolchain pins (node, pnpm) + named tasks
 docs/                       Mintlify-ready (docs.json + MDX pages)
 skills/{{name}}/             Repo-installable companion skill (rewrite at scaffold time)
 ```
-
-## Quickstart for cloning this template
-
-```bash
-git clone https://github.com/george43g/mcp-cli-starter-template.git my-new-tool
-cd my-new-tool
-mise install            # installs node + pnpm at pinned versions
-pnpm install
-mise run rename -- --name my-tool   # or: pnpm tsx scripts/init-template.mjs --name my-tool
-pnpm verify             # lint + typecheck + test + build
-pnpm stress             # 9-case robustness harness
-```
-
-After rename, `scripts/init-template.mjs` self-deletes. Review changes with `git diff --cached`, commit, push.
 
 ## License
 
