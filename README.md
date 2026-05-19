@@ -67,13 +67,13 @@ Twelve phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffo
 
 ```
 mcp-scaffold init [target]              fresh scaffold (defaults to cwd)
-mcp-scaffold apply [--target <dir>]     retrofit an existing repo (dry-run by default; --execute to apply)
+mcp-scaffold apply [--target <dir>]     retrofit an existing repo (dry-run; --execute to apply)
 mcp-scaffold plan  [--target <dir>]     dry-run preview only
 mcp-scaffold migrate <id>               run a single migration or one whole phase
 mcp-scaffold list                       list discovered phases + migrations
 ```
 
-Feature opt-outs (init/apply/plan):
+Feature opt-outs (init/apply/plan/migrate):
 
 ```
 --no-tui                 skip Ink/React TUI
@@ -81,6 +81,24 @@ Feature opt-outs (init/apply/plan):
 --no-rust-accel          skip napi-rs crate
 --no-semantic-release    skip semantic-release workflow
 ```
+
+### Diff-safe apply (retrofit existing repos)
+
+`apply` and `migrate` against an existing repo default to **dry-run** (just preview the changes). Once you pass `--execute`, the scaffolder writes new files but **preserves files that already exist and diverge from the template** — your customizations stay put. The recap groups divergent files by migration:
+
+```bash
+mcp-scaffold apply --target ~/repos/my-existing-mcp --execute
+# → 18 applied · 7 skipped · 6 divergent files preserved · 0 failed
+#   Divergent files (preserved)
+#     10-docs-readme/m1-docs-readme
+#       · README.md
+#       · docs/GUARDRAILS_MCP_RESPONSES.md
+#     ...
+```
+
+Pass `--force` to overwrite divergent files (e.g. when you've decided to migrate to the canonical version).
+
+`init` defaults to `--force` (fresh scaffold semantics — empty dir, no risk).
 
 ## Repo layout
 

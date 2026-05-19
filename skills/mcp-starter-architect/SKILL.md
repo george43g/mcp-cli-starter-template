@@ -310,9 +310,63 @@ Free for OSS. `docs/docs.json` + MDX. `mintlify dev` for local preview. No self-
 
 ---
 
+## Automated retrofit via `mcp-scaffold apply`
+
+The scaffolder ships with a diff-safe retrofit flow specifically for existing MCP servers. **Default behavior preserves user customizations** — a divergent file gets reported but not overwritten.
+
+```bash
+# 1. Dry-run first to see what would change (this is the default; no flag needed)
+mcp-scaffold apply --target ~/repos/my-existing-mcp
+
+# 2. Once the plan looks right, execute. New files are written; existing
+#    files that DIFFER from the template are preserved with a "divergent"
+#    note in the recap.
+mcp-scaffold apply --target ~/repos/my-existing-mcp --execute
+
+# 3. After applying, `git status` in the target shows untracked new files
+#    + your unchanged customizations. Stage selectively.
+cd ~/repos/my-existing-mcp && git status --short
+```
+
+Recap output explains exactly what happened:
+
+```
+N applied · M skipped · K divergent files preserved (pass --force to overwrite) · 0 failed
+
+  Divergent files (preserved)
+    10-docs-readme/m1-docs-readme
+      · README.md
+      · docs/GUARDRAILS_MCP_RESPONSES.md
+    12-ci-release/m1-ci-release
+      · .github/workflows/ci.yml
+      · ...
+```
+
+### When to use `--force`
+
+`--force` overwrites divergent files. Use it when:
+
+- **You want to migrate to the canonical version** — you've decided your custom CI workflow has drifted and you'd rather start from the template's. Run `--force` then re-apply your minimum local changes on top.
+- **You're updating an already-applied retrofit** — your previous apply ran weeks ago, you've since edited the template files locally, and you want to wipe back to the new template.
+
+Don't use `--force` blindly against a repo you care about. The default behavior is conservative on purpose.
+
+### Per-migration apply
+
+Apply a single phase or migration instead of the whole set:
+
+```bash
+mcp-scaffold migrate 04-robustness --target ~/repos/my-mcp --execute
+mcp-scaffold migrate 04-robustness/m1-robustness-pkg --target ~/repos/my-mcp --execute
+```
+
+Useful when you want the robustness harness but not the docs scaffold, or when iterating on which phases are safe to apply.
+
+---
+
 ## Manual application playbook (retrofit order)
 
-If retrofitting an existing MCP server, apply rules in this order — each phase has dependencies on the prior. Stop and verify after each.
+If you're retrofitting BY HAND (not via the scaffolder), apply rules in this order — each phase has dependencies on the prior. Stop and verify after each.
 
 1. **02-toolchain** first — `.gitattributes` LFS protection costs nothing, may prevent disaster.
 2. **04-robustness** — drop in as a workspace package. Wire `installShutdownHandlers()` + `installWatchdog()` + `setLogFilePrefix(slug)` + `logStartup()` into your existing MCP entry. Replace every post-stdio `console.*` with `logger.*`.
