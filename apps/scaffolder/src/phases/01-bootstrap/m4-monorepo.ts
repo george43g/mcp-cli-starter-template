@@ -1,10 +1,11 @@
 /**
  * 01-bootstrap/m4-monorepo — set up the Turborepo monorepo skeleton.
  *
- * Writes: pnpm-workspace.yaml, root package.json (via `pnpm init` + pnpm
- * pkg set), turbo.json.
+ * Writes pnpm-workspace.yaml, root package.json (full template — drops
+ * `pnpm init` + pkg-set chain that was too partial), turbo.json (minimal;
+ * 03-configs/m4-turbo-full upgrades it later).
  *
- * Skips in `existing` mode AND when monorepo === false.
+ * Skips when monorepo === false (single-package mode, not yet supported).
  */
 
 import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
@@ -14,9 +15,8 @@ const PNPM_WORKSPACE_YAML = `packages:
   - packages/*
 `;
 
-// Minimal turbo.json — phase 03-configs lands the full version (with all
-// env vars and task definitions). This is just enough to make `turbo run X`
-// happy in a fresh tree.
+// Minimal turbo.json — 03-configs/m4-turbo-full replaces it with the full
+// 30+ env-var version once the shared configs land.
 const TURBO_JSON = JSON.stringify(
   {
     $schema: "https://turbo.build/schema.json",
@@ -34,57 +34,80 @@ const TURBO_JSON = JSON.stringify(
   2,
 );
 
+const ROOT_PACKAGE_JSON = (name: string) =>
+  `${JSON.stringify(
+    {
+      name,
+      version: "0.0.0",
+      private: true,
+      description: `${name} — MCP+CLI+TUI tool scaffolded from mcp-cli-starter-template.`,
+      type: "module",
+      engines: { node: ">=24" },
+      packageManager: "pnpm@10.29.3",
+      workspaces: ["apps/*", "packages/*"],
+      scripts: {
+        build: "turbo run build",
+        dev: "turbo run dev",
+        test: "turbo run test",
+        "test:no-native": "turbo run test:no-native",
+        lint: "biome check .",
+        "lint:fix": "biome check --write .",
+        format: "biome format --write .",
+        typecheck: "turbo run typecheck",
+        stress: "turbo run stress",
+        verify: "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+        clean: "turbo run clean && rm -rf node_modules .turbo coverage",
+      },
+      devDependencies: {
+        "@biomejs/biome": "^2.4.15",
+        "@types/node": "^24.0.0",
+        tsx: "^4.19.0",
+        turbo: "^2.5.0",
+        typescript: "^5.7.0",
+        vitest: "^2.1.0",
+      },
+      keywords: [
+        "mcp",
+        "model-context-protocol",
+        "cli",
+        "tui",
+        "ink",
+        "commander",
+        "starter",
+        "turborepo",
+      ],
+      author: "",
+      license: "MIT",
+    },
+    null,
+    2,
+  )}\n`;
+
 export default class MonorepoMigration extends Migration {
   readonly id = "01-bootstrap/m4-monorepo";
-  readonly title = "Initialize Turborepo monorepo skeleton";
+  readonly title =
+    "Initialize Turborepo monorepo skeleton (pnpm-workspace, root package.json, turbo.json)";
   readonly appliesTo = "new" as const;
 
   override async shouldRun(ctx: MigrationContext): Promise<boolean> {
-    // monorepo defaults to true; only skip if user explicitly opted out.
-    const monorepo = ctx.config.global.monorepo.peek();
-    return monorepo !== false;
+    return ctx.config.global.monorepo.peek() !== false;
   }
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
     const filesChanged: string[] = [];
-    const notes: string[] = [];
-
-    // pnpm-workspace.yaml — small literal, no template needed.
-    const wsOutcome = await ctx.fs.writeIfChanged("pnpm-workspace.yaml", PNPM_WORKSPACE_YAML);
-    if (wsOutcome !== "unchanged") filesChanged.push("pnpm-workspace.yaml");
-    notes.push(`pnpm-workspace.yaml: ${wsOutcome}`);
-
-    // turbo.json
-    const turboOutcome = await ctx.fs.writeIfChanged("turbo.json", `${TURBO_JSON}\n`);
-    if (turboOutcome !== "unchanged") filesChanged.push("turbo.json");
-    notes.push(`turbo.json: ${turboOutcome}`);
-
-    // Root package.json — prefer `pnpm init` over hand-writing; then patch
-    // the fields we care about with `pnpm pkg set`. `pnpm init` is idempotent:
-    // if package.json already exists it just leaves it alone.
-    if (!ctx.fs.exists("package.json")) {
-      if (!ctx.dryRun) {
-        await ctx.shell.run("pnpm", ["init"]);
-      }
-      filesChanged.push("package.json");
-    }
-
-    // Apply our standard fields. These are idempotent: pnpm pkg set is a no-op
-    // when the value already matches.
     const name = ctx.config.global.repoName.peek() ?? "mcp-starter";
-    const pm = ctx.config.global.packageManager.peek() ?? "pnpm";
 
-    if (!ctx.dryRun) {
-      await ctx.shell.run("pnpm", ["pkg", "set", `name=${name}`]);
-      await ctx.shell.run("pnpm", ["pkg", "set", "private=true", "--json"]);
-      await ctx.shell.run("pnpm", ["pkg", "set", "type=module"]);
-      await ctx.shell.run("pnpm", ["pkg", "set", "engines.node=>=24"]);
-      if (pm === "pnpm") {
-        await ctx.shell.run("pnpm", ["pkg", "set", "packageManager=pnpm@10.29.3"]);
-      }
+    const files: Array<[string, string]> = [
+      ["pnpm-workspace.yaml", PNPM_WORKSPACE_YAML],
+      ["turbo.json", `${TURBO_JSON}\n`],
+      ["package.json", ROOT_PACKAGE_JSON(name)],
+    ];
+
+    for (const [path, content] of files) {
+      const outcome = await ctx.fs.writeIfChanged(path, content);
+      if (outcome !== "unchanged") filesChanged.push(path);
     }
-    notes.push(`package.json: name=${name}, type=module, engines.node>=24`);
 
-    return { status: "applied", filesChanged, notes };
+    return filesChanged.length === 0 ? { status: "noop" } : { status: "applied", filesChanged };
   }
 }
