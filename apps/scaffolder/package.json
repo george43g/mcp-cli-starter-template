@@ -16,14 +16,15 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
-    "start": "tsx bin/cli.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build:templates": "node scripts/build-templates.mjs",
+    "build": "pnpm build:templates && vite build",
+    "dev": "pnpm build:templates && vite build --watch",
+    "start": "pnpm build:templates && tsx bin/cli.ts",
+    "test": "pnpm build:templates && vitest run",
+    "test:watch": "pnpm build:templates && vitest",
+    "typecheck": "pnpm build:templates && tsc -p tsconfig.json --noEmit",
     "lint": "biome check .",
-    "clean": "rm -rf dist coverage"
+    "clean": "rm -rf dist coverage src/generated"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",

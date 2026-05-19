@@ -5,5 +5,6 @@
     "rootDir": ".",
     "noEmit": true
   },
-  "include": ["bin", "src", "tests"]
+  "include": ["bin", "src", "tests"],
+  "exclude": ["src/phases/**/lib/**", "dist", "coverage"]
 }
