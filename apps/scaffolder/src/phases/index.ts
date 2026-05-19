@@ -20,7 +20,19 @@ import { phase as p08App } from "./08-app/index.js";
 import { phase as p09RustAccel } from "./09-rust-accel/index.js";
 import { phase as p10DocsReadme } from "./10-docs-readme/index.js";
 import { phase as p11AgentFiles } from "./11-agent-files/index.js";
+import { phase as p12CiRelease } from "./12-ci-release/index.js";
 
+/**
+ * Phase 13-cli-completions and 14-screenshots from the original plan are
+ * intentionally absent — they're already covered by earlier phases:
+ *   - 13-cli-completions: .usage.kdl ships in 08-app/lib/, mise tasks for
+ *     completions/manpage/markdown ship in 02-toolchain/lib/mise.toml.
+ *   - 14-screenshots: VHS .tape file ships in 08-app/lib/scripts/screenshots/,
+ *     CI workflow ships in 12-ci-release/lib/.github/workflows/.
+ *
+ * Adding them as no-op phases would just add UI noise. The plan §4 dirs are
+ * a planning artifact, not a strict 1:1 with shipped phases.
+ */
 export const PHASES: readonly Phase[] = [
   p01Bootstrap,
   p02Toolchain,
@@ -33,4 +45,5 @@ export const PHASES: readonly Phase[] = [
   p09RustAccel,
   p10DocsReadme,
   p11AgentFiles,
+  p12CiRelease,
 ];
