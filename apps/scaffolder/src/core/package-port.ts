@@ -54,13 +54,14 @@ export async function portPackage(
   const name = ctx.config.global.repoName.peek() ?? "mcp-starter";
   const vars = { name, nameUpper: nameUpperOf(name), scope };
 
+  const prefix = opts.pkgDir === "" || opts.pkgDir === "." ? "" : `${opts.pkgDir}/`;
   for (const key of Object.keys(TEMPLATES)) {
     if (!key.startsWith(opts.libPrefix)) continue;
     const rel = key.slice(opts.libPrefix.length); // e.g. "src/index.ts"
-    const targetPath = `${opts.pkgDir}/${rel}`;
-    // substitute() is no-op when none of {{name}}, {{NAME_UPPER}}, @george43g
-    // appear in the source — so this is safe for all packages, not just the
-    // user-facing app.
+    // Substitute placeholders in BOTH the path and the content. Paths can
+    // legitimately contain `{{name}}` markers (e.g. `skills/{{name}}/SKILL.md`
+    // → `skills/foo/SKILL.md`); content substitution is the standard case.
+    const targetPath = substitute(`${prefix}${rel}`, vars);
     const content = substitute(TEMPLATES[key] ?? "", vars);
     const outcome = await ctx.fs.writeIfChanged(targetPath, content);
     if (outcome !== "unchanged") filesChanged.push(targetPath);
