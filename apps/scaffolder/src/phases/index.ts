@@ -17,6 +17,7 @@ import { phase as p05UtilityPkgs } from "./05-utility-pkgs/index.js";
 import { phase as p06McpKit } from "./06-mcp-kit/index.js";
 import { phase as p07SharedTypes } from "./07-shared-types/index.js";
 import { phase as p08App } from "./08-app/index.js";
+import { phase as p09RustAccel } from "./09-rust-accel/index.js";
 
 export const PHASES: readonly Phase[] = [
   p01Bootstrap,
@@ -27,4 +28,5 @@ export const PHASES: readonly Phase[] = [
   p06McpKit,
   p07SharedTypes,
   p08App,
+  p09RustAccel,
 ];
