@@ -1,0 +1,66 @@
+name: CLI Artifacts Drift
+
+# Regenerates docs/scaffolder-cli/*, completions/scaffolder/*, and
+# man/mcp-scaffold.1 from apps/scaffolder/.usage.kdl. Fails if the
+# committed files differ from the regenerated ones — i.e. someone
+# updated the spec without re-running the generators.
+#
+# Lightweight: only runs when the spec OR a generated artifact changes,
+# and on main pushes. Skips otherwise.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/scaffolder/.usage.kdl"
+      - "docs/scaffolder-cli/**"
+      - "completions/scaffolder/**"
+      - "man/**"
+      - ".github/workflows/cli-artifacts-drift.yml"
+  pull_request:
+    paths:
+      - "apps/scaffolder/.usage.kdl"
+      - "docs/scaffolder-cli/**"
+      - "completions/scaffolder/**"
+      - "man/**"
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise (provides usage)
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Regenerate markdown docs
+        run: |
+          mkdir -p docs/scaffolder-cli
+          usage g markdown -f apps/scaffolder/.usage.kdl -m --out-dir docs/scaffolder-cli/
+
+      - name: Regenerate completions
+        run: |
+          mkdir -p completions/scaffolder
+          usage g completion bash mcp-scaffold -f apps/scaffolder/.usage.kdl > completions/scaffolder/mcp-scaffold.bash
+          usage g completion zsh  mcp-scaffold -f apps/scaffolder/.usage.kdl > completions/scaffolder/_mcp-scaffold
+          usage g completion fish mcp-scaffold -f apps/scaffolder/.usage.kdl > completions/scaffolder/mcp-scaffold.fish
+
+      - name: Regenerate manpage
+        run: |
+          mkdir -p man
+          usage g manpage -f apps/scaffolder/.usage.kdl -o man/mcp-scaffold.1
+
+      - name: Fail if anything drifted
+        run: |
+          if ! git diff --exit-code -- docs/scaffolder-cli completions/scaffolder man; then
+            echo "::error::CLI artifacts are out of sync with apps/scaffolder/.usage.kdl"
+            echo "::error::Run \`mise run --cd apps/scaffolder docs && mise run --cd apps/scaffolder completions && mise run --cd apps/scaffolder manpage\` locally and commit."
+            exit 1
+          fi
+          echo "CLI artifacts are in sync."

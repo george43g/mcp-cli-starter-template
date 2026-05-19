@@ -10,6 +10,11 @@
 [tools]
 node = "24"
 pnpm = "10.29.3"
+# `usage` (https://usage.jdx.dev) generates bash/zsh/fish completions +
+# manpage + markdown docs from the .usage.kdl specs in apps/scaffolder/
+# and apps/{{name}}-mcp/. Required by `mise run docs`/`completions`/
+# `manpage` and by the cli-artifacts-drift CI gate.
+usage = "latest"
 
 [env]
 # Default to non-dev mode unless overridden. Test runs flip it via .env.test.
