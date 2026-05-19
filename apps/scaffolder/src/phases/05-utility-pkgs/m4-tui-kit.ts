@@ -35,7 +35,9 @@ const PKG_JSON = (scope: string) => `{
       "import": "./dist/theme/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
