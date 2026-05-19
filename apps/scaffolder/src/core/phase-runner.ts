@@ -7,7 +7,12 @@
  */
 
 import { PHASES } from "../phases/index.js";
-import { type MigrationContext, type MigrationResult, type Phase } from "./migration.js";
+import {
+  type Migration,
+  type MigrationContext,
+  type MigrationResult,
+  type Phase,
+} from "./migration.js";
 
 /**
  * Return the statically-registered phase list. Kept async so future
@@ -18,9 +23,17 @@ export async function loadPhases(): Promise<readonly Phase[]> {
   return PHASES;
 }
 
+export interface MigrationRunResult {
+  migrationId: string;
+  /** Reference to the migration class instance — used downstream for retrofitIntent(). */
+  migration: Migration;
+  result: MigrationResult;
+  durationMs: number;
+}
+
 export interface PhaseRunResult {
   phaseId: string;
-  results: ReadonlyArray<{ migrationId: string; result: MigrationResult; durationMs: number }>;
+  results: ReadonlyArray<MigrationRunResult>;
 }
 
 export async function runPhases(
@@ -37,7 +50,7 @@ export async function runPhases(
           status: "skipped" as const,
           notes: [`appliesTo=${migration.appliesTo}, current mode=${ctx.mode}`],
         }));
-        recordResult(phaseResult, migration.id, skipResult);
+        recordResult(phaseResult, migration, skipResult);
         ctx.log.record({ migrationId: migration.id, ...skipResult });
         continue;
       }
@@ -47,7 +60,7 @@ export async function runPhases(
           status: "skipped" as const,
           notes: ["shouldRun() returned false"],
         }));
-        recordResult(phaseResult, migration.id, skipResult);
+        recordResult(phaseResult, migration, skipResult);
         ctx.log.record({ migrationId: migration.id, ...skipResult });
         continue;
       }
@@ -62,7 +75,7 @@ export async function runPhases(
           };
         }
       });
-      recordResult(phaseResult, migration.id, ran);
+      recordResult(phaseResult, migration, ran);
       ctx.log.record({ migrationId: migration.id, ...ran });
     }
     output.push(phaseResult);
@@ -81,12 +94,11 @@ async function timed(fn: () => Promise<MigrationResult>): Promise<TimedRun> {
   return { result, durationMs: Date.now() - start };
 }
 
-function recordResult(phaseResult: PhaseRunResult, migrationId: string, ran: TimedRun): void {
-  (
-    phaseResult.results as Array<{
-      migrationId: string;
-      result: MigrationResult;
-      durationMs: number;
-    }>
-  ).push({ migrationId, result: ran.result, durationMs: ran.durationMs });
+function recordResult(phaseResult: PhaseRunResult, migration: Migration, ran: TimedRun): void {
+  (phaseResult.results as Array<MigrationRunResult>).push({
+    migrationId: migration.id,
+    migration,
+    result: ran.result,
+    durationMs: ran.durationMs,
+  });
 }

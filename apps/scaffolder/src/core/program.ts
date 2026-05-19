@@ -25,6 +25,7 @@ import { makeGit } from "./git.js";
 import { makeLogger } from "./logger.js";
 import { type ApplyMode, type MigrationContext } from "./migration.js";
 import { loadPhases, runPhases } from "./phase-runner.js";
+import { collectIntents, renderRetrofitMarkdown } from "./retrofit.js";
 import { makeShell } from "./shell.js";
 
 /** Common flags shared between init/apply/plan. */
@@ -190,7 +191,21 @@ async function runScaffolder(
   }
 
   const phaseResults = await runPhases(phases, ctx);
-  drawRecap(phaseResults);
+
+  // RETROFIT.md is meaningful only for `apply --execute` against an existing
+  // repo. `init` writes fresh files (nothing was skipped because of mode);
+  // `plan` is dry-run so we don't touch disk; `migrate` against `new` mode
+  // wouldn't make sense either.
+  let intentCount = 0;
+  if (mode === "existing" && !dryRun) {
+    const intents = collectIntents(phaseResults, ctx);
+    intentCount = intents.length;
+    if (intents.length > 0) {
+      await ctx.fs.writeIfChanged("RETROFIT.md", renderRetrofitMarkdown(intents));
+    }
+  }
+
+  drawRecap(phaseResults, { retrofitIntentCount: intentCount });
 }
 
 /**

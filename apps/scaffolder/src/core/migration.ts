@@ -65,6 +65,24 @@ export interface MigrationResult {
   error?: Error;
 }
 
+/**
+ * Retrofit breadcrumb emitted into the target repo as RETROFIT.md when
+ * a migration is `skipped` (appliesTo/shouldRun mismatch) or returns
+ * divergent files in `apply` mode. Each intent is fully self-contained:
+ * the `prompt` field is meant to be copy-pasted into an AI coding agent
+ * unmodified.
+ */
+export interface RetrofitIntent {
+  /** One-line description of what the migration would have done. */
+  summary: string;
+  /** Why it couldn't be auto-applied (mode mismatch, divergent files, etc.). */
+  rationale: string;
+  /** Terse numbered manual steps for a human applying the migration by hand. */
+  manualSteps: readonly string[];
+  /** A self-contained AI prompt — full enough to run unmodified against any agent. */
+  prompt: string;
+}
+
 /** Pick "applied" vs "would-apply" based on the run mode. */
 export function appliedStatus(dryRun: boolean): "applied" | "would-apply" {
   return dryRun ? "would-apply" : "applied";
@@ -94,6 +112,20 @@ export abstract class Migration {
    * returning true (or omitting the method) means `apply()` runs.
    */
   shouldRun?(ctx: MigrationContext): Promise<boolean>;
+
+  /**
+   * Emit a retrofit breadcrumb for the `apply` flow.
+   *
+   * Called by the phase runner only when this migration is `skipped`
+   * (appliesTo/shouldRun mismatch) OR returns `filesDivergent` in
+   * existing-mode. Return undefined to suppress the entry (e.g. for
+   * config-only migrations that have nothing to retrofit).
+   *
+   * The returned `prompt` is written verbatim into RETROFIT.md and is
+   * meant to be runnable AS-IS in any LLM coding agent — assume the
+   * reader has the repo open but no other context.
+   */
+  retrofitIntent?(ctx: MigrationContext): RetrofitIntent | undefined;
 }
 
 /** A loaded phase — directory of sibling migrations. */

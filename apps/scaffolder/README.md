@@ -71,7 +71,20 @@ $ mcp-scaffold apply --target ~/repos/my-mcp --execute
     12-ci-release/m1-ci-release
       · .github/workflows/ci.yml
       · ...
+
+  → 3 retrofit intents captured. Open RETROFIT.md for manual steps + ready-to-paste AI prompts.
 ```
+
+## RETROFIT.md — the per-repo retrofit checklist
+
+For migrations that **couldn't auto-apply** to your repo (the 'new'-only ones that lay down a fresh monorepo skeleton, port the whole `apps/<name>-mcp/` tree, or add the optional Rust acceleration crate), `apply --execute` writes a `RETROFIT.md` at the target repo root. Each section contains:
+
+- What the migration would have done in a fresh scaffold
+- Why it couldn't be auto-applied (mode mismatch, divergent files, etc.)
+- Numbered manual steps to apply it by hand
+- **A self-contained AI prompt** — copy-paste it into Claude/Cursor/etc. unmodified to have an agent do the retrofit for you
+
+This is the bridge between "the scaffolder applied what it safely could" and "here's what you still need to do." Read it after every apply.
 
 ## Learn more
 

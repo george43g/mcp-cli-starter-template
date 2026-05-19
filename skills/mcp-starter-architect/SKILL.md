@@ -328,6 +328,20 @@ mcp-scaffold apply --target ~/repos/my-existing-mcp --execute
 cd ~/repos/my-existing-mcp && git status --short
 ```
 
+### `RETROFIT.md` — what to do about the skipped migrations
+
+`apply --execute` writes a `RETROFIT.md` at the target repo root whenever any migration was skipped (mode mismatch, e.g. the 'new'-only migrations that lay down a fresh monorepo skeleton or port the whole `apps/{{name}}-mcp/` tree) OR preserved divergent files. The file has one section per affected migration: what the migration would have done, why it couldn't auto-apply, a numbered list of manual steps, and **a self-contained AI prompt you can paste into Claude/Cursor/etc. verbatim**.
+
+The recap footer points at it:
+
+```
+N applied · M skipped · 0 failed
+
+  → 3 retrofit intents captured. Open RETROFIT.md for manual steps + ready-to-paste AI prompts.
+```
+
+Read RETROFIT.md after every apply — it is the per-repo retrofit checklist the scaffolder couldn't automate. Source: `apps/scaffolder/src/core/retrofit.ts` + each migration's `retrofitIntent(ctx)` method.
+
 Recap output explains exactly what happened:
 
 ```

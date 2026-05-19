@@ -8,7 +8,12 @@
  * Skips when monorepo === false (single-package mode, not yet supported).
  */
 
-import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";
+import {
+  Migration,
+  type MigrationContext,
+  type MigrationResult,
+  type RetrofitIntent,
+} from "../../core/migration.js";
 
 const PNPM_WORKSPACE_YAML = `packages:
   - apps/*
@@ -109,5 +114,55 @@ export default class MonorepoMigration extends Migration {
     }
 
     return filesChanged.length === 0 ? { status: "noop" } : { status: "applied", filesChanged };
+  }
+
+  override retrofitIntent(ctx: MigrationContext): RetrofitIntent | undefined {
+    const name = ctx.config.global.repoName.peek() ?? "<your-tool>";
+    return {
+      summary: "Convert the existing repo into a Turborepo monorepo (apps/* + packages/*).",
+      rationale:
+        "appliesTo=new — the migration writes root package.json, pnpm-workspace.yaml, and turbo.json from scratch, which would clobber an existing repo's metadata. Retrofitting requires merging fields, not overwriting them.",
+      manualSteps: [
+        'Add `"workspaces": ["apps/*", "packages/*"]` to your root package.json.',
+        'Set `"packageManager": "pnpm@10.29.3"` (or current pnpm pin) and `"type": "module"` in root package.json.',
+        "Create pnpm-workspace.yaml with `packages: [apps/*, packages/*]`.",
+        "Install turbo as a root devDependency: `pnpm add -D -w turbo`.",
+        "Create turbo.json with tasks: build (dependsOn ^build, outputs dist/**), typecheck, lint, test (dependsOn ^build, outputs coverage/**), dev (cache:false, persistent:true), clean.",
+        "Add root scripts: build/dev/test/lint/typecheck — all wrapping `turbo run <task>`. Plus a `verify` script that chains lint+typecheck+test+build.",
+        "Move your existing source under `apps/" +
+          name +
+          "-mcp/` (or whatever you renamed it to) and re-anchor imports.",
+      ],
+      prompt:
+        `Retrofit my repo to a Turborepo monorepo following the template at ` +
+        `https://github.com/george43g/mcp-cli-starter-template (the apps/{{name}}-mcp/ + ` +
+        `packages/* layout). Preserve all existing source — don't overwrite my root ` +
+        `package.json metadata (name, description, version, keywords, author, license). ` +
+        `Do these things in order:\n` +
+        `\n` +
+        `1. Add to my root package.json: \`"workspaces": ["apps/*", "packages/*"]\`, ` +
+        `\`"packageManager": "pnpm@10.29.3"\`, \`"type": "module"\`, \`"private": true\`, ` +
+        `\`"engines": {"node": ">=24"}\`.\n` +
+        `2. Add (or merge) these scripts into root package.json: build="turbo run build", ` +
+        `dev="turbo run dev", test="turbo run test", "test:no-native"="turbo run test:no-native", ` +
+        `lint="biome check .", "lint:fix"="biome check --write .", format="biome format --write .", ` +
+        `typecheck="turbo run typecheck", stress="turbo run stress", ` +
+        `verify="pnpm lint && pnpm typecheck && pnpm test && pnpm build", ` +
+        `clean="turbo run clean && rm -rf node_modules .turbo coverage".\n` +
+        `3. Add to root devDependencies (if missing): @biomejs/biome ^2.4.15, @types/node ^24, ` +
+        `tsx ^4.19, turbo ^2.5, typescript ^5.7, vitest ^2.1.\n` +
+        `4. Create pnpm-workspace.yaml: \`packages:\\n  - apps/*\\n  - packages/*\\n\`.\n` +
+        `5. Create turbo.json with the task graph: build dependsOn ^build outputs dist/**, ` +
+        `typecheck dependsOn ^build, lint inputs src/**, test dependsOn ^build outputs coverage/**, ` +
+        `dev cache:false persistent:true, clean cache:false. Use schema ` +
+        `"https://turbo.build/schema.json" and \`ui: "tui"\`.\n` +
+        `6. Move my existing MCP server source into \`apps/${name}-mcp/\` (or pick a kebab-case ` +
+        `name). Update its package.json name to match (e.g. \`@<scope>/${name}-mcp\`).\n` +
+        `7. Run \`pnpm install\` to materialize the workspace, then \`pnpm verify\` to confirm.\n` +
+        `\n` +
+        `If my repo already has these fields set, MERGE — do not overwrite my custom ` +
+        `description/author/license/version/etc. After applying, give me a one-paragraph ` +
+        `summary of what you changed and what I should review.`,
+    };
   }
 }

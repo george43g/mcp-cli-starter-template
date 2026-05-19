@@ -9,12 +9,20 @@ const GLYPH: Record<string, string> = {
   failed: kleur.red("✗"),
 };
 
+export interface RecapOptions {
+  /**
+   * Number of migrations that contributed an entry to RETROFIT.md. When >0,
+   * the recap footer prints a hint to open the file.
+   */
+  retrofitIntentCount?: number;
+}
+
 /**
  * End-of-run recap. One line per migration showing status + duration.
  * Divergent (user-customized) files are summarized at the bottom — those
  * are not failures, just preserved.
  */
-export function drawRecap(phases: readonly PhaseRunResult[]): void {
+export function drawRecap(phases: readonly PhaseRunResult[], opts: RecapOptions = {}): void {
   if (phases.length === 0) return;
   process.stdout.write(`\n${kleur.bold("Recap")}\n`);
 
@@ -74,6 +82,14 @@ export function drawRecap(phases: readonly PhaseRunResult[]): void {
         process.stdout.write(`      ${kleur.dim(`… and ${files.length - 10} more`)}\n`);
       }
     }
+  }
+
+  if ((opts.retrofitIntentCount ?? 0) > 0) {
+    process.stdout.write(
+      `\n  ${kleur.cyan("→")} ${opts.retrofitIntentCount} retrofit ${
+        opts.retrofitIntentCount === 1 ? "intent" : "intents"
+      } captured. Open ${kleur.bold("RETROFIT.md")} for manual steps + ready-to-paste AI prompts.\n`,
+    );
   }
   process.stdout.write("\n");
 }
