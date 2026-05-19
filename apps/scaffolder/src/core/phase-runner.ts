@@ -1,49 +1,21 @@
 /**
- * Phase runner — discovers phases under src/phases/* and runs them in order.
+ * Phase runner — runs all registered phases in declared order.
  *
- * Each phase directory must export a `phase` object from its `index.ts`
- * matching the `Phase` interface (or be empty — phase β ships zero phases;
- * phase γ populates them).
+ * Phases are statically imported via `src/phases/index.ts` (the barrel)
+ * so vite can bundle the whole graph into a single `dist/cli.js`. Adding
+ * a new phase means creating the dir and pushing it into PHASES.
  */
 
-import { readdir } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { PHASES } from "../phases/index.js";
 import { type MigrationContext, type MigrationResult, type Phase } from "./migration.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PHASES_DIR = resolve(__dirname, "..", "phases");
-
 /**
- * Load all phases by scanning `src/phases/*` for directories. Each dir is
- * expected to export a `phase: Phase` from its `index.{ts,js}`. Dirs that
- * don't export anything are silently ignored (so phase γ can land new
- * phases incrementally).
+ * Return the statically-registered phase list. Kept async so future
+ * variations (e.g. filtering by env or by a `--from/--to` flag) can do
+ * IO without breaking callers.
  */
-export async function loadPhases(opts: { phasesDir?: string } = {}): Promise<readonly Phase[]> {
-  const dir = opts.phasesDir ?? PHASES_DIR;
-  let entries: string[];
-  try {
-    entries = await readdir(dir);
-  } catch {
-    return []; // phases dir doesn't exist yet (phase β state)
-  }
-
-  const phaseDirs = entries
-    .filter((name) => /^\d{2}-/.test(name))
-    .sort((a, b) => a.localeCompare(b));
-
-  const loaded: Phase[] = [];
-  for (const name of phaseDirs) {
-    const indexPath = join(dir, name, "index.js");
-    try {
-      const mod = await import(pathToFileURL(indexPath).href);
-      if (mod.phase) loaded.push(mod.phase as Phase);
-    } catch {
-      // skip dirs that don't export a phase yet
-    }
-  }
-  return loaded;
+export async function loadPhases(): Promise<readonly Phase[]> {
+  return PHASES;
 }
 
 export interface PhaseRunResult {
