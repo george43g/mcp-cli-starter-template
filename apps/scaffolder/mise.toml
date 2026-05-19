@@ -35,29 +35,29 @@ run = """
 
 [tasks.docs]
 description = "Generate markdown docs for each subcommand"
-depends = ["build"]
 run = """
+  set -euo pipefail
   mkdir -p ../../docs/scaffolder-cli
-  usage g markdown .usage.kdl --out-dir ../../docs/scaffolder-cli/
+  usage g markdown -f .usage.kdl -m --out-dir ../../docs/scaffolder-cli/
 """
 
 [tasks."completions:bash"]
 description = "Generate bash completion script"
-run = "usage g completion bash .usage.kdl > completions/mcp-scaffold.bash"
+run = "mkdir -p ../../completions/scaffolder && usage g completion bash mcp-scaffold -f .usage.kdl > ../../completions/scaffolder/mcp-scaffold.bash"
 
 [tasks."completions:zsh"]
 description = "Generate zsh completion script"
-run = "usage g completion zsh .usage.kdl > completions/_mcp-scaffold"
+run = "mkdir -p ../../completions/scaffolder && usage g completion zsh mcp-scaffold -f .usage.kdl > ../../completions/scaffolder/_mcp-scaffold"
 
 [tasks."completions:fish"]
 description = "Generate fish completion script"
-run = "usage g completion fish .usage.kdl > completions/mcp-scaffold.fish"
+run = "mkdir -p ../../completions/scaffolder && usage g completion fish mcp-scaffold -f .usage.kdl > ../../completions/scaffolder/mcp-scaffold.fish"
 
 [tasks.completions]
 description = "Generate completions for bash, zsh, and fish"
 depends = ["completions:bash", "completions:zsh", "completions:fish"]
-run = "echo 'completions generated in completions/'"
+run = "echo 'completions generated in completions/scaffolder/'"
 
 [tasks.manpage]
 description = "Generate man page"
-run = "mkdir -p man && usage g manpage .usage.kdl > man/mcp-scaffold.1"
+run = "mkdir -p ../../man && usage g manpage -f .usage.kdl -o ../../man/mcp-scaffold.1"

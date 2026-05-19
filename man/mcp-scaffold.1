@@ -1,0 +1,135 @@
+.TH MCP-SCAFFOLD 1
+.SH NAME
+mcp\-scaffold \- Programmable scaffolder + migrator for mcp\-cli\-starter\-template
+.SH SYNOPSIS
+\fBmcp\-scaffold\fR [OPTIONS] [COMMAND]
+.SH DESCRIPTION
+Programmable scaffolder + migrator for mcp\-cli\-starter\-template
+.PP
+.SH OPTIONS
+.TP
+\fB\-v, \-\-verbose\fR
+Log debug\-level info to stderr
+.TP
+\fB\-\-yes\fR
+Non\-interactive: accept defaults for any unset value
+.TP
+\fB\-\-no\-banner\fR
+Suppress the ascii banner
+.SH COMMANDS
+.TP
+\fBinit\fR
+Fresh scaffold into <target> (defaults to cwd)
+.TP
+\fBapply\fR
+Apply migrations to an existing repo
+.TP
+\fBplan\fR
+Dry\-run preview of which migrations would apply
+.TP
+\fBmigrate\fR
+Run a single migration or one whole phase
+.TP
+\fBlist\fR
+List discovered phases + migrations
+.SH "MCP-SCAFFOLD INIT"
+Fresh scaffold into <target> (defaults to cwd)
+.PP
+\fBUsage:\fR mcp\-scaffold init [OPTIONS] [<target>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-name\fR \fI<name>\fR
+Tool name (kebab\-case, BARE — no \-mcp suffix)
+.TP
+\fB\-\-scope\fR \fI<scope>\fR
+Npm scope, with leading @
+.TP
+\fB\-\-package\-manager\fR \fI<pm>\fR
+pnpm | npm | bun
+.TP
+\fB\-\-no\-tui\fR
+Skip the Ink/React TUI surface
+.TP
+\fB\-\-no\-http\fR
+Skip the Streamable HTTP transport
+.TP
+\fB\-\-no\-rust\-accel\fR
+Skip the optional Rust acceleration crate
+.TP
+\fB\-\-no\-semantic\-release\fR
+Skip the semantic\-release workflow
+\fBArguments:\fR
+.PP
+.TP
+\fB<target>\fR
+Target directory (defaults to cwd)
+.SH "MCP-SCAFFOLD APPLY"
+Apply migrations to an existing repo
+.PP
+\fBUsage:\fR mcp\-scaffold apply [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-target\fR \fI<dir>\fR
+Path to the existing repo
+.TP
+\fB\-\-execute\fR
+Actually apply (default is dry\-run)
+.TP
+\fB\-\-name\fR \fI<name>\fR
+Tool name (kebab\-case)
+.TP
+\fB\-\-scope\fR \fI<scope>\fR
+Npm scope, with leading @
+.TP
+\fB\-\-no\-tui\fR
+Skip the Ink/React TUI surface
+.TP
+\fB\-\-no\-http\fR
+Skip the Streamable HTTP transport
+.TP
+\fB\-\-no\-rust\-accel\fR
+Skip the optional Rust acceleration crate
+.TP
+\fB\-\-no\-semantic\-release\fR
+Skip the semantic\-release workflow
+.SH "MCP-SCAFFOLD PLAN"
+Dry\-run preview of which migrations would apply
+.PP
+\fBUsage:\fR mcp\-scaffold plan [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-target\fR \fI<dir>\fR
+Path to target repo
+.TP
+\fB\-\-mode\fR \fI<mode>\fR
+\&'new' or 'existing'
+.SH "MCP-SCAFFOLD MIGRATE"
+Run a single migration or one whole phase
+.PP
+\fBUsage:\fR mcp\-scaffold migrate [OPTIONS] <id>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-target\fR \fI<dir>\fR
+Path to target repo
+.TP
+\fB\-\-mode\fR \fI<mode>\fR
+\&'new' or 'existing'
+.TP
+\fB\-\-execute\fR
+Actually apply (default is dry\-run for existing mode)
+.TP
+\fB\-\-name\fR \fI<name>\fR
+Tool name (kebab\-case)
+\fBArguments:\fR
+.PP
+.TP
+\fB<id>\fR
+e.g. 04\-robustness/m1\-robustness\-pkg, or just 04\-robustness

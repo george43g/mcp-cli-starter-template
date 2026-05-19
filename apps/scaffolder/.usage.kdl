@@ -1,5 +1,5 @@
 // usage spec for mcp-scaffold — drives completions, manpage, markdown docs.
-// Generate: `usage g completion <shell> .usage.kdl`, `usage g markdown .usage.kdl`.
+// Generate: `usage g completion <shell> -f .usage.kdl`, `usage g markdown -f .usage.kdl -m --out-dir <dir>/`.
 // Keep in sync with src/core/program.ts.
 // Docs: https://usage.jdx.dev/spec
 
@@ -12,60 +12,66 @@ flag "--yes" help="Non-interactive: accept defaults for any unset value"
 flag "--no-banner" help="Suppress the ascii banner"
 
 cmd "init" help="Fresh scaffold into <target> (defaults to cwd)" {
-  arg "[target]" help="Target directory (defaults to cwd)"
-  flag "--name" help="Tool name (kebab-case, BARE — no -mcp suffix)" {
-    arg "<name>" type="string"
-  }
-  flag "--scope" help="Npm scope, with leading @" {
-    arg "<scope>" type="string"
-  }
-  flag "--package-manager" help="pnpm | npm | bun" {
-    arg "<pm>" choices="pnpm" "npm" "bun"
-  }
-  flag "--no-tui" help="Skip the Ink/React TUI surface"
-  flag "--no-http" help="Skip the Streamable HTTP transport"
-  flag "--no-rust-accel" help="Skip the optional Rust acceleration crate"
-  flag "--no-semantic-release" help="Skip the semantic-release workflow"
+    arg "[target]" help="Target directory (defaults to cwd)" required=#false
+    flag "--name" help="Tool name (kebab-case, BARE — no -mcp suffix)" {
+        arg "<name>"
+    }
+    flag "--scope" help="Npm scope, with leading @" {
+        arg "<scope>"
+    }
+    flag "--package-manager" help="pnpm | npm | bun" {
+        arg "<pm>" {
+            choices "pnpm" "npm" "bun"
+        }
+    }
+    flag "--no-tui" help="Skip the Ink/React TUI surface"
+    flag "--no-http" help="Skip the Streamable HTTP transport"
+    flag "--no-rust-accel" help="Skip the optional Rust acceleration crate"
+    flag "--no-semantic-release" help="Skip the semantic-release workflow"
 }
 
 cmd "apply" help="Apply migrations to an existing repo" {
-  flag "--target" help="Path to the existing repo" {
-    arg "<dir>" type="path"
-  }
-  flag "--execute" help="Actually apply (default is dry-run)"
-  flag "--name" help="Tool name (kebab-case)" {
-    arg "<name>" type="string"
-  }
-  flag "--scope" help="Npm scope, with leading @" {
-    arg "<scope>" type="string"
-  }
-  flag "--no-tui" help="Skip the Ink/React TUI surface"
-  flag "--no-http" help="Skip the Streamable HTTP transport"
-  flag "--no-rust-accel" help="Skip the optional Rust acceleration crate"
-  flag "--no-semantic-release" help="Skip the semantic-release workflow"
+    flag "--target" help="Path to the existing repo" {
+        arg "<dir>"
+    }
+    flag "--execute" help="Actually apply (default is dry-run)"
+    flag "--name" help="Tool name (kebab-case)" {
+        arg "<name>"
+    }
+    flag "--scope" help="Npm scope, with leading @" {
+        arg "<scope>"
+    }
+    flag "--no-tui" help="Skip the Ink/React TUI surface"
+    flag "--no-http" help="Skip the Streamable HTTP transport"
+    flag "--no-rust-accel" help="Skip the optional Rust acceleration crate"
+    flag "--no-semantic-release" help="Skip the semantic-release workflow"
 }
 
 cmd "plan" help="Dry-run preview of which migrations would apply" {
-  flag "--target" help="Path to target repo" {
-    arg "<dir>" type="path"
-  }
-  flag "--mode" help="'new' or 'existing'" {
-    arg "<mode>" choices="new" "existing"
-  }
+    flag "--target" help="Path to target repo" {
+        arg "<dir>"
+    }
+    flag "--mode" help="'new' or 'existing'" {
+        arg "<mode>" {
+            choices "new" "existing"
+        }
+    }
 }
 
 cmd "migrate" help="Run a single migration or one whole phase" {
-  arg "<id>" help="e.g. 04-robustness/m1-robustness-pkg, or just 04-robustness"
-  flag "--target" help="Path to target repo" {
-    arg "<dir>" type="path"
-  }
-  flag "--mode" help="'new' or 'existing'" {
-    arg "<mode>" choices="new" "existing"
-  }
-  flag "--execute" help="Actually apply (default is dry-run for existing mode)"
-  flag "--name" help="Tool name (kebab-case)" {
-    arg "<name>" type="string"
-  }
+    arg "<id>" help="e.g. 04-robustness/m1-robustness-pkg, or just 04-robustness"
+    flag "--target" help="Path to target repo" {
+        arg "<dir>"
+    }
+    flag "--mode" help="'new' or 'existing'" {
+        arg "<mode>" {
+            choices "new" "existing"
+        }
+    }
+    flag "--execute" help="Actually apply (default is dry-run for existing mode)"
+    flag "--name" help="Tool name (kebab-case)" {
+        arg "<name>"
+    }
 }
 
 cmd "list" help="List discovered phases + migrations"
