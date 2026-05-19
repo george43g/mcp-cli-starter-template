@@ -76,11 +76,11 @@ jobs:
           # --no-frozen-lockfile because the scaffolded output has no
           # pnpm-lock.yaml yet; pnpm defaults to frozen in CI environments.
           pnpm install --no-frozen-lockfile
-          # Lint + typecheck verify the scaffolder didn't emit broken
-          # source. `test` then verifies the runtime behavior.
-          pnpm lint
-          pnpm typecheck
-          pnpm test
+          # Lint + typecheck + test + build — the same gates a consumer
+          # would hit running `pnpm verify` immediately after init. Each
+          # catches a different class of "scaffolder unit tests pass but
+          # output is broken" regression.
+          pnpm verify
 
       - name: Stress harness (9 cases including HTTP)
         run: pnpm --filter "@george43g/*-mcp" stress
