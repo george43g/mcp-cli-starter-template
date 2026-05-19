@@ -55,7 +55,8 @@ export function buildProgram(): Command {
     const globalOpts = program.opts<{ verbose?: boolean; banner?: boolean }>();
     if (globalOpts.banner !== false) drawBanner();
     const cwd = resolve(target ?? process.cwd());
-    await runScaffolder("new", cwd, globalOpts, opts, false);
+    // init = fresh dir; force=true (overwrite freely is fine in an empty dir).
+    await runScaffolder("new", cwd, globalOpts, opts, false, undefined, true);
   });
 
   addCommonFlags(
@@ -63,13 +64,18 @@ export function buildProgram(): Command {
       .command("apply")
       .description("Apply migrations to an existing repo")
       .option("--target <dir>", "Path to the existing repo", process.cwd())
-      .option("--execute", "Actually apply (default is dry-run)"),
+      .option("--execute", "Actually apply (default is dry-run)")
+      .option(
+        "--force",
+        "Overwrite files that diverge from the template (default: preserve user customizations)",
+      ),
   ).action(async (opts) => {
     const globalOpts = program.opts<{ verbose?: boolean; banner?: boolean }>();
     if (globalOpts.banner !== false) drawBanner();
     const cwd = resolve(String(opts.target));
     const dryRun = !opts.execute;
-    await runScaffolder("existing", cwd, globalOpts, opts, dryRun);
+    const force = opts.force === true;
+    await runScaffolder("existing", cwd, globalOpts, opts, dryRun, undefined, force);
   });
 
   addCommonFlags(
@@ -83,7 +89,9 @@ export function buildProgram(): Command {
     if (globalOpts.banner !== false) drawBanner();
     const mode = (opts.mode === "new" ? "new" : "existing") as ApplyMode;
     const cwd = resolve(String(opts.target));
-    await runScaffolder(mode, cwd, globalOpts, opts, true);
+    // plan = dry-run; force semantics still matter (so the preview shows
+    // would-skip vs would-write). Match the mode's default.
+    await runScaffolder(mode, cwd, globalOpts, opts, true, undefined, mode === "new");
   });
 
   addCommonFlags(
@@ -94,14 +102,16 @@ export function buildProgram(): Command {
       )
       .option("--target <dir>", "Path to target repo", process.cwd())
       .option("--mode <mode>", "'new' or 'existing'", "new")
-      .option("--execute", "Actually apply (default is dry-run for existing mode)"),
+      .option("--execute", "Actually apply (default is dry-run for existing mode)")
+      .option("--force", "Overwrite divergent files (default depends on mode)"),
   ).action(async (id: string, opts) => {
     const globalOpts = program.opts<{ verbose?: boolean; banner?: boolean }>();
     if (globalOpts.banner !== false) drawBanner();
     const mode = (opts.mode === "new" ? "new" : "existing") as ApplyMode;
     const cwd = resolve(String(opts.target));
     const dryRun = mode === "existing" && !opts.execute;
-    await runScaffolder(mode, cwd, globalOpts, opts, dryRun, id);
+    const force = opts.force === true || mode === "new";
+    await runScaffolder(mode, cwd, globalOpts, opts, dryRun, id, force);
   });
 
   program
@@ -155,17 +165,18 @@ async function runScaffolder(
   cmdOpts: Record<string, unknown>,
   dryRun: boolean,
   migrationFilter?: string,
+  force = true,
 ): Promise<void> {
   const log = makeLogger({ verbose: globalOpts.verbose === true });
   const shell = makeShell({ cwd, dryRun });
-  const fs = makeFs({ cwd, dryRun });
+  const fs = makeFs({ cwd, dryRun, force });
   const git = makeGit(shell);
   const config = new Config();
 
   config.global.mode.set(mode);
   applyCmdOptsToConfig(cmdOpts, config);
 
-  const ctx: MigrationContext = { config, cwd, mode, shell, fs, git, log, dryRun };
+  const ctx: MigrationContext = { config, cwd, mode, shell, fs, git, log, dryRun, force };
 
   let phases = await loadPhases();
   if (phases.length === 0) {

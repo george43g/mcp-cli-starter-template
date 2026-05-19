@@ -24,12 +24,15 @@ import M3GitInit from "../src/phases/02-toolchain/m3-git-init.js";
 import M4Gitignore from "../src/phases/02-toolchain/m4-gitignore.js";
 import M5Gitattributes from "../src/phases/02-toolchain/m5-gitattributes.js";
 
-async function makeCtx(opts: { name?: string; scope?: string; dryRun?: boolean } = {}) {
+async function makeCtx(
+  opts: { name?: string; scope?: string; dryRun?: boolean; force?: boolean } = {},
+) {
   const cwd = await mkdtemp(join(tmpdir(), "scaffolder-mig-test-"));
   const dryRun = opts.dryRun ?? false;
+  const force = opts.force ?? true;
   const log = makeLogger({ verbose: false });
   const shell = makeShell({ cwd, dryRun });
-  const fs = makeFs({ cwd, dryRun });
+  const fs = makeFs({ cwd, dryRun, force });
   const git = makeGit(shell);
   const config = new Config();
   config.global.repoName.set(opts.name ?? "foo");
@@ -37,7 +40,17 @@ async function makeCtx(opts: { name?: string; scope?: string; dryRun?: boolean }
   config.global.mode.set("new");
   config.global.packageManager.set("pnpm");
   config.global.monorepo.set(true);
-  const ctx: MigrationContext = { config, cwd, mode: "new", shell, fs, git, log, dryRun };
+  const ctx: MigrationContext = {
+    config,
+    cwd,
+    mode: "new",
+    shell,
+    fs,
+    git,
+    log,
+    dryRun,
+    force,
+  };
   return { cwd, ctx };
 }
 

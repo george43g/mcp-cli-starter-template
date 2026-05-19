@@ -10,7 +10,13 @@ import { existsSync } from "node:fs";
 import { lstat, mkdir, readFile, symlink, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 
-export type WriteOutcome = "created" | "updated" | "unchanged" | "would-create" | "would-update";
+export type WriteOutcome =
+  | "created"
+  | "updated"
+  | "unchanged"
+  | "would-create"
+  | "would-update"
+  | "divergent-skipped";
 
 export interface FsHelper {
   readonly cwd: string;
@@ -31,8 +37,21 @@ export interface FsHelper {
   remove(relPath: string): Promise<void>;
 }
 
-export function makeFs(options: { cwd: string; dryRun: boolean }): FsHelper {
+export interface FsOptions {
+  cwd: string;
+  dryRun: boolean;
+  /**
+   * When false (default for `apply` mode), files that exist AND diverge
+   * from the requested content are SKIPPED instead of overwritten — the
+   * user's customizations are preserved. Set true for `init` (fresh
+   * scaffold) or when the user explicitly passes --force.
+   */
+  force?: boolean;
+}
+
+export function makeFs(options: FsOptions): FsHelper {
   const cwd = resolve(options.cwd);
+  const force = options.force ?? true; // default true preserves the pre-existing init semantics
 
   function safe(relPath: string): string {
     const abs = isAbsolute(relPath) ? relPath : resolve(cwd, relPath);
@@ -49,6 +68,9 @@ export function makeFs(options: { cwd: string; dryRun: boolean }): FsHelper {
     if (exists) {
       const current = await readFile(abs);
       if (current.equals(buffer)) return "unchanged";
+      // Existing file diverges. In apply mode (force=false) we preserve
+      // the user's version — they pass --force to overwrite intentionally.
+      if (!force) return "divergent-skipped";
     }
     if (options.dryRun) return exists ? "would-update" : "would-create";
     await mkdir(dirname(abs), { recursive: true });

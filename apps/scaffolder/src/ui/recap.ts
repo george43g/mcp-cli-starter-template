@@ -11,8 +11,8 @@ const GLYPH: Record<string, string> = {
 
 /**
  * End-of-run recap. One line per migration showing status + duration.
- * Compact by design — Phase ε's "comprehensive skill" can render the full
- * diff if the user wants it.
+ * Divergent (user-customized) files are summarized at the bottom — those
+ * are not failures, just preserved.
  */
 export function drawRecap(phases: readonly PhaseRunResult[]): void {
   if (phases.length === 0) return;
@@ -22,12 +22,19 @@ export function drawRecap(phases: readonly PhaseRunResult[]): void {
   let wouldApply = 0;
   let skipped = 0;
   let failed = 0;
+  let totalDivergent = 0;
+  const divergentByMigration: Array<{ id: string; files: readonly string[] }> = [];
+
   for (const phase of phases) {
     process.stdout.write(`\n  ${kleur.bold(phase.phaseId)}\n`);
     for (const row of phase.results) {
       const glyph = GLYPH[row.result.status] ?? "?";
       const duration = `${row.durationMs}ms`;
-      process.stdout.write(`    ${glyph} ${row.migrationId} ${kleur.dim(`(${duration})`)}\n`);
+      const divCount = row.result.filesDivergent?.length ?? 0;
+      const divHint = divCount > 0 ? kleur.cyan(` [${divCount} preserved]`) : "";
+      process.stdout.write(
+        `    ${glyph} ${row.migrationId} ${kleur.dim(`(${duration})`)}${divHint}\n`,
+      );
       if (row.result.status === "applied") applied++;
       else if (row.result.status === "would-apply") wouldApply++;
       else if (row.result.status === "skipped" || row.result.status === "noop") skipped++;
@@ -37,6 +44,10 @@ export function drawRecap(phases: readonly PhaseRunResult[]): void {
           process.stdout.write(`      ${kleur.red(row.result.error.message)}\n`);
         }
       }
+      if (divCount > 0 && row.result.filesDivergent) {
+        totalDivergent += divCount;
+        divergentByMigration.push({ id: row.migrationId, files: row.result.filesDivergent });
+      }
     }
   }
 
@@ -45,6 +56,24 @@ export function drawRecap(phases: readonly PhaseRunResult[]): void {
   if (wouldApply)
     parts.push(kleur.yellow(`${wouldApply} would apply (dry-run; --execute to apply)`));
   if (skipped) parts.push(kleur.dim(`${skipped} skipped`));
+  if (totalDivergent)
+    parts.push(
+      kleur.cyan(`${totalDivergent} divergent files preserved (pass --force to overwrite)`),
+    );
   parts.push(failed > 0 ? kleur.red(`${failed} failed`) : kleur.dim(`${failed} failed`));
-  process.stdout.write(`\n  ${parts.join(" · ")}\n\n`);
+  process.stdout.write(`\n  ${parts.join(" · ")}\n`);
+
+  if (divergentByMigration.length > 0) {
+    process.stdout.write(`\n  ${kleur.bold("Divergent files (preserved)")}\n`);
+    for (const { id, files } of divergentByMigration) {
+      process.stdout.write(`    ${kleur.dim(id)}\n`);
+      for (const f of files.slice(0, 10)) {
+        process.stdout.write(`      ${kleur.cyan("·")} ${f}\n`);
+      }
+      if (files.length > 10) {
+        process.stdout.write(`      ${kleur.dim(`… and ${files.length - 10} more`)}\n`);
+      }
+    }
+  }
+  process.stdout.write("\n");
 }

@@ -15,18 +15,31 @@ import { makeShell } from "../src/core/shell.js";
  * is a real one — same plumbing the program uses — so tests exercise the
  * actual portPackage code path.
  */
-async function makeTestCtx(opts: { dryRun?: boolean; name?: string; scope?: string } = {}) {
+async function makeTestCtx(
+  opts: { dryRun?: boolean; name?: string; scope?: string; force?: boolean } = {},
+) {
   const cwd = await mkdtemp(join(tmpdir(), "scaffolder-port-test-"));
   const dryRun = opts.dryRun ?? false;
+  const force = opts.force ?? true;
   const log = makeLogger({ verbose: false });
   const shell = makeShell({ cwd, dryRun });
-  const fs = makeFs({ cwd, dryRun });
+  const fs = makeFs({ cwd, dryRun, force });
   const git = makeGit(shell);
   const config = new Config();
   config.global.repoName.set(opts.name ?? "foo");
   config.global.scope.set(opts.scope ?? "@george43g");
   config.global.mode.set("new");
-  const ctx: MigrationContext = { config, cwd, mode: "new", shell, fs, git, log, dryRun };
+  const ctx: MigrationContext = {
+    config,
+    cwd,
+    mode: "new",
+    shell,
+    fs,
+    git,
+    log,
+    dryRun,
+    force,
+  };
   return { cwd, ctx };
 }
 

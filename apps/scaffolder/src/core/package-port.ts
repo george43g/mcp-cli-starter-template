@@ -31,6 +31,7 @@ export async function portPackage(
 ): Promise<MigrationResult> {
   const scope = ctx.config.global.scope.peek() ?? "@george43g";
   const filesChanged: string[] = [];
+  const filesDivergent: string[] = [];
 
   const metaFiles: Array<[string, string]> = [];
   if (opts.packageJson) {
@@ -46,9 +47,13 @@ export async function portPackage(
     metaFiles.push(...opts.extraFiles);
   }
 
+  const recordOutcome = (path: string, outcome: import("./fs.js").WriteOutcome) => {
+    if (outcome === "divergent-skipped") filesDivergent.push(path);
+    else if (outcome !== "unchanged") filesChanged.push(path);
+  };
+
   for (const [path, content] of metaFiles) {
-    const outcome = await ctx.fs.writeIfChanged(path, content);
-    if (outcome !== "unchanged") filesChanged.push(path);
+    recordOutcome(path, await ctx.fs.writeIfChanged(path, content));
   }
 
   const name = ctx.config.global.repoName.peek() ?? "mcp-starter";
@@ -63,16 +68,23 @@ export async function portPackage(
     // → `skills/foo/SKILL.md`); content substitution is the standard case.
     const targetPath = substitute(`${prefix}${rel}`, vars);
     const content = substitute(TEMPLATES[key] ?? "", vars);
-    const outcome = await ctx.fs.writeIfChanged(targetPath, content);
-    if (outcome !== "unchanged") filesChanged.push(targetPath);
+    recordOutcome(targetPath, await ctx.fs.writeIfChanged(targetPath, content));
   }
 
-  if (filesChanged.length === 0) {
+  if (filesChanged.length === 0 && filesDivergent.length === 0) {
     return { status: "noop" };
   }
   const status = ctx.dryRun ? "would-apply" : "applied";
   const verb = ctx.dryRun ? "would write" : "wrote";
-  return { status, filesChanged, notes: [`${verb} ${filesChanged.length} files`] };
+  const notes: string[] = [];
+  if (filesChanged.length > 0) notes.push(`${verb} ${filesChanged.length} files`);
+  if (filesDivergent.length > 0) {
+    notes.push(`${filesDivergent.length} divergent (preserved; pass --force to overwrite)`);
+  }
+  const result: MigrationResult = { status, notes };
+  if (filesChanged.length > 0) result.filesChanged = filesChanged;
+  if (filesDivergent.length > 0) result.filesDivergent = filesDivergent;
+  return result;
 }
 
 /** Standard tsconfig.json for a node-target package (most common). */

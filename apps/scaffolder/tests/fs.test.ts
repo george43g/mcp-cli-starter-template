@@ -65,6 +65,39 @@ describe("fs helper", () => {
       const dryFs = makeFs({ cwd, dryRun: true });
       expect(await dryFs.writeIfChanged("hello.txt", "v1")).toBe("unchanged");
     });
+
+    it("force=false: divergent file returns 'divergent-skipped' (does NOT overwrite)", async () => {
+      // First seed an existing file as if it were the user's customization:
+      const seed = makeFs({ cwd, dryRun: false, force: true });
+      await seed.writeIfChanged("user-tweaked.txt", "user's version");
+
+      // Apply mode (force=false) should preserve it:
+      const safe = makeFs({ cwd, dryRun: false, force: false });
+      expect(await safe.writeIfChanged("user-tweaked.txt", "template version")).toBe(
+        "divergent-skipped",
+      );
+      expect(await readFile(join(cwd, "user-tweaked.txt"), "utf8")).toBe("user's version");
+    });
+
+    it("force=false: new files are still created (only existing-and-divergent are preserved)", async () => {
+      const fs = makeFs({ cwd, dryRun: false, force: false });
+      expect(await fs.writeIfChanged("brand-new.txt", "hi")).toBe("created");
+    });
+
+    it("force=false: identical content still returns 'unchanged'", async () => {
+      const seed = makeFs({ cwd, dryRun: false, force: true });
+      await seed.writeIfChanged("match.txt", "same");
+      const safe = makeFs({ cwd, dryRun: false, force: false });
+      expect(await safe.writeIfChanged("match.txt", "same")).toBe("unchanged");
+    });
+
+    it("force=true: divergent file IS overwritten (the --force escape hatch)", async () => {
+      const seed = makeFs({ cwd, dryRun: false, force: true });
+      await seed.writeIfChanged("user-tweaked.txt", "user's version");
+      const forced = makeFs({ cwd, dryRun: false, force: true });
+      expect(await forced.writeIfChanged("user-tweaked.txt", "template version")).toBe("updated");
+      expect(await readFile(join(cwd, "user-tweaked.txt"), "utf8")).toBe("template version");
+    });
   });
 
   describe("safe path traversal guard", () => {

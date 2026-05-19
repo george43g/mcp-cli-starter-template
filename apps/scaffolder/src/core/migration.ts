@@ -39,6 +39,16 @@ export interface MigrationContext {
   log: Logger;
   /** Dry-run mode — migrations should record what they WOULD do, not act. */
   dryRun: boolean;
+  /**
+   * When false, files that already exist in the target AND differ from
+   * the lib template get SKIPPED ("divergent-skipped") instead of
+   * overwritten. Default per command:
+   *   init     → true  (fresh scaffold; assumes empty/new dir)
+   *   apply    → false (preserve user customizations; --force overrides)
+   *   plan     → either (no writes happen in dry-run anyway)
+   *   migrate  → matches mode default unless --force
+   */
+  force: boolean;
 }
 
 export type MigrationStatus = "applied" | "would-apply" | "skipped" | "noop" | "failed";
@@ -49,6 +59,8 @@ export interface MigrationResult {
   notes?: string[];
   /** Files written/modified by this migration (for diff output). */
   filesChanged?: string[];
+  /** Files preserved because they diverge from the template; pass --force to overwrite. */
+  filesDivergent?: string[];
   /** If status === 'failed', the error. */
   error?: Error;
 }
