@@ -13,5 +13,12 @@ import { phase as p01Bootstrap } from "./01-bootstrap/index.js";
 import { phase as p02Toolchain } from "./02-toolchain/index.js";
 import { phase as p03Configs } from "./03-configs/index.js";
 import { phase as p04Robustness } from "./04-robustness/index.js";
+import { phase as p05UtilityPkgs } from "./05-utility-pkgs/index.js";
 
-export const PHASES: readonly Phase[] = [p01Bootstrap, p02Toolchain, p03Configs, p04Robustness];
+export const PHASES: readonly Phase[] = [
+  p01Bootstrap,
+  p02Toolchain,
+  p03Configs,
+  p04Robustness,
+  p05UtilityPkgs,
+];
