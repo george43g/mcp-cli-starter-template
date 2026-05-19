@@ -40,6 +40,7 @@ cmd apply help="Apply migrations to an existing repo" {
         arg <dir>
     }
     flag --execute help="Actually apply (default is dry-run)"
+    flag --force help="Overwrite files that diverge from the template (default: preserve user customizations)"
     flag --name help="Tool name (kebab-case)" {
         arg <name>
     }
@@ -71,6 +72,7 @@ cmd migrate help="Run a single migration or one whole phase" {
         }
     }
     flag --execute help="Actually apply (default is dry-run for existing mode)"
+    flag --force help="Overwrite divergent files (default depends on mode: true for new, false for existing)"
     flag --name help="Tool name (kebab-case)" {
         arg <name>
     }

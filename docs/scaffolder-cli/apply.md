@@ -15,6 +15,10 @@ Path to the existing repo
 
 Actually apply (default is dry-run)
 
+### `--force`
+
+Overwrite files that diverge from the template (default: preserve user customizations)
+
 ### `--name <name>`
 
 Tool name (kebab-case)

@@ -30,6 +30,10 @@ Path to target repo
 
 Actually apply (default is dry-run for existing mode)
 
+### `--force`
+
+Overwrite divergent files (default depends on mode: true for new, false for existing)
+
 ### `--name <name>`
 
 Tool name (kebab-case)

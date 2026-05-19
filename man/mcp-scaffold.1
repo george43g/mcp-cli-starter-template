@@ -79,6 +79,9 @@ Path to the existing repo
 \fB\-\-execute\fR
 Actually apply (default is dry\-run)
 .TP
+\fB\-\-force\fR
+Overwrite files that diverge from the template (default: preserve user customizations)
+.TP
 \fB\-\-name\fR \fI<name>\fR
 Tool name (kebab\-case)
 .TP
@@ -125,6 +128,9 @@ Path to target repo
 .TP
 \fB\-\-execute\fR
 Actually apply (default is dry\-run for existing mode)
+.TP
+\fB\-\-force\fR
+Overwrite divergent files (default depends on mode: true for new, false for existing)
 .TP
 \fB\-\-name\fR \fI<name>\fR
 Tool name (kebab\-case)
