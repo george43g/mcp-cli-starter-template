@@ -2,25 +2,27 @@
 
 > `CLAUDE.md` and `.cursorrules` are symlinks to this file. Edit `AGENTS.md`; the others follow.
 
-This is a **starter template** generated from `mcp-cli-starter-template`. Before doing anything else, replace `{{name}}` / `{{NAME_UPPER}}` placeholders by running `pnpm tsx scripts/init-template.mjs --name <your-tool-name>`. The script renames files/dirs, replaces all placeholders, and deletes itself.
+This repo was generated from `mcp-cli-starter-template` via `mcp-scaffold init`. Names and scopes have already been substituted; you can start working directly.
 
 ## What This Repo Is
 
-A Turborepo monorepo that ships **three surfaces** from a single tool:
+A Turborepo monorepo that ships **four surfaces** from a **single bin** (`{{name}}`):
 
-| Bin | Purpose | Transport |
-|---|---|---|
-| `{{name}}-mcp` | MCP server | stdio (default), `--http` for Streamable HTTP |
-| `{{name}}-cli` | Commander-based CLI (subcommands: `mcp`, `http`, `tui`, `doctor`, `health`, `noop`, `cli`/REPL) | n/a (in-process) |
-| `{{name}}-tui` | Ink/React full-screen TUI | n/a |
+| Subcommand | Surface |
+|---|---|
+| `{{name}} mcp` | MCP server (stdio default; `--http` for Streamable HTTP) |
+| `{{name}} tui` | Ink/React full-screen TUI |
+| `{{name}} doctor` | Preflight checks (Node version, native module, env) |
+| `{{name}} repl` (alias `console`) | Interactive REPL driving the in-process dispatcher |
+| `{{name}} health`, `{{name}} noop`, … | Direct tool invocation — one CLI subcommand per `ToolDefinition` |
 
-Delete any surface you don't need: see `docs/ARCHITECTURE.md`. The starter ships all three wired up so the patterns are visible.
+Delete any surface you don't need: see `docs/ARCHITECTURE.md`. The starter ships all four wired up so the patterns are visible.
 
 ## Stack
 
 - **Runtime**: Node.js ≥24 (native `--env-file-if-exists`)
 - **Module system**: ESM only (`type: "module"`)
-- **Build**: Vite library mode → `dist/{index,cli,tui}.js`
+- **Build**: Vite library mode → `dist/cli.js` (the single bin, shebang-prefixed) + `dist/index.js` (library exports: `runMcpServer`, `callMcpTool`)
 - **Package manager**: pnpm 10.x (workspace at root)
 - **Lint/format**: Biome 2.x
 - **Tests**: Vitest (globals on)
@@ -65,9 +67,9 @@ packages/
 | `pnpm verify` | lint + typecheck + test + build (CI shape) |
 
 Per-app:
-- `pnpm --filter {{name}}-mcp dev:mcp` — `tsx src/index.ts` with env files loaded
+- `pnpm --filter {{name}}-mcp dev:mcp` — `tsx src/cli.ts mcp` with env files loaded
 - `pnpm --filter {{name}}-mcp mcp` — run the built MCP via stdio
-- `pnpm --filter {{name}}-mcp http` — run the built MCP via Streamable HTTP (requires `MCP_HTTP_TOKEN`)
+- `pnpm --filter {{name}}-mcp mcp -- --http` — run the built MCP via Streamable HTTP (requires `MCP_HTTP_TOKEN`)
 - `pnpm --filter {{name}}-mcp tui` — launch the Ink TUI
 - `pnpm --filter {{name}}-mcp doctor` — preflight checks (Node version, deps, native module, env)
 
@@ -129,7 +131,7 @@ Also in-memory ring buffer (last 500 lines). In dev mode (`MCP_DEV=1`), a `get_l
 
 ## HTTP transport
 
-Default off (stdio mode). Enable with `{{name}}-cli http` or `{{name}}-mcp --http`. Requires `MCP_HTTP_TOKEN` (generate with `openssl rand -hex 32`).
+Default off (stdio mode). Enable with `{{name}} mcp --http`. Requires `MCP_HTTP_TOKEN` (generate with `openssl rand -hex 32`).
 
 - **POST /mcp** — MCP Streamable HTTP (bearer-token required)
 - **GET /health** — health snapshot (no auth; for reverse-proxy probes; returns 503 if unhealthy)

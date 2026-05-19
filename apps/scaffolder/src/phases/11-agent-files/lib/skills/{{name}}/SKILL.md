@@ -8,7 +8,8 @@ description: Use when working with the {{name}} MCP tool — covers invoking too
 AI AGENT INSTRUCTIONS — READ THIS BLOCK FIRST.
 
 This file ships as a SCAFFOLD inside the mcp-cli-starter-template. It was
-generated when the template was renamed via `scripts/init-template.mjs`.
+written into this repo when the tool was generated via `mcp-scaffold init`
+(or applied to an existing repo via `mcp-scaffold apply`).
 
 The contents below describe the STARTER's example tools (health_check, noop)
 and the GENERIC command surface (mcp/tui/doctor/repl). They are placeholders.
