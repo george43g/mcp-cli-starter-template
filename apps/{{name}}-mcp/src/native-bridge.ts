@@ -28,12 +28,11 @@ export interface NativeModule {
 let _native: NativeModule | null | undefined;
 
 export function tryLoadNative(): NativeModule | null {
+  // Check env on every call (not just first-time) so tests that flip
+  // MCP_DISABLE_NATIVE between cases see the change immediately. The
+  // load itself is still cached on the success path below.
+  if (process.env.MCP_DISABLE_NATIVE === "1") return null;
   if (_native !== undefined) return _native;
-
-  if (process.env.MCP_DISABLE_NATIVE === "1") {
-    _native = null;
-    return null;
-  }
 
   try {
     const require = createRequire(import.meta.url);

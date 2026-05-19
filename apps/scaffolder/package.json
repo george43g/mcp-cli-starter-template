@@ -21,6 +21,7 @@
     "dev": "pnpm build:templates && vite build --watch",
     "start": "pnpm build:templates && tsx bin/cli.ts",
     "test": "pnpm build:templates && vitest run",
+    "test:no-native": "pnpm test",
     "test:watch": "pnpm build:templates && vitest",
     "typecheck": "pnpm build:templates && tsc -p tsconfig.json --noEmit",
     "lint": "biome check .",
