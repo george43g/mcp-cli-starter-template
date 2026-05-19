@@ -7,7 +7,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { mkdir, readFile, stat, symlink, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, symlink, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 
 export type WriteOutcome = "created" | "updated" | "unchanged" | "would-create" | "would-update";
@@ -77,9 +77,10 @@ export function makeFs(options: { cwd: string; dryRun: boolean }): FsHelper {
     async symlink(target, linkRelPath) {
       const abs = safe(linkRelPath);
       if (existsSync(abs)) {
-        // already exists — check it points at the expected target
+        // already exists — use lstat() to inspect the link itself (stat()
+        // follows it; we'd see the target's type, not the link's).
         try {
-          const st = await stat(abs);
+          const st = await lstat(abs);
           if (st.isSymbolicLink()) return "unchanged";
         } catch {
           // fall through to overwrite
