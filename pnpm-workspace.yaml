@@ -1,3 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  # example/ is the committed scaffolder-output reference — a static
+  # snapshot for human inspection + CI diff verification. NOT a workspace
+  # member (its inner packages would name-collide with the canonical).
+  - "!example/**"

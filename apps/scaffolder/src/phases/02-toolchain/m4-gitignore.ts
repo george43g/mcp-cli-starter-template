@@ -82,6 +82,15 @@ docs/screenshots/*.png
 
 # MCPB artifacts (regenerate with \`pnpm pack:mcpb\`)
 *.mcpb
+
+# example/ output is committed (it's the scaffolder-output reference) but
+# its install/build artifacts are not. Regenerate with \`pnpm regen:example\`.
+example/**/node_modules
+example/**/dist
+example/**/.turbo
+example/**/coverage
+example/**/*.tsbuildinfo
+example/**/*.node
 `;
 
 export default class GitignoreMigration extends Migration {

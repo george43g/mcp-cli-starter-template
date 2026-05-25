@@ -18,6 +18,7 @@
       "!apps/rust-accel/index.d.ts",
       "!apps/scaffolder/src/phases/**/lib",
       "!apps/scaffolder/src/generated",
+      "!example/**",
       "!**/*.tsbuildinfo"
     ]
   },

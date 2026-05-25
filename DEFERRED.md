@@ -4,76 +4,27 @@ Items intentionally not done in the current shipping series. Each has a "trigger
 
 ---
 
-## 1. Npm scope rename — `@george43g` → business scope
+## Resolved this round (no action needed)
 
-**Status**: deferred.
-**Why**: user wants to publish under their business scope (`@mwc` / `@melbournewebco` / something else TBD). Decision blocked on (a) picking the final name + (b) confirming npm availability — `@mwc` may be squatted.
-
-**Trigger to action**: when the user has picked + verified an npm scope is available.
-
-**Cost**: one regex swap + ~146 file edits, fully automated.
-
-**How to do it**:
-1. Pick the scope (e.g. `@melbournewebco`). Verify on npm: `npm view @melbournewebco/foo` should 404.
-2. Edit `apps/scaffolder/src/core/templating.ts:26` — change `const SCOPE_RE = /@george43g/g;` to `/@<new-scope>/g`.
-3. Search-and-replace across the repo: `rg --files-with-matches '@george43g' | xargs sed -i '' 's/@george43g/@<new-scope>/g'` (macOS) or `sed -i 's/.../.../'` (Linux).
-4. Run `pnpm verify` — the golden drift test will catch any place we missed.
-5. Rebuild scaffolder templates: `pnpm --filter @<new-scope>/mcp-scaffold build:templates`.
-6. Commit, push, publish.
-
-**Considerations**:
-- The scaffolder repo can stay at `@george43g/mcp-scaffold` even after the cloned tools move — the substitution engine separates the two concerns. But unifying both under one scope reads cleaner.
-- Pre-publish: also run `npm publish --dry-run --filter "<scope>/*"` to confirm tarballs look right.
+- **Npm scope rename** — user decided to keep `@george43g`. Personal username is the publishing identity. Closed; not a deferred item anymore.
+- **`{{name}}` placeholder syntax** — migrated to `example-repo` / `EXAMPLE_REPO`. Filesystem-safe, no tera/handlebars collisions, no usage(1) identifier corruption. Done.
+- **Root `mise.toml` tera collision** — auto-resolved by the placeholder migration (mise no longer sees `{{name}}` to fail-parse). `mise tasks` from repo root works cleanly. Done.
 
 ---
 
-## 2. `example-repo` placeholder syntax
-
-**Status**: declined (kept as-is). Documented here so the decision doesn't get re-litigated.
-
-**Why double-curly stays**:
-- Unambiguous — `{{` never appears in real source content, so substitution can be a dumb regex with zero false positives.
-- The substitution engine (`apps/scaffolder/src/core/package-port.ts:62-78`) already handles BOTH file content AND path renames. No alternative gains anything.
-- The placeholder only exists during template authoring. After `mcp-scaffold init` runs, the user's repo has fully-substituted paths and content — they never see `example-repo` in their working tool.
-
-If we ever revisit: a `--placeholder` flag on `mcp-scaffold init` could let users pick a different marker without changing the canonical template. Low priority.
-
----
-
-## 3. Root `mise.toml` `example-repo` collides with mise's tera template engine
-
-**Status**: pre-existing bug, non-blocking but noisy.
-
-**Why**: the canonical root `mise.toml` (written by `apps/scaffolder/src/phases/02-toolchain/m1-mise.ts`) contains literal `example-repo` placeholders in `[tasks.screenshots]` and `[tasks.completions]` so the scaffolder substitution substitutes them at scaffold time. But mise's tera template engine parses run blocks at config load and tries to interpolate `example-repo` as a tera variable — fails with `Variable 'name' not found in context`.
-
-**Visible symptom**: any `mise <command>` invocation reading the root `mise.toml` prints a `mise ERROR Failed to render '__tera_one_off'` line. Tasks still complete successfully (the error is per-task and non-fatal at the config-load level). `mise tasks` listing is broken.
-
-**Trigger to action**: when noise becomes a friction point for new contributors, OR when mise version-bumps make the parse error fatal.
-
-**Cost**: ~30 minutes.
-
-**Fix options**:
-- A. Wrap canonical's `example-repo` in `{% raw %}example-repo{% endraw %}` blocks. Update `apps/scaffolder/src/core/templating.ts:25-26` to ALSO strip the raw tags during substitution.
-- B. Refactor the `[tasks.screenshots]` + `[tasks.completions]` tasks to discover paths via `find apps/*-mcp -name '.usage.kdl'` instead of hard-coded `example-repo` filters. Same surface, no placeholder needed.
-- C. Pin the canonical mise.toml to a different task name not used in run blocks, and rely on per-app mise.toml (which is what the cloned tool already uses post-`init`).
-
-Recommended: B — refactor the path-discovery so the canonical mise.toml has no `example-repo` at all. Cleanest UX, no escaping awkwardness in scaffolded output.
-
----
-
-## 4. Scaffolder's own usage(1) freshness gate in CI
+## 1. Scaffolder's own usage(1) freshness gate in CI
 
 **Status**: missing — only the SCAFFOLDED output has a gate.
 
 **Why deferred**: the scaffolded output's freshness gate (`apps/example-repo-mcp/scripts/check-usage-freshness.mjs` + the CI step that runs it) is the user-facing value. The scaffolder repo itself uses `usage` via `mise run completions` from `apps/scaffolder/mise.toml` but ships its checked-in artifacts at `completions/scaffolder/` + `docs/scaffolder-cli/` + `man/mcp-scaffold.1` without a CI gate.
 
-**Trigger to action**: if we ever see drift between `apps/scaffolder/.usage.kdl` and the checked-in scaffolder completions land on `main` (which would mean someone edited the spec without regen — visible in PR review for now).
+**Trigger to action**: if drift between `apps/scaffolder/.usage.kdl` and the checked-in scaffolder completions lands on `main` (would mean someone edited the spec without regen — visible in PR review for now).
 
 **Cost**: ~30 minutes. Copy the cloned-tool's `check-usage-freshness.mjs` pattern into `apps/scaffolder/scripts/`, point it at `apps/scaffolder/.usage.kdl`, wire into `.github/workflows/ci.yml` before the lint step.
 
 ---
 
-## 5. `mise trust` friction on first-run
+## 2. `mise trust` friction on first-run
 
 **Status**: known UX rough edge.
 
@@ -92,7 +43,7 @@ Recommended: A (just document it). The trust prompt IS the right UX for security
 
 ---
 
-## 6. MCPB bundle size optimization
+## 3. MCPB bundle size optimization
 
 **Status**: works, but produces ~52 MB artifacts.
 
@@ -107,7 +58,7 @@ Recommended: A (just document it). The trust prompt IS the right UX for security
 
 ---
 
-## 7. Stress harness JSON-report artifact upload
+## 4. Stress harness JSON-report artifact upload
 
 **Status**: stress runs locally + in CI but doesn't upload a report artifact for non-default cases.
 
@@ -119,7 +70,7 @@ Recommended: A (just document it). The trust prompt IS the right UX for security
 
 ---
 
-## 8. Semantic / vector search demo for the Resources kit
+## 5. Semantic / vector search demo for the Resources kit
 
 **Status**: not started.
 
@@ -131,7 +82,19 @@ Recommended: A (just document it). The trust prompt IS the right UX for security
 
 ---
 
-## 9. Two-branch `main` + `experimental` SOP
+## 6. `example/biome.json` strip is a small divergence from "faithful scaffolded output"
+
+**Status**: known compromise.
+
+**Why**: the committed `example/` reference is byte-equal to what `mcp-scaffold init` produces, with TWO exceptions: `example/biome.json` is stripped post-regen (biome 2.x discovers nested biome.json as a competing root and errors), and the `.git/` directory isn't committed (m3-git-init creates one in fresh dirs but skips inside the parent repo). The CI diff step mirrors both strips on the tempdir side before comparison.
+
+**Trigger to action**: if biome adds a `"root": false` config field or a `.biomeignore` mechanism that lets the parent suppress nested-root discovery without modifying the nested file.
+
+**Cost**: ~15 minutes when the upstream fix lands. Drop the `rm -f example/biome.json` from `regen:example` and the matching strip from CI; remove the diff-side `.git` strip if biome can also stop walking into it.
+
+---
+
+## 7. Two-branch `main` + `experimental` SOP
 
 **Status**: declined per spec locked decision #10.
 
@@ -139,7 +102,7 @@ Recommended: A (just document it). The trust prompt IS the right UX for security
 
 ---
 
-## 10. Apple Keychain integration for `packages/secrets/`
+## 8. Apple Keychain integration for `packages/secrets/`
 
 **Status**: declined per spec locked decision #5.
 
@@ -166,7 +129,9 @@ These are imsg-mcp-specific items from `glowing-percolating-key.md`. They stay i
 - Cloned-tool integration tests: **14 passing**
 - mcp-kit unit tests: **27 passing**
 - Stress cases: **11 / 11** (all required for HTTP-enabled builds)
-- Lint: **0 errors, 5 warnings** (4 pre-existing suppressions-unused, 1 from this sweep — addressed)
-- CI: green on `main` (push to confirm)
+- Lint: **0 errors, 4 warnings** (all pre-existing suppressions-unused on intentional biome-ignore comments)
+- CI gates: lint, typecheck, test, test:no-native, usage(1) freshness, npm pack dry-run, scaffolder E2E smoke, example/ diff vs scaffolder output, stress
+- Workspaces: 14 (excludes `example/**`)
+- Template entries: 154 (`apps/scaffolder/src/generated/templates.ts`)
 
-Last reviewed: 2026-05-25.
+Last reviewed: 2026-05-26.
