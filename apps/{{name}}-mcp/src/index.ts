@@ -16,13 +16,20 @@
  * To remove the dev-only get_logs tool: drop it from src/tools/registry.ts.
  */
 
-import { startStdio } from "@george43g/mcp-kit";
+import { buildResourcesHandler, startStdio } from "@george43g/mcp-kit";
 import { envBool, setLogFilePrefix } from "@george43g/robustness";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { runHttpMcp } from "./commands/http.js";
 import { getDispatcher } from "./dispatcher.js";
 import { APP_NAME, APP_VERSION } from "./meta.js";
+import { makeResourcesProvider } from "./resources/registry.js";
 import { devModeEnabled, makeAppRegistry } from "./tools/registry.js";
 
 export async function runMcpServer(opts: { transport?: "stdio" | "http" } = {}): Promise<void> {
@@ -34,9 +41,10 @@ export async function runMcpServer(opts: { transport?: "stdio" | "http" } = {}):
   const includeDevOnly = devModeEnabled();
   const registry = makeAppRegistry();
 
+  const resourcesEnabled = process.env.MCP_DISABLE_RESOURCES !== "1";
   const server = new Server(
     { name: APP_NAME, version: APP_VERSION },
-    { capabilities: { tools: {} } },
+    { capabilities: { tools: {}, ...(resourcesEnabled ? { resources: {} } : {}) } },
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -49,6 +57,15 @@ export async function runMcpServer(opts: { transport?: "stdio" | "http" } = {}):
     const result = await dispatch(name, args ?? {}, extra?.signal);
     return result;
   });
+
+  if (resourcesEnabled) {
+    const { onList, onListTemplates, onRead } = buildResourcesHandler({
+      provider: makeResourcesProvider(),
+    });
+    server.setRequestHandler(ListResourcesRequestSchema, onList);
+    server.setRequestHandler(ListResourceTemplatesRequestSchema, onListTemplates);
+    server.setRequestHandler(ReadResourceRequestSchema, onRead);
+  }
 
   if (transport === "http") {
     await runHttpMcp({ server });

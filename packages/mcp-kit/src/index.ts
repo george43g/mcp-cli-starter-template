@@ -11,6 +11,15 @@ export {
   wrapToolError,
   wrapUntrusted,
 } from "./prompt-injection.js";
+export type {
+  BuildResourcesHandlerOptions,
+  ResourceContent,
+  ResourceHandlers,
+  ResourceListEntry,
+  ResourcesProvider,
+  ResourceTemplate,
+} from "./resources.js";
+export { buildResourcesHandler } from "./resources.js";
 export { sanitize } from "./sanitize.js";
 export type { AnyToolDefinition, ToolDefinition, ToolRegistry } from "./tool-registry.js";
 export { makeRegistry } from "./tool-registry.js";

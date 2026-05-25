@@ -9,9 +9,11 @@
  *   - native module fallback when MCP_DISABLE_NATIVE=1
  */
 
+import { buildResourcesHandler } from "@george43g/mcp-kit";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { _resetCounters } from "../src/counters.js";
 import { callMcpTool } from "../src/dispatcher.js";
+import { makeResourcesProvider } from "../src/resources/registry.js";
 import { makeAppRegistry } from "../src/tools/registry.js";
 
 beforeEach(() => {
@@ -92,5 +94,49 @@ describe("error paths", () => {
     const r = await callMcpTool("noop", { input: 42 });
     expect(r.isError).toBe(true);
     expect(r.content[0]?.text).toMatch(/Invalid arguments/);
+  });
+});
+
+describe("resources", () => {
+  // Build the handler once per describe — same shape index.ts wires
+  // into the MCP server.
+  const { onList, onListTemplates, onRead } = buildResourcesHandler({
+    provider: makeResourcesProvider(),
+  });
+
+  it("onList advertises the health:// resource", async () => {
+    const result = await onList();
+    expect(result.resources.map((r) => r.uri)).toContain("health://");
+  });
+
+  it("onListTemplates is empty unless dev-mode is on", async () => {
+    delete process.env.MCP_DEV;
+    delete process.env.NODE_ENV;
+    const result = await onListTemplates();
+    expect(result.resourceTemplates).toHaveLength(0);
+  });
+
+  it("onListTemplates exposes logs://recent/{n} when MCP_DEV=1", async () => {
+    process.env.MCP_DEV = "1";
+    try {
+      const result = await onListTemplates();
+      expect(result.resourceTemplates.map((t) => t.uriTemplate)).toContain("logs://recent/{n}");
+    } finally {
+      delete process.env.MCP_DEV;
+    }
+  });
+
+  it("onRead returns the health snapshot as application/json", async () => {
+    const result = await onRead({ params: { uri: "health://" } });
+    expect(result.contents).toHaveLength(1);
+    expect(result.contents[0]?.mimeType).toBe("application/json");
+    const parsed = JSON.parse(result.contents[0]?.text ?? "{}");
+    expect(parsed.status).toMatch(/healthy|degraded|unhealthy/);
+  });
+
+  it("onRead bubbles a structured error for unknown URIs", async () => {
+    await expect(onRead({ params: { uri: "fictional://" } })).rejects.toThrowError(
+      /fictional:\/\//,
+    );
   });
 });
