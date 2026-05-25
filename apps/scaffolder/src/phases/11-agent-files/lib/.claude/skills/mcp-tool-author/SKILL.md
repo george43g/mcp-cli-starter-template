@@ -98,5 +98,5 @@ If the tool can block the event loop, spawn subprocesses, hold network connectio
 
 ```bash
 pnpm verify                  # lint + typecheck + test + build
-pnpm --filter @george43g/{{name}}-mcp stress  # 9-case robustness suite
+pnpm --filter @george43g/{{name}}-mcp stress  # 11-case robustness suite
 ```

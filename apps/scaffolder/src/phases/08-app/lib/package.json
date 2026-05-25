@@ -12,6 +12,7 @@
     "dist",
     "completions",
     "man",
+    "manifest.json",
     "README.md"
   ],
   "engines": {

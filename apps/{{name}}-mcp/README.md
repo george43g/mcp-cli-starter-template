@@ -38,13 +38,19 @@ The dispatcher already wires `withTimeout`, `perf` spans, abort propagation, str
 
 ## Shell completions
 
-Bash/zsh/fish completions are checked in under `completions/` and the manpage under `man/`. Both regenerate from `.usage.kdl` via `usage(1)`:
+Bash/zsh/fish completions + manpage + per-subcommand markdown docs are generated on demand from `.usage.kdl` via `usage(1)`. The scaffold ships the spec + the regen tasks but NOT the pre-generated artifacts (they reference the clone's actual bin name, not the placeholder).
+
+First-run flow:
 
 ```bash
-mise install               # one-time: installs usage(1)
-pnpm artifacts             # regenerate completions + manpage + docs/cli/
-pnpm completions:install   # auto-detect $SHELL and install into the right path
+mise install                                  # one-time: installs usage(1)
+pnpm artifacts                                # regenerate completions/ + man/ + docs/cli/
+git add completions man docs/cli              # check in the baseline
+git commit -m "chore: initial usage(1) artifacts"
+pnpm completions:install                      # auto-detect $SHELL and install into the right path
 ```
+
+From the second run forward, `pnpm check:usage` (and CI) enforces freshness — edit `.usage.kdl` and forget to regen, build fails.
 
 `completions:install` (script: `scripts/install-completions.sh`) handles the well-known locations for each shell:
 

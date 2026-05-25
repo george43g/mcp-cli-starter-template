@@ -21,7 +21,7 @@ The scaffolder's `src/phases/<NN-name>/lib/` directories are **byte-identical co
 - **Package manager**: pnpm 10.29.3 (Turborepo workspace)
 - **Build**: Vite library mode (the scaffolder bundles to a single `dist/cli.js` with the lib templates inlined via codegen)
 - **Lint/format**: Biome 2.x
-- **Tests**: Vitest (globals on); 60+ scaffolder tests + 9 cloned-tool integration tests
+- **Tests**: Vitest (globals on); 76 scaffolder tests + 14 cloned-tool integration tests + 27 mcp-kit unit tests
 - **MCP SDK**: `@modelcontextprotocol/sdk` ^1.27
 - **CLI**: `commander` ^14
 - **TUI**: `ink` ^7 + `react` ^19
@@ -69,12 +69,12 @@ packages/
 |---|---|
 | `pnpm install` | Install all workspaces |
 | `pnpm build` | Turbo: build TS workspaces + (optional) Rust crate |
-| `pnpm test` | All tests (cloned-tool integration + 60+ scaffolder tests) |
+| `pnpm test` | All tests (cloned-tool integration + 76 scaffolder tests) |
 | `pnpm test:no-native` | Force TS fallback (`MCP_DISABLE_NATIVE=1`) |
 | `pnpm typecheck` | `tsc --noEmit` per package |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm verify` | lint + typecheck + test + build (the CI shape) |
-| `pnpm stress` | 9-case MCP stress harness against the canonical `apps/{{name}}-mcp/` |
+| `pnpm stress` | 11-case MCP stress harness against the canonical `apps/{{name}}-mcp/` |
 
 Scaffolder-only (run from inside `apps/scaffolder/`):
 | Command | Purpose |
@@ -125,15 +125,15 @@ Scaffolder-only (run from inside `apps/scaffolder/`):
 
 ## Testing
 
-- **Scaffolder unit + integration**: `pnpm --filter @george43g/mcp-scaffold test` (60+ tests across `templating`, `config-leaf`, `fs`, `package-port`, `migrations`, `golden`)
+- **Scaffolder unit + integration**: `pnpm --filter @george43g/mcp-scaffold test` (76 tests across `templating`, `config-leaf`, `fs`, `package-port`, `migrations`, `golden`, `retrofit`, `tsconfig`)
 - **Cloned-tool integration**: `pnpm --filter @george43g/{{name}}-mcp test` (9 tests; native + TS fallback paths)
-- **9-case stress harness**: `pnpm stress` (handshake, health, parallel, timeout, SIGTERM, RSS watchdog, HTTP roundtrip, …)
+- **11-case stress harness**: `pnpm stress` (handshake, health, parallel, timeout, SIGTERM, RSS watchdog, HTTP roundtrip, …)
 - **Golden-output drift**: scaffolder's `tests/golden.test.ts` — byte-equal lib vs canonical (excepting `EXEMPT_LIB_PATHS`)
 - **E2E in CI**: `.github/workflows/ci.yml` runs `mcp-scaffold init` into a tempdir and asserts `pnpm install && pnpm test` succeed
 
 ## CI
 
-`.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, node 24, Rust toolchain stable. Steps: install → lint → typecheck → build → test → test:no-native → npm pack --dry-run → **scaffolder E2E smoke** → 9-case stress harness.
+`.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, node 24, Rust toolchain stable. Steps: install → lint → typecheck → build → test → test:no-native → install usage(1) via mise → check usage(1) artifact freshness → npm pack --dry-run → **scaffolder E2E smoke** → 11-case stress harness.
 
 `.github/workflows/release.yml` — semantic-release pipeline; **disabled by default** (the `on:` trigger is commented). Enable by uncommenting + adding `NPM_TOKEN` secret. See `docs/RELEASE.md`.
 

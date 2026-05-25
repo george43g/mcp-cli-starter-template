@@ -76,6 +76,12 @@ release/
 # Screenshots regenerated on-demand
 docs/screenshots/*.png
 !docs/screenshots/.gitkeep
+
+# Claude Code per-session locks (transient)
+.claude/scheduled_tasks.lock
+
+# MCPB artifacts (regenerate with \`pnpm pack:mcpb\`)
+*.mcpb
 `;
 
 export default class GitignoreMigration extends Migration {

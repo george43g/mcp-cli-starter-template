@@ -49,10 +49,12 @@ function regen(tmp) {
 
 function checkOne(label, fresh, checkedIn) {
   if (!fileExists(checkedIn)) {
-    console.error(
-      `✗ ${label}: ${checkedIn} missing (regenerate: pnpm completions / manpage / docs:cli)`,
-    );
-    return false;
+    // Not-yet-generated is a soft state (first-run after scaffold).
+    // Print a hint but don't fail — the user runs `pnpm artifacts` and
+    // commits to lock the baseline. Drift detection kicks in once the
+    // file lands in the repo.
+    console.log(`· ${label}: not yet generated (run: pnpm artifacts)`);
+    return true;
   }
   const a = readFileSync(fresh);
   const b = readFileSync(checkedIn);

@@ -63,7 +63,7 @@ packages/
 | `pnpm typecheck` | Turbo: `tsc --noEmit` per package |
 | `pnpm lint` | Biome check |
 | `pnpm lint:fix` | Biome write |
-| `pnpm stress` | Run 9-case stress harness against the built MCP |
+| `pnpm stress` | Run 11-case stress harness against the built MCP |
 | `pnpm verify` | lint + typecheck + test + build (CI shape) |
 
 Per-app:
@@ -140,7 +140,7 @@ Default off (stdio mode). Enable with `{{name}} mcp --http`. Requires `MCP_HTTP_
 
 ## Stress harness
 
-`pnpm stress` covers 9 cases (in `apps/{{name}}-mcp/scripts/stress-mcp.ts`):
+`pnpm stress` covers 11 lifecycle assertions (in `apps/{{name}}-mcp/scripts/stress-mcp.ts`):
 
 1. handshake + tools/list returns the full catalog
 2. `health_check` returns `Status: healthy`
@@ -150,7 +150,9 @@ Default off (stdio mode). Enable with `{{name}} mcp --http`. Requires `MCP_HTTP_
 6. `MCP_TOOL_TIMEOUT_FORCE_MS=1` triggers a clean timeout
 7. SIGTERM produces exit code 0 (handler intercepted)
 8. `MCP_MAX_RSS_MB=50` triggers a watchdog kill
-9. HTTP transport: `/health` 200, `/mcp` 401 without bearer, full initialize roundtrip with bearer + session-id
+9. HTTP `/health` returns 200
+10. HTTP `/mcp` without bearer returns 401
+11. HTTP `/mcp` initialize roundtrip with bearer + session-id succeeds
 
 Add a case whenever you ship something touching lifecycle, dispatch, error handling, or transport.
 
@@ -181,7 +183,7 @@ Types are hand-mirrored between `packages/shared-types/src/index.ts` (Zod) and `
 
 ## CI / Release
 
-- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, runs lint + typecheck + test + test:no-native + build + `npm pack --dry-run` + stress (all 9 cases).
+- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, runs lint + typecheck + test + test:no-native + build + `pnpm check:usage` (completions/manpage/docs freshness gate) + `npm pack --dry-run` + stress (all 11 cases).
 - `.github/workflows/release.yml` — semantic-release with `@semantic-release/{commit-analyzer,release-notes-generator,changelog,npm,github,git}`. **Disabled by default** — `on:` trigger is commented. To enable: uncomment + add `NPM_TOKEN` secret. See `docs/RELEASE.md`.
 - `.github/workflows/readme-check.yml` — fails CI if `src/**` changed without a `README.md` update. Bypass with `[skip-readme]` in commit/PR title.
 

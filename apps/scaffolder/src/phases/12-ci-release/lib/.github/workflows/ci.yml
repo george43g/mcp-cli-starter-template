@@ -100,7 +100,7 @@ jobs:
           # this run so all 11 must pass.
           pnpm --filter "@george43g/*-mcp" stress
 
-      - name: Stress harness (9 cases including HTTP)
+      - name: Stress harness (11 cases including HTTP)
         run: pnpm --filter "@george43g/*-mcp" stress
 
       - name: Upload stress report

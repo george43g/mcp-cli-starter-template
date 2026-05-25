@@ -57,7 +57,7 @@ Twelve phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffo
 | 05-utility-pkgs | env-loader, secrets (env-JSON → 1Password → file), cli-kit, tui-kit |
 | 06-mcp-kit | tool-registry, dispatcher (6 invariants), stdio + Streamable HTTP transports, sanitize, prompt-injection guardrails |
 | 07-shared-types | Zod schemas + Rust drift-check |
-| 08-app | The user-facing tool — single bin, MCP/CLI/TUI/REPL surfaces, dev MCP proxy, 9-case stress harness |
+| 08-app | The user-facing tool — single bin, MCP/CLI/TUI/REPL surfaces, dev MCP proxy, 11-case stress harness, MCP Resources demo (`health://`, `logs://recent/{n}`), MCPB Desktop bundle |
 | 09-rust-accel | Optional napi-rs v3 crate with hand-mirrored types |
 | 10-docs-readme | Mintlify config + MDX scaffold + reference markdown + public-style README |
 | 11-agent-files | AGENTS.md (canonical) + CLAUDE.md/.cursorrules symlinks + .mcp.json + Claude/Cursor/OpenCode skill files |
