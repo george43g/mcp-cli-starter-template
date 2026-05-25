@@ -1,5 +1,5 @@
 ---
-description: {{name}} project conventions — symlinked from AGENTS.md so Cursor sees the same agent guide as Claude Code and other agents.
+description: example-repo project conventions — symlinked from AGENTS.md so Cursor sees the same agent guide as Claude Code and other agents.
 alwaysApply: true
 ---
 
@@ -22,7 +22,7 @@ Key rules every agent must follow:
 After any change:
 - `pnpm build`
 - Restart the MCP host so it picks up the dev proxy's reloaded child.
-- Call the relevant `mcp__{{name}}-mcp-dev__*` tool to confirm the
+- Call the relevant `mcp__example-repo-mcp-dev__*` tool to confirm the
   change works end-to-end.
 - `pnpm test` (or `pnpm verify` for the full suite).
 - `pnpm stress` if the change touches dispatcher / lifecycle / transport.

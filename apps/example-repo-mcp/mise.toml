@@ -1,7 +1,7 @@
-# App-local mise tasks for {{name}}-mcp.
+# App-local mise tasks for example-repo-mcp.
 #
 # Run from inside this directory with `mise run <task>`, or from the repo
-# root with `mise run --cd apps/{{name}}-mcp <task>`.
+# root with `mise run --cd apps/example-repo-mcp <task>`.
 #
 # These tasks generate shell completions, the manpage, and CLI markdown
 # docs from .usage.kdl — keep .usage.kdl in sync with src/cli.ts and the
@@ -22,15 +22,15 @@ run = """
 
 [tasks."completions:bash"]
 description = "Generate bash completion script"
-run = "mkdir -p completions && usage g completion bash {{name}} -f .usage.kdl > completions/{{name}}.bash"
+run = "mkdir -p completions && usage g completion bash example-repo -f .usage.kdl > completions/example-repo.bash"
 
 [tasks."completions:zsh"]
 description = "Generate zsh completion script"
-run = "mkdir -p completions && usage g completion zsh {{name}} -f .usage.kdl > completions/_{{name}}"
+run = "mkdir -p completions && usage g completion zsh example-repo -f .usage.kdl > completions/_example-repo"
 
 [tasks."completions:fish"]
 description = "Generate fish completion script"
-run = "mkdir -p completions && usage g completion fish {{name}} -f .usage.kdl > completions/{{name}}.fish"
+run = "mkdir -p completions && usage g completion fish example-repo -f .usage.kdl > completions/example-repo.fish"
 
 [tasks.completions]
 description = "Generate completions for bash, zsh, and fish"
@@ -39,7 +39,7 @@ run = "echo 'completions generated in completions/ — run ./scripts/install-com
 
 [tasks.manpage]
 description = "Generate man page"
-run = "mkdir -p man && usage g manpage -f .usage.kdl -o man/{{name}}.1"
+run = "mkdir -p man && usage g manpage -f .usage.kdl -o man/example-repo.1"
 
 [tasks.artifacts]
 description = "Regenerate every usage(1) artifact (docs + completions + manpage)"

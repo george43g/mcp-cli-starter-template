@@ -11,7 +11,7 @@
  *   - LICENSE — MIT.
  *   - llms-install.md — user-facing setup guide for end users of cloned tools.
  *
- * All `{{name}}` placeholders are substituted at write time by portPackage.
+ * All `example-repo` placeholders are substituted at write time by portPackage.
  */
 
 import { Migration, type MigrationContext, type MigrationResult } from "../../core/migration.js";

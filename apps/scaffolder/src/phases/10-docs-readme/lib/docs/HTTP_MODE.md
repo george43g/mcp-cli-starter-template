@@ -9,10 +9,10 @@ The starter ships HTTP support wired up by default. Tools that don't want it can
 export MCP_HTTP_TOKEN=$(openssl rand -hex 32)
 
 # Run the server (port 8080, bind 127.0.0.1)
-pnpm --filter @george43g/{{name}}-mcp http
+pnpm --filter @george43g/example-repo-mcp http
 
 # Or with explicit port/bind
-pnpm --filter @george43g/{{name}}-mcp http -- --port 9090 --bind 0.0.0.0
+pnpm --filter @george43g/example-repo-mcp http -- --port 9090 --bind 0.0.0.0
 ```
 
 ## Endpoints
@@ -27,18 +27,18 @@ pnpm --filter @george43g/{{name}}-mcp http -- --port 9090 --bind 0.0.0.0
 Claude Code:
 ```bash
 claude mcp add --transport http \
-  --url https://{{name}}.example.com/mcp \
+  --url https://example-repo.example.com/mcp \
   --header "Authorization: Bearer $MCP_HTTP_TOKEN" \
-  {{name}}-remote
+  example-repo-remote
 ```
 
 OpenCode (`opencode.json`):
 ```json
 {
   "mcp": {
-    "{{name}}-remote": {
+    "example-repo-remote": {
       "type": "remote",
-      "url": "https://{{name}}.example.com/mcp",
+      "url": "https://example-repo.example.com/mcp",
       "headers": { "Authorization": "Bearer ${MCP_HTTP_TOKEN}" }
     }
   }
@@ -66,9 +66,9 @@ Body format matches `formatHealthText()` from `@george43g/robustness/health.ts` 
 
 If your tool only needs stdio:
 
-1. Delete the `http` subcommand from `apps/{{name}}-mcp/src/cli.ts`.
-2. Delete the `transport === "http"` branch from `apps/{{name}}-mcp/src/index.ts:runMcpServer`.
-3. Delete case #9 (HTTP transport) from `apps/{{name}}-mcp/scripts/stress-mcp.ts`.
+1. Delete the `http` subcommand from `apps/example-repo-mcp/src/cli.ts`.
+2. Delete the `transport === "http"` branch from `apps/example-repo-mcp/src/index.ts:runMcpServer`.
+3. Delete case #9 (HTTP transport) from `apps/example-repo-mcp/scripts/stress-mcp.ts`.
 4. Remove `MCP_HTTP_TOKEN`, `MCP_HTTP_PORT`, `MCP_HTTP_BIND` from `.env.example`.
 5. Optionally delete `packages/mcp-kit/src/transports/http.ts` if no other tool in your workspace uses it.
 

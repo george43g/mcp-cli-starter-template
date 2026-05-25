@@ -27,24 +27,24 @@ Items intentionally not done in the current shipping series. Each has a "trigger
 
 ---
 
-## 2. `{{name}}` placeholder syntax
+## 2. `example-repo` placeholder syntax
 
 **Status**: declined (kept as-is). Documented here so the decision doesn't get re-litigated.
 
 **Why double-curly stays**:
 - Unambiguous — `{{` never appears in real source content, so substitution can be a dumb regex with zero false positives.
 - The substitution engine (`apps/scaffolder/src/core/package-port.ts:62-78`) already handles BOTH file content AND path renames. No alternative gains anything.
-- The placeholder only exists during template authoring. After `mcp-scaffold init` runs, the user's repo has fully-substituted paths and content — they never see `{{name}}` in their working tool.
+- The placeholder only exists during template authoring. After `mcp-scaffold init` runs, the user's repo has fully-substituted paths and content — they never see `example-repo` in their working tool.
 
 If we ever revisit: a `--placeholder` flag on `mcp-scaffold init` could let users pick a different marker without changing the canonical template. Low priority.
 
 ---
 
-## 3. Root `mise.toml` `{{name}}` collides with mise's tera template engine
+## 3. Root `mise.toml` `example-repo` collides with mise's tera template engine
 
 **Status**: pre-existing bug, non-blocking but noisy.
 
-**Why**: the canonical root `mise.toml` (written by `apps/scaffolder/src/phases/02-toolchain/m1-mise.ts`) contains literal `{{name}}` placeholders in `[tasks.screenshots]` and `[tasks.completions]` so the scaffolder substitution substitutes them at scaffold time. But mise's tera template engine parses run blocks at config load and tries to interpolate `{{name}}` as a tera variable — fails with `Variable 'name' not found in context`.
+**Why**: the canonical root `mise.toml` (written by `apps/scaffolder/src/phases/02-toolchain/m1-mise.ts`) contains literal `example-repo` placeholders in `[tasks.screenshots]` and `[tasks.completions]` so the scaffolder substitution substitutes them at scaffold time. But mise's tera template engine parses run blocks at config load and tries to interpolate `example-repo` as a tera variable — fails with `Variable 'name' not found in context`.
 
 **Visible symptom**: any `mise <command>` invocation reading the root `mise.toml` prints a `mise ERROR Failed to render '__tera_one_off'` line. Tasks still complete successfully (the error is per-task and non-fatal at the config-load level). `mise tasks` listing is broken.
 
@@ -53,11 +53,11 @@ If we ever revisit: a `--placeholder` flag on `mcp-scaffold init` could let user
 **Cost**: ~30 minutes.
 
 **Fix options**:
-- A. Wrap canonical's `{{name}}` in `{% raw %}{{name}}{% endraw %}` blocks. Update `apps/scaffolder/src/core/templating.ts:25-26` to ALSO strip the raw tags during substitution.
-- B. Refactor the `[tasks.screenshots]` + `[tasks.completions]` tasks to discover paths via `find apps/*-mcp -name '.usage.kdl'` instead of hard-coded `{{name}}` filters. Same surface, no placeholder needed.
+- A. Wrap canonical's `example-repo` in `{% raw %}example-repo{% endraw %}` blocks. Update `apps/scaffolder/src/core/templating.ts:25-26` to ALSO strip the raw tags during substitution.
+- B. Refactor the `[tasks.screenshots]` + `[tasks.completions]` tasks to discover paths via `find apps/*-mcp -name '.usage.kdl'` instead of hard-coded `example-repo` filters. Same surface, no placeholder needed.
 - C. Pin the canonical mise.toml to a different task name not used in run blocks, and rely on per-app mise.toml (which is what the cloned tool already uses post-`init`).
 
-Recommended: B — refactor the path-discovery so the canonical mise.toml has no `{{name}}` at all. Cleanest UX, no escaping awkwardness in scaffolded output.
+Recommended: B — refactor the path-discovery so the canonical mise.toml has no `example-repo` at all. Cleanest UX, no escaping awkwardness in scaffolded output.
 
 ---
 
@@ -65,7 +65,7 @@ Recommended: B — refactor the path-discovery so the canonical mise.toml has no
 
 **Status**: missing — only the SCAFFOLDED output has a gate.
 
-**Why deferred**: the scaffolded output's freshness gate (`apps/{{name}}-mcp/scripts/check-usage-freshness.mjs` + the CI step that runs it) is the user-facing value. The scaffolder repo itself uses `usage` via `mise run completions` from `apps/scaffolder/mise.toml` but ships its checked-in artifacts at `completions/scaffolder/` + `docs/scaffolder-cli/` + `man/mcp-scaffold.1` without a CI gate.
+**Why deferred**: the scaffolded output's freshness gate (`apps/example-repo-mcp/scripts/check-usage-freshness.mjs` + the CI step that runs it) is the user-facing value. The scaffolder repo itself uses `usage` via `mise run completions` from `apps/scaffolder/mise.toml` but ships its checked-in artifacts at `completions/scaffolder/` + `docs/scaffolder-cli/` + `man/mcp-scaffold.1` without a CI gate.
 
 **Trigger to action**: if we ever see drift between `apps/scaffolder/.usage.kdl` and the checked-in scaffolder completions land on `main` (which would mean someone edited the spec without regen — visible in PR review for now).
 
@@ -123,7 +123,7 @@ Recommended: A (just document it). The trust prompt IS the right UX for security
 
 **Status**: not started.
 
-**Why deferred**: the MCP Resources demo (`apps/{{name}}-mcp/src/resources/registry.ts`) currently exposes `health://` + `logs://recent/{n}`. Adding a `search://embeddings/{query}` example would show a richer pattern (vector index + pluggable embedding model), but it's bespoke and probably belongs in a separate "advanced patterns" doc.
+**Why deferred**: the MCP Resources demo (`apps/example-repo-mcp/src/resources/registry.ts`) currently exposes `health://` + `logs://recent/{n}`. Adding a `search://embeddings/{query}` example would show a richer pattern (vector index + pluggable embedding model), but it's bespoke and probably belongs in a separate "advanced patterns" doc.
 
 **Trigger to action**: when someone asks "how do I expose search results as MCP Resources?" or when we have a real-world MCP using the kit for semantic search.
 

@@ -4,7 +4,7 @@ description: 'Ink/React full-screen UI with vim keybindings.'
 ---
 
 ```bash
-{{name}} tui
+example-repo tui
 ```
 
 ## Keybindings
@@ -21,13 +21,13 @@ description: 'Ink/React full-screen UI with vim keybindings.'
 ## Theme system
 
 ```bash
-{{name}} tui --theme powerline --accent '#1982FC'
+example-repo tui --theme powerline --accent '#1982FC'
 ```
 
 Or via env:
 
 ```bash
-MCP_TUI_THEME=powerline MCP_TUI_ACCENT='#1982FC' {{name}} tui
+MCP_TUI_THEME=powerline MCP_TUI_ACCENT='#1982FC' example-repo tui
 ```
 
 The palette is derived from the accent (HSL math in `packages/tui-kit/src/theme/color.ts`). Glyph presets: `safe` (geometric/emoji, works in any terminal) and `powerline` (requires a Nerd Font).

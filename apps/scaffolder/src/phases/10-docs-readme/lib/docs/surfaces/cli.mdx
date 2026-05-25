@@ -3,17 +3,17 @@ title: CLI
 description: 'Single bin, subcommand dispatch, env var ↔ flag pairing.'
 ---
 
-The CLI is `{{name}}` — a single bin that dispatches to subcommands. Every tool exposed via MCP is automatically also a subcommand here.
+The CLI is `example-repo` — a single bin that dispatches to subcommands. Every tool exposed via MCP is automatically also a subcommand here.
 
 ## Subcommands
 
 ```
-{{name}} mcp [--http] [--port N] [--bind H]   run the MCP server
-{{name}} tui                                   launch the Ink TUI
-{{name}} doctor                                preflight checks
-{{name}} repl                                  interactive REPL
-{{name}} health                                one-shot health snapshot
-{{name}} noop --input <text> [--upper]         demo tool invocation
+example-repo mcp [--http] [--port N] [--bind H]   run the MCP server
+example-repo tui                                   launch the Ink TUI
+example-repo doctor                                preflight checks
+example-repo repl                                  interactive REPL
+example-repo health                                one-shot health snapshot
+example-repo noop --input <text> [--upper]         demo tool invocation
 ```
 
 ## Global flags
@@ -32,7 +32,7 @@ Every recognized env var is also accepted as a CLI flag (see `@george43g/cli-kit
 | Env | Flag | Purpose |
 |-----|------|---------|
 | `MCP_HTTP_TOKEN` | `--http-token` | Bearer token for HTTP transport |
-| `MCP_LOG_DIR` | `--log-dir` | Override default `$TMPDIR/{{name}}/` |
+| `MCP_LOG_DIR` | `--log-dir` | Override default `$TMPDIR/example-repo/` |
 | `MCP_DISABLE_NATIVE` | `--no-native` | Force TS fallback (skip Rust accel) |
 | `MCP_TOOL_TIMEOUT_DEFAULT_MS` | `--tool-timeout-ms` | Per-tool default timeout |
-| `{{NAME_UPPER}}_DEV` | `--dev` | Enable dev-only tools (`get_logs`) |
+| `EXAMPLE_REPO_DEV` | `--dev` | Enable dev-only tools (`get_logs`) |

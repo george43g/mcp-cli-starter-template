@@ -8,7 +8,7 @@ You're working on **the scaffolder repo + canonical static template**. This is t
 
 Two things at once:
 
-1. **The static "golden output"** under `apps/{{name}}-mcp/`, `apps/rust-accel/`, `packages/*`, `docs/`, etc. — the literal files that the scaffolder will ship into a cloned tool. CI rebuilds + tests it on every PR.
+1. **The static "golden output"** under `apps/example-repo-mcp/`, `apps/rust-accel/`, `packages/*`, `docs/`, etc. — the literal files that the scaffolder will ship into a cloned tool. CI rebuilds + tests it on every PR.
 
 2. **The scaffolder/migrator** at `apps/scaffolder/` (bin `mcp-scaffold`). 12 phases, 21 migrations, 145 template files. Drives `init` (fresh scaffold) and `apply` (diff-safe retrofit).
 
@@ -33,7 +33,7 @@ The scaffolder's `src/phases/<NN-name>/lib/` directories are **byte-identical co
 
 ```
 apps/
-  {{name}}-mcp/                   live "golden output" — the cloned tool's source
+  example-repo-mcp/                   live "golden output" — the cloned tool's source
   rust-accel/                     napi-rs v3 crate
   scaffolder/                     the meta-tool: `mcp-scaffold`
     bin/cli.ts                    commander entry (shebang via vite banner)
@@ -74,7 +74,7 @@ packages/
 | `pnpm typecheck` | `tsc --noEmit` per package |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm verify` | lint + typecheck + test + build (the CI shape) |
-| `pnpm stress` | 11-case MCP stress harness against the canonical `apps/{{name}}-mcp/` |
+| `pnpm stress` | 11-case MCP stress harness against the canonical `apps/example-repo-mcp/` |
 
 Scaffolder-only (run from inside `apps/scaffolder/`):
 | Command | Purpose |
@@ -118,7 +118,7 @@ Scaffolder-only (run from inside `apps/scaffolder/`):
 
 ## Conventions
 
-- **Single source of truth**: canonical files at the repo root + `apps/{{name}}-mcp/` + `packages/*`. The scaffolder's `lib/` directories are byte-identical copies, drift-checked.
+- **Single source of truth**: canonical files at the repo root + `apps/example-repo-mcp/` + `packages/*`. The scaffolder's `lib/` directories are byte-identical copies, drift-checked.
 - **No emojis in source code unless the user requests.** Comments stay terse and "why"-focused.
 - **Prefer canonical CLIs** (`pnpm init`, `pnpm pkg set`, `git init`) over file-copying for setup steps. Templates live in `lib/`; raw fs writes for small literals.
 - **Conventional Commits** drive semver via the (disabled-by-default) `release.yml` workflow.
@@ -126,7 +126,7 @@ Scaffolder-only (run from inside `apps/scaffolder/`):
 ## Testing
 
 - **Scaffolder unit + integration**: `pnpm --filter @george43g/mcp-scaffold test` (76 tests across `templating`, `config-leaf`, `fs`, `package-port`, `migrations`, `golden`, `retrofit`, `tsconfig`)
-- **Cloned-tool integration**: `pnpm --filter @george43g/{{name}}-mcp test` (9 tests; native + TS fallback paths)
+- **Cloned-tool integration**: `pnpm --filter @george43g/example-repo-mcp test` (9 tests; native + TS fallback paths)
 - **11-case stress harness**: `pnpm stress` (handshake, health, parallel, timeout, SIGTERM, RSS watchdog, HTTP roundtrip, …)
 - **Golden-output drift**: scaffolder's `tests/golden.test.ts` — byte-equal lib vs canonical (excepting `EXEMPT_LIB_PATHS`)
 - **E2E in CI**: `.github/workflows/ci.yml` runs `mcp-scaffold init` into a tempdir and asserts `pnpm install && pnpm test` succeed
@@ -148,6 +148,6 @@ The full project plan lives at `/Users/george/.claude/plans/2-programmable-mcp-s
 ## Troubleshooting
 
 - **Golden test fails**: someone edited canonical or lib/ without syncing. Sync the diverging side, re-run `pnpm --filter @george43g/mcp-scaffold test`.
-- **`pnpm verify` fails on `{{name}}-mcp` tests**: rust-accel may have regenerated `index.{js,d.ts}` — sync to `apps/scaffolder/src/phases/09-rust-accel/lib/`.
+- **`pnpm verify` fails on `example-repo-mcp` tests**: rust-accel may have regenerated `index.{js,d.ts}` — sync to `apps/scaffolder/src/phases/09-rust-accel/lib/`.
 - **CI smoke fails locally but not in CI** (or vice versa): pnpm defaults to `--frozen-lockfile` in CI; pass `--no-frozen-lockfile` for the scaffolded output which has no lockfile yet.
 - **Biome reformatted a lib/ file**: should not happen (biome.json excludes `apps/scaffolder/src/phases/**/lib`). If it does, the exclusion glob may need fixing.

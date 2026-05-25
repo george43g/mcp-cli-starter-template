@@ -2,7 +2,7 @@
 name = "rust-accel"
 version = "0.0.0"
 edition = "2021"
-description = "Optional Rust acceleration for the {{name}}-mcp starter template"
+description = "Optional Rust acceleration for the example-repo-mcp starter template"
 license = "MIT"
 publish = false
 

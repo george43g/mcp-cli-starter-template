@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install shell completions for the {{name}} CLI.
+# Install shell completions for the example-repo CLI.
 #
 # Detects $SHELL, regenerates the matching completion via usage(1) if
 # missing, and copies it into the well-known location for that shell.
@@ -14,7 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(dirname "$SCRIPT_DIR")"
 USAGE_KDL="$APP_DIR/.usage.kdl"
 COMPLETIONS_DIR="$APP_DIR/completions"
-BIN_NAME="{{name}}"
+BIN_NAME="example-repo"
 
 if [[ ! -f "$USAGE_KDL" ]]; then
   echo "✗ Expected $USAGE_KDL — bail." >&2

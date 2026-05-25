@@ -2,8 +2,8 @@
 /**
  * init-template.mjs — clone-and-rename for mcp-cli-starter-template.
  *
- * Replaces `{{name}}` (kebab-case lowercase) and `{{NAME_UPPER}}` (env-var
- * style) across every tracked file, renames `apps/{{name}}-mcp/` and a few
+ * Replaces `example-repo` (kebab-case lowercase) and `EXAMPLE_REPO` (env-var
+ * style) across every tracked file, renames `apps/example-repo-mcp/` and a few
  * placeholder paths, optionally swaps the npm scope, then self-deletes.
  *
  * Usage:
@@ -27,8 +27,8 @@ const exec = promisify(execCallback);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
 
-const NAME_PLACEHOLDER = "{{name}}";
-const NAME_UPPER_PLACEHOLDER = "{{NAME_UPPER}}";
+const NAME_PLACEHOLDER = "example-repo";
+const NAME_UPPER_PLACEHOLDER = "EXAMPLE_REPO";
 const SCOPE_PLACEHOLDER = "@george43g";
 
 const NAME_RE = /^[a-z][a-z0-9-]*$/;
@@ -113,8 +113,8 @@ EXAMPLE
   pnpm tsx scripts/init-template.mjs --name wm-stack --scope @myorg
 
 WHAT IT DOES
-  1. Replace {{name}} and {{NAME_UPPER}} in every tracked file.
-  2. Rename apps/{{name}}-mcp/ and a few placeholder paths.
+  1. Replace example-repo and EXAMPLE_REPO in every tracked file.
+  2. Rename apps/example-repo-mcp/ and a few placeholder paths.
   3. Update package.json names + bin maps.
   4. Optionally swap the npm scope.
   5. Delete this script.

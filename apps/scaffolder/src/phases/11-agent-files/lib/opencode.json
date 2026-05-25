@@ -1,14 +1,14 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "{{name}}-mcp-dev": {
+    "example-repo-mcp-dev": {
       "type": "local",
-      "command": ["pnpm", "tsx", "apps/{{name}}-mcp/scripts/mcp-dev-proxy.ts"],
+      "command": ["pnpm", "tsx", "apps/example-repo-mcp/scripts/mcp-dev-proxy.ts"],
       "enabled": true,
       "environment": {
         "MCP_DEV": "1",
-        "MCP_DEV_CMD": "pnpm tsx apps/{{name}}-mcp/src/index.ts",
-        "MCP_DEV_WATCH_DIR": "apps/{{name}}-mcp/src"
+        "MCP_DEV_CMD": "pnpm tsx apps/example-repo-mcp/src/index.ts",
+        "MCP_DEV_WATCH_DIR": "apps/example-repo-mcp/src"
       }
     }
   }

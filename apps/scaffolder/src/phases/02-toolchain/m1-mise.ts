@@ -67,7 +67,7 @@ run = "pnpm stress"
 
 [tasks.screenshots]
 description = "Regenerate TUI/CLI screenshots via VHS"
-run = "pnpm --filter @george43g/{{name}}-mcp screenshots"
+run = "pnpm --filter @george43g/example-repo-mcp screenshots"
 `;
 
 export default class MiseMigration extends Migration {

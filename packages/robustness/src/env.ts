@@ -6,7 +6,7 @@
  *
  * Convention: robustness knobs use the MCP_ prefix so this module is portable
  * across MCP servers. Project-specific knobs use their own prefix
- * (e.g. {{NAME_UPPER}}_) and should not be read through this helper.
+ * (e.g. EXAMPLE_REPO_) and should not be read through this helper.
  */
 
 export function envNum(name: string, fallback: number): number {

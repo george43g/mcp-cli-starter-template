@@ -1,4 +1,4 @@
-# {{name}} – Agent Guide
+# example-repo – Agent Guide
 
 > `CLAUDE.md` and `.cursorrules` are symlinks to this file. Edit `AGENTS.md`; the others follow.
 
@@ -6,15 +6,15 @@ This repo was generated from `mcp-cli-starter-template` via `mcp-scaffold init`.
 
 ## What This Repo Is
 
-A Turborepo monorepo that ships **four surfaces** from a **single bin** (`{{name}}`):
+A Turborepo monorepo that ships **four surfaces** from a **single bin** (`example-repo`):
 
 | Subcommand | Surface |
 |---|---|
-| `{{name}} mcp` | MCP server (stdio default; `--http` for Streamable HTTP) |
-| `{{name}} tui` | Ink/React full-screen TUI |
-| `{{name}} doctor` | Preflight checks (Node version, native module, env) |
-| `{{name}} repl` (alias `console`) | Interactive REPL driving the in-process dispatcher |
-| `{{name}} health`, `{{name}} noop`, … | Direct tool invocation — one CLI subcommand per `ToolDefinition` |
+| `example-repo mcp` | MCP server (stdio default; `--http` for Streamable HTTP) |
+| `example-repo tui` | Ink/React full-screen TUI |
+| `example-repo doctor` | Preflight checks (Node version, native module, env) |
+| `example-repo repl` (alias `console`) | Interactive REPL driving the in-process dispatcher |
+| `example-repo health`, `example-repo noop`, … | Direct tool invocation — one CLI subcommand per `ToolDefinition` |
 
 Delete any surface you don't need: see `docs/ARCHITECTURE.md`. The starter ships all four wired up so the patterns are visible.
 
@@ -36,7 +36,7 @@ Delete any surface you don't need: see `docs/ARCHITECTURE.md`. The starter ships
 
 ```
 apps/
-  {{name}}-mcp/   # the tool — clone-and-rename target
+  example-repo-mcp/   # the tool — clone-and-rename target
   rust-accel/     # napi crate, optional acceleration
 packages/
   robustness/     # logger + watchdog + shutdown + with-timeout + health + retry + rate-limit
@@ -67,11 +67,11 @@ packages/
 | `pnpm verify` | lint + typecheck + test + build (CI shape) |
 
 Per-app:
-- `pnpm --filter {{name}}-mcp dev:mcp` — `tsx src/cli.ts mcp` with env files loaded
-- `pnpm --filter {{name}}-mcp mcp` — run the built MCP via stdio
-- `pnpm --filter {{name}}-mcp mcp -- --http` — run the built MCP via Streamable HTTP (requires `MCP_HTTP_TOKEN`)
-- `pnpm --filter {{name}}-mcp tui` — launch the Ink TUI
-- `pnpm --filter {{name}}-mcp doctor` — preflight checks (Node version, deps, native module, env)
+- `pnpm --filter example-repo-mcp dev:mcp` — `tsx src/cli.ts mcp` with env files loaded
+- `pnpm --filter example-repo-mcp mcp` — run the built MCP via stdio
+- `pnpm --filter example-repo-mcp mcp -- --http` — run the built MCP via Streamable HTTP (requires `MCP_HTTP_TOKEN`)
+- `pnpm --filter example-repo-mcp tui` — launch the Ink TUI
+- `pnpm --filter example-repo-mcp doctor` — preflight checks (Node version, deps, native module, env)
 
 ## Env layout (Vite-style precedence)
 
@@ -121,7 +121,7 @@ The watchdog writes its state to JSON each tick when `MCP_WATCHDOG_STATE_PATH` i
 
 ## Logs
 
-NDJSON files written to `$TMPDIR/{{name}}-mcp/{{name}}-mcp-{PID}-{date}.ndjson`. Lines:
+NDJSON files written to `$TMPDIR/example-repo-mcp/example-repo-mcp-{PID}-{date}.ndjson`. Lines:
 - `level: "info" | "warn" | "error"` — events
 - `level: "perf"` with `dur_ms` — performance spans
 - `msg: "heartbeat"` — periodic memory/uptime (every 60s)
@@ -131,7 +131,7 @@ Also in-memory ring buffer (last 500 lines). In dev mode (`MCP_DEV=1`), a `get_l
 
 ## HTTP transport
 
-Default off (stdio mode). Enable with `{{name}} mcp --http`. Requires `MCP_HTTP_TOKEN` (generate with `openssl rand -hex 32`).
+Default off (stdio mode). Enable with `example-repo mcp --http`. Requires `MCP_HTTP_TOKEN` (generate with `openssl rand -hex 32`).
 
 - **POST /mcp** — MCP Streamable HTTP (bearer-token required)
 - **GET /health** — health snapshot (no auth; for reverse-proxy probes; returns 503 if unhealthy)
@@ -140,7 +140,7 @@ Default off (stdio mode). Enable with `{{name}} mcp --http`. Requires `MCP_HTTP_
 
 ## Stress harness
 
-`pnpm stress` covers 11 lifecycle assertions (in `apps/{{name}}-mcp/scripts/stress-mcp.ts`):
+`pnpm stress` covers 11 lifecycle assertions (in `apps/example-repo-mcp/scripts/stress-mcp.ts`):
 
 1. handshake + tools/list returns the full catalog
 2. `health_check` returns `Status: healthy`
@@ -161,8 +161,8 @@ Add a case whenever you ship something touching lifecycle, dispatch, error handl
 After any change:
 
 1. **Rebuild**: `pnpm build` (turbo will only rebuild what changed).
-2. **Reload the dev MCP**: the proxy at `apps/{{name}}-mcp/scripts/mcp-dev-proxy.ts` auto-reloads on `src/**/*.ts` changes. If your MCP host already has a session, restart it.
-3. **Exercise via the dev MCP**: call the relevant `mcp__{{name}}-mcp-dev__*` tool and confirm the change.
+2. **Reload the dev MCP**: the proxy at `apps/example-repo-mcp/scripts/mcp-dev-proxy.ts` auto-reloads on `src/**/*.ts` changes. If your MCP host already has a session, restart it.
+3. **Exercise via the dev MCP**: call the relevant `mcp__example-repo-mcp-dev__*` tool and confirm the change.
 4. **Add a regression test** when unit-testable. Tests live colocated as `*.test.ts` or in `tests/` for integration.
 5. **Run the full test suite**: `pnpm test`.
 6. **Run the stress harness** on changes that touch the dispatcher/lifecycle: `pnpm stress`.
@@ -175,7 +175,7 @@ After any change:
 
 ## Native Rust acceleration (optional)
 
-`apps/rust-accel/` contains a `napi-rs` v3 module. Build with `pnpm --filter rust-accel build`. The MCP loads it via `apps/{{name}}-mcp/src/native-bridge.ts:tryLoadNative()` and falls back to the TS implementation when missing.
+`apps/rust-accel/` contains a `napi-rs` v3 module. Build with `pnpm --filter rust-accel build`. The MCP loads it via `apps/example-repo-mcp/src/native-bridge.ts:tryLoadNative()` and falls back to the TS implementation when missing.
 
 Force TS path: `MCP_DISABLE_NATIVE=1`. CI tests both paths.
 
@@ -198,6 +198,6 @@ Types are hand-mirrored between `packages/shared-types/src/index.ts` (Zod) and `
 
 - **Build hangs**: check `pnpm dev` isn't already running in another shell (Vite watch can deadlock turbo).
 - **Native module fails to load**: run `pnpm --filter rust-accel build` manually. If it fails with "rustc not found", install Rust or set `MCP_DISABLE_NATIVE=1`.
-- **`{{name}}-cli http` refuses to start**: requires `MCP_HTTP_TOKEN`. Generate one with `openssl rand -hex 32`.
+- **`example-repo-cli http` refuses to start**: requires `MCP_HTTP_TOKEN`. Generate one with `openssl rand -hex 32`.
 - **MCP host doesn't see tool changes**: the dev proxy auto-reloads on `src/**` but the host caches the session. Restart your MCP host (Cursor/Claude/Warp).
-- **Orphaned MCP processes**: `ps aux | grep {{name}}` and kill stragglers. The shutdown registry should catch this, but if it doesn't, file a bug.
+- **Orphaned MCP processes**: `ps aux | grep example-repo` and kill stragglers. The shutdown registry should catch this, but if it doesn't, file a bug.

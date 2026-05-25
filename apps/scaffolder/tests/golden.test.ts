@@ -2,7 +2,7 @@
  * Golden-output drift test.
  *
  * The scaffolder's `src/phases/*\/lib\/**` directories hold verbatim copies
- * of the canonical sources under `apps/{{name}}-mcp/`, `apps/rust-accel/`,
+ * of the canonical sources under `apps/example-repo-mcp/`, `apps/rust-accel/`,
  * `packages/*`, `docs/`, `.github/`, etc. If someone edits a canonical file
  * without updating the corresponding lib/ copy (or vice versa), the
  * scaffolder will silently emit stale output. This test catches that drift.
@@ -11,7 +11,7 @@
  * the LIB_TO_CANONICAL mapping, read both, byte-compare. Files in canonical
  * that have no lib/ counterpart (new files) are also flagged.
  *
- * Substitution note: lib/ preserves `{{name}}` and `@george43g` placeholders
+ * Substitution note: lib/ preserves `example-repo` and `@george43g` placeholders
  * (the scaffolder substitutes them at write time, not at copy time). The
  * canonical also has these placeholders. So byte equality should hold
  * directly — no reverse-substitution needed.
@@ -45,10 +45,10 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   ["05-utility-pkgs/lib/tui-kit", "packages/tui-kit"],
   ["06-mcp-kit/lib", "packages/mcp-kit"],
   ["07-shared-types/lib", "packages/shared-types"],
-  ["08-app/lib", "apps/{{name}}-mcp"],
+  ["08-app/lib", "apps/example-repo-mcp"],
   ["09-rust-accel/lib", "apps/rust-accel"],
   ["10-docs-readme/lib/docs", "docs"],
-  // 10-docs-readme/lib/README.md is the CLONED-TOOL's README (with {{name}}
+  // 10-docs-readme/lib/README.md is the CLONED-TOOL's README (with example-repo
   // placeholders). The repo root's README.md describes the scaffolder itself
   // — different content by design. Exempt from byte-equality check; see
   // EXEMPT_PATHS below.
@@ -69,7 +69,7 @@ const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
   // Root README — see LIB_TO_CANONICAL comment.
   "10-docs-readme/lib/README.md",
   // AGENTS.md at the repo root describes the SCAFFOLDER (the meta-tool);
-  // the lib copy is the CLONED-TOOL's agent guide with {{name}} placeholders.
+  // the lib copy is the CLONED-TOOL's agent guide with example-repo placeholders.
   // Different content by design.
   "11-agent-files/lib/AGENTS.md",
 ]);

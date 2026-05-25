@@ -12,7 +12,7 @@ node = "24"
 pnpm = "10.29.3"
 # `usage` (https://usage.jdx.dev) generates bash/zsh/fish completions +
 # manpage + markdown docs from the .usage.kdl specs in apps/scaffolder/
-# and apps/{{name}}-mcp/. Required by `mise run docs`/`completions`/
+# and apps/example-repo-mcp/. Required by `mise run docs`/`completions`/
 # `manpage` and by the cli-artifacts-drift CI gate.
 usage = "latest"
 
@@ -56,18 +56,18 @@ run = "pnpm stress"
 
 [tasks.screenshots]
 description = "Regenerate TUI/CLI screenshots via VHS"
-run = "pnpm --filter @george43g/{{name}}-mcp screenshots"
+run = "pnpm --filter @george43g/example-repo-mcp screenshots"
 
 [tasks.docs]
 description = "Generate CLI completions + markdown docs via usage"
 run = """
-  usage g completion bash apps/{{name}}-mcp/.usage.kdl > completions/_{{name}}.bash
-  usage g completion zsh apps/{{name}}-mcp/.usage.kdl > completions/_{{name}}.zsh
-  usage g completion fish apps/{{name}}-mcp/.usage.kdl > completions/_{{name}}.fish
-  usage g markdown apps/{{name}}-mcp/.usage.kdl --out-dir docs/cli/
+  usage g completion bash apps/example-repo-mcp/.usage.kdl > completions/_example-repo.bash
+  usage g completion zsh apps/example-repo-mcp/.usage.kdl > completions/_example-repo.zsh
+  usage g completion fish apps/example-repo-mcp/.usage.kdl > completions/_example-repo.fish
+  usage g markdown apps/example-repo-mcp/.usage.kdl --out-dir docs/cli/
 """
 
 [tasks.rename]
-description = "Rename this template (replaces {{name}} placeholders, self-deletes script)"
+description = "Rename this template (replaces example-repo placeholders, self-deletes script)"
 run = "node scripts/init-template.mjs {{ arg(name=\"name\") }}"
 # Example: mise run rename -- --name foo-mcp --scope @myorg

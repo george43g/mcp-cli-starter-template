@@ -5,7 +5,7 @@
  *   -v, --verbose debug-level logging
  *   --no-color    disable colors
  *
- * Use as the foundation for any tool's `{{name}}-cli` bin.
+ * Use as the foundation for any tool's `example-repo-cli` bin.
  */
 
 import { Command } from "commander";

@@ -5,7 +5,7 @@
  * index.js (auto-generated napi loader, checked-in), index.d.ts, README.md,
  * .gitignore.
  *
- * Files use `{{name}}` placeholders (in lib.rs comments and Cargo.toml
+ * Files use `example-repo` placeholders (in lib.rs comments and Cargo.toml
  * description); portPackage substitutes them. The pkgDir is fixed as
  * `apps/rust-accel/` (not user-customizable — the package name is
  * conventionally rust-accel across all template clones).

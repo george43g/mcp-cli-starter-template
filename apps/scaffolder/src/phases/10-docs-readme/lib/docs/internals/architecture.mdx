@@ -9,7 +9,7 @@ For the full architecture walk-through, see [`ARCHITECTURE.md`](https://github.c
 
 ```
 apps/
-  {{name}}-mcp/    your tool (clone-and-rename target)
+  example-repo-mcp/    your tool (clone-and-rename target)
   rust-accel/      napi-rs crate (optional acceleration)
 
 packages/
@@ -30,10 +30,10 @@ packages/
 The bin (`dist/cli.js`) is the only entry users see. It dispatches:
 
 ```
-{{name}} mcp   → runMcpServer({ transport: 'stdio' | 'http' })
-{{name}} tui   → dynamic import of src/tui/index.tsx → runTui()
-{{name}} repl  → readline loop → program.parseAsync per line
-{{name}} <tool> → callMcpTool(toolName, argsFromFlags)
+example-repo mcp   → runMcpServer({ transport: 'stdio' | 'http' })
+example-repo tui   → dynamic import of src/tui/index.tsx → runTui()
+example-repo repl  → readline loop → program.parseAsync per line
+example-repo <tool> → callMcpTool(toolName, argsFromFlags)
 ```
 
 All four paths share the same `getDispatcher()` — so adding a tool to the registry is automatically reflected everywhere.

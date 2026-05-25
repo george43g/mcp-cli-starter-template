@@ -9,7 +9,7 @@
 export interface SecretRef {
   /** Logical name — used as env-var stem (UPPER_SNAKE) and 1Password item title. */
   name: string;
-  /** Tool name prefix, e.g. "{{name}}". Used to namespace env vars and config dirs. */
+  /** Tool name prefix, e.g. "example-repo". Used to namespace env vars and config dirs. */
   toolPrefix: string;
   /** Optional 1Password section/field if the secret lives inside a structured item. */
   opField?: string;

@@ -17,7 +17,7 @@ const APP_DIR = resolve(__dirname, "..");
 const USAGE_KDL = join(APP_DIR, ".usage.kdl");
 
 // Read the bin name from .usage.kdl (`bin "<name>"`) so this script works
-// for any cloned tool without hard-coding {{name}}.
+// for any cloned tool without hard-coding example-repo.
 const usageSrc = readFileSync(USAGE_KDL, "utf8");
 const binMatch = usageSrc.match(/^bin\s+"([^"]+)"/m);
 if (!binMatch) {

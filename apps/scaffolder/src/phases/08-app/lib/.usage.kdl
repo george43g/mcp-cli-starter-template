@@ -4,9 +4,9 @@
 //
 // Keep this in sync with the commander program in src/cli.ts.
 
-name "{{name}}"
-bin "{{name}}"
-about "{{name}} — MCP server + CLI + TUI (single bin, subcommand dispatch)"
+name "example-repo"
+bin "example-repo"
+about "example-repo — MCP server + CLI + TUI (single bin, subcommand dispatch)"
 
 flag "--json" help="Emit machine-readable JSON output"
 flag "-q --quiet" help="Suppress non-error output"

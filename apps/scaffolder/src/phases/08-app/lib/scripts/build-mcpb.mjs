@@ -7,7 +7,7 @@
  * command, and connects via stdio. The user gets a one-click install:
  * drag the .mcpb onto the app, click "Install".
  *
- * Output: {{name}}-mcp-${version}.mcpb in this app's cwd.
+ * Output: example-repo-mcp-${version}.mcpb in this app's cwd.
  *
  * Spec: https://github.com/modelcontextprotocol/mcpb (manifest_version 0.3)
  *

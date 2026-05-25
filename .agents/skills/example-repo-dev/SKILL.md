@@ -1,6 +1,6 @@
-# {{name}}-dev (cloud-agent skill)
+# example-repo-dev (cloud-agent skill)
 
-> This file is a thin pointer for cloud agents. The canonical skill lives at `skills/{{name}}/SKILL.md`.
+> This file is a thin pointer for cloud agents. The canonical skill lives at `skills/example-repo/SKILL.md`.
 
 ## Before doing any work
 

@@ -1,6 +1,6 @@
 ---
 name: mcp-tool-author
-description: Authoring checklist for adding new MCP tools to a {{name}}-mcp tool. Use whenever the user asks to add or modify a tool.
+description: Authoring checklist for adding new MCP tools to a example-repo-mcp tool. Use whenever the user asks to add or modify a tool.
 ---
 
 # Adding an MCP tool — canonical checklist
@@ -62,7 +62,7 @@ Encoded by `@george43g/mcp-kit`'s `buildDispatcher`, but you must follow them in
 
 ## 4. Register the tool
 
-Add to `apps/{{name}}-mcp/src/tools/registry.ts`:
+Add to `apps/example-repo-mcp/src/tools/registry.ts`:
 
 ```ts
 import { fooTool } from "./foo.js";
@@ -72,7 +72,7 @@ return makeRegistry([healthCheckTool, noopTool, fooTool, getLogsTool]);
 
 ## 5. Add an integration test
 
-`apps/{{name}}-mcp/tests/integration.test.ts`:
+`apps/example-repo-mcp/tests/integration.test.ts`:
 
 ```ts
 describe("foo", () => {
@@ -86,11 +86,11 @@ describe("foo", () => {
 
 ## 6. Stress harness — only if lifecycle-affecting
 
-If the tool can block the event loop, spawn subprocesses, hold network connections, or otherwise affect process health, add a stress case to `apps/{{name}}-mcp/scripts/stress-mcp.ts`. Run `pnpm stress` to verify.
+If the tool can block the event loop, spawn subprocesses, hold network connections, or otherwise affect process health, add a stress case to `apps/example-repo-mcp/scripts/stress-mcp.ts`. Run `pnpm stress` to verify.
 
 ## 7. Documentation
 
-- Update the tool table in `apps/{{name}}-mcp/README.md` if there is one.
+- Update the tool table in `apps/example-repo-mcp/README.md` if there is one.
 - Update `AGENTS.md` if the tool needs special handling notes (auth, permissions, etc).
 - VHS tape: only update if the tool changes the user-facing CLI subcommand list.
 
@@ -98,5 +98,5 @@ If the tool can block the event loop, spawn subprocesses, hold network connectio
 
 ```bash
 pnpm verify                  # lint + typecheck + test + build
-pnpm --filter @george43g/{{name}}-mcp stress  # 11-case robustness suite
+pnpm --filter @george43g/example-repo-mcp stress  # 11-case robustness suite
 ```

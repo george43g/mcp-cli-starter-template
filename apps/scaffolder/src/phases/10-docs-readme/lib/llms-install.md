@@ -1,6 +1,6 @@
-# Installing {{name}}
+# Installing example-repo
 
-This page is for end users (and the LLMs assisting them) who want to plug `{{name}}-mcp` into an MCP host like Claude Code, Cursor, Warp, or the MCP Inspector.
+This page is for end users (and the LLMs assisting them) who want to plug `example-repo-mcp` into an MCP host like Claude Code, Cursor, Warp, or the MCP Inspector.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ This page is for end users (and the LLMs assisting them) who want to plug `{{nam
 From the published package (once the maintainer enables release):
 
 ```bash
-npm install -g @george43g/{{name}}-mcp
+npm install -g @george43g/example-repo-mcp
 ```
 
 Or from source:
@@ -34,8 +34,8 @@ Edit `~/.claude/settings.local.json` (or `.mcp.json` in your project root):
 ```json
 {
   "mcpServers": {
-    "{{name}}": {
-      "command": "{{name}}-mcp"
+    "example-repo": {
+      "command": "example-repo-mcp"
     }
   }
 }
@@ -46,9 +46,9 @@ For the dev-mode proxy (auto-reload on source changes):
 ```json
 {
   "mcpServers": {
-    "{{name}}-dev": {
+    "example-repo-dev": {
       "command": "pnpm",
-      "args": ["tsx", "/path/to/repo/apps/{{name}}-mcp/scripts/mcp-dev-proxy.ts"],
+      "args": ["tsx", "/path/to/repo/apps/example-repo-mcp/scripts/mcp-dev-proxy.ts"],
       "env": { "MCP_DEV": "1" }
     }
   }
@@ -62,36 +62,36 @@ For the dev-mode proxy (auto-reload on source changes):
 ### MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector {{name}}-mcp
+npx @modelcontextprotocol/inspector example-repo-mcp
 ```
 
 Opens a local web UI for poking at tools interactively.
 
 ## Configure secrets / env
 
-`{{name}}-mcp` reads its config from environment variables. Three options:
+`example-repo-mcp` reads its config from environment variables. Three options:
 
-1. **Inline env** (CI, Docker, k8s): set `{{NAME_UPPER}}_CREDENTIALS_JSON` or similar.
-2. **1Password CLI** (optional): set `{{NAME_UPPER}}_CREDENTIALS_OP=op://Vault/Item/field`.
-3. **File**: place a JSON file at `~/.{{name}}/credentials.json`.
+1. **Inline env** (CI, Docker, k8s): set `EXAMPLE_REPO_CREDENTIALS_JSON` or similar.
+2. **1Password CLI** (optional): set `EXAMPLE_REPO_CREDENTIALS_OP=op://Vault/Item/field`.
+3. **File**: place a JSON file at `~/.example-repo/credentials.json`.
 
-See `apps/{{name}}-mcp/.env.example` for the full list of recognized variables.
+See `apps/example-repo-mcp/.env.example` for the full list of recognized variables.
 
 ## Verify
 
 ```bash
-{{name}}-cli doctor          # preflight (Node version, native module, config dir)
-{{name}}-cli health          # call health_check
-{{name}}-cli noop --input "hi"  # call the demo tool
+example-repo-cli doctor          # preflight (Node version, native module, config dir)
+example-repo-cli health          # call health_check
+example-repo-cli noop --input "hi"  # call the demo tool
 ```
 
-If anything fails, run with `{{NAME_UPPER}}_DEV=1` to register the `get_logs` MCP tool, then ask your MCP host to call it.
+If anything fails, run with `EXAMPLE_REPO_DEV=1` to register the `get_logs` MCP tool, then ask your MCP host to call it.
 
 ## Updating
 
 ```bash
 # Published version
-npm install -g @george43g/{{name}}-mcp@latest
+npm install -g @george43g/example-repo-mcp@latest
 
 # Source checkout
 git pull

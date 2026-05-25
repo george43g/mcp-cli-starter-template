@@ -88,7 +88,7 @@ const ROOT_TSCONFIG = `{
 }
 `;
 
-// Custom substituter — handles {{scope}} on top of the standard {{name}}/{{NAME_UPPER}}.
+// Custom substituter — handles {{scope}} on top of the standard example-repo/EXAMPLE_REPO.
 function subWithScope(content: string, name: string, scope: string): string {
   return substitute(content.replace(/\{\{scope\}\}/g, scope), {
     name,

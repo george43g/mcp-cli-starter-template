@@ -135,7 +135,7 @@ export default class MonorepoMigration extends Migration {
       ],
       prompt:
         `Retrofit my repo to a Turborepo monorepo following the template at ` +
-        `https://github.com/george43g/mcp-cli-starter-template (the apps/{{name}}-mcp/ + ` +
+        `https://github.com/george43g/mcp-cli-starter-template (the apps/example-repo-mcp/ + ` +
         `packages/* layout). Preserve all existing source — don't overwrite my root ` +
         `package.json metadata (name, description, version, keywords, author, license). ` +
         `Do these things in order:\n` +

@@ -1,9 +1,9 @@
 {
   "manifest_version": "0.3",
-  "name": "{{name}}-mcp",
-  "display_name": "{{name}}",
+  "name": "example-repo-mcp",
+  "display_name": "example-repo",
   "version": "0.0.0",
-  "description": "{{name}} — MCP server + CLI + TUI. Cloned from mcp-cli-starter-template; ready to extend with your own tools.",
+  "description": "example-repo — MCP server + CLI + TUI. Cloned from mcp-cli-starter-template; ready to extend with your own tools.",
   "author": {
     "name": "George G"
   },

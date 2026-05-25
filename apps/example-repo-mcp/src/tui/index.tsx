@@ -3,7 +3,7 @@
  * the shutdown registry, and returns once the user quits.
  *
  * Loaded dynamically by `src/cli.ts` when the `tui` subcommand runs.
- * Not a separate bin — the single `{{name}}` bin dispatches via subcommands.
+ * Not a separate bin — the single `example-repo` bin dispatches via subcommands.
  *
  * To remove TUI support: delete this file + `src/tui/`, drop the `tui`
  * subcommand from `src/cli.ts`.

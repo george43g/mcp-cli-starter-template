@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "name": "{{name}}",
+  "name": "example-repo",
   "theme": "mint",
   "colors": {
     "primary": "#1982FC",

@@ -142,7 +142,7 @@ describe("02-toolchain/m1-mise", () => {
     expect(mise).toContain('node = "24"');
     expect(mise).toContain('pnpm = "10.29.3"');
     expect(mise).toContain("wm-stack"); // substituted
-    expect(mise).not.toContain("{{name}}");
+    expect(mise).not.toContain("example-repo");
   });
 
   it("dry-run reports would-apply and writes nothing", async () => {

@@ -22,7 +22,7 @@ function loadPackageJson(): PackageJson {
     const raw = readFileSync(path, "utf8");
     return JSON.parse(raw) as PackageJson;
   } catch {
-    return { name: "{{name}}-mcp", version: "0.0.0" };
+    return { name: "example-repo-mcp", version: "0.0.0" };
   }
 }
 

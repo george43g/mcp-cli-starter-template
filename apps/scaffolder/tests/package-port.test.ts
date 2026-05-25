@@ -51,8 +51,8 @@ describe("portPackage", () => {
     cleanup = [];
   });
 
-  it("substitutes {{name}} placeholders in file content (real lib copy)", async () => {
-    // 04-robustness/lib/src/logger.ts contains "{{name}}" placeholders in its
+  it("substitutes example-repo placeholders in file content (real lib copy)", async () => {
+    // 04-robustness/lib/src/logger.ts contains "example-repo" placeholders in its
     // comments. After portPackage, those should become the user's name.
     const { cwd, ctx } = await makeTestCtx({ name: "foo" });
     cleanup.push(() => rm(cwd, { recursive: true, force: true }));
@@ -67,15 +67,15 @@ describe("portPackage", () => {
     expect(result.filesChanged).toContain("packages/robustness/src/logger.ts");
 
     const logger = await readFile(join(cwd, "packages/robustness/src/logger.ts"), "utf8");
-    // The canonical logger comments mention `mcp/{{name}}-mcp` log paths in
+    // The canonical logger comments mention `mcp/example-repo-mcp` log paths in
     // comments — those should now reference `foo` after substitution.
     expect(logger).toContain("foo");
-    expect(logger).not.toContain("{{name}}");
+    expect(logger).not.toContain("example-repo");
   });
 
-  it("substitutes {{name}} placeholders in PATHS too", async () => {
-    // 11-agent-files ships skills/{{name}}/SKILL.md as a lib path — the
-    // {{name}} in the PATH (not just content) must be substituted.
+  it("substitutes example-repo placeholders in PATHS too", async () => {
+    // 11-agent-files ships skills/example-repo/SKILL.md as a lib path — the
+    // example-repo in the PATH (not just content) must be substituted.
     const { cwd, ctx } = await makeTestCtx({ name: "foo" });
     cleanup.push(() => rm(cwd, { recursive: true, force: true }));
 
@@ -86,7 +86,7 @@ describe("portPackage", () => {
 
     expect(result.status).toBe("applied");
     expect(result.filesChanged).toContain("skills/foo/SKILL.md");
-    expect(result.filesChanged).not.toContain("skills/{{name}}/SKILL.md");
+    expect(result.filesChanged).not.toContain("skills/example-repo/SKILL.md");
   });
 
   it("substitutes @george43g when a different scope is set", async () => {

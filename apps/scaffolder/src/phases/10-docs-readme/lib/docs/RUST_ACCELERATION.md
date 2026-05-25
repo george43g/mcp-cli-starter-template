@@ -58,7 +58,7 @@ The starter ships hand-written placeholders for both `index.js` and `index.d.ts`
 
 ## Native-bridge pattern
 
-The TS-side loader at `apps/{{name}}-mcp/src/native-bridge.ts` returns:
+The TS-side loader at `apps/example-repo-mcp/src/native-bridge.ts` returns:
 
 - The loaded module when the `.node` binary exists
 - `null` when `MCP_DISABLE_NATIVE=1` is set

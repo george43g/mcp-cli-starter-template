@@ -1,17 +1,17 @@
 <div align="center">
 
-# {{name}}
+# example-repo
 
 **MCP server + CLI + TUI — one bin, three surfaces, production-ready from commit 1.**
 
 [![CI](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml/badge.svg)](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@george43g/{{name}}-mcp.svg)](https://www.npmjs.com/package/@george43g/{{name}}-mcp)
+[![npm version](https://img.shields.io/npm/v/@george43g/example-repo-mcp.svg)](https://www.npmjs.com/package/@george43g/example-repo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=24](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)](https://nodejs.org)
 
 [Install](#install) · [Tools](#tools) · [Connect from your editor](#one-click-install) · [Docs](#docs) · [Skill for AI agents](#install-the-companion-skill)
 
-![{{name}} TUI](docs/screenshots/overview.gif)
+![example-repo TUI](docs/screenshots/overview.gif)
 
 </div>
 
@@ -23,37 +23,37 @@
 
 ```bash
 # Run directly (no install needed)
-npx @george43g/{{name}}-mcp mcp
+npx @george43g/example-repo-mcp mcp
 
 # Or install globally
-npm  install -g @george43g/{{name}}-mcp
-pnpm add  -g @george43g/{{name}}-mcp
+npm  install -g @george43g/example-repo-mcp
+pnpm add  -g @george43g/example-repo-mcp
 ```
 
-After install, `{{name}}` is on your PATH. All subcommands route through that single bin:
+After install, `example-repo` is on your PATH. All subcommands route through that single bin:
 
 ```bash
-{{name}} mcp              # run the MCP server (stdio)
-{{name}} mcp --http       # run via Streamable HTTP (requires MCP_HTTP_TOKEN)
-{{name}} tui              # launch the Ink TUI
-{{name}} doctor           # preflight checks (Node version, native deps, env)
-{{name}} repl             # interactive REPL — same dispatcher as MCP
-{{name}} health           # one-shot health snapshot
-{{name}} noop --input hi  # call any tool directly from the CLI
+example-repo mcp              # run the MCP server (stdio)
+example-repo mcp --http       # run via Streamable HTTP (requires MCP_HTTP_TOKEN)
+example-repo tui              # launch the Ink TUI
+example-repo doctor           # preflight checks (Node version, native deps, env)
+example-repo repl             # interactive REPL — same dispatcher as MCP
+example-repo health           # one-shot health snapshot
+example-repo noop --input hi  # call any tool directly from the CLI
 ```
 
 ## One-click install
 
-Paste these into your MCP host's config. The bin name is `{{name}}` once installed via npm; the `npx` form works without a local install.
+Paste these into your MCP host's config. The bin name is `example-repo` once installed via npm; the `npx` form works without a local install.
 
 ### Claude Desktop / Code (`claude_desktop_config.json` or `.mcp.json`)
 
 ```json
 {
   "mcpServers": {
-    "{{name}}": {
+    "example-repo": {
       "command": "npx",
-      "args": ["-y", "@george43g/{{name}}-mcp", "mcp"]
+      "args": ["-y", "@george43g/example-repo-mcp", "mcp"]
     }
   }
 }
@@ -64,9 +64,9 @@ Paste these into your MCP host's config. The bin name is `{{name}}` once install
 ```json
 {
   "mcpServers": {
-    "{{name}}": {
+    "example-repo": {
       "command": "npx",
-      "args": ["-y", "@george43g/{{name}}-mcp", "mcp"]
+      "args": ["-y", "@george43g/example-repo-mcp", "mcp"]
     }
   }
 }
@@ -84,19 +84,19 @@ The starter ships two demo tools plus a dev-only log inspector. Replace these wi
 |---|---|---|
 | `health_check` | Returns server/runtime/transport snapshot. Never touches external I/O. | read-only, idempotent |
 | `noop` | Echo a string (optionally upper-cased). Demonstrates the Rust acceleration fallback path. | read-only, idempotent |
-| `get_logs` | **Dev-mode only** (`{{NAME_UPPER}}_DEV=1`). Returns the last N lines from the in-memory ring buffer. | read-only |
+| `get_logs` | **Dev-mode only** (`EXAMPLE_REPO_DEV=1`). Returns the last N lines from the in-memory ring buffer. | read-only |
 
 ## Install the companion skill
 
-This repo ships with a Claude skill that teaches an AI agent how to use your tool end-to-end. The skill lives at `skills/{{name}}/SKILL.md` and is meant to be rewritten by you (or by the AI itself, after first reading the tool) to document the tool's actual behavior.
+This repo ships with a Claude skill that teaches an AI agent how to use your tool end-to-end. The skill lives at `skills/example-repo/SKILL.md` and is meant to be rewritten by you (or by the AI itself, after first reading the tool) to document the tool's actual behavior.
 
 ```bash
 # Copy the skill into your global Claude skills dir
-mkdir -p ~/.claude/skills/{{name}}
-cp skills/{{name}}/SKILL.md ~/.claude/skills/{{name}}/
+mkdir -p ~/.claude/skills/example-repo
+cp skills/example-repo/SKILL.md ~/.claude/skills/example-repo/
 
 # Or symlink (so updates from this repo show up automatically)
-ln -s "$(pwd)/skills/{{name}}/SKILL.md" ~/.claude/skills/{{name}}/SKILL.md
+ln -s "$(pwd)/skills/example-repo/SKILL.md" ~/.claude/skills/example-repo/SKILL.md
 ```
 
 ## Docs
@@ -117,7 +117,7 @@ This section is for the engineer running the scaffolder — delete it once you'v
 
 ```
 apps/
-  {{name}}-mcp/             your tool — clone-and-rename target
+  example-repo-mcp/             your tool — clone-and-rename target
     src/
       cli.ts                THE SINGLE BIN — commander dispatch
       index.ts              runMcpServer() + callMcpTool() (library exports)
@@ -140,7 +140,7 @@ packages/
 mise.toml                   toolchain pins (node, pnpm) + named tasks
 .github/workflows/          ci.yml, release.yml (disabled by default), readme-check.yml, screenshots.yml
 docs/                       Mintlify-ready (docs.json + MDX pages)
-skills/{{name}}/             Repo-installable companion skill (rewrite at scaffold time)
+skills/example-repo/             Repo-installable companion skill (rewrite at scaffold time)
 ```
 
 ## License

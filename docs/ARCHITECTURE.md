@@ -6,7 +6,7 @@
 
 ```
 apps/
-  {{name}}-mcp/   — the example tool (clone-and-rename target)
+  example-repo-mcp/   — the example tool (clone-and-rename target)
   rust-accel/     — napi-rs v3 crate, optional acceleration
 
 packages/
@@ -31,7 +31,7 @@ packages/
 ## Dependency direction (always upward)
 
 ```
-                  apps/{{name}}-mcp
+                  apps/example-repo-mcp
                        │
    ┌───────────────────┼─────────────────────┐
    ▼                   ▼                     ▼
@@ -60,7 +60,7 @@ Every MCP tool call passes through `@george43g/mcp-kit/dispatch.ts:buildDispatch
 6. **No stdout writes** — JSON-RPC owns it after `StdioServerTransport.connect()`. All logging via `@george43g/robustness/logger`.
 7. **structuredContent** + **_meta** in every response — engine label (`ts` or `rust`) and duration_ms.
 
-These invariants exist as a comment block in `apps/{{name}}-mcp/src/dispatcher.ts`. Do not weaken them without a corresponding update to `AGENTS.md`.
+These invariants exist as a comment block in `apps/example-repo-mcp/src/dispatcher.ts`. Do not weaken them without a corresponding update to `AGENTS.md`.
 
 ## The robustness harness
 
@@ -108,7 +108,7 @@ Every recognized env var is also accepted as a CLI flag via `@george43g/cli-kit/
 
 ## Secrets
 
-Default chain: env-JSON → 1Password CLI → file (`~/.{{name}}/credentials.json`). Apple Keychain is deliberately omitted from the starter; add per-tool if needed.
+Default chain: env-JSON → 1Password CLI → file (`~/.example-repo/credentials.json`). Apple Keychain is deliberately omitted from the starter; add per-tool if needed.
 
 Env-JSON is the CI / Docker / k8s primary path. 1Password is optional — gracefully degrades when the `op` CLI isn't installed.
 
@@ -116,7 +116,7 @@ Env-JSON is the CI / Docker / k8s primary path. 1Password is optional — gracef
 
 Each surface is independently deletable:
 
-- **No TUI**: delete `apps/{{name}}-mcp/src/tui/`, the `{{name}}-tui` bin entry in `package.json`, the `tui` subcommand from `src/cli.ts`, and the TUI entry from `vite.config.ts`. Optionally delete `packages/tui-kit` from `pnpm-workspace.yaml`.
+- **No TUI**: delete `apps/example-repo-mcp/src/tui/`, the `example-repo-tui` bin entry in `package.json`, the `tui` subcommand from `src/cli.ts`, and the TUI entry from `vite.config.ts`. Optionally delete `packages/tui-kit` from `pnpm-workspace.yaml`.
 - **No HTTP**: delete the `http` subcommand from `src/cli.ts`, the `--http` branch from `src/index.ts`, case #9 from `scripts/stress-mcp.ts`, and `MCP_HTTP_TOKEN` from `.env.example`.
 - **No Rust**: delete `apps/rust-accel/`, `src/native-bridge.ts`, and the `tryLoadNative()` call in `src/tools/noop.ts`. Remove `MIRRORED_SCHEMAS` from `packages/shared-types/src/index.ts` and the drift-check test.
 - **No `get_logs`**: delete `src/tools/get-logs.ts` and remove it from `src/tools/registry.ts`.

@@ -1,4 +1,4 @@
-# VHS tape — `{{name}}` overview demo.
+# VHS tape — `example-repo` overview demo.
 #
 # Generates docs/screenshots/overview.png showing the three bins in action.
 # Regenerate with `pnpm screenshots`. Update only when the user-facing CLI
@@ -10,14 +10,14 @@ Set Height 800
 
 Output ../../../../docs/screenshots/overview.png
 
-Type "{{name}}-cli health"
+Type "example-repo-cli health"
 Enter
 Sleep 1s
 
-Type "{{name}}-cli noop --input 'Hello from the starter template'"
+Type "example-repo-cli noop --input 'Hello from the starter template'"
 Enter
 Sleep 1s
 
-Type "{{name}}-cli --help"
+Type "example-repo-cli --help"
 Enter
 Sleep 2s

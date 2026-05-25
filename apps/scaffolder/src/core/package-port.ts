@@ -64,7 +64,7 @@ export async function portPackage(
     if (!key.startsWith(opts.libPrefix)) continue;
     const rel = key.slice(opts.libPrefix.length); // e.g. "src/index.ts"
     // Substitute placeholders in BOTH the path and the content. Paths can
-    // legitimately contain `{{name}}` markers (e.g. `skills/{{name}}/SKILL.md`
+    // legitimately contain `example-repo` markers (e.g. `skills/example-repo/SKILL.md`
     // → `skills/foo/SKILL.md`); content substitution is the standard case.
     const targetPath = substitute(`${prefix}${rel}`, vars);
     const content = substitute(TEMPLATES[key] ?? "", vars);

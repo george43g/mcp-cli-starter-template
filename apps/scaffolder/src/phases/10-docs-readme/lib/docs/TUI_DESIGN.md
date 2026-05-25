@@ -1,6 +1,6 @@
 # TUI design
 
-The starter ships a working Ink/React TUI that demos the patterns. Tools that don't need a TUI can delete `apps/{{name}}-mcp/src/tui/` and the `{{name}}-tui` bin entry; everything else still works.
+The starter ships a working Ink/React TUI that demos the patterns. Tools that don't need a TUI can delete `apps/example-repo-mcp/src/tui/` and the `example-repo-tui` bin entry; everything else still works.
 
 ## Theme system
 
@@ -68,8 +68,8 @@ expect(lastFrame()).toContain("Item 2");
 
 ## Removing the TUI
 
-1. Delete `apps/{{name}}-mcp/src/tui/`.
-2. Remove `{{name}}-tui` from `apps/{{name}}-mcp/package.json`'s `bin` map.
-3. Remove the `tui` subcommand from `apps/{{name}}-mcp/src/cli.ts`.
-4. Remove the TUI entry from `apps/{{name}}-mcp/vite.config.ts` `lib.entry`.
-5. Optionally remove `@george43g/tui-kit` from `apps/{{name}}-mcp/package.json` dependencies and from `pnpm-workspace.yaml` if no other app uses it.
+1. Delete `apps/example-repo-mcp/src/tui/`.
+2. Remove `example-repo-tui` from `apps/example-repo-mcp/package.json`'s `bin` map.
+3. Remove the `tui` subcommand from `apps/example-repo-mcp/src/cli.ts`.
+4. Remove the TUI entry from `apps/example-repo-mcp/vite.config.ts` `lib.entry`.
+5. Optionally remove `@george43g/tui-kit` from `apps/example-repo-mcp/package.json` dependencies and from `pnpm-workspace.yaml` if no other app uses it.

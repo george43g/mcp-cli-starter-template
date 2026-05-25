@@ -8,8 +8,8 @@ The MCP server is the canonical entry point — the other surfaces (CLI/TUI/REPL
 ## Run it
 
 ```bash
-{{name}} mcp              # stdio (default)
-{{name}} mcp --http       # Streamable HTTP
+example-repo mcp              # stdio (default)
+example-repo mcp --http       # Streamable HTTP
 ```
 
 ## Tools shipped in the template
@@ -18,7 +18,7 @@ The MCP server is the canonical entry point — the other surfaces (CLI/TUI/REPL
 |------|-----------|-------------|
 | `health_check` | ✓ | Server/runtime/transport snapshot. Never touches external I/O. |
 | `noop` | ✓ | Echo + optional uppercase. Demonstrates the Rust acceleration path. |
-| `get_logs` | ✓ | Dev-mode only (`{{NAME_UPPER}}_DEV=1`). Returns the ring buffer. |
+| `get_logs` | ✓ | Dev-mode only (`EXAMPLE_REPO_DEV=1`). Returns the ring buffer. |
 
 ## Dispatcher invariants
 

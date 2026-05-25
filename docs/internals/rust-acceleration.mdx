@@ -9,7 +9,7 @@ See [`RUST_ACCELERATION.md`](https://github.com/george43g/mcp-cli-starter-templa
 
 - `apps/rust-accel/` contains a [napi-rs v3](https://napi.rs) crate.
 - Build: `pnpm --filter rust-accel build` produces `apps/rust-accel/*.node`.
-- The MCP loads it via `apps/{{name}}-mcp/src/native-bridge.ts:tryLoadNative()`.
+- The MCP loads it via `apps/example-repo-mcp/src/native-bridge.ts:tryLoadNative()`.
 - On failure or when `MCP_DISABLE_NATIVE=1`, the TS fallback is used transparently.
 
 ## Drift check

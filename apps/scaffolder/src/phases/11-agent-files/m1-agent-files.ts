@@ -5,13 +5,13 @@
  *   - AGENTS.md (canonical agent guide)
  *   - CLAUDE.md, .cursorrules (symlinks → AGENTS.md)
  *   - .mcp.json, opencode.json, .cursor/mcp.json (dev-MCP entries — relative paths)
- *   - .cursor/rules/{{name}}.mdc (Cursor rules pointer)
+ *   - .cursor/rules/example-repo.mdc (Cursor rules pointer)
  *   - .claude/settings.local.json + .claude/skills/{mcp-tool-author,pr-review-sop}/
- *   - skills/{{name}}/SKILL.md, skills.md (project skill scaffold)
+ *   - skills/example-repo/SKILL.md, skills.md (project skill scaffold)
  *   - .github/PULL_REQUEST_TEMPLATE.md + .github/ISSUE_TEMPLATE/{bug,feature}.md
  *
- * Path-level substitution: paths like `skills/{{name}}/SKILL.md` and
- * `.cursor/rules/{{name}}.mdc` get resolved at write time (portPackage now
+ * Path-level substitution: paths like `skills/example-repo/SKILL.md` and
+ * `.cursor/rules/example-repo.mdc` get resolved at write time (portPackage now
  * substitutes both content AND path).
  *
  * Symlinks: CLAUDE.md and .cursorrules are created as symlinks to AGENTS.md

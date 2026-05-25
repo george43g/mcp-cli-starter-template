@@ -1,4 +1,4 @@
-# {{name}}-mcp
+# example-repo-mcp
 
 MCP server + CLI + TUI, cloned from `mcp-cli-starter-template`.
 
@@ -15,9 +15,9 @@ pnpm stress          # 9-case robustness harness
 
 | Bin | Purpose | Default transport |
 |-----|---------|-------------------|
-| `{{name}}-mcp` | MCP server | stdio (`--http` for Streamable HTTP) |
-| `{{name}}-cli` | Commander CLI: `mcp`, `http`, `tui`, `doctor`, `health`, `noop`, `cli` (REPL) | n/a (in-process dispatch) |
-| `{{name}}-tui` | Ink TUI | n/a |
+| `example-repo-mcp` | MCP server | stdio (`--http` for Streamable HTTP) |
+| `example-repo-cli` | Commander CLI: `mcp`, `http`, `tui`, `doctor`, `health`, `noop`, `cli` (REPL) | n/a (in-process dispatch) |
+| `example-repo-tui` | Ink TUI | n/a |
 
 ## Adding a tool
 
@@ -32,7 +32,7 @@ The dispatcher already wires `withTimeout`, `perf` spans, abort propagation, str
 ## Removing surfaces
 
 - **Drop HTTP support**: delete the `http` subcommand from `src/cli.ts`, the `--http` branch from `src/index.ts`, and case #9 from `scripts/stress-mcp.ts`. Remove `MCP_HTTP_TOKEN` from `.env.example`.
-- **Drop TUI support**: delete `src/tui/`, the `tui` subcommand from `src/cli.ts`, the `{{name}}-tui` bin entry from `package.json`, and the TUI entry from `vite.config.ts` `lib.entry`.
+- **Drop TUI support**: delete `src/tui/`, the `tui` subcommand from `src/cli.ts`, the `example-repo-tui` bin entry from `package.json`, and the TUI entry from `vite.config.ts` `lib.entry`.
 - **Drop Rust acceleration**: delete `apps/rust-accel/`, the `src/native-bridge.ts` file, and the `tryLoadNative()` call in `src/tools/noop.ts`.
 - **Drop `get_logs`**: delete `src/tools/get-logs.ts` and remove it from the registry.
 
@@ -56,9 +56,9 @@ From the second run forward, `pnpm check:usage` (and CI) enforces freshness — 
 
 | Shell | Default install path |
 |-------|----------------------|
-| bash  | `~/.local/share/bash-completion/completions/{{name}}` (XDG) or `~/.bash_completion.d/{{name}}` |
-| zsh   | `${ZDOTDIR:-~}/.zsh/completion/_{{name}}` |
-| fish  | `~/.config/fish/completions/{{name}}.fish` |
+| bash  | `~/.local/share/bash-completion/completions/example-repo` (XDG) or `~/.bash_completion.d/example-repo` |
+| zsh   | `${ZDOTDIR:-~}/.zsh/completion/_example-repo` |
+| fish  | `~/.config/fish/completions/example-repo.fish` |
 
 CI gate `scripts/check-usage-freshness.mjs` (`pnpm check:usage`) fails the build if `.usage.kdl` was edited without regenerating the artifacts.
 
@@ -67,7 +67,7 @@ CI gate `scripts/check-usage-freshness.mjs` (`pnpm check:usage`) fails the build
 Claude Desktop loads MCP servers from `.mcpb` bundles — zip archives with a `manifest.json` + the runtime files. Build one with:
 
 ```bash
-pnpm pack:mcpb         # runs `pnpm build` then bundles into {{name}}-mcp-<version>.mcpb
+pnpm pack:mcpb         # runs `pnpm build` then bundles into example-repo-mcp-<version>.mcpb
 ```
 
 The output `.mcpb` drops into Claude Desktop via drag-and-drop (or **Settings → Extensions → Install from file**). Claude reads `manifest.json` (MCPB spec v0.3), spawns `node ${__dirname}/dist/index.js` for stdio transport, and surfaces this server's tools + resources in the catalogue.

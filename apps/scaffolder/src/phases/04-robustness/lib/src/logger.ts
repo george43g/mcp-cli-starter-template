@@ -43,7 +43,7 @@ const MAX_FILE_BYTES = envNum("MCP_LOG_MAX_BYTES", 10 * 1024 * 1024);
 const HEAP_WARN_MB = envNum("MCP_HEAP_WARN_MB", 150);
 const HEAP_CHECK_INTERVAL_MS = envNum("MCP_HEAP_CHECK_MS", 60_000);
 
-/** Caller may override the log-file prefix (e.g. "{{name}}-mcp"). */
+/** Caller may override the log-file prefix (e.g. "example-repo-mcp"). */
 let logFilePrefix = envStr("MCP_LOG_PREFIX", "mcp");
 
 export function setLogFilePrefix(prefix: string): void {

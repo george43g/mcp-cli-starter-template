@@ -24,9 +24,9 @@ For an automated version of the same work, run `mcp-scaffold init <dir>` or `mcp
 ## TL;DR — the architecture in one screen
 
 ```
-{{name}}/                           # the cloned tool, one git repo
+example-repo/                           # the cloned tool, one git repo
 ├── apps/
-│   ├── {{name}}-mcp/               # the user-facing tool
+│   ├── example-repo-mcp/               # the user-facing tool
 │   │   ├── src/
 │   │   │   ├── cli.ts              # THE SINGLE BIN (shebang) — commander dispatch
 │   │   │   ├── index.ts            # runMcpServer() — library export AND
@@ -52,7 +52,7 @@ For an automated version of the same work, run `mcp-scaffold init <dir>` or `mcp
 │   ├── biome-config/               # single biome.json source
 │   └── vitest-config/              # shared preset
 ├── docs/                           # Mintlify config + MDX + reference markdown
-├── skills/{{name}}/                # project-specific skill (rewritten by AI)
+├── skills/example-repo/                # project-specific skill (rewritten by AI)
 ├── .claude/skills/                 # mcp-tool-author + pr-review-sop (canonical)
 ├── .github/workflows/              # ci + release (disabled) + readme-check + screenshots
 ├── .mcp.json / opencode.json / .cursor/mcp.json   # dev MCP proxy entries
@@ -63,7 +63,7 @@ For an automated version of the same work, run `mcp-scaffold init <dir>` or `mcp
 └── ...
 ```
 
-**Bin model**: ONE bin per tool (`{{name}}`), subcommands route to MCP/TUI/doctor/repl/etc. The single bin keeps the public surface small and lets all surfaces share the in-process dispatcher (zero drift between MCP `tools/list` and `--help`).
+**Bin model**: ONE bin per tool (`example-repo`), subcommands route to MCP/TUI/doctor/repl/etc. The single bin keeps the public surface small and lets all surfaces share the in-process dispatcher (zero drift between MCP `tools/list` and `--help`).
 
 **Stack**: Node 24+, ESM only, pnpm 10.x workspace, Turborepo, Vite library mode, Biome 2.x, Vitest 2.x, MCP SDK ^1.27, Commander ^14, Ink 7 + React 19, Zod ^3, napi-rs v3 (optional).
 
@@ -150,7 +150,7 @@ Manual retrofit: copy the whole package; consumers just need `@george43g/robustn
 ### 05-utility-pkgs — env-loader, secrets, cli-kit, tui-kit
 
 - **env-loader** (`@george43g/env-loader`): Vite-style precedence loader. Reads `.env → .env.local → .env.[mode] → .env.[mode].local` in plain Node. Use when reading env BEFORE spawning a subprocess (e.g. the dev MCP proxy).
-- **secrets** (`@george43g/secrets`): chain of env-JSON → 1Password (`op://` reference, peer-dep on `op` CLI, gracefully degrades) → file fallback at `~/.{{name}}/credentials.json`. **No Apple Keychain** — add per-tool if you need it.
+- **secrets** (`@george43g/secrets`): chain of env-JSON → 1Password (`op://` reference, peer-dep on `op` CLI, gracefully degrades) → file fallback at `~/.example-repo/credentials.json`. **No Apple Keychain** — add per-tool if you need it.
 - **cli-kit** (`@george43g/cli-kit`): commander helpers, TTY/color (`picocolors`, no-op on non-TTY/--no-color), output table-vs-JSON switch (`cli-table3`), `env-flag-binder` registry (every `MCP_X` env also `--x-y` flag), interactive REPL (`runRepl` — readline loop driving the dispatcher).
 - **tui-kit** (`@george43g/tui-kit`): theme system (accent-driven palette derivation; `safe` vs `powerline` glyph presets), hooks (`useDevStats`/`useMouse`/`useVimKeys`), components (`DevStatsPanel`, `StatusBar`, `HelpBar`, `FullScreenInk`), `messageCache` (TTL + memory-pressure LRU), `bounded-list` (generic eviction with gap markers). **Mouse**: SGR protocol only (`?1000h + ?1006h`); never `?1003h` (causes 100% CPU on Linux).
 
@@ -176,14 +176,14 @@ Manual retrofit: even if you don't adopt the whole registry, use `sanitize()` fo
 
 Manual retrofit: if you don't use Rust, you still benefit from one Zod schema source — every tool's input/output spec should be defined here once and imported by the tool, the CLI, the REPL, and tests.
 
-### 08-app — apps/{{name}}-mcp/ — the user-facing tool
+### 08-app — apps/example-repo-mcp/ — the user-facing tool
 
 Lays down:
 - `src/cli.ts` — the **single bin** (shebang via vite-banner). Commander dispatch over subcommands: `mcp [--http]`, `tui`, `doctor`, `repl`, `health`, plus one CLI subcommand per registered tool.
 - `src/index.ts` — exports `runMcpServer({ transport: 'stdio' | 'http' })` + `callMcpTool`. Also has an `isMain` block so direct invocation (stress harness, `node dist/index.js`) still works.
 - `src/commands/http.ts` — **HTTP wiring in its own file**. The header explicitly lists every deletion step ("Delete this file + remove `registerHttpCommand(program)` + remove stress case #9 + drop `MCP_HTTP_TOKEN` from .env.example") so dropping HTTP support is a single-file change.
 - `src/tui/` — `index.tsx` (renderFullScreen + ThemeProvider + shutdown wiring) + `App.tsx` (demo with vim nav + dev stats toggle). Loaded by `cli.ts` via dynamic `import("./tui/index.js")` — not its own bin.
-- `src/tools/` — `registry.ts` (TOOL_TIMEOUTS_MS, makeAppRegistry, devModeEnabled), `health-check.ts` (canary — never touches external I/O), `noop.ts` (demo — TS path + Rust accelerator fallback), `get-logs.ts` (dev-only — registered iff `{{NAME_UPPER}}_DEV=1`).
+- `src/tools/` — `registry.ts` (TOOL_TIMEOUTS_MS, makeAppRegistry, devModeEnabled), `health-check.ts` (canary — never touches external I/O), `noop.ts` (demo — TS path + Rust accelerator fallback), `get-logs.ts` (dev-only — registered iff `EXAMPLE_REPO_DEV=1`).
 - `src/dispatcher.ts` — invariants block at top; `getDispatcher()` and `callMcpTool()` exports.
 - `src/native-bridge.ts` — `tryLoadNative()` with `MCP_DISABLE_NATIVE` escape hatch + `engineLabel()` so the TUI can show which path is active.
 - `scripts/mcp-dev-proxy.ts` — handshake-replay proxy. Cursor/Claude/Warp keep their session across `src/**` changes; the proxy restarts the child and replays the initialize roundtrip.
@@ -217,9 +217,9 @@ Manual retrofit: even if you don't adopt Mintlify, the **public-style README** w
 ```json
 {
   "mcpServers": {
-    "{{name}}": {
+    "example-repo": {
       "command": "npx",
-      "args": ["-y", "@scope/{{name}}-mcp", "mcp"]
+      "args": ["-y", "@scope/example-repo-mcp", "mcp"]
     }
   }
 }
@@ -230,11 +230,11 @@ Manual retrofit: even if you don't adopt Mintlify, the **public-style README** w
 - `AGENTS.md` — canonical agent guide (~180-line file with stack, commands, env layout, MCP best practices, watchdog thresholds, lifecycle, debugging, permissions, guardrails, troubleshooting).
 - `CLAUDE.md` and `.cursorrules` — **symlinks** to `AGENTS.md`. Editing one updates all three.
 - `.mcp.json`, `opencode.json`, `.cursor/mcp.json` — dev MCP proxy entries using **relative paths** (the static template lesson: absolute paths break when the repo gets cloned to a new location).
-- `.cursor/rules/{{name}}.mdc` — Cursor rules file pointing at AGENTS.md.
+- `.cursor/rules/example-repo.mdc` — Cursor rules file pointing at AGENTS.md.
 - `.claude/settings.local.json` — permissions allowlist for read-only Bash + pnpm/git/gh + Context7 MCP + the dev MCP server.
 - `.claude/skills/mcp-tool-author/SKILL.md` — checklist for adding a new MCP tool (8 steps).
 - `.claude/skills/pr-review-sop/SKILL.md` — PR review SOP (security audit, CI checks, conventional commits).
-- `skills/{{name}}/SKILL.md` — project-specific skill scaffold with top-comment instructions for the AI to rewrite once the tool exists.
+- `skills/example-repo/SKILL.md` — project-specific skill scaffold with top-comment instructions for the AI to rewrite once the tool exists.
 - `skills.md` — root index.
 - `.github/PULL_REQUEST_TEMPLATE.md` + `.github/ISSUE_TEMPLATE/{bug,feature}.md`.
 
@@ -268,11 +268,11 @@ The `.releaserc.json` plugin chain writes CHANGELOG.md, publishes to npm, create
 ### usage(1) — completions + manpage + markdown docs
 
 ```
-usage g completion bash  apps/{{name}}-mcp/.usage.kdl > completions/{{name}}.bash
-usage g completion zsh   apps/{{name}}-mcp/.usage.kdl > completions/_{{name}}
-usage g completion fish  apps/{{name}}-mcp/.usage.kdl > completions/{{name}}.fish
-usage g manpage          apps/{{name}}-mcp/.usage.kdl > man/{{name}}.1
-usage g markdown         apps/{{name}}-mcp/.usage.kdl --out-dir docs/cli/
+usage g completion bash  apps/example-repo-mcp/.usage.kdl > completions/example-repo.bash
+usage g completion zsh   apps/example-repo-mcp/.usage.kdl > completions/_example-repo
+usage g completion fish  apps/example-repo-mcp/.usage.kdl > completions/example-repo.fish
+usage g manpage          apps/example-repo-mcp/.usage.kdl > man/example-repo.1
+usage g markdown         apps/example-repo-mcp/.usage.kdl --out-dir docs/cli/
 ```
 
 Keep `.usage.kdl` in sync with the commander program in `src/cli.ts`. The scaffolder ships a baseline; future tools likely auto-generate from commander via `@usage-spec/commander` integration.
@@ -283,7 +283,7 @@ Free for OSS. `docs/docs.json` + MDX. `mintlify dev` for local preview. No self-
 
 ### VHS — screenshots in CI
 
-`.tape` files in `apps/{{name}}-mcp/scripts/screenshots/`. The `.github/workflows/screenshots.yml` workflow runs them and commits regenerated PNGs/GIFs back. Reference in README via `![alt](docs/screenshots/foo.gif)`.
+`.tape` files in `apps/example-repo-mcp/scripts/screenshots/`. The `.github/workflows/screenshots.yml` workflow runs them and commits regenerated PNGs/GIFs back. Reference in README via `![alt](docs/screenshots/foo.gif)`.
 
 ### mise — toolchain pin + tasks
 
@@ -330,7 +330,7 @@ cd ~/repos/my-existing-mcp && git status --short
 
 ### `RETROFIT.md` — what to do about the skipped migrations
 
-`apply --execute` writes a `RETROFIT.md` at the target repo root whenever any migration was skipped (mode mismatch, e.g. the 'new'-only migrations that lay down a fresh monorepo skeleton or port the whole `apps/{{name}}-mcp/` tree) OR preserved divergent files. The file has one section per affected migration: what the migration would have done, why it couldn't auto-apply, a numbered list of manual steps, and **a self-contained AI prompt you can paste into Claude/Cursor/etc. verbatim**.
+`apply --execute` writes a `RETROFIT.md` at the target repo root whenever any migration was skipped (mode mismatch, e.g. the 'new'-only migrations that lay down a fresh monorepo skeleton or port the whole `apps/example-repo-mcp/` tree) OR preserved divergent files. The file has one section per affected migration: what the migration would have done, why it couldn't auto-apply, a numbered list of manual steps, and **a self-contained AI prompt you can paste into Claude/Cursor/etc. verbatim**.
 
 The recap footer points at it:
 
@@ -408,4 +408,4 @@ If you're retrofitting BY HAND (not via the scaffolder), apply rules in this ord
 - Templates: `apps/scaffolder/src/phases/<phase>/lib/**`
 - Plan: `/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md`
 
-When this file gets out of sync with the scaffolder, **trust the scaffolder** and update this skill. The migrations are tested via `mcp-scaffold init` and verified byte-identical against `apps/{{name}}-mcp/` + `packages/*` in CI.
+When this file gets out of sync with the scaffolder, **trust the scaffolder** and update this skill. The migrations are tested via `mcp-scaffold init` and verified byte-identical against `apps/example-repo-mcp/` + `packages/*` in CI.

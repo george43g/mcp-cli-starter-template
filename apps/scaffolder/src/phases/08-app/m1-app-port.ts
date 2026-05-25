@@ -1,5 +1,5 @@
 /**
- * 08-app/m1-app-port — port the apps/{{name}}-mcp/ tool itself.
+ * 08-app/m1-app-port — port the apps/example-repo-mcp/ tool itself.
  *
  * This is the biggest migration in the scaffolder: it lays down the entire
  * user-facing app — src/ (cli, index, dispatcher, tools/, tui/, commands/),
@@ -7,7 +7,7 @@
  * tests/ (integration), .env.example, .usage.kdl, README.md, plus all
  * config files (package.json, tsconfig.json, vite.config.ts, vitest.config.ts).
  *
- * Every file ships in lib/ with `{{name}}` and `@george43g` placeholders
+ * Every file ships in lib/ with `example-repo` and `@george43g` placeholders
  * intact; portPackage substitutes them at write time based on the user's
  * answers (config.global.repoName + config.global.scope).
  */
@@ -22,7 +22,7 @@ import { portPackage } from "../../core/package-port.js";
 
 export default class AppPortMigration extends Migration {
   readonly id = "08-app/m1-app-port";
-  readonly title = "Port apps/{{name}}-mcp/ (the user-facing tool)";
+  readonly title = "Port apps/example-repo-mcp/ (the user-facing tool)";
   readonly appliesTo = "new" as const;
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
@@ -54,7 +54,7 @@ export default class AppPortMigration extends Migration {
       ],
       prompt:
         `Retrofit my existing MCP server to match the architecture of ` +
-        `https://github.com/george43g/mcp-cli-starter-template/tree/main/apps/{{name}}-mcp ` +
+        `https://github.com/george43g/mcp-cli-starter-template/tree/main/apps/example-repo-mcp ` +
         `(the canonical app inside the scaffolder repo). The full pattern is documented in ` +
         `skills/mcp-starter-architect/SKILL.md — particularly the "6 dispatcher invariants" ` +
         `section and phase 08-app. Do NOT overwrite my src/ wholesale; instead, do these in ` +
@@ -76,7 +76,7 @@ export default class AppPortMigration extends Migration {
         `5. If I have separate \`${name}-mcp\` / \`${name}-cli\` / \`${name}-tui\` binaries, ` +
         `collapse them to ONE bin with subcommands sharing a dispatcher. Build with Vite library ` +
         `mode, 3 entries (index/cli/tui), shebang banner via rollup-plugin-banner.\n` +
-        `6. Port the 9-case stress harness from \`apps/{{name}}-mcp/scripts/stress-mcp.ts\` ` +
+        `6. Port the 9-case stress harness from \`apps/example-repo-mcp/scripts/stress-mcp.ts\` ` +
         `(handshake, health, parallel, unknown-tool, malformed-input, timeout, SIGTERM, ` +
         `RSS-watchdog, HTTP) into my repo and run it in CI.\n` +
         `\n` +

@@ -1,12 +1,12 @@
 ---
 title: Installation
-description: 'Install {{name}} via npm/pnpm/npx or clone the template.'
+description: 'Install example-repo via npm/pnpm/npx or clone the template.'
 ---
 
 ## Run without installing
 
 ```bash
-npx @george43g/{{name}}-mcp mcp
+npx @george43g/example-repo-mcp mcp
 ```
 
 This downloads, runs, and exits. Use this when wiring the tool into an MCP host config.
@@ -14,16 +14,16 @@ This downloads, runs, and exits. Use this when wiring the tool into an MCP host 
 ## Install globally
 
 ```bash
-npm  install -g @george43g/{{name}}-mcp
-pnpm add  -g @george43g/{{name}}-mcp
+npm  install -g @george43g/example-repo-mcp
+pnpm add  -g @george43g/example-repo-mcp
 ```
 
-After install, `{{name}}` is on your `$PATH`. All subcommands dispatch through that bin.
+After install, `example-repo` is on your `$PATH`. All subcommands dispatch through that bin.
 
 ## Verify
 
 ```bash
-{{name}} doctor
+example-repo doctor
 ```
 
 The `doctor` subcommand reports:
@@ -39,9 +39,9 @@ Add this to your MCP host's config file:
 ```json
 {
   "mcpServers": {
-    "{{name}}": {
+    "example-repo": {
       "command": "npx",
-      "args": ["-y", "@george43g/{{name}}-mcp", "mcp"]
+      "args": ["-y", "@george43g/example-repo-mcp", "mcp"]
     }
   }
 }

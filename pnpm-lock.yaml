@@ -76,7 +76,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@24.12.4)
 
-  apps/{{name}}-mcp:
+  apps/example-repo-mcp:
     dependencies:
       '@george43g/cli-kit':
         specifier: workspace:*

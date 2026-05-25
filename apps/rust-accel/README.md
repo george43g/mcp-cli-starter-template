@@ -1,6 +1,6 @@
 # @george43g/rust-accel
 
-Optional Rust acceleration for the `{{name}}-mcp` starter template.
+Optional Rust acceleration for the `example-repo-mcp` starter template.
 
 ## Build
 

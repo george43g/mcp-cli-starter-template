@@ -1,5 +1,5 @@
 /**
- * {{name}} — the single bin. Commander dispatch over subcommands.
+ * example-repo — the single bin. Commander dispatch over subcommands.
  *
  * Subcommands:
  *   mcp [--http]        Run the MCP server (stdio default; --http via Streamable HTTP)
@@ -38,7 +38,7 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
   // Bin name = the tool name (no -cli suffix). Subcommands route to MCP/TUI/etc.
   program
     .name(APP_NAME.replace(/^@[^/]+\//, "").replace(/-mcp$/, ""))
-    .description("{{name}} — single bin; subcommands run the MCP server, TUI, doctor, etc.")
+    .description("example-repo — single bin; subcommands run the MCP server, TUI, doctor, etc.")
     .version(APP_VERSION, "-V, --version")
     .option("--json", "Emit machine-readable JSON")
     .option("-q, --quiet", "Suppress non-error output")

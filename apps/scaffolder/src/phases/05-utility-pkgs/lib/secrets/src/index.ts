@@ -10,7 +10,7 @@
  * Usage:
  *   const secret = await loadSecret({
  *     name: "credentials",
- *     toolPrefix: "{{name}}",
+ *     toolPrefix: "example-repo",
  *   });
  *   const json = JSON.parse(secret.value);
  */

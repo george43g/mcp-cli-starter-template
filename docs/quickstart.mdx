@@ -1,6 +1,6 @@
 ---
 title: Quickstart
-description: 'Run {{name}} the four ways you can.'
+description: 'Run example-repo the four ways you can.'
 ---
 
 After [installing](/installation), pick the surface that matches your context.
@@ -8,16 +8,16 @@ After [installing](/installation), pick the surface that matches your context.
 ## As an MCP server (for AI hosts)
 
 ```bash
-{{name}} mcp
+example-repo mcp
 ```
 
-Stdio transport by default. The host (Claude/Cursor/Warp/OpenCode) spawns this as a child process and speaks JSON-RPC over stdin/stdout. Logs go to NDJSON files under `$TMPDIR/{{name}}/` — never to stdout.
+Stdio transport by default. The host (Claude/Cursor/Warp/OpenCode) spawns this as a child process and speaks JSON-RPC over stdin/stdout. Logs go to NDJSON files under `$TMPDIR/example-repo/` — never to stdout.
 
 For HTTP transport:
 
 ```bash
 export MCP_HTTP_TOKEN=$(openssl rand -hex 32)
-{{name}} mcp --http --port 8080
+example-repo mcp --http --port 8080
 ```
 
 See [HTTP mode](/internals/http-mode) for reverse-proxy patterns.
@@ -25,9 +25,9 @@ See [HTTP mode](/internals/http-mode) for reverse-proxy patterns.
 ## From the CLI
 
 ```bash
-{{name}} noop --input "hello world" --upper
-{{name}} health
-{{name}} doctor
+example-repo noop --input "hello world" --upper
+example-repo health
+example-repo doctor
 ```
 
 The CLI is 1:1 with MCP — any tool exposed via `tools/list` is also a CLI subcommand with `--flags` derived from its Zod input schema.
@@ -35,7 +35,7 @@ The CLI is 1:1 with MCP — any tool exposed via `tools/list` is also a CLI subc
 ## As a TUI
 
 ```bash
-{{name}} tui
+example-repo tui
 ```
 
 Full-screen Ink/React app with vim keybindings (`j/k`, `gg/G`, `Ctrl+D/U`), dev-stats panel toggle (`d`), and the standard ThemeProvider (`safe` glyphs by default, `powerline` for nerd-font terminals).
@@ -43,7 +43,7 @@ Full-screen Ink/React app with vim keybindings (`j/k`, `gg/G`, `Ctrl+D/U`), dev-
 ## In an interactive REPL
 
 ```bash
-{{name}} repl
+example-repo repl
 > health
 > noop --input "hi"
 > get_logs --count 50    # dev mode only

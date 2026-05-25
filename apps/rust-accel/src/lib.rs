@@ -1,4 +1,4 @@
-//! Optional Rust acceleration for the {{name}}-mcp starter template.
+//! Optional Rust acceleration for the example-repo-mcp starter template.
 //!
 //! Exposed via napi-rs v3. The TS side calls `tryLoadNative()` which
 //! either returns this module (when the `.node` binary was built) or

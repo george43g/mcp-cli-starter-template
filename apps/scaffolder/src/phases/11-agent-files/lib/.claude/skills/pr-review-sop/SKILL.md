@@ -1,6 +1,6 @@
 ---
 name: pr-review-sop
-description: Mandatory security + quality SOP for reviewing pull requests against a {{name}}-mcp repo. Use whenever the user asks to review, audit, or merge a PR.
+description: Mandatory security + quality SOP for reviewing pull requests against a example-repo-mcp repo. Use whenever the user asks to review, audit, or merge a PR.
 ---
 
 # PR review SOP

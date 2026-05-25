@@ -1,6 +1,6 @@
 ---
-name: {{name}}
-description: Use when working with the {{name}} MCP tool — covers invoking tools, choosing the right transport (stdio/HTTP), running the CLI/TUI/REPL surfaces, and reading logs. Loaded automatically when the user references {{name}} or its bin.
+name: example-repo
+description: Use when working with the example-repo MCP tool — covers invoking tools, choosing the right transport (stdio/HTTP), running the CLI/TUI/REPL surfaces, and reading logs. Loaded automatically when the user references example-repo or its bin.
 ---
 
 <!--
@@ -34,7 +34,7 @@ this skill should see only the tool-specific guidance.
 ================================================================================
 -->
 
-# {{name}}
+# example-repo
 
 > Single-bin MCP server with CLI/TUI/REPL surfaces. All four surfaces dispatch
 > to the same in-process registry of tools — adding a tool to `src/tools/` makes
@@ -43,8 +43,8 @@ this skill should see only the tool-specific guidance.
 ## When to invoke this skill
 
 Use this skill when the user:
-- Mentions `{{name}}` by name or references its bin.
-- Asks to run, debug, or inspect the {{name}} tool.
+- Mentions `example-repo` by name or references its bin.
+- Asks to run, debug, or inspect the example-repo tool.
 - Asks to add a new tool, change a transport, or read logs.
 
 If the user is doing something tangential (e.g., editing unrelated files in
@@ -53,13 +53,13 @@ the repo), do NOT pull this skill in.
 ## Command surface (stable across the template)
 
 ```
-{{name}} mcp              run the MCP server (stdio)
-{{name}} mcp --http       run via Streamable HTTP (needs MCP_HTTP_TOKEN)
-{{name}} tui              launch the Ink TUI
-{{name}} doctor           preflight checks (Node version, native deps, env)
-{{name}} repl             interactive REPL — same dispatcher as MCP
-{{name}} health           one-shot health snapshot
-{{name}} noop --input hi  call any tool directly (subcommand per ToolDefinition)
+example-repo mcp              run the MCP server (stdio)
+example-repo mcp --http       run via Streamable HTTP (needs MCP_HTTP_TOKEN)
+example-repo tui              launch the Ink TUI
+example-repo doctor           preflight checks (Node version, native deps, env)
+example-repo repl             interactive REPL — same dispatcher as MCP
+example-repo health           one-shot health snapshot
+example-repo noop --input hi  call any tool directly (subcommand per ToolDefinition)
 ```
 
 Global flags:
@@ -84,36 +84,36 @@ Global flags:
 |---|---|---|
 | `health_check` | You need to verify the server is alive and the runtime is healthy. | Read-only, idempotent. Returns counters + uptime + memory. Never touches external I/O — safe to call anytime, even when the network is down. |
 | `noop` | Demo / smoke test the dispatcher round-trip from outside the tool. | Echoes a string with optional `upper` flag. Routes through the Rust accelerator if available; transparently falls back to TS. |
-| `get_logs` | You need recent log lines for debugging. **Dev mode only.** | Set `{{NAME_UPPER}}_DEV=1` to enable. Returns the in-memory ring buffer (last 500 lines). |
+| `get_logs` | You need recent log lines for debugging. **Dev mode only.** | Set `EXAMPLE_REPO_DEV=1` to enable. Returns the in-memory ring buffer (last 500 lines). |
 
 ## Common workflows
 
 ### Verifying the server is healthy
 ```
-{{name}} health
+example-repo health
 ```
 Returns a one-shot snapshot. Use `--json` for machine-readable output.
 
 ### Calling a tool from the CLI
 ```
-{{name}} noop --input "hello" --upper
+example-repo noop --input "hello" --upper
 ```
 The CLI is 1:1 with MCP — anything callable via `tools/call` is also a CLI
 subcommand with `--flag` per Zod field.
 
 ### Inspecting logs
-Logs are NDJSON at `$TMPDIR/{{name}}/{{name}}-{PID}-{date}.ndjson`. In dev mode,
+Logs are NDJSON at `$TMPDIR/example-repo/example-repo-{PID}-{date}.ndjson`. In dev mode,
 `get_logs` returns the same content over MCP.
 
 ```
-{{name}} repl
+example-repo repl
 > get_logs --count 100
 ```
 
 ### HTTP transport
 ```
 export MCP_HTTP_TOKEN=$(openssl rand -hex 32)
-{{name}} mcp --http --port 8080
+example-repo mcp --http --port 8080
 
 # In another shell — health probe (no auth)
 curl http://127.0.0.1:8080/health
@@ -148,4 +148,4 @@ no per-surface drift.
 | MCP host doesn't see the tool after a code change | The host caches the session. Restart the host. The dev proxy auto-reloads on src/** changes but the host needs to reconnect. |
 | `--http` refuses to start | Missing `MCP_HTTP_TOKEN`. Generate with `openssl rand -hex 32`. |
 | Native module fails to load | Run `pnpm --filter rust-accel build`. If `rustc` is missing, set `MCP_DISABLE_NATIVE=1` to force the TS path. |
-| Orphan processes | `ps aux \| grep {{name}}` and kill. The shutdown registry should catch this; file a bug if it doesn't. |
+| Orphan processes | `ps aux \| grep example-repo` and kill. The shutdown registry should catch this; file a bug if it doesn't. |

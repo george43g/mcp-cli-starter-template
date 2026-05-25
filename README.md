@@ -104,7 +104,7 @@ Pass `--force` to overwrite divergent files (e.g. when you've decided to migrate
 
 ```
 apps/
-  {{name}}-mcp/           the live "golden output" — referenced + diffed in CI
+  example-repo-mcp/           the live "golden output" — referenced + diffed in CI
   rust-accel/             optional napi-rs v3 crate
   scaffolder/             the programmable scaffolder/migrator
     src/
@@ -126,7 +126,7 @@ docs/scaffolder-cli/      generated per-subcommand markdown
 man/                      generated mcp-scaffold(1) manpage
 skills/
   mcp-starter-architect/  comprehensive AI guide — every rule, every retrofit step
-  {{name}}/               cloned-tool's project skill scaffold
+  example-repo/               cloned-tool's project skill scaffold
 ```
 
 ## Development

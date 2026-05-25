@@ -1,12 +1,12 @@
 {
   "mcpServers": {
-    "{{name}}-mcp-dev": {
+    "example-repo-mcp-dev": {
       "command": "pnpm",
-      "args": ["tsx", "apps/{{name}}-mcp/scripts/mcp-dev-proxy.ts"],
+      "args": ["tsx", "apps/example-repo-mcp/scripts/mcp-dev-proxy.ts"],
       "env": {
         "MCP_DEV": "1",
-        "MCP_DEV_CMD": "pnpm tsx apps/{{name}}-mcp/src/index.ts",
-        "MCP_DEV_WATCH_DIR": "apps/{{name}}-mcp/src"
+        "MCP_DEV_CMD": "pnpm tsx apps/example-repo-mcp/src/index.ts",
+        "MCP_DEV_WATCH_DIR": "apps/example-repo-mcp/src"
       }
     },
     "mise": {
