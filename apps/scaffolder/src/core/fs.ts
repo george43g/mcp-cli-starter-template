@@ -7,8 +7,11 @@
  */
 
 import { existsSync } from "node:fs";
-import { lstat, mkdir, readFile, symlink, unlink, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, symlink, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
+
+const SHEBANG = Buffer.from("#!");
+const EXECUTABLE_MODE = 0o755;
 
 export type WriteOutcome =
   | "created"
@@ -75,6 +78,13 @@ export function makeFs(options: FsOptions): FsHelper {
     if (options.dryRun) return exists ? "would-update" : "would-create";
     await mkdir(dirname(abs), { recursive: true });
     await writeFile(abs, buffer);
+    // Files starting with a shebang are scripts — preserve executability.
+    // The lib/ source isn't read with stat (it's an inlined string in the
+    // generated bundle), so we infer from content. Misses no real cases:
+    // any sh/mjs/py script intended to be run directly starts with `#!`.
+    if (buffer.length >= 2 && buffer.subarray(0, 2).equals(SHEBANG)) {
+      await chmod(abs, EXECUTABLE_MODE);
+    }
     return exists ? "updated" : "created";
   }
 

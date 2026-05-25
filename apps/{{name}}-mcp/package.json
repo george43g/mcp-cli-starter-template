@@ -10,6 +10,8 @@
   },
   "files": [
     "dist",
+    "completions",
+    "man",
     "README.md"
   ],
   "engines": {
@@ -36,6 +38,12 @@
     "stress": "tsx scripts/stress-mcp.ts",
     "stress:tui": "tsx scripts/stress-tui.ts",
     "screenshots": "for f in scripts/screenshots/*.tape; do vhs \"$f\"; done",
+    "docs:cli": "mise run docs",
+    "completions": "mise run completions",
+    "manpage": "mise run manpage",
+    "artifacts": "mise run artifacts",
+    "completions:install": "bash scripts/install-completions.sh",
+    "check:usage": "node scripts/check-usage-freshness.mjs",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "clean": "rm -rf dist coverage"
   },

@@ -36,4 +36,24 @@ The dispatcher already wires `withTimeout`, `perf` spans, abort propagation, str
 - **Drop Rust acceleration**: delete `apps/rust-accel/`, the `src/native-bridge.ts` file, and the `tryLoadNative()` call in `src/tools/noop.ts`.
 - **Drop `get_logs`**: delete `src/tools/get-logs.ts` and remove it from the registry.
 
+## Shell completions
+
+Bash/zsh/fish completions are checked in under `completions/` and the manpage under `man/`. Both regenerate from `.usage.kdl` via `usage(1)`:
+
+```bash
+mise install               # one-time: installs usage(1)
+pnpm artifacts             # regenerate completions + manpage + docs/cli/
+pnpm completions:install   # auto-detect $SHELL and install into the right path
+```
+
+`completions:install` (script: `scripts/install-completions.sh`) handles the well-known locations for each shell:
+
+| Shell | Default install path |
+|-------|----------------------|
+| bash  | `~/.local/share/bash-completion/completions/{{name}}` (XDG) or `~/.bash_completion.d/{{name}}` |
+| zsh   | `${ZDOTDIR:-~}/.zsh/completion/_{{name}}` |
+| fish  | `~/.config/fish/completions/{{name}}.fish` |
+
+CI gate `scripts/check-usage-freshness.mjs` (`pnpm check:usage`) fails the build if `.usage.kdl` was edited without regenerating the artifacts.
+
 See `../../docs/ARCHITECTURE.md` for the full package map.
