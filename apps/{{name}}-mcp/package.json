@@ -44,8 +44,9 @@
     "artifacts": "mise run artifacts",
     "completions:install": "bash scripts/install-completions.sh",
     "check:usage": "node scripts/check-usage-freshness.mjs",
+    "pack:mcpb": "pnpm build && node scripts/build-mcpb.mjs",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "clean": "rm -rf dist coverage"
+    "clean": "rm -rf dist coverage *.mcpb"
   },
   "dependencies": {
     "@george43g/cli-kit": "workspace:*",

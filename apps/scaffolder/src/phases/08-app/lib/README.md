@@ -56,4 +56,23 @@ pnpm completions:install   # auto-detect $SHELL and install into the right path
 
 CI gate `scripts/check-usage-freshness.mjs` (`pnpm check:usage`) fails the build if `.usage.kdl` was edited without regenerating the artifacts.
 
+## Install in Claude Desktop (.mcpb bundle)
+
+Claude Desktop loads MCP servers from `.mcpb` bundles — zip archives with a `manifest.json` + the runtime files. Build one with:
+
+```bash
+pnpm pack:mcpb         # runs `pnpm build` then bundles into {{name}}-mcp-<version>.mcpb
+```
+
+The output `.mcpb` drops into Claude Desktop via drag-and-drop (or **Settings → Extensions → Install from file**). Claude reads `manifest.json` (MCPB spec v0.3), spawns `node ${__dirname}/dist/index.js` for stdio transport, and surfaces this server's tools + resources in the catalogue.
+
+The shipping manifest lives at `manifest.json` and pins:
+
+- `manifest_version: "0.3"` — MCPB spec pin
+- `server.type: "node"`, `entry_point: dist/index.js`
+- `compatibility.platforms: ["darwin", "linux", "win32"]`
+- `compatibility.runtimes.node: ">=24.0.0"`
+
+To customize: edit `manifest.json` (e.g. add a `icon` field, update the description) — the build script reads it verbatim and only overrides `version` from `package.json`.
+
 See `../../docs/ARCHITECTURE.md` for the full package map.
