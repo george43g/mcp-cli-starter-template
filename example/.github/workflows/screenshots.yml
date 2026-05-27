@@ -40,10 +40,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install VHS
+        # VHS publishes versioned assets (vhs_<ver>_Linux_x86_64.tar.gz)
+        # rather than a stable "latest" path, so we pin to a known good
+        # release. Bump VHS_VERSION to update; the tarball extracts to
+        # vhs_<ver>_Linux_x86_64/vhs.
+        env:
+          VHS_VERSION: "0.11.0"
         run: |
-          curl -sSL https://github.com/charmbracelet/vhs/releases/latest/download/vhs_Linux_x86_64.tar.gz \
+          curl -sSL "https://github.com/charmbracelet/vhs/releases/download/v${VHS_VERSION}/vhs_${VHS_VERSION}_Linux_x86_64.tar.gz" \
             | tar -xz -C /tmp
-          sudo mv /tmp/vhs /usr/local/bin/vhs
+          sudo mv "/tmp/vhs_${VHS_VERSION}_Linux_x86_64/vhs" /usr/local/bin/vhs
           vhs --version
 
       - name: Install ttyd (VHS runtime dependency)

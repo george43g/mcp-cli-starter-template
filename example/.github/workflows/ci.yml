@@ -103,6 +103,37 @@ jobs:
       - name: Stress harness (11 cases including HTTP)
         run: pnpm --filter "@george43g/*-mcp" stress
 
+      - name: Example/ output stays in sync with scaffolder
+        # Re-run the scaffolder with --name example and diff against the
+        # committed example/ directory. Catches scaffolder changes that
+        # weren't accompanied by `pnpm regen:example`.
+        # Fix locally: `pnpm regen:example && git add example/ && git commit`.
+        run: |
+          set -euo pipefail
+          EXAMPLE_TMP="$(mktemp -d)"
+          node apps/scaffolder/dist/cli.js init "$EXAMPLE_TMP" --name example --no-banner
+          # example/biome.json is intentionally stripped from the committed
+          # reference (would be picked up by the parent biome as a competing
+          # root config). Mirror that strip on the tempdir side.
+          rm -f "$EXAMPLE_TMP/biome.json"
+          # Strip transient artifacts + the .git directory (only the tempdir
+          # gets one — m3-git-init runs `git init` in fresh dirs but skips
+          # inside the parent repo where example/ lives).
+          for d in "$EXAMPLE_TMP" example; do
+            find "$d" \( \
+              -name .git -o \
+              -name node_modules -o \
+              -name dist -o \
+              -name .turbo -o \
+              -name coverage -o \
+              -name '*.tsbuildinfo' \
+            \) -prune -exec rm -rf {} + 2>/dev/null || true
+          done
+          if ! diff -r --no-dereference "$EXAMPLE_TMP" example; then
+            echo "::error::example/ is stale vs scaffolder output. Run \`pnpm regen:example\` and commit."
+            exit 1
+          fi
+
       - name: Upload stress report
         if: always()
         uses: actions/upload-artifact@v4
