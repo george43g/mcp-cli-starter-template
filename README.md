@@ -61,7 +61,7 @@ Twelve phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffo
 | 09-rust-accel | Optional napi-rs v3 crate with hand-mirrored types |
 | 10-docs-readme | Mintlify config + MDX scaffold + reference markdown + public-style README |
 | 11-agent-files | AGENTS.md (canonical) + CLAUDE.md/.cursorrules symlinks + .mcp.json + Claude/Cursor/OpenCode skill files |
-| 12-ci-release | matrix CI + (disabled) semantic-release + screenshots CI + .releaserc + .npmignore |
+| 12-ci-release | matrix CI + manual-only semantic-release (`workflow_dispatch:`, see [docs/RELEASE.md](docs/RELEASE.md)) + screenshots CI + .releaserc + .npmignore |
 
 ## Scaffolder usage
 

@@ -16,9 +16,12 @@ Don't enable when:
 
 ## How to enable
 
-1. **Uncomment the `on:` trigger** in `.github/workflows/release.yml`:
+The shipped workflow has a single trigger — `workflow_dispatch:` — so it never runs automatically; you can also fire it ad-hoc from the Actions tab to test the pipeline. To run it on every push to main:
+
+1. **Uncomment the `push:` trigger** in `.github/workflows/release.yml`:
    ```yaml
    on:
+     workflow_dispatch:
      push:
        branches: [main]
    ```
@@ -55,7 +58,7 @@ Don't enable when:
 
 If you cloned this template and decided NOT to release:
 
-1. Delete `.github/workflows/release.yml` (or leave it disabled — it has no `on:` trigger, so it never fires).
+1. Delete `.github/workflows/release.yml` (or leave it disabled — `workflow_dispatch:` is the only trigger, so it never fires automatically).
 2. Delete `.releaserc.json`.
 3. Remove `semantic-release`-related entries from any package.json scripts.
 
