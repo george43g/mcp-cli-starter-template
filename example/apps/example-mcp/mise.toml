@@ -15,7 +15,7 @@ usage = "latest"
 [tasks.docs]
 description = "Generate markdown docs for each subcommand"
 run = """
-  set -euo pipefail
+  set -eu  # mise runs tasks via /bin/sh — dash on Ubuntu rejects `pipefail`; this task doesn't pipe
   mkdir -p docs/cli
   usage g markdown -f .usage.kdl -m --out-dir docs/cli/
 """

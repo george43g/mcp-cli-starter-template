@@ -24,7 +24,7 @@ run = "pnpm test"
 [tasks.smoke]
 description = "End-to-end smoke: scaffold into /tmp + assert tests pass"
 run = """
-  set -euo pipefail
+  set -eu  # mise runs tasks via /bin/sh — dash on Ubuntu rejects `pipefail`; tasks here don't pipe
   rm -rf /tmp/scaffold-smoke
   mkdir /tmp/scaffold-smoke
   node dist/cli.js init /tmp/scaffold-smoke --name smoke --no-banner
@@ -36,7 +36,7 @@ run = """
 [tasks.docs]
 description = "Generate markdown docs for each subcommand"
 run = """
-  set -euo pipefail
+  set -eu  # mise runs tasks via /bin/sh — dash on Ubuntu rejects `pipefail`; tasks here don't pipe
   mkdir -p ../../docs/scaffolder-cli
   usage g markdown -f .usage.kdl -m --out-dir ../../docs/scaffolder-cli/
 """
