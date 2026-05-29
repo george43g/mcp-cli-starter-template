@@ -40,6 +40,8 @@ The dispatcher already wires `withTimeout`, `perf` spans, abort propagation, str
 
 Bash/zsh/fish completions + manpage + per-subcommand markdown docs are generated on demand from `.usage.kdl` via `usage(1)`. The scaffold ships the spec + the regen tasks but NOT the pre-generated artifacts (they reference the clone's actual bin name, not the placeholder).
 
+The intended workflow is: generate the artifacts once, commit them, then let CI's `pnpm check:usage` step (and the matching `cli-artifacts-drift` workflow on the scaffolder side) fail any future edit that changes `.usage.kdl` without a matching regen.
+
 First-run flow:
 
 ```bash

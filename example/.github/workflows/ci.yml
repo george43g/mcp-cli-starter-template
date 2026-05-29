@@ -104,9 +104,11 @@ jobs:
         run: pnpm --filter "@george43g/*-mcp" stress
 
       - name: Example/ output stays in sync with scaffolder
-        # Re-run the scaffolder with --name example and diff against the
-        # committed example/ directory. Catches scaffolder changes that
-        # weren't accompanied by `pnpm regen:example`.
+        # Re-run the scaffolder with --name example, generate the usage(1)
+        # artifacts the same way `pnpm regen:example` does locally, and
+        # diff against the committed example/ directory. Catches scaffolder
+        # changes (or .usage.kdl changes) that weren't accompanied by
+        # `pnpm regen:example`.
         # Fix locally: `pnpm regen:example && git add example/ && git commit`.
         run: |
           set -euo pipefail
@@ -116,6 +118,16 @@ jobs:
           # reference (would be picked up by the parent biome as a competing
           # root config). Mirror that strip on the tempdir side.
           rm -f "$EXAMPLE_TMP/biome.json"
+          # Regenerate completions / markdown docs / manpage inside the
+          # tempdir so it matches what `pnpm regen:example` produces locally.
+          # usage(1) is on PATH via the mise install step earlier in the job.
+          # MISE_TRUSTED_CONFIG_PATHS is required because the tempdir lives
+          # outside the repo's trusted workspace, so mise refuses to read
+          # the freshly-scaffolded mise.toml without explicit consent.
+          export MISE_TRUSTED_CONFIG_PATHS="$EXAMPLE_TMP"
+          mise run --cd "$EXAMPLE_TMP/apps/example-mcp" docs
+          mise run --cd "$EXAMPLE_TMP/apps/example-mcp" completions
+          mise run --cd "$EXAMPLE_TMP/apps/example-mcp" manpage
           # Strip transient artifacts + the .git directory (only the tempdir
           # gets one — m3-git-init runs `git init` in fresh dirs but skips
           # inside the parent repo where example/ lives).
