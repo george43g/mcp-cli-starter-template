@@ -20,7 +20,11 @@ import type { GitHelper } from "./git.js";
 import type { Logger } from "./logger.js";
 import type { ShellHelper } from "./shell.js";
 
-export type ApplyMode = "new" | "existing";
+// "new"      → `mcp-scaffold init` (fresh scaffold of a whole monorepo).
+// "existing" → `mcp-scaffold apply` (retrofit migrations into an existing repo).
+// "add"      → `mcp-scaffold add-mcp-app` (append one more MCP app to an
+//              already-scaffolded monorepo; only the 08-app phase runs).
+export type ApplyMode = "new" | "existing" | "add";
 
 export interface MigrationContext {
   /** The IoC config — reading a leaf triggers an inquirer prompt iff unset. */

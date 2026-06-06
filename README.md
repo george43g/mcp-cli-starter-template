@@ -67,6 +67,7 @@ Twelve phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffo
 
 ```
 mcp-scaffold init [target]              fresh scaffold (defaults to cwd)
+mcp-scaffold add-mcp-app <name>         append a second MCP app to an existing repo
 mcp-scaffold apply [--target <dir>]     retrofit an existing repo (dry-run; --execute to apply)
 mcp-scaffold plan  [--target <dir>]     dry-run preview only
 mcp-scaffold migrate <id>               run a single migration or one whole phase
@@ -80,6 +81,16 @@ Feature opt-outs (init/apply/plan/migrate):
 --no-http                skip Streamable HTTP transport
 --no-rust-accel          skip napi-rs crate
 --no-semantic-release    skip semantic-release workflow
+```
+
+### Adding a second MCP app to a scaffolded repo
+
+`add-mcp-app <name>` runs the 08-app phase migration against the existing monorepo with the new name injected. It scaffolds `apps/<name>-mcp/`, writes `.cursor/rules/<name>.mdc`, and appends a `<name>-mcp-dev` entry to `.mcp.json`. Other root files that hard-code the first app's name (root `mise.toml`'s pinned `screenshots` task, README sections) are intentionally not touched — fix those by hand if your scripts need to cover both apps. The npm scope is auto-detected from the first existing `apps/*-mcp/package.json`; pass `--scope` to override.
+
+```bash
+mcp-scaffold add-mcp-app billing               # apps/billing-mcp/ under the detected scope
+mcp-scaffold add-mcp-app billing --no-rust-accel
+mcp-scaffold add-mcp-app billing --scope @acme  # override detected scope
 ```
 
 ### Diff-safe apply (retrofit existing repos)

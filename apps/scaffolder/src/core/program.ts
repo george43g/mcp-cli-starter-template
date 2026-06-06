@@ -17,6 +17,11 @@
 
 import { resolve } from "node:path";
 import { Command } from "commander";
+import {
+  assertInsideScaffoldedRepo,
+  detectScope,
+  writePerAppAgentFiles,
+} from "../commands/add-mcp-app.js";
 import { drawBanner } from "../ui/banner.js";
 import { drawRecap } from "../ui/recap.js";
 import { Config } from "./config.js";
@@ -114,6 +119,36 @@ export function buildProgram(): Command {
     const force = opts.force === true || mode === "new";
     await runScaffolder(mode, cwd, globalOpts, opts, dryRun, id, force);
   });
+
+  program
+    .command("add-mcp-app <name>")
+    .description("Add a second MCP app to apps/<name>-mcp/ inside an existing scaffolded repo")
+    .option("--target <dir>", "Path to the scaffolded repo", process.cwd())
+    .option(
+      "--scope <scope>",
+      "Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted.",
+    )
+    .option("--no-tui", "Skip the Ink/React TUI surface for the new app")
+    .option("--no-http", "Skip the Streamable HTTP transport for the new app")
+    .option("--no-rust-accel", "Skip the rust-accel workspace dep for the new app")
+    .action(async (name: string, opts) => {
+      const globalOpts = program.opts<{ verbose?: boolean; banner?: boolean }>();
+      if (globalOpts.banner !== false) drawBanner();
+      const cwd = resolve(String(opts.target ?? process.cwd()));
+      assertInsideScaffoldedRepo(cwd);
+      // Auto-detect scope from existing apps unless the user passed --scope.
+      const scope = typeof opts.scope === "string" ? opts.scope : detectScope(cwd);
+      // Funnel both into cmdOpts so applyCmdOptsToConfig populates the IoC config.
+      opts.name = name;
+      opts.scope = scope;
+      // mode='add', dryRun=false, phaseFilter='08-app', force=true (the
+      // collision guard in m1-app-port prevents clobbering existing apps).
+      await runScaffolder("add", cwd, globalOpts, opts, false, "08-app", true);
+      const fs = makeFs({ cwd, dryRun: false, force: true });
+      const log = makeLogger({ verbose: globalOpts.verbose === true });
+      const perApp = await writePerAppAgentFiles({ fs, cwd, name, scope, log });
+      for (const note of perApp.notes) process.stdout.write(`  ${note}\n`);
+    });
 
   program
     .command("list")

@@ -10,7 +10,7 @@ Two things at once:
 
 1. **The static "golden output"** under `apps/example-repo-mcp/`, `apps/rust-accel/`, `packages/*`, `docs/`, etc. — the literal files that the scaffolder will ship into a cloned tool. CI rebuilds + tests it on every PR.
 
-2. **The scaffolder/migrator** at `apps/scaffolder/` (bin `mcp-scaffold`). 12 phases, 21 migrations, 145 template files. Drives `init` (fresh scaffold) and `apply` (diff-safe retrofit).
+2. **The scaffolder/migrator** at `apps/scaffolder/` (bin `mcp-scaffold`). 12 phases, 21 migrations, 145 template files. Drives `init` (fresh scaffold), `apply` (diff-safe retrofit), and `add-mcp-app` (append a second MCP app to an already-scaffolded monorepo — runs only the 08-app phase under `mode='add'` with a collision guard).
 
 The scaffolder's `src/phases/<NN-name>/lib/` directories are **byte-identical copies** of the canonical sources. The golden-output drift test (`apps/scaffolder/tests/golden.test.ts`) fails CI when these diverge.
 
@@ -21,7 +21,7 @@ The scaffolder's `src/phases/<NN-name>/lib/` directories are **byte-identical co
 - **Package manager**: pnpm 10.29.3 (Turborepo workspace)
 - **Build**: Vite library mode (the scaffolder bundles to a single `dist/cli.js` with the lib templates inlined via codegen)
 - **Lint/format**: Biome 2.x
-- **Tests**: Vitest (globals on); 76 scaffolder tests + 14 cloned-tool integration tests + 27 mcp-kit unit tests
+- **Tests**: Vitest (globals on); 87 scaffolder tests + 14 cloned-tool integration tests + 27 mcp-kit unit tests
 - **MCP SDK**: `@modelcontextprotocol/sdk` ^1.27
 - **CLI**: `commander` ^14
 - **TUI**: `ink` ^7 + `react` ^19
@@ -125,7 +125,7 @@ Scaffolder-only (run from inside `apps/scaffolder/`):
 
 ## Testing
 
-- **Scaffolder unit + integration**: `pnpm --filter @george43g/mcp-scaffold test` (76 tests across `templating`, `config-leaf`, `fs`, `package-port`, `migrations`, `golden`, `retrofit`, `tsconfig`)
+- **Scaffolder unit + integration**: `pnpm --filter @george43g/mcp-scaffold test` (87 tests across `templating`, `config-leaf`, `fs`, `package-port`, `migrations`, `golden`, `retrofit`, `tsconfig`, `add-mcp-app`)
 - **Cloned-tool integration**: `pnpm --filter @george43g/example-repo-mcp test` (9 tests; native + TS fallback paths)
 - **11-case stress harness**: `pnpm stress` (handshake, health, parallel, timeout, SIGTERM, RSS watchdog, HTTP roundtrip, …)
 - **Golden-output drift**: scaffolder's `tests/golden.test.ts` — byte-equal lib vs canonical (excepting `EXEMPT_LIB_PATHS`)

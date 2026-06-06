@@ -23,11 +23,31 @@ import { portPackage } from "../../core/package-port.js";
 export default class AppPortMigration extends Migration {
   readonly id = "08-app/m1-app-port";
   readonly title = "Port apps/example-repo-mcp/ (the user-facing tool)";
-  readonly appliesTo = "new" as const;
+  // "both" so the migration runs in both `init` (fresh scaffold) and `add`
+  // (append a second MCP app to an existing monorepo). The `apply()` body
+  // adds an explicit collision guard for the "add" path so we never clobber
+  // an existing apps/<name>-mcp/ when the user types the wrong name.
+  readonly appliesTo = "both" as const;
+
+  // Skip in `apply` (existing-repo) mode: porting the whole canonical app
+  // would overwrite the user's actual src/. The retrofitIntent below is what
+  // gets shown instead. Init + add both go through `apply()`.
+  override async shouldRun(ctx: MigrationContext): Promise<boolean> {
+    return ctx.mode !== "existing";
+  }
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
     const name = ctx.config.global.repoName.peek() ?? "starter";
     const pkgDir = `apps/${name}-mcp`;
+    if (ctx.mode === "add" && ctx.fs.exists(pkgDir)) {
+      return {
+        status: "failed",
+        notes: [
+          `${pkgDir} already exists — refusing to clobber. Pick a different --name or remove the dir first.`,
+        ],
+        error: new Error(`Refusing to overwrite existing ${pkgDir} in add mode`),
+      };
+    }
     return portPackage(ctx, {
       pkgDir,
       libPrefix: "08-app/lib/",

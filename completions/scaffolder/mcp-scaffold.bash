@@ -78,6 +78,18 @@ cmd migrate help="Run a single migration or one whole phase" {
     }
     arg <id> help="e.g. 04-robustness/m1-robustness-pkg, or just 04-robustness"
 }
+cmd add-mcp-app help="Add a second MCP app to apps/<name>-mcp/ inside an existing scaffolded repo" {
+    flag --target help="Path to the scaffolded repo" {
+        arg <dir>
+    }
+    flag --scope help="Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted." {
+        arg <scope>
+    }
+    flag --no-tui help="Skip the Ink/React TUI surface for the new app"
+    flag --no-http help="Skip the Streamable HTTP transport for the new app"
+    flag --no-rust-accel help="Skip the rust-accel workspace dep for the new app"
+    arg <name> help="Bare tool name for the new app (no -mcp suffix)"
+}
 cmd list help="List discovered phases + migrations"
 __USAGE_EOF__
     # shellcheck disable=SC2207

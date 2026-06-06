@@ -30,6 +30,9 @@ Dry\-run preview of which migrations would apply
 \fBmigrate\fR
 Run a single migration or one whole phase
 .TP
+\fBadd\-mcp\-app\fR
+Add a second MCP app to apps/<name>\-mcp/ inside an existing scaffolded repo
+.TP
 \fBlist\fR
 List discovered phases + migrations
 .SH "MCP-SCAFFOLD INIT"
@@ -139,3 +142,30 @@ Tool name (kebab\-case)
 .TP
 \fB<id>\fR
 e.g. 04\-robustness/m1\-robustness\-pkg, or just 04\-robustness
+.SH "MCP-SCAFFOLD ADD-MCP-APP"
+Add a second MCP app to apps/<name>\-mcp/ inside an existing scaffolded repo
+.PP
+\fBUsage:\fR mcp\-scaffold add\-mcp\-app [OPTIONS] <name>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-target\fR \fI<dir>\fR
+Path to the scaffolded repo
+.TP
+\fB\-\-scope\fR \fI<scope>\fR
+Npm scope, with leading @. Auto\-detected from existing apps/*\-mcp/ if omitted.
+.TP
+\fB\-\-no\-tui\fR
+Skip the Ink/React TUI surface for the new app
+.TP
+\fB\-\-no\-http\fR
+Skip the Streamable HTTP transport for the new app
+.TP
+\fB\-\-no\-rust\-accel\fR
+Skip the rust\-accel workspace dep for the new app
+\fBArguments:\fR
+.PP
+.TP
+\fB<name>\fR
+Bare tool name for the new app (no \-mcp suffix)

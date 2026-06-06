@@ -15,8 +15,9 @@
 
 import { input, select } from "@inquirer/prompts";
 import { type ConfigLeaf, configLeaf } from "./config-leaf.js";
+import type { ApplyMode } from "./migration.js";
 
-export type ApplyMode = "new" | "existing";
+export type { ApplyMode };
 export type PackageManager = "pnpm" | "npm" | "bun";
 
 export class Config {
