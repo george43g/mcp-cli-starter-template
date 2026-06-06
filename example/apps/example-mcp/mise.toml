@@ -10,7 +10,9 @@
 # Docs: https://mise.jdx.dev · https://usage.jdx.dev
 
 [tools]
-usage = "latest"
+# Pinned: usage(1) emits slightly different completion shells between
+# minor versions; a floating "latest" makes check:usage drift gates flap.
+usage = "3.3.0"
 
 [tasks.docs]
 description = "Generate markdown docs for each subcommand"

@@ -14,7 +14,9 @@ pnpm = "10.29.3"
 # manpage + markdown docs from the .usage.kdl specs in apps/scaffolder/
 # and apps/example-repo-mcp/. Required by `mise run docs`/`completions`/
 # `manpage` and by the cli-artifacts-drift CI gate.
-usage = "latest"
+# Pinned: usage(1) emits slightly different completion shells between
+# minor versions; a floating "latest" makes the drift gates flap.
+usage = "3.3.0"
 
 [env]
 # Default to non-dev mode unless overridden. Test runs flip it via .env.test.
