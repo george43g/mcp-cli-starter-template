@@ -24,7 +24,6 @@ const ANSI_REGEX = new RegExp(
 );
 
 // Matches C0 control characters, excluding \t (0x09), \n (0x0A), and \r (0x0D)
-// biome-ignore lint/suspicious/noControlCharactersInRegex: we intentionally match control characters to strip them
 const CONTROL_CHAR_REGEX = /[\x00-\x08\x0B\x0C\x0E-\x1F]/g;
 
 export function sanitize(text: string | null | undefined, maxLength = 4096): string | null {

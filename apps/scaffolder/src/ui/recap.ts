@@ -32,6 +32,7 @@ export function drawRecap(phases: readonly PhaseRunResult[], opts: RecapOptions 
   let failed = 0;
   let totalDivergent = 0;
   const divergentByMigration: Array<{ id: string; files: readonly string[] }> = [];
+  const followUps = new Set<string>();
 
   for (const phase of phases) {
     process.stdout.write(`\n  ${kleur.bold(phase.phaseId)}\n`);
@@ -56,6 +57,7 @@ export function drawRecap(phases: readonly PhaseRunResult[], opts: RecapOptions 
         totalDivergent += divCount;
         divergentByMigration.push({ id: row.migrationId, files: row.result.filesDivergent });
       }
+      for (const followUp of row.result.followUps ?? []) followUps.add(followUp);
     }
   }
 
@@ -81,6 +83,13 @@ export function drawRecap(phases: readonly PhaseRunResult[], opts: RecapOptions 
       if (files.length > 10) {
         process.stdout.write(`      ${kleur.dim(`… and ${files.length - 10} more`)}\n`);
       }
+    }
+  }
+
+  if (followUps.size > 0) {
+    process.stdout.write(`\n  ${kleur.bold("Action required")}\n`);
+    for (const followUp of followUps) {
+      process.stdout.write(`    ${kleur.yellow("·")} ${followUp}\n`);
     }
   }
 

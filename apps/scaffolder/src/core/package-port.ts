@@ -8,6 +8,7 @@
 
 import { TEMPLATES } from "../generated/templates.js";
 import type { MigrationContext, MigrationResult } from "./migration.js";
+import { requireRepoName } from "./target-inspection.js";
 import { nameUpperOf, substitute } from "./templating.js";
 
 export interface PackagePortOptions {
@@ -56,7 +57,7 @@ export async function portPackage(
     recordOutcome(path, await ctx.fs.writeIfChanged(path, content));
   }
 
-  const name = ctx.config.global.repoName.peek() ?? "mcp-starter";
+  const name = requireRepoName(ctx.config);
   const vars = { name, nameUpper: nameUpperOf(name), scope };
 
   const prefix = opts.pkgDir === "" || opts.pkgDir === "." ? "" : `${opts.pkgDir}/`;

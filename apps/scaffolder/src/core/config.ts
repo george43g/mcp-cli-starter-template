@@ -20,6 +20,17 @@ import type { ApplyMode } from "./migration.js";
 export type { ApplyMode };
 export type PackageManager = "pnpm" | "npm" | "bun";
 
+export function assertValidRepoName(value: string): void {
+  if (!/^[a-z][a-z0-9-]*$/.test(value)) {
+    throw new Error(`Invalid repoName "${value}" — must be kebab-case`);
+  }
+  if (value.endsWith("-mcp")) {
+    throw new Error(
+      `repoName "${value}" must NOT end in '-mcp' — we append it for you. Pass --name ${value.slice(0, -4)} instead.`,
+    );
+  }
+}
+
 export class Config {
   global: {
     /** Whether we're scaffolding a fresh repo or applying to an existing one. */
@@ -77,16 +88,7 @@ export class Config {
             },
           }),
         skipIf: (c) => c.global.mode.peek() === "existing",
-        validate: (v) => {
-          if (!/^[a-z][a-z0-9-]*$/.test(v)) {
-            throw new Error(`Invalid repoName "${v}" — must be kebab-case`);
-          }
-          if (v.endsWith("-mcp")) {
-            throw new Error(
-              `repoName "${v}" must NOT end in '-mcp' — we append it for you. Pass --name ${v.slice(0, -4)} instead.`,
-            );
-          }
-        },
+        validate: assertValidRepoName,
       })(this),
 
       scope: configLeaf<string>({

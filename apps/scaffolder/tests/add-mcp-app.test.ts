@@ -20,6 +20,7 @@ import { makeGit } from "../src/core/git.js";
 import { makeLogger } from "../src/core/logger.js";
 import type { MigrationContext } from "../src/core/migration.js";
 import { makeShell } from "../src/core/shell.js";
+import { inspectTarget } from "../src/core/target-inspection.js";
 import M1AppPort from "../src/phases/08-app/m1-app-port.js";
 
 async function makeScaffoldedRepoSkeleton(scope = "@acme", firstApp = "foo") {
@@ -49,6 +50,12 @@ async function makeAddCtx(cwd: string, name: string, scope: string) {
   const ctx: MigrationContext = {
     config,
     cwd,
+    target: await inspectTarget({
+      cwd,
+      mode: "add",
+      explicitName: name,
+      explicitPackageManager: "pnpm",
+    }),
     mode: "add",
     shell,
     fs,

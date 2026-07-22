@@ -23,7 +23,7 @@ Npm scope, with leading @
 
 ### `--package-manager <pm>`
 
-pnpm | npm | bun
+pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)
 
 **Choices:**
 

@@ -50,7 +50,7 @@ Tool name (kebab\-case, BARE — no \-mcp suffix)
 Npm scope, with leading @
 .TP
 \fB\-\-package\-manager\fR \fI<pm>\fR
-pnpm | npm | bun
+pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto\-detect)
 .TP
 \fB\-\-no\-tui\fR
 Skip the Ink/React TUI surface
@@ -86,10 +86,13 @@ Actually apply (default is dry\-run)
 Overwrite files that diverge from the template (default: preserve user customizations)
 .TP
 \fB\-\-name\fR \fI<name>\fR
-Tool name (kebab\-case)
+Tool name (kebab\-case, BARE — no \-mcp suffix)
 .TP
 \fB\-\-scope\fR \fI<scope>\fR
 Npm scope, with leading @
+.TP
+\fB\-\-package\-manager\fR \fI<pm>\fR
+pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto\-detect)
 .TP
 \fB\-\-no\-tui\fR
 Skip the Ink/React TUI surface
@@ -114,7 +117,28 @@ Dry\-run preview of which migrations would apply
 Path to target repo
 .TP
 \fB\-\-mode\fR \fI<mode>\fR
-\&'new' or 'existing'
+\&'new' or 'existing' (default: existing)
+.TP
+\fB\-\-name\fR \fI<name>\fR
+Tool name (kebab\-case, BARE — no \-mcp suffix)
+.TP
+\fB\-\-scope\fR \fI<scope>\fR
+Npm scope, with leading @
+.TP
+\fB\-\-package\-manager\fR \fI<pm>\fR
+pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto\-detect)
+.TP
+\fB\-\-no\-tui\fR
+Skip the Ink/React TUI surface
+.TP
+\fB\-\-no\-http\fR
+Skip the Streamable HTTP transport
+.TP
+\fB\-\-no\-rust\-accel\fR
+Skip the optional Rust acceleration crate
+.TP
+\fB\-\-no\-semantic\-release\fR
+Skip the semantic\-release workflow
 .SH "MCP-SCAFFOLD MIGRATE"
 Run a single migration or one whole phase
 .PP
@@ -127,16 +151,34 @@ Run a single migration or one whole phase
 Path to target repo
 .TP
 \fB\-\-mode\fR \fI<mode>\fR
-\&'new' or 'existing'
+\&'new' or 'existing' (default: existing)
 .TP
 \fB\-\-execute\fR
-Actually apply (default is dry\-run for existing mode)
+Actually apply (default is dry\-run)
 .TP
 \fB\-\-force\fR
-Overwrite divergent files (default depends on mode: true for new, false for existing)
+Overwrite divergent files (default: preserve in existing mode)
 .TP
 \fB\-\-name\fR \fI<name>\fR
-Tool name (kebab\-case)
+Tool name (kebab\-case, BARE — no \-mcp suffix)
+.TP
+\fB\-\-scope\fR \fI<scope>\fR
+Npm scope, with leading @
+.TP
+\fB\-\-package\-manager\fR \fI<pm>\fR
+pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto\-detect)
+.TP
+\fB\-\-no\-tui\fR
+Skip the Ink/React TUI surface
+.TP
+\fB\-\-no\-http\fR
+Skip the Streamable HTTP transport
+.TP
+\fB\-\-no\-rust\-accel\fR
+Skip the optional Rust acceleration crate
+.TP
+\fB\-\-no\-semantic\-release\fR
+Skip the semantic\-release workflow
 \fBArguments:\fR
 .PP
 .TP

@@ -47,16 +47,16 @@ const PKG_JSON = (scope: string) => `{
   },
   "dependencies": {
     "${scope}/robustness": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.25.0"
   },
   "devDependencies": {
     "${scope}/tsconfig": "workspace:*",
     "${scope}/vitest-config": "workspace:*",
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.13.3",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "vitest": "^3.2.7"
   }
 }
 `;

@@ -18,11 +18,13 @@ import { makeGit } from "../src/core/git.js";
 import { makeLogger } from "../src/core/logger.js";
 import type { MigrationContext } from "../src/core/migration.js";
 import { makeShell } from "../src/core/shell.js";
+import { inspectTarget } from "../src/core/target-inspection.js";
 import M4Monorepo from "../src/phases/01-bootstrap/m4-monorepo.js";
 import M1Mise from "../src/phases/02-toolchain/m1-mise.js";
 import M3GitInit from "../src/phases/02-toolchain/m3-git-init.js";
 import M4Gitignore from "../src/phases/02-toolchain/m4-gitignore.js";
 import M5Gitattributes from "../src/phases/02-toolchain/m5-gitattributes.js";
+import M1CiRelease from "../src/phases/12-ci-release/m1-ci-release.js";
 
 async function makeCtx(
   opts: { name?: string; scope?: string; dryRun?: boolean; force?: boolean } = {},
@@ -35,7 +37,8 @@ async function makeCtx(
   const fs = makeFs({ cwd, dryRun, force });
   const git = makeGit(shell);
   const config = new Config();
-  config.global.repoName.set(opts.name ?? "foo");
+  const name = opts.name ?? "foo";
+  config.global.repoName.set(name);
   config.global.scope.set(opts.scope ?? "@george43g");
   config.global.mode.set("new");
   config.global.packageManager.set("pnpm");
@@ -43,6 +46,12 @@ async function makeCtx(
   const ctx: MigrationContext = {
     config,
     cwd,
+    target: await inspectTarget({
+      cwd,
+      mode: "new",
+      explicitName: name,
+      explicitPackageManager: "pnpm",
+    }),
     mode: "new",
     shell,
     fs,
@@ -141,6 +150,8 @@ describe("02-toolchain/m1-mise", () => {
     const mise = await readFile(join(cwd, "mise.toml"), "utf8");
     expect(mise).toContain('node = "24"');
     expect(mise).toContain('pnpm = "10.29.3"');
+    expect(mise).toContain('usage = "3.3.0"');
+    expect(mise).toContain("13-assertion MCP stress harness");
     expect(mise).toContain("wm-stack"); // substituted
     expect(mise).not.toContain("example-repo");
   });
@@ -152,6 +163,27 @@ describe("02-toolchain/m1-mise", () => {
     const result = await new M1Mise().apply(ctx);
     expect(result.status).toBe("would-apply");
     expect(existsSync(join(cwd, "mise.toml"))).toBe(false);
+  });
+});
+
+describe("12-ci-release/m1-ci-release", () => {
+  it("writes consumer CI without meta-only steps and keeps all consumer gates", async () => {
+    const { cwd, ctx } = await makeCtx({ name: "foo" });
+    trashCans.push(cwd);
+
+    await new M1CiRelease().apply(ctx);
+    const ci = await readFile(join(cwd, ".github/workflows/ci.yml"), "utf8");
+    expect(ci).not.toContain("Scaffolder E2E smoke");
+    expect(ci).not.toContain("Example/ output stays in sync with scaffolder");
+    expect(ci).toContain("Lint");
+    expect(ci).toContain("Typecheck");
+    expect(ci).toContain("Build (TS workspace + optional native)");
+    expect(ci).toContain("Test (default — native path when built)");
+    expect(ci).toContain("Test (TS fallback path)");
+    expect(ci).toContain("Check usage(1) artifacts are fresh");
+    expect(ci).toContain("Verify npm tarball is publishable");
+    expect(ci).toContain("Stress harness (13 assertions including HTTP)");
+    expect(ci).toContain("Upload stress report");
   });
 });
 

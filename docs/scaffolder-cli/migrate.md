@@ -19,7 +19,7 @@ Path to target repo
 
 ### `--mode <mode>`
 
-'new' or 'existing'
+'new' or 'existing' (default: existing)
 
 **Choices:**
 
@@ -28,12 +28,42 @@ Path to target repo
 
 ### `--execute`
 
-Actually apply (default is dry-run for existing mode)
+Actually apply (default is dry-run)
 
 ### `--force`
 
-Overwrite divergent files (default depends on mode: true for new, false for existing)
+Overwrite divergent files (default: preserve in existing mode)
 
 ### `--name <name>`
 
-Tool name (kebab-case)
+Tool name (kebab-case, BARE — no -mcp suffix)
+
+### `--scope <scope>`
+
+Npm scope, with leading @
+
+### `--package-manager <pm>`
+
+pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)
+
+**Choices:**
+
+- `pnpm`
+- `npm`
+- `bun`
+
+### `--no-tui`
+
+Skip the Ink/React TUI surface
+
+### `--no-http`
+
+Skip the Streamable HTTP transport
+
+### `--no-rust-accel`
+
+Skip the optional Rust acceleration crate
+
+### `--no-semantic-release`
+
+Skip the semantic-release workflow

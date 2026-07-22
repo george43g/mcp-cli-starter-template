@@ -14,6 +14,7 @@ import {
   type MigrationResult,
   type RetrofitIntent,
 } from "../../core/migration.js";
+import { requireRepoName } from "../../core/target-inspection.js";
 
 const PNPM_WORKSPACE_YAML = `packages:
   - apps/*
@@ -64,12 +65,18 @@ const ROOT_PACKAGE_JSON = (name: string) =>
         clean: "turbo run clean && rm -rf node_modules .turbo coverage",
       },
       devDependencies: {
-        "@biomejs/biome": "^2.4.15",
-        "@types/node": "^24.0.0",
-        tsx: "^4.19.0",
-        turbo: "^2.5.0",
+        "@biomejs/biome": "^2.5.5",
+        "@types/node": "^24.13.3",
+        tsx: "^4.23.1",
+        turbo: "^2.10.5",
         typescript: "^5.7.0",
-        vitest: "^2.1.0",
+        vitest: "^3.2.7",
+      },
+      pnpm: {
+        overrides: {
+          "@hono/node-server": "2.0.11",
+          "fast-uri": "3.1.4",
+        },
       },
       keywords: [
         "mcp",
@@ -100,8 +107,7 @@ export default class MonorepoMigration extends Migration {
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
     const filesChanged: string[] = [];
-    const name = ctx.config.global.repoName.peek() ?? "mcp-starter";
-
+    const name = requireRepoName(ctx.config);
     const files: Array<[string, string]> = [
       ["pnpm-workspace.yaml", PNPM_WORKSPACE_YAML],
       ["turbo.json", `${TURBO_JSON}\n`],
@@ -117,7 +123,7 @@ export default class MonorepoMigration extends Migration {
   }
 
   override retrofitIntent(ctx: MigrationContext): RetrofitIntent | undefined {
-    const name = ctx.config.global.repoName.peek() ?? "<your-tool>";
+    const name = requireRepoName(ctx.config);
     return {
       summary: "Convert the existing repo into a Turborepo monorepo (apps/* + packages/*).",
       rationale:
@@ -149,8 +155,8 @@ export default class MonorepoMigration extends Migration {
         `typecheck="turbo run typecheck", stress="turbo run stress", ` +
         `verify="pnpm lint && pnpm typecheck && pnpm test && pnpm build", ` +
         `clean="turbo run clean && rm -rf node_modules .turbo coverage".\n` +
-        `3. Add to root devDependencies (if missing): @biomejs/biome ^2.4.15, @types/node ^24, ` +
-        `tsx ^4.19, turbo ^2.5, typescript ^5.7, vitest ^2.1.\n` +
+        `3. Add to root devDependencies (if missing): @biomejs/biome ^2.5.5, @types/node ^24.13, ` +
+        `tsx ^4.23, turbo ^2.10, typescript ^5.7, vitest ^3.2.\n` +
         `4. Create pnpm-workspace.yaml: \`packages:\\n  - apps/*\\n  - packages/*\\n\`.\n` +
         `5. Create turbo.json with the task graph: build dependsOn ^build outputs dist/**, ` +
         `typecheck dependsOn ^build, lint inputs src/**, test dependsOn ^build outputs coverage/**, ` +

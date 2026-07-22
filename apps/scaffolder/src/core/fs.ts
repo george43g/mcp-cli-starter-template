@@ -7,7 +7,16 @@
  */
 
 import { existsSync } from "node:fs";
-import { chmod, lstat, mkdir, readFile, symlink, unlink, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  readFile,
+  readlink,
+  symlink,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 
 const SHEBANG = Buffer.from("#!");
@@ -108,15 +117,16 @@ export function makeFs(options: FsOptions): FsHelper {
     },
     async symlink(target, linkRelPath) {
       const abs = safe(linkRelPath);
-      if (existsSync(abs)) {
-        // already exists — use lstat() to inspect the link itself (stat()
-        // follows it; we'd see the target's type, not the link's).
-        try {
-          const st = await lstat(abs);
-          if (st.isSymbolicLink()) return "unchanged";
-        } catch {
-          // fall through to overwrite
-        }
+      let existing: Awaited<ReturnType<typeof lstat>> | undefined;
+      try {
+        existing = await lstat(abs);
+      } catch (error) {
+        const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+        if (code !== "ENOENT") throw error;
+      }
+      if (existing) {
+        if (existing.isSymbolicLink() && (await readlink(abs)) === target) return "unchanged";
+        if (!force) return "divergent-skipped";
         if (options.dryRun) return "would-update";
         await unlink(abs);
         await symlink(target, abs);

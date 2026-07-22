@@ -23,7 +23,7 @@ Suppress the ascii banner
 
 - [`mcp-scaffold init [FLAGS] [target]`](/init.md)
 - [`mcp-scaffold apply [FLAGS]`](/apply.md)
-- [`mcp-scaffold plan [--target <dir>] [--mode <mode>]`](/plan.md)
+- [`mcp-scaffold plan [FLAGS]`](/plan.md)
 - [`mcp-scaffold migrate [FLAGS] <id>`](/migrate.md)
 - [`mcp-scaffold add-mcp-app [FLAGS] <name>`](/add-mcp-app.md)
 - [`mcp-scaffold list`](/list.md)

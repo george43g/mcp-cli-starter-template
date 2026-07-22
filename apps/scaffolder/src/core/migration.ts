@@ -19,6 +19,7 @@ import type { FsHelper } from "./fs.js";
 import type { GitHelper } from "./git.js";
 import type { Logger } from "./logger.js";
 import type { ShellHelper } from "./shell.js";
+import type { TargetInspection } from "./target-inspection.js";
 
 // "new"      → `mcp-scaffold init` (fresh scaffold of a whole monorepo).
 // "existing" → `mcp-scaffold apply` (retrofit migrations into an existing repo).
@@ -31,6 +32,8 @@ export interface MigrationContext {
   config: Config;
   /** Target repo directory — could be a fresh dir or an existing repo. */
   cwd: string;
+  /** Package metadata, package manager, and layout markers resolved before migrations run. */
+  target: TargetInspection;
   /** Whether we're generating fresh or applying to an existing repo. */
   mode: ApplyMode;
   /** Shell wrapper — proper stdio inheritance + error surfacing. */
@@ -65,6 +68,8 @@ export interface MigrationResult {
   filesChanged?: string[];
   /** Files preserved because they diverge from the template; pass --force to overwrite. */
   filesDivergent?: string[];
+  /** Required project-specific work that remains after automatic generation. */
+  followUps?: string[];
   /** If status === 'failed', the error. */
   error?: Error;
 }

@@ -34,7 +34,6 @@ export function useMouse(onEvent: (event: MouseEvent) => void) {
     const handler = (data: Buffer) => {
       const str = data.toString();
       // SGR mouse format: \x1b[<btn;x;y;M (press) or \x1b[<btn;x;y;m (release)
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: ESC is the terminal mouse protocol prefix.
       const re = /\x1b\[<(\d+);(\d+);(\d+)([Mm])/g;
       let match = re.exec(str);
       while (match !== null) {

@@ -53,7 +53,7 @@ Feature opt-outs (init/apply/plan/migrate):
 | 08-app | the user-facing tool — single bin, MCP/CLI/TUI/REPL, dev MCP proxy, stress harness |
 | 09-rust-accel | optional napi-rs v3 crate with hand-mirrored types |
 | 10-docs-readme | Mintlify scaffold + reference markdown + public-style README |
-| 11-agent-files | AGENTS.md + CLAUDE.md/.cursorrules symlinks + .mcp.json + Claude/Cursor skill files |
+| 11-agent-files | full starter agent config, or minimal package-manager-aware docs for non-starter repos |
 | 12-ci-release | matrix CI + disabled semantic-release + screenshots CI + .releaserc + .npmignore |
 
 ## Diff-safe retrofit
@@ -85,6 +85,10 @@ For migrations that **couldn't auto-apply** to your repo (the 'new'-only ones th
 - **A self-contained AI prompt** — copy-paste it into Claude/Cursor/etc. unmodified to have an agent do the retrofit for you
 
 This is the bridge between "the scaffolder applied what it safely could" and "here's what you still need to do." Read it after every apply.
+
+Existing targets are inspected before migrations run: the tool name is derived from `package.json` when `--name` is omitted, and the package manager is detected from an explicit flag, package metadata, then lockfiles. Non-starter phase 11 runs emit only a minimal `AGENTS.md`, safe symlinks, a Cursor rule, and project skill skeletons using the detected package manager and actual scripts. The recap lists those skeletons under **Action required**.
+
+Fresh scaffolds remain intentionally **pnpm-only**. Passing npm or Bun to `init` or `migrate --mode new` fails before filesystem writes; npm/Bun detection in existing mode is for accurate target documentation, while full infrastructure migrations remain pnpm/Turborepo-oriented.
 
 ## Learn more
 

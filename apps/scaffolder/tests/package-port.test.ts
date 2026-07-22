@@ -9,6 +9,7 @@ import { makeLogger } from "../src/core/logger.js";
 import type { MigrationContext } from "../src/core/migration.js";
 import { portPackage } from "../src/core/package-port.js";
 import { makeShell } from "../src/core/shell.js";
+import { inspectTarget } from "../src/core/target-inspection.js";
 
 /**
  * Build a working MigrationContext rooted at a tmpdir. The migration ctx
@@ -26,12 +27,19 @@ async function makeTestCtx(
   const fs = makeFs({ cwd, dryRun, force });
   const git = makeGit(shell);
   const config = new Config();
-  config.global.repoName.set(opts.name ?? "foo");
+  const name = opts.name ?? "foo";
+  config.global.repoName.set(name);
   config.global.scope.set(opts.scope ?? "@george43g");
   config.global.mode.set("new");
   const ctx: MigrationContext = {
     config,
     cwd,
+    target: await inspectTarget({
+      cwd,
+      mode: "new",
+      explicitName: name,
+      explicitPackageManager: "pnpm",
+    }),
     mode: "new",
     shell,
     fs,

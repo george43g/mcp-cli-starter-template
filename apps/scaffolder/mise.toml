@@ -28,8 +28,9 @@ run = """
   rm -rf /tmp/scaffold-smoke
   mkdir /tmp/scaffold-smoke
   node dist/cli.js init /tmp/scaffold-smoke --name smoke --no-banner
+  export MISE_TRUSTED_CONFIG_PATHS=/tmp/scaffold-smoke
   cd /tmp/scaffold-smoke
-  pnpm install --silent
+  pnpm install --silent --no-frozen-lockfile
   pnpm test
 """
 

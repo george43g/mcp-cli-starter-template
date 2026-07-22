@@ -29,6 +29,6 @@
     "clean": "rm -rf target *.node index.js index.d.ts"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.6.0"
+    "@napi-rs/cli": "^3.7.4"
   }
 }

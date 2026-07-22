@@ -47,17 +47,17 @@ const PKG_JSON = (scope: string) => `{
   "dependencies": {
     "${scope}/robustness": "workspace:*",
     "fullscreen-ink": "^0.1.0",
-    "ink": "^7.0.0",
-    "react": "^19.0.0"
+    "ink": "^7.1.1",
+    "react": "^19.2.8"
   },
   "devDependencies": {
     "${scope}/tsconfig": "workspace:*",
     "${scope}/vitest-config": "workspace:*",
-    "@types/node": "^24.0.0",
-    "@types/react": "^19.0.0",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
     "ink-testing-library": "^4.0.0",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "vitest": "^3.2.7"
   }
 }
 `;

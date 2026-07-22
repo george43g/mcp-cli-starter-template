@@ -94,13 +94,13 @@ jobs:
           # catches a different class of "scaffolder unit tests pass but
           # output is broken" regression.
           pnpm verify
-          # Stress: 11 lifecycle assertions (handshake, health, parallel,
+          # Stress: 13 lifecycle assertions (handshake, health, parallel,
           # timeout, SIGTERM, RSS watchdog, HTTP roundtrip). Skipped if
           # --no-rust-accel removed the http transport; we kept HTTP in
-          # this run so all 11 must pass.
+          # this run so all 13 must pass.
           pnpm --filter "@george43g/*-mcp" stress
 
-      - name: Stress harness (11 cases including HTTP)
+      - name: Stress harness (13 assertions including HTTP)
         run: pnpm --filter "@george43g/*-mcp" stress
 
       - name: Example/ output stays in sync with scaffolder

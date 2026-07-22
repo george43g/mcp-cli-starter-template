@@ -43,7 +43,6 @@ export interface ToolDefinition<
 // tools with narrow input/output schemas under a single uniform array type.
 // Tool authors keep their narrow types at the declaration site; this is the
 // boundary alias used internally.
-// biome-ignore lint/suspicious/noExplicitAny: registry boundary; widening is intentional.
 export type AnyToolDefinition = ToolDefinition<any, any>;
 
 export interface ToolRegistry {

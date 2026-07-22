@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, symlink as nodeSymlink, readFile, readlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -170,6 +170,32 @@ describe("fs helper", () => {
       await fs.writeIfChanged("real.md", "real");
       await fs.symlink("real.md", "link.md");
       expect(await fs.symlink("real.md", "link.md")).toBe("unchanged");
+    });
+
+    it("force=false preserves a regular file as divergent", async () => {
+      const seed = makeFs({ cwd, dryRun: false, force: true });
+      await seed.writeIfChanged("CLAUDE.md", "user guidance");
+      const fs = makeFs({ cwd, dryRun: false, force: false });
+      expect(await fs.symlink("AGENTS.md", "CLAUDE.md")).toBe("divergent-skipped");
+      expect(await readFile(join(cwd, "CLAUDE.md"), "utf8")).toBe("user guidance");
+    });
+
+    it("force=false verifies and preserves a symlink with the wrong target", async () => {
+      await nodeSymlink("OTHER.md", join(cwd, "CLAUDE.md"));
+      const fs = makeFs({ cwd, dryRun: false, force: false });
+      expect(await fs.symlink("AGENTS.md", "CLAUDE.md")).toBe("divergent-skipped");
+      expect(await readlink(join(cwd, "CLAUDE.md"))).toBe("OTHER.md");
+    });
+
+    it("force=true replaces a regular file or wrong symlink intentionally", async () => {
+      const seed = makeFs({ cwd, dryRun: false, force: true });
+      await seed.writeIfChanged("CLAUDE.md", "user guidance");
+      expect(await seed.symlink("AGENTS.md", "CLAUDE.md")).toBe("updated");
+      expect(await readlink(join(cwd, "CLAUDE.md"))).toBe("AGENTS.md");
+
+      await nodeSymlink("OTHER.md", join(cwd, "wrong.md"));
+      expect(await seed.symlink("AGENTS.md", "wrong.md")).toBe("updated");
+      expect(await readlink(join(cwd, "wrong.md"))).toBe("AGENTS.md");
     });
 
     it("dry-run: returns 'would-create' without making the link", async () => {

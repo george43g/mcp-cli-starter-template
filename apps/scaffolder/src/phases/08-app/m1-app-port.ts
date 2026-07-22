@@ -19,6 +19,7 @@ import {
   type RetrofitIntent,
 } from "../../core/migration.js";
 import { portPackage } from "../../core/package-port.js";
+import { requireRepoName } from "../../core/target-inspection.js";
 
 export default class AppPortMigration extends Migration {
   readonly id = "08-app/m1-app-port";
@@ -37,7 +38,7 @@ export default class AppPortMigration extends Migration {
   }
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
-    const name = ctx.config.global.repoName.peek() ?? "starter";
+    const name = requireRepoName(ctx.config);
     const pkgDir = `apps/${name}-mcp`;
     if (ctx.mode === "add" && ctx.fs.exists(pkgDir)) {
       return {
@@ -55,7 +56,7 @@ export default class AppPortMigration extends Migration {
   }
 
   override retrofitIntent(ctx: MigrationContext): RetrofitIntent | undefined {
-    const name = ctx.config.global.repoName.peek() ?? "<your-tool>";
+    const name = requireRepoName(ctx.config);
     const scope = ctx.config.global.scope.peek() ?? "@your-scope";
     return {
       summary: "Lay down the canonical apps/<name>-mcp/ tree (src/, scripts/, tests/, configs).",
@@ -96,7 +97,7 @@ export default class AppPortMigration extends Migration {
         `5. If I have separate \`${name}-mcp\` / \`${name}-cli\` / \`${name}-tui\` binaries, ` +
         `collapse them to ONE bin with subcommands sharing a dispatcher. Build with Vite library ` +
         `mode, 3 entries (index/cli/tui), shebang banner via rollup-plugin-banner.\n` +
-        `6. Port the 9-case stress harness from \`apps/example-repo-mcp/scripts/stress-mcp.ts\` ` +
+        `6. Port the 13-assertion stress harness from \`apps/example-repo-mcp/scripts/stress-mcp.ts\` ` +
         `(handshake, health, parallel, unknown-tool, malformed-input, timeout, SIGTERM, ` +
         `RSS-watchdog, HTTP) into my repo and run it in CI.\n` +
         `\n` +

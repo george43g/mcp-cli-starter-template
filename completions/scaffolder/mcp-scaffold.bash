@@ -24,7 +24,7 @@ cmd init help="Fresh scaffold into <target> (defaults to cwd)" {
     flag --scope help="Npm scope, with leading @" {
         arg <scope>
     }
-    flag --package-manager help="pnpm | npm | bun" {
+    flag --package-manager help="pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)" {
         arg <pm> {
             choices pnpm npm bun
         }
@@ -41,11 +41,16 @@ cmd apply help="Apply migrations to an existing repo" {
     }
     flag --execute help="Actually apply (default is dry-run)"
     flag --force help="Overwrite files that diverge from the template (default: preserve user customizations)"
-    flag --name help="Tool name (kebab-case)" {
+    flag --name help="Tool name (kebab-case, BARE — no -mcp suffix)" {
         arg <name>
     }
     flag --scope help="Npm scope, with leading @" {
         arg <scope>
+    }
+    flag --package-manager help="pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)" {
+        arg <pm> {
+            choices pnpm npm bun
+        }
     }
     flag --no-tui help="Skip the Ink/React TUI surface"
     flag --no-http help="Skip the Streamable HTTP transport"
@@ -56,26 +61,53 @@ cmd plan help="Dry-run preview of which migrations would apply" {
     flag --target help="Path to target repo" {
         arg <dir>
     }
-    flag --mode help="'new' or 'existing'" {
+    flag --mode help="'new' or 'existing' (default: existing)" {
         arg <mode> {
             choices new existing
         }
     }
+    flag --name help="Tool name (kebab-case, BARE — no -mcp suffix)" {
+        arg <name>
+    }
+    flag --scope help="Npm scope, with leading @" {
+        arg <scope>
+    }
+    flag --package-manager help="pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)" {
+        arg <pm> {
+            choices pnpm npm bun
+        }
+    }
+    flag --no-tui help="Skip the Ink/React TUI surface"
+    flag --no-http help="Skip the Streamable HTTP transport"
+    flag --no-rust-accel help="Skip the optional Rust acceleration crate"
+    flag --no-semantic-release help="Skip the semantic-release workflow"
 }
 cmd migrate help="Run a single migration or one whole phase" {
     flag --target help="Path to target repo" {
         arg <dir>
     }
-    flag --mode help="'new' or 'existing'" {
+    flag --mode help="'new' or 'existing' (default: existing)" {
         arg <mode> {
             choices new existing
         }
     }
-    flag --execute help="Actually apply (default is dry-run for existing mode)"
-    flag --force help="Overwrite divergent files (default depends on mode: true for new, false for existing)"
-    flag --name help="Tool name (kebab-case)" {
+    flag --execute help="Actually apply (default is dry-run)"
+    flag --force help="Overwrite divergent files (default: preserve in existing mode)"
+    flag --name help="Tool name (kebab-case, BARE — no -mcp suffix)" {
         arg <name>
     }
+    flag --scope help="Npm scope, with leading @" {
+        arg <scope>
+    }
+    flag --package-manager help="pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)" {
+        arg <pm> {
+            choices pnpm npm bun
+        }
+    }
+    flag --no-tui help="Skip the Ink/React TUI surface"
+    flag --no-http help="Skip the Streamable HTTP transport"
+    flag --no-rust-accel help="Skip the optional Rust acceleration crate"
+    flag --no-semantic-release help="Skip the semantic-release workflow"
     arg <id> help="e.g. 04-robustness/m1-robustness-pkg, or just 04-robustness"
 }
 cmd add-mcp-app help="Add a second MCP app to apps/<name>-mcp/ inside an existing scaffolded repo" {

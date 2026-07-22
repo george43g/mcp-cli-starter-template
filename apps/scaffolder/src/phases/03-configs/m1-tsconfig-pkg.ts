@@ -16,6 +16,7 @@ import {
   type MigrationContext,
   type MigrationResult,
 } from "../../core/migration.js";
+import { requireRepoName } from "../../core/target-inspection.js";
 import { nameUpperOf, substitute } from "../../core/templating.js";
 
 const PKG_JSON = `{
@@ -102,7 +103,7 @@ export default class TsconfigPkgMigration extends Migration {
   readonly appliesTo = "both" as const;
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
-    const name = ctx.config.global.repoName.peek() ?? "mcp-starter";
+    const name = requireRepoName(ctx.config);
     const scope = ctx.config.global.scope.peek() ?? "@george43g";
     const filesChanged: string[] = [];
 

@@ -26,7 +26,7 @@ const PKG_JSON = (scope: string) => `{
 
 const SHARED_BIOME = `{
   "root": false,
-  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -50,7 +50,7 @@ const SHARED_BIOME = `{
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
         "noExplicitAny": "off",
         "noImplicitAnyLet": "off",
@@ -83,7 +83,7 @@ const SHARED_BIOME = `{
 // rules at the root and keep the shared package as a reference. If/when biome
 // 2.5+ ships clean extends resolution, swap to `extends: ["{{scope}}/..."]`.
 const ROOT_BIOME = `{
-  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -126,7 +126,7 @@ const ROOT_BIOME = `{
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
         "noExplicitAny": "off",
         "noImplicitAnyLet": "off",

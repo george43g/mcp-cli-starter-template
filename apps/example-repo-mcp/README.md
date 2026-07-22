@@ -8,7 +8,7 @@ MCP server + CLI + TUI, cloned from `mcp-cli-starter-template`.
 pnpm install
 pnpm build           # compile TS + (optional) Rust accelerator
 pnpm test            # run unit + integration tests
-pnpm stress          # 9-case robustness harness
+pnpm stress          # 13-assertion robustness harness
 ```
 
 ## Bins

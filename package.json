@@ -31,12 +31,18 @@
     "clean": "turbo run clean && rm -rf node_modules .turbo coverage"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
-    "@types/node": "^24.0.0",
-    "tsx": "^4.19.0",
-    "turbo": "^2.5.0",
+    "@biomejs/biome": "^2.5.5",
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.1",
+    "turbo": "^2.10.5",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "vitest": "^3.2.7"
+  },
+  "pnpm": {
+    "overrides": {
+      "@hono/node-server": "2.0.11",
+      "fast-uri": "3.1.4"
+    }
   },
   "keywords": [
     "mcp",

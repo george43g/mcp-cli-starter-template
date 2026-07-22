@@ -55,6 +55,8 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   ["10-docs-readme/lib/LICENSE", "LICENSE"],
   ["10-docs-readme/lib/llms-install.md", "llms-install.md"],
   ["11-agent-files/lib", "."],
+  // Consumer CI intentionally omits the two meta-repo-only scaffolder drift steps.
+  ["12-ci-release/lib/.github/workflows/ci.yml", "example/.github/workflows/ci.yml"],
   ["12-ci-release/lib", "."],
 ];
 

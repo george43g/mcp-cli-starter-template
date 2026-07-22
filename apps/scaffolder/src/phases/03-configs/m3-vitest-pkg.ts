@@ -25,7 +25,7 @@ const PKG_JSON = (scope: string) => `{
     "vitest.app.ts"
   ],
   "peerDependencies": {
-    "vitest": "^2.0.0"
+    "vitest": "^3.2.7"
   }
 }
 `;

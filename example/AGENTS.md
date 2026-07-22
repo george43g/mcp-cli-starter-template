@@ -26,7 +26,7 @@ Delete any surface you don't need: see `docs/ARCHITECTURE.md`. The starter ships
 - **Package manager**: pnpm 10.x (workspace at root)
 - **Lint/format**: Biome 2.x
 - **Tests**: Vitest (globals on)
-- **MCP SDK**: `@modelcontextprotocol/sdk` ^1.27
+- **MCP SDK**: `@modelcontextprotocol/sdk` ^1.29
 - **CLI**: `commander` ^14
 - **TUI**: `ink` ^7 + `react` ^19 + `fullscreen-ink`
 - **Schemas**: Zod ^3 + `zod-to-json-schema`
@@ -63,7 +63,7 @@ packages/
 | `pnpm typecheck` | Turbo: `tsc --noEmit` per package |
 | `pnpm lint` | Biome check |
 | `pnpm lint:fix` | Biome write |
-| `pnpm stress` | Run 11-case stress harness against the built MCP |
+| `pnpm stress` | Run 13-assertion stress harness against the built MCP |
 | `pnpm verify` | lint + typecheck + test + build (CI shape) |
 
 Per-app:
@@ -140,7 +140,7 @@ Default off (stdio mode). Enable with `example mcp --http`. Requires `MCP_HTTP_T
 
 ## Stress harness
 
-`pnpm stress` covers 11 lifecycle assertions (in `apps/example-mcp/scripts/stress-mcp.ts`):
+`pnpm stress` covers 13 lifecycle assertions (in `apps/example-mcp/scripts/stress-mcp.ts`):
 
 1. handshake + tools/list returns the full catalog
 2. `health_check` returns `Status: healthy`
@@ -153,6 +153,8 @@ Default off (stdio mode). Enable with `example mcp --http`. Requires `MCP_HTTP_T
 9. HTTP `/health` returns 200
 10. HTTP `/mcp` without bearer returns 401
 11. HTTP `/mcp` initialize roundtrip with bearer + session-id succeeds
+12. HTTP `/mcp` accepts the initialized notification
+13. HTTP `/mcp` serves `tools/list` for the established session
 
 Add a case whenever you ship something touching lifecycle, dispatch, error handling, or transport.
 
@@ -183,7 +185,7 @@ Types are hand-mirrored between `packages/shared-types/src/index.ts` (Zod) and `
 
 ## CI / Release
 
-- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, runs lint + typecheck + test + test:no-native + build + `pnpm check:usage` (completions/manpage/docs freshness gate) + `npm pack --dry-run` + stress (all 11 cases).
+- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, runs lint + typecheck + test + test:no-native + build + `pnpm check:usage` (completions/manpage/docs freshness gate) + `npm pack --dry-run` + stress (all 13 assertions).
 - `.github/workflows/release.yml` — semantic-release with `@semantic-release/{commit-analyzer,release-notes-generator,changelog,npm,github,git}`. **Disabled by default** — `on:` trigger is commented. To enable: uncomment + add `NPM_TOKEN` secret. See `docs/RELEASE.md`.
 - `.github/workflows/readme-check.yml` — fails CI if `src/**` changed without a `README.md` update. Bypass with `[skip-readme]` in commit/PR title.
 

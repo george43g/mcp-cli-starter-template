@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Stress harness — 9-case robustness suite.
+ * Stress harness — 13-assertion robustness suite.
  *
  * Lifted from Gmail-MCP-Server/scripts/stress-mcp.ts (~430 LOC, 9 cases),
  * generalized to use the starter's domain-agnostic tool surface
@@ -18,7 +18,7 @@
  *   6. MCP_TOOL_TIMEOUT_FORCE_MS=1 produces clean timeout
  *   7. SIGTERM exits code 0 (handler intercepted)
  *   8. MCP_MAX_RSS_MB=50 triggers watchdog kill
- *   9. HTTP /health 200; /mcp 401 without bearer; full roundtrip with bearer
+ *   9. HTTP /health 200; /mcp 401 without bearer; session roundtrip with bearer
  */
 
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
@@ -43,6 +43,7 @@ interface RpcResponse {
   result?: { content?: { type: string; text: string }[]; isError?: boolean; tools?: unknown[] };
   error?: { code: number; message: string };
 }
+type FetchResponse = Awaited<ReturnType<typeof fetch>>;
 
 class McpClient {
   private child: ChildProcessWithoutNullStreams;
@@ -151,6 +152,19 @@ const results: CaseResult[] = [];
 function record(name: string, pass: boolean, detail?: string) {
   results.push({ name, pass, ...(detail !== undefined ? { detail } : {}) });
   console.log(`[${pass ? "PASS" : "FAIL"}] ${name}${detail ? ` — ${detail}` : ""}`);
+}
+
+async function readMcpResponse(res: FetchResponse): Promise<RpcResponse | null> {
+  const raw = (await res.text()).trim();
+  if (!raw) return null;
+
+  if ((res.headers.get("content-type") ?? "").includes("text/event-stream")) {
+    const dataLine = raw.split("\n").find((line) => line.startsWith("data:"));
+    if (!dataLine) return null;
+    return JSON.parse(dataLine.slice("data:".length).trim()) as RpcResponse;
+  }
+
+  return JSON.parse(raw) as RpcResponse;
 }
 
 async function caseHandshake(): Promise<void> {
@@ -350,7 +364,59 @@ async function caseHttpTransport(): Promise<void> {
         },
       }),
     });
-    record("HTTP /mcp initialize with bearer succeeds", initRes.status === 200);
+    const initJson = await readMcpResponse(initRes);
+    const sessionId = initRes.headers.get("mcp-session-id") ?? "";
+    const initialized = initRes.status === 200 && Boolean(initJson?.result) && sessionId.length > 0;
+    record(
+      "HTTP /mcp initialize with bearer succeeds",
+      initialized,
+      initialized
+        ? "session established"
+        : `status=${initRes.status} session=${sessionId || "missing"}`,
+    );
+    if (!initialized) return;
+
+    const initializedNotification = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-session-id": sessionId,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+      }),
+    });
+    record(
+      "HTTP /mcp initialized notification accepted",
+      [200, 202, 204].includes(initializedNotification.status),
+      `status=${initializedNotification.status}`,
+    );
+
+    const toolsRes = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-session-id": sessionId,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/list",
+        params: {},
+      }),
+    });
+    const toolsJson = await readMcpResponse(toolsRes);
+    const toolCount = (toolsJson?.result?.tools as unknown[] | undefined)?.length ?? 0;
+    record(
+      "HTTP /mcp tools/list with session succeeds",
+      toolsRes.status === 200 && toolCount >= 2,
+      `status=${toolsRes.status} tools=${toolCount}`,
+    );
   } finally {
     proc.kill("SIGTERM");
     await new Promise<void>((r) => {

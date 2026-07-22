@@ -32,13 +32,17 @@ import { type ApplyMode, type MigrationContext } from "./migration.js";
 import { loadPhases, runPhases } from "./phase-runner.js";
 import { collectIntents, renderRetrofitMarkdown } from "./retrofit.js";
 import { makeShell } from "./shell.js";
+import { inspectTarget } from "./target-inspection.js";
 
 /** Common flags shared between init/apply/plan. */
 function addCommonFlags(cmd: Command): Command {
   return cmd
     .option("--name <name>", "Tool name (kebab-case, BARE — no -mcp suffix)")
     .option("--scope <scope>", "Npm scope, with leading @", "@george43g")
-    .option("--package-manager <pm>", "pnpm | npm | bun", "pnpm")
+    .option(
+      "--package-manager <pm>",
+      "pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)",
+    )
     .option("--no-tui", "Skip the Ink/React TUI surface")
     .option("--no-http", "Skip the Streamable HTTP transport")
     .option("--no-rust-accel", "Skip the optional Rust acceleration crate")
@@ -89,7 +93,7 @@ export function buildProgram(): Command {
       .command("plan")
       .description("Dry-run preview of which migrations would apply")
       .option("--target <dir>", "Path to target repo", process.cwd())
-      .option("--mode <mode>", "'new' or 'existing'", "existing"),
+      .option("--mode <mode>", "'new' or 'existing' (default: existing)", "existing"),
   ).action(async (opts) => {
     const globalOpts = program.opts<{ verbose?: boolean; banner?: boolean }>();
     if (globalOpts.banner !== false) drawBanner();
@@ -107,9 +111,9 @@ export function buildProgram(): Command {
         "Run a single migration (e.g. 04-robustness/m1-robustness-pkg) or a whole phase (e.g. 04-robustness)",
       )
       .option("--target <dir>", "Path to target repo", process.cwd())
-      .option("--mode <mode>", "'new' or 'existing'", "new")
-      .option("--execute", "Actually apply (default is dry-run for existing mode)")
-      .option("--force", "Overwrite divergent files (default depends on mode)"),
+      .option("--mode <mode>", "'new' or 'existing' (default: existing)", "existing")
+      .option("--execute", "Actually apply (default is dry-run)")
+      .option("--force", "Overwrite divergent files (default: preserve in existing mode)"),
   ).action(async (id: string, opts) => {
     const globalOpts = program.opts<{ verbose?: boolean; banner?: boolean }>();
     if (globalOpts.banner !== false) drawBanner();
@@ -212,7 +216,46 @@ async function runScaffolder(
   config.global.mode.set(mode);
   applyCmdOptsToConfig(cmdOpts, config);
 
-  const ctx: MigrationContext = { config, cwd, mode, shell, fs, git, log, dryRun, force };
+  const explicitPackageManager =
+    cmdOpts.packageManager === "pnpm" ||
+    cmdOpts.packageManager === "npm" ||
+    cmdOpts.packageManager === "bun"
+      ? cmdOpts.packageManager
+      : undefined;
+  const target = await inspectTarget({
+    cwd,
+    mode,
+    explicitName: typeof cmdOpts.name === "string" ? cmdOpts.name : undefined,
+    explicitPackageManager,
+  });
+  config.global.repoName.set(target.repoName);
+  config.global.packageManager.set(target.packageManager);
+  if (target.fallbackWarning) log.warn(target.fallbackWarning);
+  if (mode !== "existing" && target.packageManager !== "pnpm") {
+    throw new Error(
+      `Fresh scaffolds support pnpm only; received --package-manager ${target.packageManager}. ` +
+        "Use pnpm for init/new mode, or use apply/migrate --mode existing for package-manager-aware documentation.",
+    );
+  }
+  if (mode === "existing" && migrationFilter === undefined && target.packageManager !== "pnpm") {
+    log.warn(
+      `Existing ${target.packageManager} repo detected. Minimal agent documentation will use ${target.packageManager}, ` +
+        "but the full infrastructure retrofit remains pnpm/Turborepo-oriented; review the dry-run carefully.",
+    );
+  }
+
+  const ctx: MigrationContext = {
+    config,
+    cwd,
+    target,
+    mode,
+    shell,
+    fs,
+    git,
+    log,
+    dryRun,
+    force,
+  };
 
   let phases = await loadPhases();
   if (phases.length === 0) {

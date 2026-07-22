@@ -39,9 +39,9 @@ const PKG_JSON = (scope: string) => `{
   "devDependencies": {
     "${scope}/tsconfig": "workspace:*",
     "${scope}/vitest-config": "workspace:*",
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.13.3",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "vitest": "^3.2.7"
   }
 }
 `;

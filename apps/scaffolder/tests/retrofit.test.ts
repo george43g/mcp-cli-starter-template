@@ -24,6 +24,7 @@ import type { MigrationContext } from "../src/core/migration.js";
 import { loadPhases, runPhases } from "../src/core/phase-runner.js";
 import { collectIntents, renderRetrofitMarkdown } from "../src/core/retrofit.js";
 import { makeShell } from "../src/core/shell.js";
+import { inspectTarget } from "../src/core/target-inspection.js";
 import M4Monorepo from "../src/phases/01-bootstrap/m4-monorepo.js";
 import M1AppPort from "../src/phases/08-app/m1-app-port.js";
 import M1RustAccel from "../src/phases/09-rust-accel/m1-rust-accel.js";
@@ -37,7 +38,8 @@ async function makeExistingModeCtx(opts: { name?: string; scope?: string } = {})
   const fs = makeFs({ cwd, dryRun, force });
   const git = makeGit(shell);
   const config = new Config();
-  config.global.repoName.set(opts.name ?? "foo");
+  const name = opts.name ?? "foo";
+  config.global.repoName.set(name);
   config.global.scope.set(opts.scope ?? "@george43g");
   config.global.mode.set("existing");
   config.global.packageManager.set("pnpm");
@@ -45,6 +47,12 @@ async function makeExistingModeCtx(opts: { name?: string; scope?: string } = {})
   const ctx: MigrationContext = {
     config,
     cwd,
+    target: await inspectTarget({
+      cwd,
+      mode: "existing",
+      explicitName: name,
+      explicitPackageManager: "pnpm",
+    }),
     mode: "existing",
     shell,
     fs,
@@ -162,7 +170,10 @@ describe("renderRetrofitMarkdown()", () => {
     expect(md).toContain("**Manual steps:**");
     expect(md).toContain("**Sample AI prompt**");
     expect(md).toContain("## Where to read more");
-    expect(md).toContain("skills/mcp-starter-architect/SKILL.md");
+    expect(md).toContain(
+      "https://github.com/george43g/mcp-cli-starter-template/blob/main/skills/mcp-starter-architect/SKILL.md",
+    );
+    expect(md).toContain("migration sources are not copied into retrofit targets");
   });
 
   it("is deterministic — two renders of the same input produce identical output", async () => {

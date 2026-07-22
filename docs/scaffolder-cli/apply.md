@@ -21,11 +21,21 @@ Overwrite files that diverge from the template (default: preserve user customiza
 
 ### `--name <name>`
 
-Tool name (kebab-case)
+Tool name (kebab-case, BARE — no -mcp suffix)
 
 ### `--scope <scope>`
 
 Npm scope, with leading @
+
+### `--package-manager <pm>`
+
+pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)
+
+**Choices:**
+
+- `pnpm`
+- `npm`
+- `bun`
 
 ### `--no-tui`
 

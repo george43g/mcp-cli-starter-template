@@ -112,11 +112,13 @@ export function renderRetrofitMarkdown(intents: readonly CollectedIntent[]): str
   lines.push("## Where to read more");
   lines.push("");
   lines.push(
-    "- `skills/mcp-starter-architect/SKILL.md` — full retrofit playbook (manual application order, dispatcher invariants, phase dependencies).",
+    "- [Architect skill](https://github.com/george43g/mcp-cli-starter-template/blob/main/skills/mcp-starter-architect/SKILL.md) — full retrofit playbook (manual application order, dispatcher invariants, phase dependencies).",
   );
-  lines.push("- `apps/scaffolder/src/phases/<phase>/m*.ts` — canonical source for each migration.");
   lines.push(
-    "- `apps/scaffolder/src/phases/<phase>/lib/**` — the template files the migration would copy in.",
+    "- [Migration and template sources](https://github.com/george43g/mcp-cli-starter-template/tree/main/apps/scaffolder/src/phases) — canonical migration code and lib templates.",
+  );
+  lines.push(
+    "- These source paths belong to the scaffolder repository and are linked above; the architect skill and migration sources are not copied into retrofit targets.",
   );
   lines.push("");
 
