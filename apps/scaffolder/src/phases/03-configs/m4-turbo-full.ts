@@ -75,7 +75,6 @@ const TURBO_JSON = `{
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**"],
       "inputs": ["src/**", "tests/**", "vitest.config.ts"]
     },
     "test:no-native": {

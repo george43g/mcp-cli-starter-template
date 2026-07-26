@@ -31,7 +31,7 @@ const TURBO_JSON = JSON.stringify(
       build: { dependsOn: ["^build"], outputs: ["dist/**"] },
       typecheck: { dependsOn: ["^build"], outputs: [] },
       lint: { outputs: [], inputs: ["src/**"] },
-      test: { dependsOn: ["^build"], outputs: ["coverage/**"] },
+      test: { dependsOn: ["^build"] },
       dev: { cache: false, persistent: true },
       clean: { cache: false },
     },
@@ -66,6 +66,7 @@ const ROOT_PACKAGE_JSON = (name: string) =>
       },
       devDependencies: {
         "@biomejs/biome": "^2.5.5",
+        "@george43g/tsconfig": "workspace:*",
         "@types/node": "^24.13.3",
         tsx: "^4.23.1",
         turbo: "^2.10.5",
@@ -76,6 +77,7 @@ const ROOT_PACKAGE_JSON = (name: string) =>
         overrides: {
           "@hono/node-server": "2.0.11",
           "fast-uri": "3.1.4",
+          postcss: "8.5.18",
         },
       },
       keywords: [
@@ -133,7 +135,7 @@ export default class MonorepoMigration extends Migration {
         'Set `"packageManager": "pnpm@10.29.3"` (or current pnpm pin) and `"type": "module"` in root package.json.',
         "Create pnpm-workspace.yaml with `packages: [apps/*, packages/*]`.",
         "Install turbo as a root devDependency: `pnpm add -D -w turbo`.",
-        "Create turbo.json with tasks: build (dependsOn ^build, outputs dist/**), typecheck, lint, test (dependsOn ^build, outputs coverage/**), dev (cache:false, persistent:true), clean.",
+        "Create turbo.json with tasks: build (dependsOn ^build, outputs dist/**), typecheck, lint, test (dependsOn ^build), dev (cache:false, persistent:true), clean.",
         "Add root scripts: build/dev/test/lint/typecheck — all wrapping `turbo run <task>`. Plus a `verify` script that chains lint+typecheck+test+build.",
         "Move your existing source under `apps/" +
           name +
@@ -155,11 +157,12 @@ export default class MonorepoMigration extends Migration {
         `typecheck="turbo run typecheck", stress="turbo run stress", ` +
         `verify="pnpm lint && pnpm typecheck && pnpm test && pnpm build", ` +
         `clean="turbo run clean && rm -rf node_modules .turbo coverage".\n` +
-        `3. Add to root devDependencies (if missing): @biomejs/biome ^2.5.5, @types/node ^24.13, ` +
-        `tsx ^4.23, turbo ^2.10, typescript ^5.7, vitest ^3.2.\n` +
+        `3. Add to root devDependencies (if missing): @biomejs/biome ^2.5.5, ` +
+        `@george43g/tsconfig workspace:*, @types/node ^24.13, tsx ^4.23, turbo ^2.10, ` +
+        `typescript ^5.7, vitest ^3.2.\n` +
         `4. Create pnpm-workspace.yaml: \`packages:\\n  - apps/*\\n  - packages/*\\n\`.\n` +
         `5. Create turbo.json with the task graph: build dependsOn ^build outputs dist/**, ` +
-        `typecheck dependsOn ^build, lint inputs src/**, test dependsOn ^build outputs coverage/**, ` +
+        `typecheck dependsOn ^build, lint inputs src/**, test dependsOn ^build, ` +
         `dev cache:false persistent:true, clean cache:false. Use schema ` +
         `"https://turbo.build/schema.json" and \`ui: "tui"\`.\n` +
         `6. Move my existing MCP server source into \`apps/${name}-mcp/\` (or pick a kebab-case ` +

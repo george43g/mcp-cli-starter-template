@@ -110,10 +110,11 @@ describe("01-bootstrap/m4-monorepo", () => {
     expect(pkg.scripts.build).toBe("turbo run build");
     expect(pkg.scripts.verify).toMatch(/lint.*typecheck.*test.*build/);
 
-    // devDependencies includes turbo + biome + tsx + types/node + typescript + vitest.
+    // Root tsconfig resolution requires the workspace config package to be linked here.
     expect(Object.keys(pkg.devDependencies)).toEqual(
       expect.arrayContaining([
         "@biomejs/biome",
+        "@george43g/tsconfig",
         "@types/node",
         "tsx",
         "turbo",

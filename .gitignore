@@ -22,6 +22,9 @@ apps/rust-accel/target/
 # MCP host overrides (each developer's own)
 .mcp.local.json
 
+# Codex project-local MCP configuration
+.codex/
+
 # Test/coverage output
 coverage/
 .nyc_output/
