@@ -12,18 +12,19 @@ verification matrix, dependency decisions, and deferred work.
 | --- | --- |
 | Repository | `/Users/george/repos/mcp-cli-starter-template` |
 | Branch | `main` |
-| Local HEAD | `8e6fce9a3a680bbb0d12f901dcbfbda7fd98e003` |
 | `origin/main` | `e431399e9be02b0fefd7db3cf14a23a9f0e87d7b` |
-| Ahead/behind | ahead 1, behind 0 |
+| Ahead/behind | ahead 3, behind 0 |
+| Local commits | `8e6fce9` (generated verification), `ef3809b` (the verified implementation), plus the harness-engineering docs pass containing this refresh |
 | Remote check | `git fetch --prune` succeeded on 2026-07-29 |
-| Working tree | 87 modified tracked files and 42 untracked files |
-| Push state | local commit and working-tree implementation are not pushed |
+| Working tree | clean |
+| Push state | none of the three local commits are pushed |
 | Package state | `@george43g/robustness` returned npm E404 on 2026-07-29 |
 | Runtime default | `source`; registry mode is staged but not the default |
 
-The 87-file diff stat is 3,201 insertions and 1,201 deletions. That stat excludes
-the 42 untracked files. The changes are intentional work from this thread and
-earlier resumed sessions; do not discard or overwrite them.
+On 2026-07-29 the user authorized committing the verified working tree. The
+previously uncommitted implementation (87 modified + 42 untracked files,
+3,201 insertions / 1,201 deletions) landed as
+`ef3809b feat(scaffolder): target-profile retrofits, staged registry runtime, robustness 0.1.0 prep`.
 
 ## Do not repeat completed work
 
@@ -49,7 +50,7 @@ On 2026-07-29, the remote refs, registry E404, worktree inventory, retained imsg
 report bundle, and `git diff --check` were refreshed. The full test matrix was
 not rerun because only these handoff documents changed.
 
-## What the uncommitted implementation contains
+## What landed in `ef3809b`
 
 ### Existing-repository safety
 
@@ -125,22 +126,30 @@ temporary clone was deleted because `--keep` was not used. No imsg-specific
 monorepo conversion exists; use the tracked `example/` directory as the full
 fresh-scaffold reference.
 
+## Harness-engineering pass (2026-07-29)
+
+After `ef3809b`, a docs/harness pass applied the practices from
+[OpenAI's harness-engineering article](https://openai.com/index/harness-engineering/):
+
+- Root `AGENTS.md` slimmed to a navigational map; deep scaffolder guidance
+  moved to the scoped `apps/scaffolder/AGENTS.md` (with `CLAUDE.md` symlink).
+- `docs/README.md` indexes all docs with read-when guidance and marks which
+  files are lib-mirrored golden output.
+- `docs/plans/README.md` establishes the checked-in ExecPlan convention.
+- `scripts/check-docs-links.mjs` (`pnpm check:docs`) mechanically enforces
+  relative-link integrity, agent-file symlinks, and docs-index coverage; wired
+  into `pnpm verify` and CI after the Lint step.
+
 ## Next decision, not next implementation
 
-The next agent should not begin another feature sweep by default. The next
-decision is how to land the verified work:
+The next agent should not begin another feature sweep by default. The
+remaining landing decisions are:
 
 1. Re-read this file, `docs/PROJECT_STATE.md`, `AGENTS.md`, and the findings
-   ledger.
-2. Confirm `git status --short --branch` and inspect the full diff, including
-   untracked files.
-3. Decide whether the working tree should be committed as one coherent change
-   or carefully split. If split, rerun verification after each generated
-   surface is staged; canonical/lib/example files are interdependent.
-4. Commit only after explicit user direction.
-5. Push only after explicit user direction.
-6. Treat robustness publication as a separate explicit release action.
-7. After publication, run a clean external registry consumer before considering
+   ledger. Confirm `git status --short --branch`.
+2. Push only after explicit user direction (three local commits are unpushed).
+3. Treat robustness publication as a separate explicit release action.
+4. After publication, run a clean external registry consumer before considering
    `runtime-source=registry` as the default.
 
 ## Safety boundaries

@@ -30,7 +30,8 @@
     "check:robustness-package": "node scripts/check-robustness-package.mjs",
     "smoke:registry-runtime": "node scripts/smoke-registry-runtime.mjs",
     "check:usage": "pnpm --filter @george43g/mcp-scaffold check:usage && pnpm --filter \"@george43g/*-mcp\" check:usage",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check:docs": "node scripts/check-docs-links.mjs",
+    "verify": "pnpm lint && pnpm check:docs && pnpm typecheck && pnpm test && pnpm build",
     "regen:example": "pnpm --filter @george43g/mcp-scaffold build && rm -rf example && node apps/scaffolder/dist/cli.js init example --name example --no-banner && rm -f example/biome.json && MISE_TRUSTED_CONFIG_PATHS=\"$PWD/example\" mise run --cd example/apps/example-mcp docs && MISE_TRUSTED_CONFIG_PATHS=\"$PWD/example\" mise run --cd example/apps/example-mcp completions && MISE_TRUSTED_CONFIG_PATHS=\"$PWD/example\" mise run --cd example/apps/example-mcp manpage",
     "clean": "turbo run clean && rm -rf node_modules .turbo coverage"
   },

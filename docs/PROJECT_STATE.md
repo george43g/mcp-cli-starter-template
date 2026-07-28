@@ -12,21 +12,17 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| Local HEAD | `8e6fce9a3a680bbb0d12f901dcbfbda7fd98e003` |
 | `origin/main` | `e431399e9be02b0fefd7db3cf14a23a9f0e87d7b` |
-| Ahead/behind | ahead 1, behind 0 |
-| Local commit | `fix(scaffolder): clean generated verification` |
-| Push state | local commit is verified but not pushed |
+| Ahead/behind | ahead 3, behind 0 |
+| Local commits | `8e6fce9` (generated verification), `ef3809b` (verified implementation), plus the harness-engineering docs pass |
+| Push state | all three local commits are unpushed |
 | Remote check | fetched successfully on 2026-07-29 |
-| Working tree | verified implementation; intentionally uncommitted |
-| Worktree size | 87 modified tracked files + 42 untracked files |
+| Working tree | clean |
 | Product boundary | fresh scaffolds are pnpm-only |
 | Runtime boundary | source is the pre-publication default; registry mode is staged |
 | Registry state | `@george43g/robustness` returned npm E404 on 2026-07-29 |
 
 Always re-run `git status --short --branch` before relying on this snapshot.
-The documentation refresh that introduced this file is itself an uncommitted
-working-tree change.
 
 ## History that must survive compaction
 
@@ -73,10 +69,12 @@ and should not be reverted merely because it came from the wrong session:
 The commit is local-only. A future agent may push it only when the user has
 authorized that repository action.
 
-### Current uncommitted implementation
+### Landed implementation: `ef3809b`
 
-The 2026-07-27 implementation pass builds on `8e6fce9` and must remain
-distinguishable from that verified commit until it is committed:
+The 2026-07-27 implementation pass built on `8e6fce9` and was committed on
+2026-07-29 with explicit user authorization as
+`ef3809b feat(scaffolder): target-profile retrofits, staged registry runtime, robustness 0.1.0 prep`
+(129 files, 5,411 insertions, 1,201 deletions). Its contents:
 
 - Generic existing repositories now use a conservative target profile.
   `apply`/`plan` run only migrations marked `safe-any-existing`; complete
@@ -101,14 +99,28 @@ distinguishable from that verified commit until it is committed:
 - Canonical files, phase `lib/` mirrors, generated CLI artifacts, and tracked
   `example/` output were regenerated.
 
-No commit has been created for the current implementation, and no npm
-publication, push, or release has been performed for it. Those are external
-mutations and require explicit user authorization. The older audited local
-commit `8e6fce9` remains separate.
+No npm publication, push, or release has been performed. Those are external
+mutations and require explicit user authorization.
 
-The current tracked diff is 3,201 insertions and 1,201 deletions across 87
-files, excluding 42 untracked files. Treat the entire worktree as owned work;
-do not discard files merely because they are untracked.
+### Harness-engineering pass (2026-07-29)
+
+After `ef3809b`, a docs/harness pass applied
+[OpenAI's harness-engineering practices](https://openai.com/index/harness-engineering/)
+to this repo:
+
+- Root `AGENTS.md` became a short navigational map; the deep scaffolder
+  guidance (architecture, add-migration/add-phase, artifact troubleshooting)
+  moved to the scoped `apps/scaffolder/AGENTS.md` with a `CLAUDE.md` symlink.
+- `docs/README.md` now indexes all docs with read-when guidance and marks the
+  lib-mirrored golden-output set.
+- `docs/plans/README.md` establishes the checked-in ExecPlan convention,
+  replacing the lost external-plan pattern.
+- `scripts/check-docs-links.mjs` (`pnpm check:docs`) mechanically enforces
+  relative-link integrity in repo-facing markdown, the
+  `CLAUDE.md`/`.cursorrules` symlink invariants, and docs-index coverage. It
+  runs inside `pnpm verify` and as a CI step after Lint. Template surfaces
+  (`example/`, `phases/**/lib/`) are excluded because their links target the
+  generated repo's layout.
 
 ### CLI artifacts and native generator policy
 
@@ -229,38 +241,33 @@ The isolated evaluator ran against committed `imsg-mcp` revision
 See
 [scaffolder-cli/evaluations/imsg-mcp-2026-07.md](scaffolder-cli/evaluations/imsg-mcp-2026-07.md).
 
-## Next mission: land the verified implementation
+## Next mission: remaining landing decisions
 
-Treat `8e6fce9` as the committed baseline and the current worktree as one
-verified but uncommitted implementation. The next agent should not restart the
-bug hunt or regenerate everything by default.
+The implementation is committed locally (`ef3809b`). The next agent should not
+restart the bug hunt or regenerate everything by default.
 
 ### Required review
 
 1. Read `HANDOFF.md`, this file, `AGENTS.md`, and the findings ledger.
 2. Run `git status --short --branch`.
-3. Inspect the complete tracked and untracked diff.
-4. Confirm generated mirrors remain coherent:
+3. Confirm generated mirrors remain coherent:
    - canonical source
    - phase `lib/` copy
    - tracked `example/` output
    - generated CLI documentation/completions/manpage
-5. If any code changes after handoff, rerun checks proportional to the change.
+4. If any code changes after handoff, rerun checks proportional to the change.
 
 ### Landing decisions
 
-Commit, push, package publication, and the runtime-default flip are separate
-actions:
+Push, package publication, and the runtime-default flip are separate actions:
 
-1. **Commit** — requires explicit user direction. The current implementation is
-   coherent as a whole. Splitting it is possible, but generated surfaces cross
-   functional boundaries; verify every resulting commit.
-2. **Push** — requires explicit user direction after commit review.
-3. **Publish robustness** — requires a separate explicit release decision,
+1. **Push** — requires explicit user direction. Three local commits are
+   unpushed.
+2. **Publish robustness** — requires a separate explicit release decision,
    configured npm credentials, and the manual package workflow.
-4. **Verify public consumption** — after publication, generate a clean consumer
+3. **Verify public consumption** — after publication, generate a clean consumer
    with the public registry package rather than a local tarball.
-5. **Flip the default** — only after public consumption passes should
+4. **Flip the default** — only after public consumption passes should
    `runtime-source=registry` become the default.
 
 ### Safe re-verification command set
@@ -354,6 +361,11 @@ remediation:
 9. Publishing additional shared packages. `mcp-kit`, `tui-kit`, `cli-kit`, and
    `env-loader` remain generated source until their public contracts and
    independent versioning value are proven.
+10. Propagating the harness-engineering additions (docs index, ExecPlan
+    convention, docs-integrity check) into the generated template output.
+    That touches phase 10/11 `lib/` mirrors plus tracked `example/` and needs
+    its own regeneration + verification pass; the 2026-07-29 pass deliberately
+    changed only repo-facing surfaces.
 
 ## Current structural facts
 
