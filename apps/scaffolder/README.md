@@ -14,7 +14,13 @@ npx @george43g/mcp-scaffold init my-tool --name foo
 # Retrofit an existing repo (dry-run by default; --execute to write)
 npx @george43g/mcp-scaffold apply --target ~/repos/my-existing-mcp
 
-# List all 21 migrations across 12 phases
+# Deliberately preview starter infrastructure against a generic repo
+npx @george43g/mcp-scaffold plan --target ~/repos/my-existing-mcp --existing-strategy full
+
+# Emit a machine-readable companion to the recap
+npx @george43g/mcp-scaffold apply --target ~/repos/my-existing-mcp --report-json /tmp/report.json
+
+# List all 25 migrations across 12 phases
 npx @george43g/mcp-scaffold list
 ```
 
@@ -37,9 +43,23 @@ Feature opt-outs (init/apply/plan/migrate):
 --no-semantic-release    skip semantic-release workflow
 ```
 
+Runtime distribution:
+
+- `--runtime-source source` generates an editable local robustness package.
+- `--runtime-source registry` uses `@george43g/robustness:^0.1.0`.
+- Source remains the default until the first public release is verified;
+  registry is the intended post-release default.
+
+Existing-target policy:
+
+- Generic repositories default to `--existing-strategy safe`.
+- Complete starter-derived layouts continue receiving compatible full
+  migrations.
+- `--existing-strategy full` and a named `migrate <id>` are explicit opt-ins.
+
 ## What gets generated
 
-12 phases applied in order, 21 migrations, 145 template files:
+12 phases applied in order, 25 migrations, 172 generated template entries:
 
 | Phase | Scope |
 |-------|-------|
@@ -58,7 +78,11 @@ Feature opt-outs (init/apply/plan/migrate):
 
 ## Diff-safe retrofit
 
-`apply` defaults to **dry-run**. When you pass `--execute`, files that already exist AND diverge from the template are **preserved** by default — your customizations stay put. Pass `--force` to overwrite them.
+`apply` defaults to **dry-run** and a safe target profile. Generic repositories
+receive minimal agent documentation rather than the full starter
+infrastructure. When you pass `--execute`, files that already exist AND diverge
+from the template are **preserved** by default. Pass `--force` to overwrite
+them.
 
 ```
 $ mcp-scaffold apply --target ~/repos/my-mcp --execute
@@ -90,11 +114,19 @@ Existing targets are inspected before migrations run: the tool name is derived f
 
 Fresh scaffolds remain intentionally **pnpm-only**. Passing npm or Bun to `init` or `migrate --mode new` fails before filesystem writes; npm/Bun detection in existing mode is for accurate target documentation, while full infrastructure migrations remain pnpm/Turborepo-oriented.
 
+Fresh output also ships the initial `usage(1)` help docs, completions, and
+manpage rather than waiting for a first manual regeneration. Generated
+`cli-artifacts` and `workspace-scaffolding` skills keep that workflow portable
+and explain where official leaf-package generators fit. The root scaffold stays
+deterministic; `create-turbo` is a whole-repository bootstrapper, not an
+in-place conversion primitive.
+
 ## Learn more
 
 - **Source**: [github.com/george43g/mcp-cli-starter-template](https://github.com/george43g/mcp-cli-starter-template)
 - **Architect skill** (comprehensive AI guide for every rule + retrofit strategy): see `skills/mcp-starter-architect/SKILL.md` in the source repo
 - **Per-subcommand docs**: [docs/scaffolder-cli/](https://github.com/george43g/mcp-cli-starter-template/tree/main/docs/scaffolder-cli)
+- **Native scaffolder policy**: [docs/NATIVE_SCAFFOLDERS.md](https://github.com/george43g/mcp-cli-starter-template/blob/main/docs/NATIVE_SCAFFOLDERS.md)
 
 ## License
 

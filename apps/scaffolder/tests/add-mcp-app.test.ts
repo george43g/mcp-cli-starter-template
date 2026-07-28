@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   assertInsideScaffoldedRepo,
+  detectRuntimeSource,
   detectScope,
   writePerAppAgentFiles,
 } from "../src/commands/add-mcp-app.js";
@@ -31,7 +32,15 @@ async function makeScaffoldedRepoSkeleton(scope = "@acme", firstApp = "foo") {
   await mkdir(join(cwd, "apps", `${firstApp}-mcp`), { recursive: true });
   await writeFile(
     join(cwd, "apps", `${firstApp}-mcp`, "package.json"),
-    JSON.stringify({ name: `${scope}/${firstApp}-mcp`, version: "0.0.0" }, null, 2),
+    JSON.stringify(
+      {
+        name: `${scope}/${firstApp}-mcp`,
+        version: "0.0.0",
+        dependencies: { [`${scope}/robustness`]: "workspace:*" },
+      },
+      null,
+      2,
+    ),
   );
   return cwd;
 }
@@ -46,6 +55,7 @@ async function makeAddCtx(cwd: string, name: string, scope: string) {
   config.global.scope.set(scope);
   config.global.mode.set("add");
   config.global.packageManager.set("pnpm");
+  config.global.runtimeSource.set("source");
   config.global.monorepo.set(true);
   const ctx: MigrationContext = {
     config,
@@ -57,6 +67,8 @@ async function makeAddCtx(cwd: string, name: string, scope: string) {
       explicitPackageManager: "pnpm",
     }),
     mode: "add",
+    existingStrategy: "safe",
+    explicitMigration: true,
     shell,
     fs,
     git,
@@ -114,6 +126,30 @@ describe("detectScope()", () => {
       JSON.stringify({ name: "unscoped-mcp" }),
     );
     expect(() => detectScope(cwd)).toThrow(/Couldn't detect npm scope/);
+  });
+});
+
+describe("detectRuntimeSource()", () => {
+  it("detects source and registry dependencies", async () => {
+    const sourceCwd = await makeScaffoldedRepoSkeleton("@acme", "source");
+    trashCans.push(sourceCwd);
+    expect(detectRuntimeSource(sourceCwd)).toBe("source");
+
+    const registryCwd = await makeScaffoldedRepoSkeleton("@acme", "registry");
+    trashCans.push(registryCwd);
+    const pkgPath = join(registryCwd, "apps", "registry-mcp", "package.json");
+    const pkg = JSON.parse(await readFile(pkgPath, "utf8"));
+    pkg.dependencies = { "@george43g/robustness": "^0.1.0" };
+    await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+    expect(detectRuntimeSource(registryCwd)).toBe("registry");
+  });
+
+  it("rejects repositories without a runtime declaration", async () => {
+    const cwd = await makeScaffoldedRepoSkeleton("@acme", "unknown");
+    trashCans.push(cwd);
+    const pkgPath = join(cwd, "apps", "unknown-mcp", "package.json");
+    await writeFile(pkgPath, JSON.stringify({ name: "@acme/unknown-mcp" }));
+    expect(() => detectRuntimeSource(cwd)).toThrow(/Couldn't detect one runtime source/);
   });
 });
 

@@ -20,6 +20,19 @@ Path to target repo
 - `new`
 - `existing`
 
+### `--existing-strategy <strategy>`
+
+safe | full (default: safe; full opts generic repos into starter infrastructure)
+
+**Choices:**
+
+- `safe`
+- `full`
+
+### `--report-json <path>`
+
+Write a machine-readable migration report
+
 ### `--name <name>`
 
 Tool name (kebab-case, BARE — no -mcp suffix)
@@ -37,6 +50,15 @@ pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)
 - `pnpm`
 - `npm`
 - `bun`
+
+### `--runtime-source <source>`
+
+source | registry (source remains default until the first public runtime release)
+
+**Choices:**
+
+- `source`
+- `registry`
 
 ### `--no-tui`
 

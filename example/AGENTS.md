@@ -65,6 +65,8 @@ packages/
 | `pnpm lint:fix` | Biome write |
 | `pnpm stress` | Run 13-assertion stress harness against the built MCP |
 | `pnpm verify` | lint + typecheck + test + build (CI shape) |
+| `pnpm --filter example-mcp artifacts` | Regenerate CLI help docs, completions, and manpage |
+| `pnpm --filter example-mcp check:usage` | Byte-check generated CLI artifacts |
 
 Per-app:
 - `pnpm --filter example-mcp dev:mcp` — `tsx src/cli.ts mcp` with env files loaded
@@ -72,6 +74,13 @@ Per-app:
 - `pnpm --filter example-mcp mcp -- --http` — run the built MCP via Streamable HTTP (requires `MCP_HTTP_TOKEN`)
 - `pnpm --filter example-mcp tui` — launch the Ink TUI
 - `pnpm --filter example-mcp doctor` — preflight checks (Node version, deps, native module, env)
+
+Portable repo skills:
+
+- `skills/cli-artifacts/SKILL.md` keeps the CLI artifact pipeline usable if
+  this MCP app is renamed, replaced, or removed.
+- `skills/workspace-scaffolding/SKILL.md` explains when to use an official
+  native generator for a new leaf workspace and when to keep the repo template.
 
 ## Env layout (Vite-style precedence)
 

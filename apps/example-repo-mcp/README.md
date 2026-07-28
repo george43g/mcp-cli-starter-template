@@ -38,21 +38,21 @@ The dispatcher already wires `withTimeout`, `perf` spans, abort propagation, str
 
 ## Shell completions
 
-Bash/zsh/fish completions + manpage + per-subcommand markdown docs are generated on demand from `.usage.kdl` via `usage(1)`. The scaffold ships the spec + the regen tasks but NOT the pre-generated artifacts (they reference the clone's actual bin name, not the placeholder).
+Bash/zsh/fish completions + manpage + per-subcommand markdown docs are generated from `.usage.kdl` via `usage(1)`. The scaffold ships the spec, a generated baseline using the clone's real bin name, regeneration tasks, and a byte-level freshness check.
 
-The intended workflow is: generate the artifacts once, commit them, then let CI's `pnpm check:usage` step (and the matching `cli-artifacts-drift` workflow on the scaffolder side) fail any future edit that changes `.usage.kdl` without a matching regen.
+The intended workflow is: edit `.usage.kdl`, regenerate, review the diff, and commit the spec and artifacts together. CI's `pnpm check:usage` step (and the matching `cli-artifacts-drift` workflow on the scaffolder side) fails any edit that changes `.usage.kdl` without a matching regeneration.
 
-First-run flow:
+Update flow:
 
 ```bash
-mise install                                  # one-time: installs usage(1)
+mise install                                  # one-time: installs pinned usage(1)
 pnpm artifacts                                # regenerate completions/ + man/ + docs/cli/
-git add completions man docs/cli              # check in the baseline
-git commit -m "chore: initial usage(1) artifacts"
+pnpm check:usage                              # byte-check the committed baseline
+git add .usage.kdl completions man docs/cli
 pnpm completions:install                      # auto-detect $SHELL and install into the right path
 ```
 
-From the second run forward, `pnpm check:usage` (and CI) enforces freshness — edit `.usage.kdl` and forget to regen, build fails.
+`pnpm check:usage` and CI enforce freshness from the initial scaffold onward.
 
 `completions:install` (script: `scripts/install-completions.sh`) handles the well-known locations for each shell:
 

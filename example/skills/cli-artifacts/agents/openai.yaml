@@ -1,0 +1,4 @@
+interface:
+  display_name: "CLI Artifacts"
+  short_description: "Maintain CLI help, docs, completions, and manpages"
+  default_prompt: "Keep this repository CLI usage spec and generated artifacts synchronized."

@@ -69,7 +69,7 @@ const ROOT_PACKAGE_JSON = (name: string) =>
         "@george43g/tsconfig": "workspace:*",
         "@types/node": "^24.13.3",
         tsx: "^4.23.1",
-        turbo: "^2.10.5",
+        turbo: "^2.10.7",
         typescript: "^5.7.0",
         vitest: "^3.2.7",
       },

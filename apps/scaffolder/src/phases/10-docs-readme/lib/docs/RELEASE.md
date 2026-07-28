@@ -1,5 +1,9 @@
 # Release flow
 
+> This document describes release infrastructure copied into generated tools.
+> The meta-repository's reusable package workflow is separate; see
+> [Reusable package release](#reusable-package-release).
+
 `release.yml` ships disabled. Enabling it is a deliberate, per-tool decision — not every tool cloned from this template will publish to npm.
 
 ## When to enable
@@ -68,3 +72,25 @@ Semantic-release in its default config publishes one root package. If you need t
 
 - Use `semantic-release-monorepo` or move to `changesets` (the latter is better for monorepos but requires more manual orchestration).
 - The starter's `.releaserc.json` is single-package by design. Don't over-engineer the release process until you actually have multiple consumers.
+
+## Reusable package release
+
+The meta-repository prepares `@george43g/robustness@0.1.0` through
+`.github/workflows/release-packages.yml`. That workflow is manual and defaults
+to verification-only.
+
+Before publishing:
+
+1. Run `pnpm verify`.
+2. Run `pnpm check:robustness-package`; it packs the actual tarball, installs it
+   into a standalone Node 24 project, and exercises the public exports.
+3. Confirm `pnpm audit --json` has no known vulnerabilities.
+4. Confirm the package version is absent from npm.
+5. Configure `NPM_TOKEN` for the `@george43g` scope.
+
+Trigger **Release reusable packages** with `publish=false` for a CI rehearsal.
+Only rerun with `publish=true` after reviewing that result. The publish step uses
+public access and npm provenance.
+
+The scaffolder must not default to registry mode until a clean external
+`pnpm add @george43g/robustness@0.1.0` consumer passes.

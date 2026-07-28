@@ -15,8 +15,9 @@ import {
   standardReactTsconfig,
   standardVitestConfig,
 } from "../../core/package-port.js";
+import { runtimeDependencyRange, runtimePackageName } from "../../core/runtime-source.js";
 
-const PKG_JSON = (scope: string) => `{
+const PKG_JSON = (scope: string, ctx: MigrationContext) => `{
   "name": "${scope}/tui-kit",
   "version": "0.0.0",
   "private": true,
@@ -45,7 +46,7 @@ const PKG_JSON = (scope: string) => `{
     "clean": "rm -rf dist coverage"
   },
   "dependencies": {
-    "${scope}/robustness": "workspace:*",
+    "${runtimePackageName(ctx, scope)}": "${runtimeDependencyRange(ctx)}",
     "fullscreen-ink": "^0.1.0",
     "ink": "^7.1.1",
     "react": "^19.2.8"

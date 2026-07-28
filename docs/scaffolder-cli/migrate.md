@@ -34,6 +34,10 @@ Actually apply (default is dry-run)
 
 Overwrite divergent files (default: preserve in existing mode)
 
+### `--report-json <path>`
+
+Write a machine-readable migration report
+
 ### `--name <name>`
 
 Tool name (kebab-case, BARE — no -mcp suffix)
@@ -51,6 +55,15 @@ pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)
 - `pnpm`
 - `npm`
 - `bun`
+
+### `--runtime-source <source>`
+
+source | registry (source remains default until the first public runtime release)
+
+**Choices:**
+
+- `source`
+- `registry`
 
 ### `--no-tui`
 

@@ -8,6 +8,7 @@
 
 import { TEMPLATES } from "../generated/templates.js";
 import type { MigrationContext, MigrationResult } from "./migration.js";
+import { runtimeDependencyRange, runtimePackageName } from "./runtime-source.js";
 import { requireRepoName } from "./target-inspection.js";
 import { nameUpperOf, substitute } from "./templating.js";
 
@@ -15,7 +16,7 @@ export interface PackagePortOptions {
   /** Target subdir, e.g. "packages/robustness". */
   pkgDir: string;
   /** package.json content. Omit if package.json is shipped under lib/. */
-  packageJson?: (scope: string) => string;
+  packageJson?: (scope: string, ctx: MigrationContext) => string;
   /** tsconfig.json content. Omit if shipped under lib/. */
   tsconfig?: (scope: string) => string;
   /** vitest.config.ts content. Omit if shipped under lib/. */
@@ -36,7 +37,7 @@ export async function portPackage(
 
   const metaFiles: Array<[string, string]> = [];
   if (opts.packageJson) {
-    metaFiles.push([`${opts.pkgDir}/package.json`, opts.packageJson(scope)]);
+    metaFiles.push([`${opts.pkgDir}/package.json`, opts.packageJson(scope, ctx)]);
   }
   if (opts.tsconfig) {
     metaFiles.push([`${opts.pkgDir}/tsconfig.json`, opts.tsconfig(scope)]);
@@ -58,7 +59,13 @@ export async function portPackage(
   }
 
   const name = requireRepoName(ctx.config);
-  const vars = { name, nameUpper: nameUpperOf(name), scope };
+  const vars = {
+    name,
+    nameUpper: nameUpperOf(name),
+    scope,
+    runtimePackage: runtimePackageName(ctx, scope),
+    runtimeVersion: runtimeDependencyRange(ctx),
+  };
 
   const prefix = opts.pkgDir === "" || opts.pkgDir === "." ? "" : `${opts.pkgDir}/`;
   for (const key of Object.keys(TEMPLATES)) {
@@ -68,7 +75,13 @@ export async function portPackage(
     // legitimately contain `example-repo` markers (e.g. `skills/example-repo/SKILL.md`
     // → `skills/foo/SKILL.md`); content substitution is the standard case.
     const targetPath = substitute(`${prefix}${rel}`, vars);
-    const content = substitute(TEMPLATES[key] ?? "", vars);
+    let content = substitute(TEMPLATES[key] ?? "", vars);
+    if (ctx.config.global.runtimeSource.peek() === "registry") {
+      content = content.replace(
+        `"${vars.runtimePackage}": "workspace:*"`,
+        `"${vars.runtimePackage}": "${vars.runtimeVersion}"`,
+      );
+    }
     recordOutcome(targetPath, await ctx.fs.writeIfChanged(targetPath, content));
   }
 

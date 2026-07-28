@@ -4,13 +4,20 @@
 
 You're working on **the scaffolder repo + canonical static template**. This is the meta-tool that generates MCP+CLI+TUI starter projects (and retrofits existing MCP servers to match). For the cloned-tool's agent guide, see `apps/scaffolder/src/phases/11-agent-files/lib/AGENTS.md` (that gets written into target repos at scaffold time).
 
+## Current handoff
+
+Before continuing an existing thread, read `HANDOFF.md` and
+`docs/PROJECT_STATE.md`. They record the exact local/upstream Git state,
+verification evidence, retrofit safety invariants, dependency decisions, and
+deferred work that must survive context compaction.
+
 ## What this repo is
 
 Two things at once:
 
 1. **The static "golden output"** under `apps/example-repo-mcp/`, `apps/rust-accel/`, `packages/*`, `docs/`, etc. — the literal files that the scaffolder will ship into a cloned tool. CI rebuilds + tests it on every PR.
 
-2. **The scaffolder/migrator** at `apps/scaffolder/` (bin `mcp-scaffold`). 12 phases, 21 migrations, 145 template files. Drives `init` (fresh scaffold), `apply` (diff-safe retrofit), and `add-mcp-app` (append a second MCP app to an already-scaffolded monorepo — runs only the 08-app phase under `mode='add'` with a collision guard).
+2. **The scaffolder/migrator** at `apps/scaffolder/` (bin `mcp-scaffold`). 12 phases, 25 migrations, 172 generated template entries. Drives `init` (fresh scaffold), `apply` (target-profile-aware retrofit), and `add-mcp-app` (append a second MCP app to an already-scaffolded monorepo — runs only the 08-app phase under `mode='add'` with a collision guard).
 
 The scaffolder's `src/phases/<NN-name>/lib/` directories are **byte-identical copies** of the canonical sources. The golden-output drift test (`apps/scaffolder/tests/golden.test.ts`) fails CI when these diverge.
 
@@ -21,8 +28,8 @@ The scaffolder's `src/phases/<NN-name>/lib/` directories are **byte-identical co
 - **Package manager**: pnpm 10.29.3 (Turborepo workspace)
 - **Build**: Vite library mode (the scaffolder bundles to a single `dist/cli.js` with the lib templates inlined via codegen)
 - **Lint/format**: Biome 2.x
-- **Tests**: Vitest (globals on); 87 scaffolder tests + 14 cloned-tool integration tests + 27 mcp-kit unit tests
-- **MCP SDK**: `@modelcontextprotocol/sdk` ^1.27
+- **Tests**: Vitest (globals on); 128 scaffolder tests + 14 cloned-tool integration tests + 27 mcp-kit unit tests + 68 robustness unit tests
+- **MCP SDK**: `@modelcontextprotocol/sdk` ^1.29
 - **CLI**: `commander` ^14
 - **TUI**: `ink` ^7 + `react` ^19
 - **Schemas**: Zod ^3 + `zod-to-json-schema`
@@ -69,12 +76,12 @@ packages/
 |---|---|
 | `pnpm install` | Install all workspaces |
 | `pnpm build` | Turbo: build TS workspaces + (optional) Rust crate |
-| `pnpm test` | All tests (cloned-tool integration + 76 scaffolder tests) |
+| `pnpm test` | All workspace tests, including 128 scaffolder tests |
 | `pnpm test:no-native` | Force TS fallback (`MCP_DISABLE_NATIVE=1`) |
 | `pnpm typecheck` | `tsc --noEmit` per package |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm verify` | lint + typecheck + test + build (the CI shape) |
-| `pnpm stress` | 11-case MCP stress harness against the canonical `apps/example-repo-mcp/` |
+| `pnpm stress` | 13-assertion MCP stress harness against the canonical `apps/example-repo-mcp/` |
 
 Scaffolder-only (run from inside `apps/scaffolder/`):
 | Command | Purpose |
@@ -86,6 +93,15 @@ Scaffolder-only (run from inside `apps/scaffolder/`):
 | `mise run docs` | Generate `docs/scaffolder-cli/*.md` |
 | `mise run completions` | bash + zsh + fish |
 | `mise run manpage` | `man/mcp-scaffold.1` |
+| `pnpm artifacts` | Regenerate all scaffolder usage artifacts |
+| `pnpm check:usage` | Byte-check scaffolder usage artifacts |
+
+Repo skills:
+
+- `skills/cli-artifacts/SKILL.md` — update or relocate CLI docs,
+  completions, and manpage generation.
+- `skills/workspace-scaffolding/SKILL.md` — choose native generators for new
+  leaf workspaces without replacing the deterministic root scaffold.
 
 ## Scaffolder architecture (high level)
 
@@ -97,7 +113,9 @@ Scaffolder-only (run from inside `apps/scaffolder/`):
 
 **Lib → templates codegen**: `scripts/build-templates.mjs` walks `phases/<NN>-<slug>/lib/**` and emits `src/generated/templates.ts` as `{ [relPath]: string }`. Migrations read via `TEMPLATES['04-robustness/lib/src/env.ts']`. The single bundle ships `npx`-friendly.
 
-**Diff-safe apply**: `fs.writeIfChanged` honors `force`. In `apply` mode (force=false), files that exist + diverge are returned as `divergent-skipped` (preserved). `init` defaults to force=true. `--force` is the conscious override.
+**Target-profile-aware apply**: target inspection classifies fresh, complete starter-derived, and generic existing repositories. Generic targets default to `--existing-strategy safe`, so only migrations marked `safe-any-existing` run. Complete starter layouts retain full behavior. `--existing-strategy full` or a named migration is the conscious opt-in to broader changes.
+
+**Diff-safe writes**: `fs.writeIfChanged` honors `force`. In existing mode (force=false), files that exist + diverge are returned as `divergent-skipped` (preserved). `init` defaults to force=true. `--force` is the conscious overwrite.
 
 ## Adding a new migration
 
@@ -125,15 +143,15 @@ Scaffolder-only (run from inside `apps/scaffolder/`):
 
 ## Testing
 
-- **Scaffolder unit + integration**: `pnpm --filter @george43g/mcp-scaffold test` (87 tests across `templating`, `config-leaf`, `fs`, `package-port`, `migrations`, `golden`, `retrofit`, `tsconfig`, `add-mcp-app`)
-- **Cloned-tool integration**: `pnpm --filter @george43g/example-repo-mcp test` (9 tests; native + TS fallback paths)
-- **11-case stress harness**: `pnpm stress` (handshake, health, parallel, timeout, SIGTERM, RSS watchdog, HTTP roundtrip, …)
+- **Scaffolder unit + integration**: `pnpm --filter @george43g/mcp-scaffold test` (128 tests across 12 test files, including `templating`, `config-leaf`, `fs`, `package-port`, `migrations`, `golden`, `retrofit`, `tsconfig`, and `add-mcp-app`)
+- **Cloned-tool integration**: `pnpm --filter @george43g/example-repo-mcp test` (14 tests; native + TS fallback paths)
+- **13-assertion stress harness**: `pnpm stress` (handshake, health, parallel, timeout, SIGTERM, RSS watchdog, HTTP roundtrip, …)
 - **Golden-output drift**: scaffolder's `tests/golden.test.ts` — byte-equal lib vs canonical (excepting `EXEMPT_LIB_PATHS`)
 - **E2E in CI**: `.github/workflows/ci.yml` runs `mcp-scaffold init` into a tempdir and asserts `pnpm install && pnpm test` succeed
 
 ## CI
 
-`.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, node 24, Rust toolchain stable. Steps: install → lint → typecheck → build → test → test:no-native → install usage(1) via mise → check usage(1) artifact freshness → npm pack --dry-run → **scaffolder E2E smoke** → 11-case stress harness.
+`.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, node 24, Rust toolchain stable. Steps: install → lint → typecheck → build → test → test:no-native → install usage(1) via mise → check usage(1) artifact freshness → npm pack --dry-run → **scaffolder E2E smoke** → 13-assertion stress harness.
 
 `.github/workflows/release.yml` — semantic-release pipeline; **disabled by default** (the `on:` trigger is commented). Enable by uncommenting + adding `NPM_TOKEN` secret. See `docs/RELEASE.md`.
 
@@ -143,7 +161,13 @@ Scaffolder-only (run from inside `apps/scaffolder/`):
 
 ## Plan & origin
 
-The full project plan lives at `/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md`. The comprehensive AI-readable scaffolder guide is `skills/mcp-starter-architect/SKILL.md` — read it before retrofitting an existing MCP server. The patterns lifted from oclif (and explicitly skipped) are documented in `apps/scaffolder/src/core/CREDITS.md`.
+The legacy external plan path
+`/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md` is no longer
+present. Current continuation state lives in `HANDOFF.md` and
+`docs/PROJECT_STATE.md`. The comprehensive AI-readable scaffolder guide is
+`skills/mcp-starter-architect/SKILL.md` — read it before retrofitting an existing
+MCP server. The patterns lifted from oclif (and explicitly skipped) are
+documented in `apps/scaffolder/src/core/CREDITS.md`.
 
 ## Troubleshooting
 

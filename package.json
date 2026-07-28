@@ -26,6 +26,10 @@
     "format": "biome format --write .",
     "typecheck": "turbo run typecheck",
     "stress": "turbo run stress",
+    "evaluate:retrofit": "node scripts/evaluate-retrofit.mjs",
+    "check:robustness-package": "node scripts/check-robustness-package.mjs",
+    "smoke:registry-runtime": "node scripts/smoke-registry-runtime.mjs",
+    "check:usage": "pnpm --filter @george43g/mcp-scaffold check:usage && pnpm --filter \"@george43g/*-mcp\" check:usage",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "regen:example": "pnpm --filter @george43g/mcp-scaffold build && rm -rf example && node apps/scaffolder/dist/cli.js init example --name example --no-banner && rm -f example/biome.json && MISE_TRUSTED_CONFIG_PATHS=\"$PWD/example\" mise run --cd example/apps/example-mcp docs && MISE_TRUSTED_CONFIG_PATHS=\"$PWD/example\" mise run --cd example/apps/example-mcp completions && MISE_TRUSTED_CONFIG_PATHS=\"$PWD/example\" mise run --cd example/apps/example-mcp manpage",
     "clean": "turbo run clean && rm -rf node_modules .turbo coverage"
@@ -33,9 +37,10 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.5",
     "@george43g/tsconfig": "workspace:*",
+    "@george43g/vitest-config": "workspace:*",
     "@types/node": "^24.13.3",
     "tsx": "^4.23.1",
-    "turbo": "^2.10.5",
+    "turbo": "^2.10.7",
     "typescript": "^5.7.0",
     "vitest": "^3.2.7"
   },

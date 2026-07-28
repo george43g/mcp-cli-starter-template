@@ -75,6 +75,10 @@ export default class RobustnessPkgMigration extends Migration {
   readonly title = "Port packages/robustness/ (env, logger, watchdog, shutdown, …)";
   readonly appliesTo = "both" as const;
 
+  override async shouldRun(ctx: MigrationContext): Promise<boolean> {
+    return ctx.config.global.runtimeSource.peek() !== "registry";
+  }
+
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
     return portPackage(ctx, {
       pkgDir: "packages/robustness",

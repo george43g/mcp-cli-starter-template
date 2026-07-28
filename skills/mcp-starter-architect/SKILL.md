@@ -65,7 +65,7 @@ example-repo/                           # the cloned tool, one git repo
 
 **Bin model**: ONE bin per tool (`example-repo`), subcommands route to MCP/TUI/doctor/repl/etc. The single bin keeps the public surface small and lets all surfaces share the in-process dispatcher (zero drift between MCP `tools/list` and `--help`).
 
-**Stack**: Node 24+, ESM only, pnpm 10.x workspace, Turborepo, Vite library mode, Biome 2.x, Vitest 2.x, MCP SDK ^1.27, Commander ^14, Ink 7 + React 19, Zod ^3, napi-rs v3 (optional).
+**Stack**: Node 24+, ESM only, pnpm 10.x workspace, Turborepo, Vite library mode, Biome 2.x, Vitest 3.x, MCP SDK ^1.29, Commander ^14, Ink 7 + React 19, Zod ^3, napi-rs v3 (optional).
 
 ---
 
@@ -135,7 +135,10 @@ Manual retrofit: copy the three packages verbatim (they're small) and the root c
 - **watchdog.ts** — three self-healing monitors:
   - Event-loop lag (spike): p99 lag over 5s. Defaults warn 500ms / kill 10s. Env: `MCP_EVENT_LOOP_WARN_MS`, `MCP_EVENT_LOOP_KILL_MS`, `MCP_EVENT_LOOP_SAMPLE_MS`.
   - Event-loop lag (sustained): p99 ≥ threshold for N consecutive samples. Default 750ms × 6. Env: `MCP_EVENT_LOOP_SUSTAINED_MS`, `MCP_EVENT_LOOP_SUSTAINED_SAMPLES`.
-  - Memory: RSS exceeded OR 10 consecutive monotonic heap growth samples. Default RSS 1024MB. Env: `MCP_MAX_RSS_MB`, `MCP_HEAP_GROWTH_SAMPLES`, `MCP_MEMORY_SAMPLE_MS`.
+  - Memory: RSS exceeded OR 10 consecutive monotonic heap growth samples with
+    at least 25MB total growth. Default RSS 1024MB. Env:
+    `MCP_MAX_RSS_MB`, `MCP_HEAP_GROWTH_SAMPLES`,
+    `MCP_HEAP_GROWTH_MIN_MB`, `MCP_MEMORY_SAMPLE_MS`.
   - Idle/uptime: uptime > 24h AND no activity for 1h. Env: `MCP_RESTART_AFTER_MS`, `MCP_RESTART_QUIET_MS`, `MCP_IDLE_CHECK_MS`.
   - Writes state to JSON each tick when `MCP_WATCHDOG_STATE_PATH` is set (so external observers can sample without parsing logs).
 - **shutdown.ts** — central cleanup registry. Traps SIGINT, SIGTERM, SIGHUP, SIGQUIT, stdin EOF (MCP host died), parent-PID change (orphan reparenting). 3s safety-net force-exit if cleanup stalls.
@@ -145,7 +148,20 @@ Manual retrofit: copy the three packages verbatim (they're small) and the root c
 - **rate-limit.ts** — `TokenBucket` + default singleton
 - All exported via `index.ts` barrel (40+ exports)
 
-Manual retrofit: copy the whole package; consumers just need `@george43g/robustness` (or whatever scope) as a workspace dep. The watchdog **self-kills** the process on unrecoverable conditions, relying on the MCP host (Cursor/Claude/Warp) to respawn — embrace this; don't try to "recover" in-process.
+Distribution choices:
+
+- `--runtime-source source` copies the whole package under the target scope for
+  project-owned customization.
+- `--runtime-source registry` depends on
+  `@george43g/robustness:^0.1.0` and omits the local package. Use this only after
+  that release exists in the registry.
+
+Prefer the registry package for generic lifecycle behavior that should receive
+upstream fixes. Configure policy through `createWatchdog()` and
+`createShutdownController()` rather than forking: environment prefix,
+thresholds, idle restart, diagnostics, process-exit behavior, and lifecycle
+hooks are injectable. Keep project-specific tools, schemas, native contracts,
+and application wiring as generated source.
 
 ### 05-utility-pkgs — env-loader, secrets, cli-kit, tui-kit
 
@@ -187,7 +203,7 @@ Lays down:
 - `src/dispatcher.ts` — invariants block at top; `getDispatcher()` and `callMcpTool()` exports.
 - `src/native-bridge.ts` — `tryLoadNative()` with `MCP_DISABLE_NATIVE` escape hatch + `engineLabel()` so the TUI can show which path is active.
 - `scripts/mcp-dev-proxy.ts` — handshake-replay proxy. Cursor/Claude/Warp keep their session across `src/**` changes; the proxy restarts the child and replays the initialize roundtrip.
-- `scripts/stress-mcp.ts` — 11-case stress harness (handshake, health, 20× parallel, unknown tool, malformed schema, forced timeout, SIGTERM clean exit, RSS watchdog kill, HTTP /health 200, HTTP /mcp 401 without bearer, HTTP /mcp initialize with bearer).
+- `scripts/stress-mcp.ts` — 13-assertion stress harness (handshake, health, 20× parallel, unknown tool, malformed schema, forced timeout, SIGTERM clean exit, RSS watchdog kill, HTTP /health 200, HTTP /mcp 401 without bearer, initialize with bearer, initialized notification, and session-scoped tools/list).
 - `scripts/stress-tui.ts` — external `ps` sampler + headless TUI workload.
 - `.env.example` — exhaustive list of every recognized env var.
 - `.usage.kdl` — CLI spec for usage(1) → bash/zsh/fish completions + manpage + markdown docs.
@@ -242,7 +258,7 @@ Manual retrofit: AGENTS.md + symlinks is the cheapest agent-friendly upgrade. Re
 
 ### 12-ci-release — workflows + .releaserc + .npmignore
 
-- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`. Steps: pnpm install → lint → typecheck → test → test:no-native → build → install usage(1) via `jdx/mise-action` → `pnpm check:usage` (completions/manpage/docs freshness gate) → npm pack --dry-run → 11-case stress harness. The HTTP case uses a generated bearer token (`openssl rand -hex 32`) bound to a random high port.
+- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`. Steps: pnpm install → lint → typecheck → test → test:no-native → build → install usage(1) via `jdx/mise-action` → `pnpm check:usage` (completions/manpage/docs freshness gate) → npm pack --dry-run → 13-assertion stress harness. The HTTP case uses a generated bearer token (`openssl rand -hex 32`) bound to a random high port.
 - `.github/workflows/release.yml` — semantic-release pipeline with the Keep-a-Changelog plugin chain (`@semantic-release/{commit-analyzer,release-notes-generator,changelog,npm,github,git}`). **Ships disabled** (the `on:` trigger is commented). Enable: uncomment + add `NPM_TOKEN` secret.
 - `.github/workflows/readme-check.yml` — fails CI if `src/**` changed without a `README.md` update. Bypass with `[skip-readme]` in commit/PR title.
 - `.github/workflows/screenshots.yml` — installs vhs + ttyd, regenerates all `*.tape` files, commits `docs/screenshots/*.{png,gif}` back with `[skip ci]`.
@@ -312,7 +328,12 @@ Free for OSS. `docs/docs.json` + MDX. `mintlify dev` for local preview. No self-
 
 ## Automated retrofit via `mcp-scaffold apply`
 
-The scaffolder ships with a diff-safe retrofit flow specifically for existing MCP servers. **Default behavior preserves user customizations** — a divergent file gets reported but not overwritten.
+The scaffolder ships with a target-profile-aware, diff-safe retrofit flow.
+Generic existing repositories default to `--existing-strategy safe`, which runs
+only migrations explicitly marked compatible with any existing layout.
+Complete starter-derived layouts retain full behavior. **Default write behavior
+preserves user customizations** — a divergent file gets reported but not
+overwritten.
 
 ```bash
 # 1. Dry-run first to see what would change (this is the default; no flag needed)
@@ -323,7 +344,10 @@ mcp-scaffold apply --target ~/repos/my-existing-mcp
 #    note in the recap.
 mcp-scaffold apply --target ~/repos/my-existing-mcp --execute
 
-# 3. After applying, `git status` in the target shows untracked new files
+# 3. Deliberately evaluate the full starter infrastructure only when needed.
+mcp-scaffold plan --target ~/repos/my-existing-mcp --existing-strategy full
+
+# 4. After applying, `git status` in the target shows untracked new files
 #    + your unchanged customizations. Stage selectively.
 cd ~/repos/my-existing-mcp && git status --short
 ```
@@ -376,6 +400,13 @@ mcp-scaffold migrate 04-robustness/m1-robustness-pkg --target ~/repos/my-mcp --e
 
 Useful when you want the robustness harness but not the docs scaffold, or when iterating on which phases are safe to apply.
 
+For destructive reconnaissance, use `pnpm evaluate:retrofit -- --source
+/path/to/repo --install --verify lint,typecheck,test,build`. It operates on the
+source repository's committed revision in an isolated local clone and captures
+the Git patch, untracked files, command output, and verification results.
+`--install` uses a temporary isolated pnpm store; registry network access may
+still occur for uncached dependencies.
+
 ---
 
 ## Manual application playbook (retrofit order)
@@ -383,7 +414,11 @@ Useful when you want the robustness harness but not the docs scaffold, or when i
 If you're retrofitting BY HAND (not via the scaffolder), apply rules in this order — each phase has dependencies on the prior. Stop and verify after each.
 
 1. **02-toolchain** first — `.gitattributes` LFS protection costs nothing, may prevent disaster.
-2. **04-robustness** — drop in as a workspace package. Wire `installShutdownHandlers()` + `installWatchdog()` + `setLogFilePrefix(slug)` + `logStartup()` into your existing MCP entry. Replace every post-stdio `console.*` with `logger.*`.
+2. **04-robustness** — choose the public package for updateable generic behavior
+   or source mode when deep customization is required. Wire
+   `installShutdownHandlers()` + `installWatchdog()` +
+   `setLogFilePrefix(slug)` + `logStartup()` into your existing MCP entry.
+   Replace every post-stdio `console.*` with `logger.*`.
 3. **Dispatcher invariants** — wrap your tool dispatcher with `withTimeout` + `perf()` + `noteActivity()` + `wrapToolError`. Honor `AbortSignal` in long loops.
 4. **06-mcp-kit `sanitize()` + `wrapUntrusted()`** — apply to every user-content surface immediately. Cheap to add, hard to undo a leak.
 5. **08-app — collapse to single bin** — biggest refactor; do it on a feature branch. Update CI + install snippets simultaneously.
@@ -406,6 +441,7 @@ If you're retrofitting BY HAND (not via the scaffolder), apply rules in this ord
 
 - Migrations: `apps/scaffolder/src/phases/<phase>/m*.ts`
 - Templates: `apps/scaffolder/src/phases/<phase>/lib/**`
-- Plan: `/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md`
+- Shared-runtime policy: `docs/SHARED_RUNTIME.md`
+- Current handoff: `docs/PROJECT_STATE.md`
 
 When this file gets out of sync with the scaffolder, **trust the scaffolder** and update this skill. The migrations are tested via `mcp-scaffold init` and verified byte-identical against `apps/example-repo-mcp/` + `packages/*` in CI.

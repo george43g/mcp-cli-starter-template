@@ -37,7 +37,9 @@ export function collectIntents(
     for (const row of phase.results) {
       const trigger = pickTrigger(row);
       if (!trigger) continue;
-      const intent = row.migration.retrofitIntent?.(ctx);
+      const intent =
+        row.migration.retrofitIntent?.(ctx) ??
+        (isGenericPolicySkip(row) ? genericPolicyIntent(row) : undefined);
       if (!intent) continue;
       const entry: CollectedIntent = {
         phaseId: phase.phaseId,
@@ -52,6 +54,33 @@ export function collectIntents(
     }
   }
   return out;
+}
+
+function isGenericPolicySkip(row: MigrationRunResult): boolean {
+  return (
+    row.result.status === "skipped" &&
+    (row.result.notes ?? []).some((note) => note.includes("target=generic-existing"))
+  );
+}
+
+function genericPolicyIntent(row: MigrationRunResult): RetrofitIntent {
+  return {
+    summary: row.migration.title,
+    rationale:
+      "The target is not a complete starter-derived layout. Safe existing mode does not add starter infrastructure to generic repositories automatically.",
+    manualSteps: [
+      `Preview this migration alone with \`mcp-scaffold migrate ${row.migrationId} --target .\`.`,
+      "Run the repository's existing verification commands before applying anything.",
+      `If the preview is appropriate, rerun with \`--execute\`; divergent files remain preserved unless \`--force\` is explicit.`,
+    ],
+    prompt:
+      `Evaluate whether migration ${row.migrationId} from ` +
+      "https://github.com/george43g/mcp-cli-starter-template is appropriate for this existing " +
+      "repository. Read the current project architecture and package scripts first. Do not copy " +
+      "the starter wholesale. Identify the useful invariant behind the migration, propose the " +
+      "smallest project-native adaptation, preserve existing package-manager and release choices, " +
+      "and run the repository's existing lint, typecheck, test, and build commands after any change.",
+  };
 }
 
 function pickTrigger(row: MigrationRunResult): "skipped" | "divergent" | undefined {

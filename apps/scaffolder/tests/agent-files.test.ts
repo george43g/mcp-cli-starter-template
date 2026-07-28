@@ -37,6 +37,7 @@ async function context(cwd: string, force = false): Promise<MigrationContext> {
   config.global.mode.set("existing");
   config.global.repoName.set(target.repoName);
   config.global.packageManager.set(target.packageManager);
+  config.global.runtimeSource.set("source");
   config.global.scope.set("@george43g");
   const dryRun = false;
   const shell = makeShell({ cwd, dryRun });
@@ -45,6 +46,8 @@ async function context(cwd: string, force = false): Promise<MigrationContext> {
     cwd,
     target,
     mode: "existing",
+    existingStrategy: "safe",
+    explicitMigration: true,
     shell,
     fs: makeFs({ cwd, dryRun, force }),
     git: makeGit(shell),

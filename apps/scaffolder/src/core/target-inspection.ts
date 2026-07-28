@@ -5,6 +5,7 @@ import { assertValidRepoName, type Config, type PackageManager } from "./config.
 import type { ApplyMode } from "./migration.js";
 
 export type PackageMetadataStatus = "missing" | "malformed" | "nameless" | "invalid-name" | "valid";
+export type TargetProfile = "fresh" | "starter-existing" | "generic-existing";
 
 export interface TargetInspection {
   packageMetadataStatus: PackageMetadataStatus;
@@ -15,6 +16,7 @@ export interface TargetInspection {
   packageManager: PackageManager;
   packageManagerSource: "explicit" | "package.json" | "lockfile" | "default";
   starterLayout: boolean;
+  profile: TargetProfile;
   fallbackWarning?: string;
 }
 
@@ -46,6 +48,7 @@ export async function inspectTarget(options: InspectTargetOptions): Promise<Targ
   const pkg = await readPackageJson(options.cwd);
   const resolvedName = resolveRepoName(options.explicitName, pkg);
   const resolvedPackageManager = resolvePackageManager(options, pkg);
+  const starterLayout = STARTER_MARKERS.every((marker) => existsSync(join(options.cwd, marker)));
 
   const inspection: TargetInspection = {
     packageMetadataStatus:
@@ -55,7 +58,9 @@ export async function inspectTarget(options: InspectTargetOptions): Promise<Targ
     repoNameSource: resolvedName.source,
     packageManager: resolvedPackageManager.value,
     packageManagerSource: resolvedPackageManager.source,
-    starterLayout: STARTER_MARKERS.every((marker) => existsSync(join(options.cwd, marker))),
+    starterLayout,
+    profile:
+      options.mode === "new" ? "fresh" : starterLayout ? "starter-existing" : "generic-existing",
   };
   if (pkg.name) inspection.packageName = pkg.name;
   if (resolvedName.warning) inspection.fallbackWarning = resolvedName.warning;

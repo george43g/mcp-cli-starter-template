@@ -26,8 +26,8 @@ export async function runTui(): Promise<void> {
   const slug = APP_NAME.replace(/^@[^/]+\//, "");
   setLogFilePrefix(slug);
 
-  installShutdownHandlers();
-  installWatchdog();
+  installShutdownHandlers({ exitOnUncaughtException: false });
+  installWatchdog({ idleRestart: false });
   startHeapMonitor();
   logStartup(`${APP_NAME}-tui`);
 

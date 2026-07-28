@@ -62,3 +62,8 @@ run = "echo 'completions generated in completions/scaffolder/'"
 [tasks.manpage]
 description = "Generate man page"
 run = "mkdir -p ../../man && usage g manpage -f .usage.kdl -o ../../man/mcp-scaffold.1"
+
+[tasks.artifacts]
+description = "Regenerate every mcp-scaffold usage(1) artifact"
+depends = ["docs", "completions", "manpage"]
+run = "echo 'all mcp-scaffold artifacts regenerated'"

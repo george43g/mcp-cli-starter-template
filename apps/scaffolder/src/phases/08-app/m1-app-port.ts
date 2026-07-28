@@ -4,8 +4,9 @@
  * This is the biggest migration in the scaffolder: it lays down the entire
  * user-facing app — src/ (cli, index, dispatcher, tools/, tui/, commands/),
  * scripts/ (mcp-dev-proxy, stress-{mcp,tui}, screenshots/*.tape),
- * tests/ (integration), .env.example, .usage.kdl, README.md, plus all
- * config files (package.json, tsconfig.json, vite.config.ts, vitest.config.ts).
+ * tests/ (integration), .env.example, .usage.kdl, generated CLI artifacts,
+ * README.md, plus all config files (package.json, tsconfig.json,
+ * vite.config.ts, vitest.config.ts).
  *
  * Every file ships in lib/ with `example-repo` and `@george43g` placeholders
  * intact; portPackage substitutes them at write time based on the user's
@@ -71,7 +72,7 @@ export default class AppPortMigration extends Migration {
           scope.replace(/^@/, "") +
           "/mcp-kit: buildDispatcher + sanitize + wrapUntrusted + toMcpTools.",
         "Collapse to a single bin per app — index/cli/tui sharing a dispatcher (Vite library mode, 3 entries, shebang banner).",
-        "Port scripts/stress-mcp.ts (9 lifecycle cases) and run it in CI.",
+        "Port scripts/stress-mcp.ts (13 lifecycle assertions) and run it in CI.",
       ],
       prompt:
         `Retrofit my existing MCP server to match the architecture of ` +

@@ -52,6 +52,9 @@ Npm scope, with leading @
 \fB\-\-package\-manager\fR \fI<pm>\fR
 pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto\-detect)
 .TP
+\fB\-\-runtime\-source\fR \fI<source>\fR
+source | registry (source remains default until the first public runtime release)
+.TP
 \fB\-\-no\-tui\fR
 Skip the Ink/React TUI surface
 .TP
@@ -82,6 +85,12 @@ Path to the existing repo
 \fB\-\-execute\fR
 Actually apply (default is dry\-run)
 .TP
+\fB\-\-existing\-strategy\fR \fI<strategy>\fR
+safe | full (default: safe; full opts generic repos into starter infrastructure)
+.TP
+\fB\-\-report\-json\fR \fI<path>\fR
+Write a machine\-readable migration report
+.TP
 \fB\-\-force\fR
 Overwrite files that diverge from the template (default: preserve user customizations)
 .TP
@@ -93,6 +102,9 @@ Npm scope, with leading @
 .TP
 \fB\-\-package\-manager\fR \fI<pm>\fR
 pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto\-detect)
+.TP
+\fB\-\-runtime\-source\fR \fI<source>\fR
+source | registry (source remains default until the first public runtime release)
 .TP
 \fB\-\-no\-tui\fR
 Skip the Ink/React TUI surface
@@ -119,6 +131,12 @@ Path to target repo
 \fB\-\-mode\fR \fI<mode>\fR
 \&'new' or 'existing' (default: existing)
 .TP
+\fB\-\-existing\-strategy\fR \fI<strategy>\fR
+safe | full (default: safe; full opts generic repos into starter infrastructure)
+.TP
+\fB\-\-report\-json\fR \fI<path>\fR
+Write a machine\-readable migration report
+.TP
 \fB\-\-name\fR \fI<name>\fR
 Tool name (kebab\-case, BARE — no \-mcp suffix)
 .TP
@@ -127,6 +145,9 @@ Npm scope, with leading @
 .TP
 \fB\-\-package\-manager\fR \fI<pm>\fR
 pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto\-detect)
+.TP
+\fB\-\-runtime\-source\fR \fI<source>\fR
+source | registry (source remains default until the first public runtime release)
 .TP
 \fB\-\-no\-tui\fR
 Skip the Ink/React TUI surface
@@ -159,6 +180,9 @@ Actually apply (default is dry\-run)
 \fB\-\-force\fR
 Overwrite divergent files (default: preserve in existing mode)
 .TP
+\fB\-\-report\-json\fR \fI<path>\fR
+Write a machine\-readable migration report
+.TP
 \fB\-\-name\fR \fI<name>\fR
 Tool name (kebab\-case, BARE — no \-mcp suffix)
 .TP
@@ -167,6 +191,9 @@ Npm scope, with leading @
 .TP
 \fB\-\-package\-manager\fR \fI<pm>\fR
 pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto\-detect)
+.TP
+\fB\-\-runtime\-source\fR \fI<source>\fR
+source | registry (source remains default until the first public runtime release)
 .TP
 \fB\-\-no\-tui\fR
 Skip the Ink/React TUI surface
@@ -197,6 +224,9 @@ Path to the scaffolded repo
 .TP
 \fB\-\-scope\fR \fI<scope>\fR
 Npm scope, with leading @. Auto\-detected from existing apps/*\-mcp/ if omitted.
+.TP
+\fB\-\-runtime\-source\fR \fI<source>\fR
+source | registry. Auto\-detected from existing app dependencies if omitted.
 .TP
 \fB\-\-no\-tui\fR
 Skip the Ink/React TUI surface for the new app

@@ -68,6 +68,8 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
  * Adding entries here should always come with a comment justifying why.
  */
 const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
+  // Source-mode package guidance differs from the public npm package README.
+  "04-robustness/lib/README.md",
   // Root README — see LIB_TO_CANONICAL comment.
   "10-docs-readme/lib/README.md",
   // AGENTS.md at the repo root describes the SCAFFOLDER (the meta-tool);

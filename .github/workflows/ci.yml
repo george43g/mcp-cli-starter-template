@@ -63,11 +63,10 @@ jobs:
         uses: jdx/mise-action@v4
 
       - name: Check usage(1) artifacts are fresh vs .usage.kdl
-        # Fails the build if completions/, man/, or docs/cli/ drifted
-        # since the last regen. Fix locally: `pnpm artifacts && git add
-        # completions/ man/ docs/cli/`. Bypass: edit .usage.kdl + this
-        # check together in the same PR.
-        run: pnpm --filter "@george43g/*-mcp" check:usage
+        # Covers both the mcp-scaffold CLI and every generated CLI app.
+        # Fix locally: `pnpm --filter @george43g/mcp-scaffold artifacts`
+        # and/or `pnpm --filter "@george43g/*-mcp" artifacts`.
+        run: pnpm check:usage
 
       - name: Verify npm tarball is publishable
         run: pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run

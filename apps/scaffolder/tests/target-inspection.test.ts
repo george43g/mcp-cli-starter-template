@@ -105,6 +105,15 @@ describe("inspectTarget starter layout detection", () => {
     await writeFile(join(cwd, "turbo.json"), "{}");
     expect((await inspectTarget({ cwd, mode: "existing" })).starterLayout).toBe(false);
     await writeFile(join(cwd, "pnpm-workspace.yaml"), "packages: []\n");
-    expect((await inspectTarget({ cwd, mode: "existing" })).starterLayout).toBe(true);
+    const complete = await inspectTarget({ cwd, mode: "existing" });
+    expect(complete.starterLayout).toBe(true);
+    expect(complete.profile).toBe("starter-existing");
+  });
+
+  it("classifies new and generic existing targets", async () => {
+    const cwd = await target();
+    await pkg(cwd, { name: "foo" });
+    expect((await inspectTarget({ cwd, mode: "new" })).profile).toBe("fresh");
+    expect((await inspectTarget({ cwd, mode: "existing" })).profile).toBe("generic-existing");
   });
 });

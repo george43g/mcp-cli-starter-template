@@ -17,7 +17,40 @@ source references in the individual findings remain as discovery evidence.
 - **Bugs 9–10 resolved**: generated root `mise.toml` pins `usage = "3.3.0"`; consumer CI omits only the scaffolder E2E and example-drift steps while retaining the consumer verification gates.
 - **Related safety defects resolved**: `migrate` now defaults to existing-mode dry-run/preservation, symlink writes verify targets and honor `--force`, and phase 11 preserves combined changed/divergent metadata.
 - **Product boundary**: fresh scaffolds are pnpm-only. npm and Bun are detected for accurate minimal documentation in existing repositories; they are not supported fresh-scaffold architectures. Full existing-repo infrastructure migrations remain pnpm/Turborepo-oriented and emit a warning for npm/Bun targets.
+- **2026-07-27 hardening**: generic existing repositories now default to a safe migration profile instead of receiving every `appliesTo: both` starter migration. `--existing-strategy full` and a named `migrate <id>` are explicit opt-ins. Machine-readable reports and an isolated-clone evaluator cover real-product reconnaissance.
+- **Shared runtime staging**: `@george43g/robustness` is prepared as a public `0.1.0` package. Source generation remains the pre-publication default; registry mode becomes the default only after publication and registry-consumer verification.
 - **Deferred**: the strategic “when to build a dedicated MCP server” guidance remains recorded below and is not promoted to user-facing documentation in this remediation.
+
+---
+
+## Follow-up finding — `appliesTo: both` was too broad for generic repositories
+
+An isolated evaluation against committed `imsg-mcp` revision `30d0ea4` showed
+that the legacy default added 127 untracked files, including a complete packages
+tree, Turbo/toolchain configuration, workflows, and starter documentation.
+Divergent tracked files were preserved normally, but `--force` rewrote 13
+product files.
+
+The migrations were individually diff-safe, yet the aggregate output was not
+target-compatible: copied packages were not necessarily referenced by the
+target workspace, and starter infrastructure was added without an architectural
+adoption decision.
+
+Resolution:
+
+- Target inspection classifies fresh, starter-derived existing, and generic
+  existing repositories.
+- Generic targets run only migrations marked `safe-any-existing` under the
+  default safe strategy.
+- Complete starter layouts keep full behavior.
+- Full evaluation and named migrations remain deliberate opt-ins.
+- `--report-json` and `scripts/evaluate-retrofit.mjs` make evaluation
+  reproducible without touching the source checkout.
+
+After the fix, the isolated imsg run changed no tracked files, produced only
+`RETROFIT.md` and `skills/imsg/SKILL.md`, and passed frozen install, lint,
+typecheck, test, and build. See
+[the evaluation](evaluations/imsg-mcp-2026-07.md).
 
 ---
 
@@ -109,7 +142,7 @@ repo, not the target repo.
 `apps/scaffolder/src/phases/11-agent-files/lib/AGENTS.md` describes a Turborepo
 monorepo with: pnpm 10.x, 4 CLI surfaces (mcp/tui/doctor/repl), `packages/robustness`
 watchdog, `packages/mcp-kit`, `packages/cli-kit`, `packages/tui-kit`, `apps/rust-accel`
-native acceleration, HTTP transport, an 11-case stress harness, semantic-release,
+native acceleration, HTTP transport, a 13-assertion stress harness, semantic-release,
 etc.
 
 When phase 11 is applied to a **non-starter-derived repo** (like `openwrt-mcp`,

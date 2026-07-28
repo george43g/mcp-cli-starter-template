@@ -19,6 +19,7 @@ import { resolve } from "node:path";
 import { Command } from "commander";
 import {
   assertInsideScaffoldedRepo,
+  detectRuntimeSource,
   detectScope,
   writePerAppAgentFiles,
 } from "../commands/add-mcp-app.js";
@@ -28,9 +29,11 @@ import { Config } from "./config.js";
 import { makeFs } from "./fs.js";
 import { makeGit } from "./git.js";
 import { makeLogger } from "./logger.js";
+import type { ExistingStrategy } from "./migration.js";
 import { type ApplyMode, type MigrationContext } from "./migration.js";
 import { loadPhases, runPhases } from "./phase-runner.js";
 import { collectIntents, renderRetrofitMarkdown } from "./retrofit.js";
+import { writeRunReport } from "./run-report.js";
 import { makeShell } from "./shell.js";
 import { inspectTarget } from "./target-inspection.js";
 
@@ -42,6 +45,11 @@ function addCommonFlags(cmd: Command): Command {
     .option(
       "--package-manager <pm>",
       "pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)",
+    )
+    .option(
+      "--runtime-source <source>",
+      "source | registry (source remains default until the first public runtime release)",
+      "source",
     )
     .option("--no-tui", "Skip the Ink/React TUI surface")
     .option("--no-http", "Skip the Streamable HTTP transport")
@@ -76,6 +84,12 @@ export function buildProgram(): Command {
       .option("--target <dir>", "Path to the existing repo", process.cwd())
       .option("--execute", "Actually apply (default is dry-run)")
       .option(
+        "--existing-strategy <strategy>",
+        "safe | full (default: safe; full opts generic repos into starter infrastructure)",
+        "safe",
+      )
+      .option("--report-json <path>", "Write a machine-readable migration report")
+      .option(
         "--force",
         "Overwrite files that diverge from the template (default: preserve user customizations)",
       ),
@@ -93,7 +107,13 @@ export function buildProgram(): Command {
       .command("plan")
       .description("Dry-run preview of which migrations would apply")
       .option("--target <dir>", "Path to target repo", process.cwd())
-      .option("--mode <mode>", "'new' or 'existing' (default: existing)", "existing"),
+      .option("--mode <mode>", "'new' or 'existing' (default: existing)", "existing")
+      .option(
+        "--existing-strategy <strategy>",
+        "safe | full (default: safe; full opts generic repos into starter infrastructure)",
+        "safe",
+      )
+      .option("--report-json <path>", "Write a machine-readable migration report"),
   ).action(async (opts) => {
     const globalOpts = program.opts<{ verbose?: boolean; banner?: boolean }>();
     if (globalOpts.banner !== false) drawBanner();
@@ -113,7 +133,8 @@ export function buildProgram(): Command {
       .option("--target <dir>", "Path to target repo", process.cwd())
       .option("--mode <mode>", "'new' or 'existing' (default: existing)", "existing")
       .option("--execute", "Actually apply (default is dry-run)")
-      .option("--force", "Overwrite divergent files (default: preserve in existing mode)"),
+      .option("--force", "Overwrite divergent files (default: preserve in existing mode)")
+      .option("--report-json <path>", "Write a machine-readable migration report"),
   ).action(async (id: string, opts) => {
     const globalOpts = program.opts<{ verbose?: boolean; banner?: boolean }>();
     if (globalOpts.banner !== false) drawBanner();
@@ -132,6 +153,10 @@ export function buildProgram(): Command {
       "--scope <scope>",
       "Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted.",
     )
+    .option(
+      "--runtime-source <source>",
+      "source | registry. Auto-detected from existing app dependencies if omitted.",
+    )
     .option("--no-tui", "Skip the Ink/React TUI surface for the new app")
     .option("--no-http", "Skip the Streamable HTTP transport for the new app")
     .option("--no-rust-accel", "Skip the rust-accel workspace dep for the new app")
@@ -142,9 +167,14 @@ export function buildProgram(): Command {
       assertInsideScaffoldedRepo(cwd);
       // Auto-detect scope from existing apps unless the user passed --scope.
       const scope = typeof opts.scope === "string" ? opts.scope : detectScope(cwd);
+      const runtimeSource =
+        opts.runtimeSource === "source" || opts.runtimeSource === "registry"
+          ? opts.runtimeSource
+          : detectRuntimeSource(cwd);
       // Funnel both into cmdOpts so applyCmdOptsToConfig populates the IoC config.
       opts.name = name;
       opts.scope = scope;
+      opts.runtimeSource = runtimeSource;
       // mode='add', dryRun=false, phaseFilter='08-app', force=true (the
       // collision guard in m1-app-port prevents clobbering existing apps).
       await runScaffolder("add", cwd, globalOpts, opts, false, "08-app", true);
@@ -188,6 +218,13 @@ function applyCmdOptsToConfig(cmdOpts: Record<string, unknown>, config: Config):
       cmdOpts.packageManager === "bun")
   ) {
     config.global.packageManager.set(cmdOpts.packageManager);
+  }
+  if (cmdOpts.runtimeSource === "source" || cmdOpts.runtimeSource === "registry") {
+    config.global.runtimeSource.set(cmdOpts.runtimeSource);
+  } else if (cmdOpts.runtimeSource !== undefined) {
+    throw new Error(
+      `Invalid --runtime-source "${String(cmdOpts.runtimeSource)}"; expected source or registry`,
+    );
   }
 
   // commander's `.option("--no-X", ...)` yields opts.X === false when the
@@ -243,12 +280,15 @@ async function runScaffolder(
         "but the full infrastructure retrofit remains pnpm/Turborepo-oriented; review the dry-run carefully.",
     );
   }
+  const existingStrategy = parseExistingStrategy(cmdOpts.existingStrategy);
 
   const ctx: MigrationContext = {
     config,
     cwd,
     target,
     mode,
+    existingStrategy,
+    explicitMigration: migrationFilter !== undefined,
     shell,
     fs,
     git,
@@ -283,7 +323,28 @@ async function runScaffolder(
     }
   }
 
+  if (typeof cmdOpts.reportJson === "string") {
+    await writeRunReport(cmdOpts.reportJson, {
+      commandMode: mode,
+      cwd,
+      dryRun,
+      force,
+      existingStrategy,
+      explicitMigration: migrationFilter !== undefined,
+      ...(migrationFilter === undefined ? {} : { migrationFilter }),
+      retrofitIntentCount: intentCount,
+      ctx,
+      phases: phaseResults,
+    });
+  }
+
   drawRecap(phaseResults, { retrofitIntentCount: intentCount });
+}
+
+function parseExistingStrategy(value: unknown): ExistingStrategy {
+  if (value === undefined || value === "safe") return "safe";
+  if (value === "full") return "full";
+  throw new Error(`Invalid --existing-strategy "${String(value)}"; expected safe or full`);
 }
 
 /**

@@ -54,6 +54,26 @@ export async function runPhases(
         ctx.log.record({ migrationId: migration.id, ...skipResult });
         continue;
       }
+      // Generic existing repositories receive only migrations explicitly
+      // marked safe. Named migrations and the full strategy are conscious
+      // opt-ins to template-oriented infrastructure changes.
+      if (
+        ctx.mode === "existing" &&
+        ctx.target.profile === "generic-existing" &&
+        ctx.existingStrategy === "safe" &&
+        !ctx.explicitMigration &&
+        migration.existingPolicy !== "safe-any-existing"
+      ) {
+        const skipResult = await timed(async () => ({
+          status: "skipped" as const,
+          notes: [
+            "existingPolicy=starter-existing, target=generic-existing; use migrate <id> or --existing-strategy full to opt in",
+          ],
+        }));
+        recordResult(phaseResult, migration, skipResult);
+        ctx.log.record({ migrationId: migration.id, ...skipResult });
+        continue;
+      }
       // shouldRun gating
       if ((await migration.shouldRun?.(ctx)) === false) {
         const skipResult = await timed(async () => ({

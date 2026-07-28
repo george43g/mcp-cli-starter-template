@@ -71,7 +71,7 @@ Three watchdog monitors fire on unref'd timers and self-kill the process via `sh
 | Event-loop lag (spike) | p99 > `MCP_EVENT_LOOP_KILL_MS` (default 10s) for one 5s window |
 | Event-loop lag (sustained) | p99 ≥ `MCP_EVENT_LOOP_SUSTAINED_MS` (default 750ms) for N consecutive samples |
 | Memory (RSS) | RSS ≥ `MCP_MAX_RSS_MB` (default 1024) |
-| Memory (heap leak) | Heap monotonically grew on `MCP_HEAP_GROWTH_SAMPLES` consecutive samples |
+| Memory (heap leak) | Heap monotonically grew by at least `MCP_HEAP_GROWTH_MIN_MB` (default 25MB) across `MCP_HEAP_GROWTH_SAMPLES` consecutive samples |
 | Idle uptime | uptime > 24h AND no activity for 1h |
 
 External observers can sample the watchdog state by setting `MCP_WATCHDOG_STATE_PATH` — the watchdog writes a JSON snapshot per event-loop tick. The CI stress harness uses this.

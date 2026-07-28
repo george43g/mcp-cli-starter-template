@@ -1,0 +1,394 @@
+# Project State and Continuation Handoff
+
+Last refreshed: 2026-07-29
+
+This document is the durable continuation record for
+`mcp-cli-starter-template`. It exists so a context compact, a restarted agent, or
+an accidentally resumed older session does not erase the distinction between
+completed work, local-only work, and deliberately deferred work.
+
+## Snapshot
+
+| Item | Current state |
+| --- | --- |
+| Branch | `main` |
+| Local HEAD | `8e6fce9a3a680bbb0d12f901dcbfbda7fd98e003` |
+| `origin/main` | `e431399e9be02b0fefd7db3cf14a23a9f0e87d7b` |
+| Ahead/behind | ahead 1, behind 0 |
+| Local commit | `fix(scaffolder): clean generated verification` |
+| Push state | local commit is verified but not pushed |
+| Remote check | fetched successfully on 2026-07-29 |
+| Working tree | verified implementation; intentionally uncommitted |
+| Worktree size | 87 modified tracked files + 42 untracked files |
+| Product boundary | fresh scaffolds are pnpm-only |
+| Runtime boundary | source is the pre-publication default; registry mode is staged |
+| Registry state | `@george43g/robustness` returned npm E404 on 2026-07-29 |
+
+Always re-run `git status --short --branch` before relying on this snapshot.
+The documentation refresh that introduced this file is itself an uncommitted
+working-tree change.
+
+## History that must survive compaction
+
+### Upstream remediation: `e431399`
+
+`e431399 feat(scaffolder): harden retrofits and refresh dependencies` is already
+on `origin/main`. It implemented the findings-led remediation recorded in
+[scaffolder-cli/retrofit-findings.md](scaffolder-cli/retrofit-findings.md):
+
+- Existing-target inspection centrally derives and validates the repository
+  name, detects the package manager, and checks starter-layout markers.
+- `migrate` defaults to existing mode, dry-run, and preservation of divergent
+  files.
+- Fresh `init`/new-mode generation rejects npm and Bun before writing; fresh
+  scaffolds remain pnpm-based.
+- Existing non-starter repositories receive minimal, package-manager-aware agent
+  documentation instead of the full starter architecture.
+- Symlink writes inspect actual targets, preserve divergent user files by
+  default, and replace only when `--force` is explicit.
+- Phase 11 preserves changed/divergent metadata and reports skill skeletons under
+  `Action required`.
+- Generated retrofit links, root `usage = "3.3.0"`, consumer CI, golden mapping,
+  stress descriptions, CLI help, docs, and tracked example output were updated.
+- Compatible dependency updates landed with deliberate breaking-major deferrals.
+
+Do not regress these invariants or restore silent `mcp-starter` fallbacks.
+
+### Audited local commit: `8e6fce9`
+
+An older resumed session created one additional commit after `e431399`. The
+commit changes nine files with 27 insertions and 15 deletions. It is coherent
+and should not be reverted merely because it came from the wrong session:
+
+- Adds root `@george43g/tsconfig: workspace:*` so generated root TypeScript
+  configuration resolves its shared base package.
+- Removes `coverage/**` from Turbo `test` outputs because ordinary `vitest run`
+  does not emit coverage. This removes false “no output files found” warnings.
+- Applies the Turbo change to minimal generation, full generation, canonical
+  output, and tracked example output.
+- Pins `postcss` to `8.5.18` in pnpm overrides and updates the lockfile.
+- Adds a migration assertion for the root shared-tsconfig dependency.
+- Ignores the repo-local `.codex/` directory.
+
+The commit is local-only. A future agent may push it only when the user has
+authorized that repository action.
+
+### Current uncommitted implementation
+
+The 2026-07-27 implementation pass builds on `8e6fce9` and must remain
+distinguishable from that verified commit until it is committed:
+
+- Generic existing repositories now use a conservative target profile.
+  `apply`/`plan` run only migrations marked `safe-any-existing`; complete
+  starter-derived layouts keep full behavior. `--existing-strategy full` and a
+  named `migrate <id>` are explicit opt-ins.
+- `--report-json` emits a schema-versioned companion to the human recap.
+- `scripts/evaluate-retrofit.mjs` evaluates a source repository's committed
+  revision in an isolated local clone, captures its patch/untracked output, and
+  can run install/lint/typecheck/test/build without touching the source checkout
+  or the user's normal pnpm store.
+- The robustness lifecycle layer exposes isolated
+  `createWatchdog()`/`createShutdownController()` instances with configurable
+  policy, injectable diagnostics/exit behavior, cleanup, sleep-skew detection,
+  and stronger memory forensics.
+- `@george43g/robustness` is prepared as a public `0.1.0` package with a
+  standalone packed-consumer smoke and a manual release workflow.
+- Fresh generation supports `--runtime-source source|registry`. Source remains
+  the default because `0.1.0` has not been published. Registry mode is tested by
+  packing the local package and installing it into an isolated generated
+  consumer.
+- Turbo was advanced from 2.10.5 to the compatible 2.10.7 patch.
+- Canonical files, phase `lib/` mirrors, generated CLI artifacts, and tracked
+  `example/` output were regenerated.
+
+No commit has been created for the current implementation, and no npm
+publication, push, or release has been performed for it. Those are external
+mutations and require explicit user authorization. The older audited local
+commit `8e6fce9` remains separate.
+
+The current tracked diff is 3,201 insertions and 1,201 deletions across 87
+files, excluding 42 untracked files. Treat the entire worktree as owned work;
+do not discard files merely because they are untracked.
+
+### CLI artifacts and native generator policy
+
+The scaffolder CLI and generated CLI packages both use pinned `usage(1)` specs
+to generate markdown help, bash/zsh/fish completions, and manpages. Fresh
+scaffolds now contain the first generated baseline, and missing artifacts fail
+the freshness check rather than passing as an uninitialized state.
+
+Generated repos also contain:
+
+- `skills/cli-artifacts/SKILL.md`, which explains how to retain or relocate the
+  pipeline when the MCP app is removed.
+- `skills/workspace-scaffolding/SKILL.md`, which guides official native
+  generator use for new leaf packages.
+- `docs/NATIVE_SCAFFOLDERS.md`, which records why `create-turbo`, npm/pnpm
+  initializers, and generic framework starters are not run over the
+  deterministic repository root.
+
+`create-turbo` remains a greenfield or evaluation alternative, not an in-place
+conversion tool. The native `git init` integration remains appropriate.
+
+The retained imsg evaluation report is at
+`/tmp/imsg-scaffold-eval-final-20260727`. The evaluator removed its temporary
+clone because `--keep` was not supplied, and no real imsg monorepo conversion
+was performed.
+
+## Verification evidence
+
+### Baseline local HEAD
+
+The following checks passed on `8e6fce9` on 2026-07-26:
+
+- `pnpm install --frozen-lockfile --offline`
+- `pnpm verify`
+- `pnpm --filter @george43g/mcp-scaffold test` — 114 tests across 12 files,
+  including golden-output drift
+- `pnpm test:no-native`
+- `mise run --cd apps/scaffolder smoke` — fresh scaffold, install, and generated
+  repository tests passed; the prior tsconfig and missing-Turbo-output warnings
+  were absent
+- `pnpm run stress` — 13 of 13 assertions passed
+- `pnpm audit --json` — zero known vulnerabilities across 433 dependencies
+- `cargo update --dry-run --verbose` — zero Rust packages available to update
+- `git diff --check origin/main..HEAD`
+
+This is evidence for the audited commit, not a promise that later working-tree
+changes remain verified. Re-run checks proportional to any new edits.
+
+### Current working tree
+
+Focused checks completed during the implementation pass:
+
+- Scaffolder suite: 128 tests across 12 files.
+- Robustness package: 68 tests across 8 files.
+- Packed `@george43g/robustness` standalone-consumer smoke.
+- Registry-mode generated-consumer install, typecheck, test, and build using the
+  locally packed tarball.
+- Isolated `imsg-mcp` safe-profile evaluation: no tracked changes; only
+  `RETROFIT.md` and `skills/imsg/SKILL.md`; frozen install, lint, typecheck,
+  test, and build passed.
+
+Final checks completed on 2026-07-27:
+
+- `pnpm install --frozen-lockfile`
+- `pnpm verify`
+- `pnpm test:no-native`
+- `mise run --cd apps/scaffolder smoke`
+- `pnpm check:robustness-package`
+- `pnpm smoke:registry-runtime`
+- `pnpm stress` — 13 passed, 0 failed
+- `pnpm audit --json` — zero known vulnerabilities across 433 dependencies
+- `pnpm outdated -r --format json` — only the nine deliberately deferred
+  breaking majors listed below
+- `pnpm licenses list --json` — 276 unique packages across nine permissive
+  license families; no unknown or copyleft-only result
+- `cargo update --manifest-path apps/rust-accel/Cargo.toml --dry-run --verbose`
+  — zero compatible updates after refreshing `ctor` 1.0.10 to 1.0.11
+- `git diff --check`
+- `mise exec -- pnpm check:usage` — scaffolder and canonical app artifacts are
+  byte-current
+- arbitrary-name fresh scaffold (`hyphen-tool`) — initial markdown docs,
+  bash/zsh/fish completions, and manpage present; its own `pnpm check:usage`
+  passed without a prior regeneration
+- generated `example/` regenerated with 172 template entries
+
+The root frozen install initially exposed a stale Turbo specifier in
+`pnpm-lock.yaml`; a normal install refreshed it, and the subsequent frozen
+install passed. This is part of the current working-tree fix, not an unresolved
+failure.
+
+### Handoff refresh checks
+
+On 2026-07-29:
+
+- `git fetch --prune` succeeded.
+- Local `main` remained ahead 1, behind 0.
+- HEAD remained `8e6fce9`; `origin/main` remained `e431399`.
+- `@george43g/robustness` returned npm E404, confirming no public package at
+  refresh time.
+- The imsg report bundle remained present under `/tmp`.
+- `git diff --check` passed.
+
+The full test matrix was not rerun on 2026-07-29 because only handoff
+documentation changed after the verified 2026-07-27 implementation.
+
+## Completed real-repository probe
+
+The isolated evaluator ran against committed `imsg-mcp` revision
+`30d0ea41ec046bc314393fddf9151da5c7859288`.
+
+- Legacy preserve mode added 127 untracked starter files and preserved nine
+  divergent tracked files.
+- Legacy `--force` rewrote 13 tracked product files.
+- The safe-profile implementation changed no tracked files and produced only
+  `RETROFIT.md` plus the `skills/imsg/SKILL.md` skeleton.
+- The safe result passed frozen install, lint, typecheck, test, and build.
+
+See
+[scaffolder-cli/evaluations/imsg-mcp-2026-07.md](scaffolder-cli/evaluations/imsg-mcp-2026-07.md).
+
+## Next mission: land the verified implementation
+
+Treat `8e6fce9` as the committed baseline and the current worktree as one
+verified but uncommitted implementation. The next agent should not restart the
+bug hunt or regenerate everything by default.
+
+### Required review
+
+1. Read `HANDOFF.md`, this file, `AGENTS.md`, and the findings ledger.
+2. Run `git status --short --branch`.
+3. Inspect the complete tracked and untracked diff.
+4. Confirm generated mirrors remain coherent:
+   - canonical source
+   - phase `lib/` copy
+   - tracked `example/` output
+   - generated CLI documentation/completions/manpage
+5. If any code changes after handoff, rerun checks proportional to the change.
+
+### Landing decisions
+
+Commit, push, package publication, and the runtime-default flip are separate
+actions:
+
+1. **Commit** — requires explicit user direction. The current implementation is
+   coherent as a whole. Splitting it is possible, but generated surfaces cross
+   functional boundaries; verify every resulting commit.
+2. **Push** — requires explicit user direction after commit review.
+3. **Publish robustness** — requires a separate explicit release decision,
+   configured npm credentials, and the manual package workflow.
+4. **Verify public consumption** — after publication, generate a clean consumer
+   with the public registry package rather than a local tarball.
+5. **Flip the default** — only after public consumption passes should
+   `runtime-source=registry` become the default.
+
+### Safe re-verification command set
+
+If code changes, or before landing when the user requests a fresh verification,
+run:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm verify
+pnpm test:no-native
+mise run --cd apps/scaffolder smoke
+mise exec -- pnpm check:usage
+pnpm check:robustness-package
+pnpm smoke:registry-runtime
+pnpm stress
+git diff --check
+```
+
+Run dependency/audit/license/Rust scans again only if dependencies, lockfiles,
+or release timing changed.
+
+The socket-based stress runner may fail in a restricted sandbox with
+`listen EPERM` under `/tmp/tsx-*/*.pipe`. Classify that as an environment
+limitation only when an unrestricted rerun passes.
+
+## Dependency state
+
+The compatible refresh already on upstream includes Biome 2.5.5, tsx 4.23.1,
+Ink 7.1.1, React 19.2.8, napi CLI 3.7.4, MCP SDK 1.29, and a Rust
+lock refresh. Security overrides currently pin:
+
+- `@hono/node-server` to `2.0.11`
+- `fast-uri` to `3.1.4`
+- `postcss` to `8.5.18` in the local commit
+
+The current working tree applies the compatible Turbo 2.10.7 patch to root,
+generated-source, tracked-example, and lockfile surfaces. It also refreshes
+Rust's transitive `ctor` from 1.0.10 to 1.0.11.
+
+The 2026-07-27 supply-chain scan found:
+
+- Zero npm advisories across 433 dependencies.
+- No compatible npm updates after the Turbo refresh.
+- Nine breaking-major updates, all deliberately deferred below.
+- Nine permissive license families across 276 unique package names.
+- One deprecated transitive package, `sourcemap-codec@1.4.8`, under
+  `rollup-plugin-banner2 -> magic-string`; the parent is already at its latest
+  release and there is no direct safe patch in this batch.
+- Zero compatible Rust updates after the `ctor` refresh.
+
+The following breaking majors are intentionally deferred and must be upgraded
+individually with their migration guides, generated mirrors, and full
+verification:
+
+- `@inquirer/prompts` 7 to 8
+- `@types/node` 24 to 26 (the project deliberately targets Node 24)
+- Commander 14 to 15
+- execa 9 to 10
+- ora 8 to 9
+- TypeScript 5 to 7
+- Vite 7 to 8
+- Vitest 3 to 4
+- Zod 3 to 4
+
+Do not bundle those major migrations into an unrelated dependency push.
+
+## Deferred product and architecture work
+
+These items are known and intentionally not part of the completed retrofit
+remediation:
+
+1. Publish strategic guidance about when a dedicated MCP server is justified.
+   The source analysis remains in the findings ledger. The working heuristic is
+   to build one for non-trivial protocols, persistent state/auth, or reliable
+   multi-call aggregation—not merely as a thin SSH-command wrapper.
+2. Multi-tenant HTTP/OAuth introspection. The starter remains single-tenant.
+3. A non-monorepo fresh-scaffold mode. `monorepo === false` is still explicitly
+   “not yet supported.”
+4. Phase-runner lifecycle hooks such as `preMigration`, `postMigration`, and
+   `finally`; retain the oclif notes in `apps/scaffolder/src/core/CREDITS.md`
+   until a concrete need exists.
+5. Automatic Commander-to-usage specification integration. The current
+   `.usage.kdl` artifacts remain generated and drift-checked through `usage`.
+6. Enabling semantic release. `.github/workflows/release.yml` remains disabled
+   until release ownership and `NPM_TOKEN` are configured deliberately.
+7. The breaking dependency migrations listed above.
+8. Flipping the default runtime source to `registry`. Do this only after
+   `@george43g/robustness@0.1.0` is published and a clean consumer installs it
+   from the public registry.
+9. Publishing additional shared packages. `mcp-kit`, `tui-kit`, `cli-kit`, and
+   `env-loader` remain generated source until their public contracts and
+   independent versioning value are proven.
+
+## Current structural facts
+
+- 12 phases
+- 25 registered migration files
+- 172 generated template entries
+- 128 scaffolder tests across 12 test files
+- 14 cloned-tool integration tests
+- 27 `mcp-kit` unit tests
+- 68 robustness unit tests across 8 test files
+- 13 stress assertions
+- pnpm 10.29.3 and Node 24
+- MCP SDK `^1.29.0`
+
+Generated files and canonical sources are separate surfaces. When changing a
+canonical file, its phase `lib/` mirror and tracked `example/` output may also
+need updates. Run the golden test and the relevant generation task rather than
+assuming one edit propagates automatically.
+
+## Resume checklist
+
+1. Read `HANDOFF.md`, this file, `AGENTS.md`, and the findings resolution status.
+2. Confirm `git status`, `git log -2 --oneline`, and the upstream relationship.
+3. Inspect any working-tree changes before editing; they belong to the user or a
+   prior agent until proven otherwise.
+4. Do not repeat the completed implementation/test sweep unless current code
+   changes or the user asks for fresh verification.
+5. Review the current implementation and its final verification evidence before
+   deciding whether to commit.
+6. Committing, pushing, publishing `@george43g/robustness`, and flipping the
+   runtime default are separate decisions. None is authorized by this handoff.
+7. If starting a deferred migration, isolate it from the verified baseline and
+   record the new decision in this file.
+
+The former external plan path
+`/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md` is absent. Do not
+depend on it. The repo-local sources above are the authoritative continuation
+record.

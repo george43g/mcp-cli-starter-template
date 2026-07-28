@@ -7,7 +7,7 @@
  *   - .mcp.json, opencode.json, .cursor/mcp.json (dev-MCP entries — relative paths)
  *   - .cursor/rules/example-repo.mdc (Cursor rules pointer)
  *   - .claude/settings.local.json + .claude/skills/{mcp-tool-author,pr-review-sop}/
- *   - skills/example-repo/SKILL.md, skills.md (project skill scaffold)
+ *   - skills/example-repo/SKILL.md, portable workspace skills, skills.md
  *   - .github/PULL_REQUEST_TEMPLATE.md + .github/ISSUE_TEMPLATE/{bug,feature}.md
  *
  * Path-level substitution: paths like `skills/example-repo/SKILL.md` and
@@ -34,6 +34,7 @@ export default class AgentFilesMigration extends Migration {
   readonly id = "11-agent-files/m1-agent-files";
   readonly title = "Port AGENTS.md + CLAUDE.md/.cursorrules symlinks + .mcp.json + skills";
   readonly appliesTo = "both" as const;
+  override readonly existingPolicy = "safe-any-existing" as const;
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
     const fullTemplate = ctx.mode !== "existing" || ctx.target.starterLayout;

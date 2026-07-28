@@ -19,6 +19,10 @@ export interface TemplateVars {
   nameUpper: string;
   /** Npm scope with leading @, or empty string for unscoped. */
   scope?: string;
+  /** Shared runtime import, either the public package or generated workspace package. */
+  runtimePackage?: string;
+  /** Dependency range paired with runtimePackage. */
+  runtimeVersion?: string;
 }
 
 // Placeholder syntax: filesystem-safe literal strings instead of curly-
@@ -26,11 +30,24 @@ export interface TemplateVars {
 // brace-expansion, tera template engines (mise), and usage(1) identifier
 // generation (which stripped `{` to produce broken `_name()` functions).
 const NAME_RE = /example-repo/g;
+const NAME_SNAKE_RE = /example_repo/g;
+const NAME_UPPER_KEBAB_RE = /EXAMPLE-REPO/g;
+const NAME_ROFF_RE = /example\\-repo/g;
 const UPPER_RE = /EXAMPLE_REPO/g;
 const SCOPE_RE = /@george43g/g;
+const RUNTIME_PACKAGE_RE = /@george43g\/robustness/g;
+const RUNTIME_VERSION_RE = /ROBUSTNESS_VERSION/g;
 
 export function nameUpperOf(name: string): string {
   return name.toUpperCase().replace(/-/g, "_");
+}
+
+export function nameSnakeOf(name: string): string {
+  return name.replace(/-/g, "_");
+}
+
+export function nameRoffOf(name: string): string {
+  return name.replace(/-/g, "\\-");
 }
 
 export function substitute(content: string, vars: TemplateVars): string {
@@ -38,10 +55,17 @@ export function substitute(content: string, vars: TemplateVars): string {
   // two patterns are case-sensitive and have no overlap — `EXAMPLE_REPO`
   // never contains `example-repo`), but explicit ordering keeps the
   // intent obvious to future readers.
-  let out = content.replace(UPPER_RE, vars.nameUpper);
+  const runtimeSentinel = "__MCP_SCAFFOLD_RUNTIME_PACKAGE__";
+  let out = vars.runtimePackage ? content.replace(RUNTIME_PACKAGE_RE, runtimeSentinel) : content;
+  out = out.replace(UPPER_RE, vars.nameUpper);
+  out = out.replace(NAME_UPPER_KEBAB_RE, vars.name.toUpperCase());
+  out = out.replace(NAME_SNAKE_RE, nameSnakeOf(vars.name));
+  out = out.replace(NAME_ROFF_RE, nameRoffOf(vars.name));
   out = out.replace(NAME_RE, vars.name);
+  if (vars.runtimeVersion) out = out.replace(RUNTIME_VERSION_RE, vars.runtimeVersion);
   if (vars.scope && vars.scope !== "@george43g") {
     out = out.replace(SCOPE_RE, vars.scope);
   }
+  if (vars.runtimePackage) out = out.replaceAll(runtimeSentinel, vars.runtimePackage);
   return out;
 }

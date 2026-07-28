@@ -25,6 +25,11 @@
     "test:watch": "pnpm build:templates && vitest",
     "typecheck": "pnpm build:templates && tsc -p tsconfig.json --noEmit",
     "lint": "biome check .",
+    "docs:cli": "mise run docs",
+    "completions": "mise run completions",
+    "manpage": "mise run manpage",
+    "artifacts": "mise run artifacts",
+    "check:usage": "node scripts/check-usage-freshness.mjs",
     "clean": "rm -rf dist coverage src/generated"
   },
   "dependencies": {

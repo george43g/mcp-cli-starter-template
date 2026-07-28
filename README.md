@@ -14,7 +14,7 @@ This repo is two things at once:
 
 1. **A static starter template** — clone, run a rename script, and you have a working MCP server with single-bin CLI/TUI/REPL surfaces, optional Rust acceleration, robustness harness (watchdog + logger + shutdown + retry), CI matrix, and Mintlify-ready docs.
 
-2. **A programmable scaffolder/migrator** (`apps/scaffolder/`, bin `mcp-scaffold`) — runs the same template assembly as 21 ordered migrations across 12 phases. Generates fresh starters into empty directories, OR retrofits subsets of the rules to existing MCP servers.
+2. **A programmable scaffolder/migrator** (`apps/scaffolder/`, bin `mcp-scaffold`) — runs the same template assembly as 25 ordered migrations across 12 phases. Generates fresh starters into empty directories, OR retrofits subsets of the rules to existing MCP servers.
 
 Both produce the same output. The scaffolder exists because copy-and-rename works once; selective retrofit against existing MCP servers (like `imsg-mcp` or `Gmail-MCP-Server`) needs something programmable.
 
@@ -31,6 +31,9 @@ mise install
 pnpm install
 pnpm --filter @george43g/mcp-scaffold build
 node apps/scaffolder/dist/cli.js init /path/to/new-tool --name foo
+
+# After @george43g/robustness@0.1.0 is published
+node apps/scaffolder/dist/cli.js init /path/to/new-tool --name foo --runtime-source registry
 ```
 
 Then in the new tool's directory:
@@ -83,6 +86,9 @@ Feature opt-outs (init/apply/plan/migrate):
 --no-semantic-release    skip semantic-release workflow
 ```
 
+Shared lifecycle code can be consumed from npm or generated as editable source.
+See [Shared runtime versus generated source](docs/SHARED_RUNTIME.md).
+
 ### Adding a second MCP app to a scaffolded repo
 
 `add-mcp-app <name>` runs the 08-app phase migration against the existing monorepo with the new name injected. It scaffolds `apps/<name>-mcp/`, writes `.cursor/rules/<name>.mdc`, and appends a `<name>-mcp-dev` entry to `.mcp.json`. Other root files that hard-code the first app's name (root `mise.toml`'s pinned `screenshots` task, README sections) are intentionally not touched — fix those by hand if your scripts need to cover both apps. The npm scope is auto-detected from the first existing `apps/*-mcp/package.json`; pass `--scope` to override.
@@ -95,7 +101,7 @@ mcp-scaffold add-mcp-app billing --scope @acme  # override detected scope
 
 ### Diff-safe apply (retrofit existing repos)
 
-`apply` and `migrate` against an existing repo default to **dry-run** (just preview the changes). Once you pass `--execute`, the scaffolder writes new files but **preserves files that already exist and diverge from the template** — your customizations stay put. The recap groups divergent files by migration:
+`apply` and `migrate` against an existing repo default to **dry-run** (just preview the changes). Generic repositories also default to `--existing-strategy safe`, which runs only explicitly compatible migrations; complete starter-derived layouts keep full behavior. Once you pass `--execute`, the scaffolder writes new files but **preserves files that already exist and diverge from the template** — your customizations stay put. The recap groups divergent files by migration:
 
 ```bash
 mcp-scaffold apply --target ~/repos/my-existing-mcp --execute
@@ -109,9 +115,15 @@ mcp-scaffold apply --target ~/repos/my-existing-mcp --execute
 
 Pass `--force` to overwrite divergent files (e.g. when you've decided to migrate to the canonical version).
 
+Use `--existing-strategy full` to deliberately evaluate starter infrastructure
+against a generic repository, or select one migration with `migrate <id>`.
+`--report-json <path>` writes a machine-readable companion to the recap.
+
 `init` defaults to `--force` (fresh scaffold semantics — empty dir, no risk).
 
 Names and package managers are inspected before migrations run. Existing repos derive the bare tool name from `package.json` and detect pnpm/npm/Bun from `--package-manager`, package metadata, then lockfiles. Phase 11 emits minimal documentation with the detected package manager and real scripts for non-starter layouts. Fresh scaffolds are intentionally **pnpm-only**; `init` or `migrate --mode new` rejects npm/Bun before writing files.
+
+Fresh output includes a committed first baseline of CLI help markdown, bash/zsh/fish completions, and a manpage. The generated `cli-artifacts` skill keeps that pipeline portable if the MCP app is later removed, while `workspace-scaffolding` records when to use an official framework generator for a new leaf package. See [Native scaffolder policy](docs/NATIVE_SCAFFOLDERS.md).
 
 ## Repo layout
 
@@ -122,7 +134,7 @@ apps/
   scaffolder/             the programmable scaffolder/migrator
     src/
       core/               Migration base + IoC config + phase runner + helpers
-      phases/             01-bootstrap … 12-ci-release (21 migrations, 145 lib files)
+      phases/             01-bootstrap … 12-ci-release (25 migrations, 172 generated template entries)
       ui/                 banner, recap, progress
     bin/cli.ts            commander dispatch
     scripts/              build-templates.mjs (codegen: lib/** → src/generated/templates.ts)
@@ -139,7 +151,9 @@ docs/scaffolder-cli/      generated per-subcommand markdown
 man/                      generated mcp-scaffold(1) manpage
 skills/
   mcp-starter-architect/  comprehensive AI guide — every rule, every retrofit step
-  example-repo/               cloned-tool's project skill scaffold
+  example-repo/           cloned-tool's project skill scaffold
+  cli-artifacts/          portable CLI artifact maintenance workflow
+  workspace-scaffolding/  native-generator selection workflow
 ```
 
 ## Development
@@ -152,6 +166,7 @@ mise run --cd apps/scaffolder smoke         # full end-to-end: init + install + 
 mise run --cd apps/scaffolder docs          # regenerate docs/scaffolder-cli/*.md
 mise run --cd apps/scaffolder completions   # regenerate completions/scaffolder/*
 mise run --cd apps/scaffolder manpage       # regenerate man/mcp-scaffold.1
+pnpm check:usage                            # byte-check scaffolder + canonical app artifacts
 ```
 
 ## License

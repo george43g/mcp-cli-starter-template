@@ -26,6 +26,8 @@ import type { TargetInspection } from "./target-inspection.js";
 // "add"      → `mcp-scaffold add-mcp-app` (append one more MCP app to an
 //              already-scaffolded monorepo; only the 08-app phase runs).
 export type ApplyMode = "new" | "existing" | "add";
+export type ExistingStrategy = "safe" | "full";
+export type ExistingPolicy = "safe-any-existing" | "starter-existing";
 
 export interface MigrationContext {
   /** The IoC config — reading a leaf triggers an inquirer prompt iff unset. */
@@ -36,6 +38,10 @@ export interface MigrationContext {
   target: TargetInspection;
   /** Whether we're generating fresh or applying to an existing repo. */
   mode: ApplyMode;
+  /** Existing-target policy selected by the command. */
+  existingStrategy: ExistingStrategy;
+  /** Whether the user explicitly selected one migration or phase. */
+  explicitMigration: boolean;
   /** Shell wrapper — proper stdio inheritance + error surfacing. */
   shell: ShellHelper;
   /** Filesystem helpers — idempotent writes, ensureDir, safe path. */
@@ -108,6 +114,11 @@ export abstract class Migration {
   abstract readonly title: string;
   /** Whether this migration is safe to run against a new dir, an existing repo, or both. */
   abstract readonly appliesTo: ApplyMode | "both";
+  /**
+   * Generic existing repos run only explicitly safe migrations unless the
+   * caller opts into the full strategy or names a migration directly.
+   */
+  readonly existingPolicy: ExistingPolicy = "starter-existing";
 
   /** Optional commander options contributed to the root program. */
   commanderOptions?(): readonly CommanderOption[];

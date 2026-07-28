@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workspace Scaffolding"
+  short_description: "Choose and run native project scaffolders safely"
+  default_prompt: "Choose the appropriate native scaffolder for a new workspace package and integrate its output safely."

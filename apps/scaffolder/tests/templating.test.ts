@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nameUpperOf, substitute } from "../src/core/templating.js";
+import { nameRoffOf, nameSnakeOf, nameUpperOf, substitute } from "../src/core/templating.js";
 
 describe("nameUpperOf", () => {
   it("uppercases and converts dashes to underscores", () => {
@@ -10,6 +10,18 @@ describe("nameUpperOf", () => {
 
   it("preserves digits", () => {
     expect(nameUpperOf("foo-v2")).toBe("FOO_V2");
+  });
+});
+
+describe("nameSnakeOf", () => {
+  it("converts kebab-case names for generated shell identifiers", () => {
+    expect(nameSnakeOf("fresh-tool")).toBe("fresh_tool");
+  });
+});
+
+describe("nameRoffOf", () => {
+  it("escapes kebab-case names for generated manpages", () => {
+    expect(nameRoffOf("fresh-tool")).toBe("fresh\\-tool");
   });
 });
 
@@ -28,6 +40,24 @@ describe("substitute", () => {
     expect(
       substitute("example-repo-example-repo-example-repo", { name: "x", nameUpper: "X" }),
     ).toBe("x-x-x");
+  });
+
+  it("replaces usage-generated snake-case shell identifiers", () => {
+    expect(
+      substitute("_example_repo usage__usage_spec_example_repo.spec", {
+        name: "wm-stack",
+        nameUpper: "WM_STACK",
+      }),
+    ).toBe("_wm_stack usage__usage_spec_wm_stack.spec");
+  });
+
+  it("replaces usage-generated manpage name variants", () => {
+    expect(
+      substitute(".TH EXAMPLE-REPO 1\nexample\\-repo", {
+        name: "wm-stack",
+        nameUpper: "WM_STACK",
+      }),
+    ).toBe(".TH WM-STACK 1\nwm\\-stack");
   });
 
   it("leaves @george43g alone when scope is undefined", () => {
@@ -54,6 +84,22 @@ describe("substitute", () => {
         scope: "@myorg",
       }),
     ).toBe('"name": "@myorg/foo"');
+  });
+
+  it("protects the public runtime package from project-scope substitution", () => {
+    expect(
+      substitute(
+        'import { installWatchdog } from "@george43g/robustness"; import x from "@george43g/cli-kit";',
+        {
+          name: "foo",
+          nameUpper: "FOO",
+          scope: "@myorg",
+          runtimePackage: "@george43g/robustness",
+        },
+      ),
+    ).toBe(
+      'import { installWatchdog } from "@george43g/robustness"; import x from "@myorg/cli-kit";',
+    );
   });
 
   it("is a no-op when source has no markers", () => {

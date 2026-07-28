@@ -1,66 +1,28 @@
 /**
- * Self-healing watchdog.
+ * Configurable self-healing watchdog.
  *
- * Three independent monitors run on unref'd timers — they never prevent the
- * process from exiting on their own. When any monitor detects an unrecoverable
- * condition it triggers `shutdown()` so the host (Cursor / Claude / Warp)
- * spawns a clean instance.
- *
- * 1. Event-loop lag monitor (perf_hooks.monitorEventLoopDelay)
- *    - warn      > MCP_EVENT_LOOP_WARN_MS p99 over MCP_EVENT_LOOP_SAMPLE_MS window
- *    - kill      > MCP_EVENT_LOOP_KILL_MS p99 over the same window
- *    - sustained > MCP_EVENT_LOOP_SUSTAINED_MS p99 for
- *                  MCP_EVENT_LOOP_SUSTAINED_SAMPLES consecutive samples
- *                  (catches render hot-loops that never spike past kill threshold)
- *
- * 2. Memory monitor
- *    - kill  > RSS exceeds MCP_MAX_RSS_MB OR heap monotonically grew on
- *      MCP_HEAP_GROWTH_SAMPLES consecutive samples (each MCP_MEMORY_SAMPLE_MS).
- *
- * 3. Idle / uptime monitor
- *    - kill  > uptime > MCP_RESTART_AFTER_MS AND no activity within
- *      MCP_RESTART_QUIET_MS — graceful restart insurance for crufty
- *      long-running processes.
- *
- * External observers (CI stress harness, dashboards) can sample watchdog
- * state without parsing logs by setting MCP_WATCHDOG_STATE_PATH — each event
- * loop tick will write a JSON snapshot to that path. Best-effort; failures
- * are silent.
- *
- * All thresholds are configurable via env vars so they can be tuned per
- * environment without rebuilding.
+ * The factory API isolates timers and policy for MCP, CLI, and TUI consumers.
+ * Convenience exports retain the singleton API used by generated tools.
  */
 
 import { writeFileSync } from "node:fs";
 import { type IntervalHistogram, monitorEventLoopDelay } from "node:perf_hooks";
-import { envNum, envStr } from "./env.js";
+import { getHeapSpaceStatistics, getHeapStatistics } from "node:v8";
 import { error, info, warn } from "./logger.js";
-import { isShuttingDown, registerCleanup, shutdown } from "./shutdown.js";
-
-// ── Config ───────────────────────────────────────────────────────────────
-
-const EVENT_LOOP_SAMPLE_MS = envNum("MCP_EVENT_LOOP_SAMPLE_MS", 5_000);
-const EVENT_LOOP_WARN_MS = envNum("MCP_EVENT_LOOP_WARN_MS", 500);
-const EVENT_LOOP_KILL_MS = envNum("MCP_EVENT_LOOP_KILL_MS", 10_000);
-const EVENT_LOOP_SUSTAINED_MS = envNum("MCP_EVENT_LOOP_SUSTAINED_MS", 750);
-const EVENT_LOOP_SUSTAINED_SAMPLES = envNum("MCP_EVENT_LOOP_SUSTAINED_SAMPLES", 6);
-
-const MEMORY_SAMPLE_MS = envNum("MCP_MEMORY_SAMPLE_MS", 60_000);
-const MAX_RSS_MB = envNum("MCP_MAX_RSS_MB", 1024);
-const MEMORY_GROWTH_SAMPLES = envNum("MCP_HEAP_GROWTH_SAMPLES", 10);
-
-const IDLE_RESTART_AFTER_MS = envNum("MCP_RESTART_AFTER_MS", 24 * 60 * 60 * 1000);
-const IDLE_RESTART_QUIET_MS = envNum("MCP_RESTART_QUIET_MS", 60 * 60 * 1000);
-const IDLE_CHECK_MS = envNum("MCP_IDLE_CHECK_MS", 10 * 60 * 1000);
-
-// ── State ────────────────────────────────────────────────────────────────
+import {
+  isShuttingDown,
+  registerCleanup,
+  type ShutdownController,
+  shutdown,
+  unregisterCleanup,
+} from "./shutdown.js";
 
 export interface WatchdogState {
   startedAt: number;
   eventLoopP99Ms: number;
   eventLoopMaxMs: number;
-  /** Consecutive samples where p99 was >= EVENT_LOOP_SUSTAINED_MS. */
   eventLoopSustainedCount: number;
+  lastEventLoopSampleTs: number;
   rssMb: number;
   heapMb: number;
   heapHistory: number[];
@@ -68,261 +30,414 @@ export interface WatchdogState {
   killReason: string | null;
 }
 
-const state: WatchdogState = {
-  startedAt: Date.now(),
-  eventLoopP99Ms: 0,
-  eventLoopMaxMs: 0,
-  eventLoopSustainedCount: 0,
-  rssMb: 0,
-  heapMb: 0,
-  heapHistory: [],
-  lastActivityTs: Date.now(),
-  killReason: null,
+export interface WatchdogDiagnostic {
+  level: "info" | "warn" | "error";
+  event: string;
+  data?: Record<string, unknown>;
+}
+
+export interface WatchdogOptions {
+  /** Environment namespace without trailing underscore. Defaults to MCP. */
+  envPrefix?: string;
+  /** Disable for interactive processes that must not restart while in use. */
+  idleRestart?: boolean;
+  eventLoopSampleMs?: number;
+  eventLoopWarnMs?: number;
+  eventLoopKillMs?: number;
+  eventLoopSustainedMs?: number;
+  eventLoopSustainedSamples?: number;
+  memorySampleMs?: number;
+  maxRssMb?: number;
+  memoryGrowthSamples?: number;
+  /** Minimum monotonic heap growth before treating samples as a leak. */
+  memoryGrowthMinMb?: number;
+  idleRestartAfterMs?: number;
+  idleRestartQuietMs?: number;
+  idleCheckMs?: number;
+  /** Reset a delayed event-loop sample after this multiple of the sample interval. */
+  sleepSkewMultiplier?: number;
+  statePath?: string;
+  onDiagnostic?: (diagnostic: WatchdogDiagnostic) => void;
+  shutdownController?: Pick<
+    ShutdownController,
+    "registerCleanup" | "unregisterCleanup" | "isShuttingDown" | "shutdown"
+  >;
+  /** Test/embed hook. Defaults to process.exit. */
+  exit?: (code: number) => void;
+}
+
+export interface WatchdogController {
+  install(): void;
+  dispose(): void;
+  reset(): void;
+  noteActivity(): void;
+  readState(): Readonly<WatchdogState>;
+  onMemorySample(callback: MemorySampleCallback): () => void;
+}
+
+export type MemorySampleCallback = (rssMb: number, heapMb: number) => void;
+
+const defaultShutdownController: WatchdogOptions["shutdownController"] = {
+  registerCleanup,
+  unregisterCleanup,
+  isShuttingDown,
+  shutdown: async (exitCode?: number) => {
+    await shutdown(exitCode);
+  },
 };
 
-let eventLoopHistogram: IntervalHistogram | null = null;
-let eventLoopTimer: ReturnType<typeof setInterval> | null = null;
-let memoryTimer: ReturnType<typeof setInterval> | null = null;
-let idleTimer: ReturnType<typeof setInterval> | null = null;
-let installed = false;
+export function createWatchdog(options: WatchdogOptions = {}): WatchdogController {
+  const envPrefix = normalizeEnvPrefix(options.envPrefix ?? "MCP");
+  const numberOption = (value: number | undefined, envSuffix: string, fallback: number): number =>
+    value ?? readPositiveNumber(`${envPrefix}_${envSuffix}`, fallback);
 
-// ── Public API ───────────────────────────────────────────────────────────
-
-/** Update the activity timestamp — call this from each tool dispatch. */
-export function noteActivity(): void {
-  state.lastActivityTs = Date.now();
-}
-
-/** Read current watchdog state — used by health_check and dev stats panels. */
-export function readWatchdogState(): Readonly<WatchdogState> {
-  return state;
-}
-
-// ── Memory-pressure subscriber API ───────────────────────────────────────
-
-type MemorySampleCallback = (rssMb: number, heapMb: number) => void;
-const memSampleSubscribers = new Set<MemorySampleCallback>();
-
-/**
- * Subscribe to the watchdog's existing memory sample tick. Returns an
- * unsubscribe function. Useful for caches that want to evict under heap
- * pressure without spinning up their own sampler.
- */
-export function onMemorySample(cb: MemorySampleCallback): () => void {
-  memSampleSubscribers.add(cb);
-  return () => {
-    memSampleSubscribers.delete(cb);
+  const config = {
+    eventLoopSampleMs: numberOption(options.eventLoopSampleMs, "EVENT_LOOP_SAMPLE_MS", 5_000),
+    eventLoopWarnMs: numberOption(options.eventLoopWarnMs, "EVENT_LOOP_WARN_MS", 500),
+    eventLoopKillMs: numberOption(options.eventLoopKillMs, "EVENT_LOOP_KILL_MS", 10_000),
+    eventLoopSustainedMs: numberOption(
+      options.eventLoopSustainedMs,
+      "EVENT_LOOP_SUSTAINED_MS",
+      750,
+    ),
+    eventLoopSustainedSamples: numberOption(
+      options.eventLoopSustainedSamples,
+      "EVENT_LOOP_SUSTAINED_SAMPLES",
+      6,
+    ),
+    memorySampleMs: numberOption(options.memorySampleMs, "MEMORY_SAMPLE_MS", 60_000),
+    maxRssMb: numberOption(options.maxRssMb, "MAX_RSS_MB", 1_024),
+    memoryGrowthSamples: numberOption(options.memoryGrowthSamples, "HEAP_GROWTH_SAMPLES", 10),
+    memoryGrowthMinMb: numberOption(options.memoryGrowthMinMb, "HEAP_GROWTH_MIN_MB", 25),
+    idleRestartAfterMs: numberOption(
+      options.idleRestartAfterMs,
+      "RESTART_AFTER_MS",
+      24 * 60 * 60 * 1_000,
+    ),
+    idleRestartQuietMs: numberOption(
+      options.idleRestartQuietMs,
+      "RESTART_QUIET_MS",
+      60 * 60 * 1_000,
+    ),
+    idleCheckMs: numberOption(options.idleCheckMs, "IDLE_CHECK_MS", 10 * 60 * 1_000),
+    sleepSkewMultiplier: options.sleepSkewMultiplier ?? 3,
+    idleRestart: options.idleRestart ?? true,
+    statePath: options.statePath ?? process.env[`${envPrefix}_WATCHDOG_STATE_PATH`] ?? "",
   };
-}
+  const shutdownController = options.shutdownController ?? defaultShutdownController;
+  const exit = options.exit ?? ((code: number) => process.exit(code));
+  const subscribers = new Set<MemorySampleCallback>();
+  const state = initialState();
+  let eventLoopHistogram: IntervalHistogram | null = null;
+  let eventLoopTimer: ReturnType<typeof setInterval> | null = null;
+  let memoryTimer: ReturnType<typeof setInterval> | null = null;
+  let idleTimer: ReturnType<typeof setInterval> | null = null;
+  let forceExitTimer: ReturnType<typeof setTimeout> | null = null;
+  let installed = false;
 
-/** Install all three monitors. Idempotent — safe to call multiple times. */
-export function installWatchdog(): void {
-  if (installed) return;
-  installed = true;
+  const diagnostic = (
+    level: WatchdogDiagnostic["level"],
+    event: string,
+    data?: Record<string, unknown>,
+  ): void => {
+    if (options.onDiagnostic) {
+      options.onDiagnostic({ level, event, ...(data ? { data } : {}) });
+      return;
+    }
+    if (level === "error") error(event, data);
+    else if (level === "warn") warn(event, data);
+    else info(event, data);
+  };
 
-  const stateFilePath = envStr("MCP_WATCHDOG_STATE_PATH", "");
+  const triggerKill = (reason: string, data: Record<string, unknown>): void => {
+    if (state.killReason) return;
+    state.killReason = reason;
+    diagnostic("error", `watchdog_kill: ${reason}`, data);
+    forceExitTimer = setTimeout(() => {
+      diagnostic("error", "watchdog_force_exit", { reason });
+      exit(137);
+    }, 5_000);
+    forceExitTimer.unref();
+    void shutdownController?.shutdown(1).catch(() => exit(1));
+  };
 
-  // 1. Event-loop lag monitor
-  eventLoopHistogram = monitorEventLoopDelay({ resolution: 20 });
-  eventLoopHistogram.enable();
+  const sampleEventLoop = (): void => {
+    if (!eventLoopHistogram || shutdownController?.isShuttingDown()) return;
+    const now = Date.now();
+    const elapsed = now - state.lastEventLoopSampleTs;
+    state.lastEventLoopSampleTs = now;
+    if (elapsed > config.sleepSkewMultiplier * config.eventLoopSampleMs) {
+      eventLoopHistogram.reset();
+      state.eventLoopSustainedCount = 0;
+      diagnostic("info", "sleep_detected_skipping_sample", {
+        actual_interval_ms: elapsed,
+        expected_interval_ms: config.eventLoopSampleMs,
+      });
+      return;
+    }
 
-  eventLoopTimer = setInterval(() => {
-    if (!eventLoopHistogram || isShuttingDown()) return;
-    // perf_hooks reports nanoseconds — convert to ms.
     const p99Ms = eventLoopHistogram.percentile(99) / 1e6;
     const maxMs = eventLoopHistogram.max / 1e6;
     state.eventLoopP99Ms = p99Ms;
     state.eventLoopMaxMs = maxMs;
     eventLoopHistogram.reset();
+    writeStateSnapshot(config.statePath, state);
 
-    // External observer hook: best-effort JSON snapshot per tick.
-    if (stateFilePath) {
-      try {
-        writeFileSync(
-          stateFilePath,
-          JSON.stringify({
-            ts: Date.now(),
-            uptimeMs: Date.now() - state.startedAt,
-            eventLoopP99Ms: state.eventLoopP99Ms,
-            eventLoopMaxMs: state.eventLoopMaxMs,
-            eventLoopSustainedCount: state.eventLoopSustainedCount,
-            rssMb: state.rssMb,
-            heapMb: state.heapMb,
-            killReason: state.killReason,
-          }),
-        );
-      } catch {
-        // non-essential — never crash the watchdog over an observer write
-      }
-    }
-
-    // Single-spike kill.
-    if (p99Ms >= EVENT_LOOP_KILL_MS) {
+    if (p99Ms >= config.eventLoopKillMs) {
       triggerKill("event_loop_blocked", {
         p99_ms: p99Ms,
         max_ms: maxMs,
-        threshold_ms: EVENT_LOOP_KILL_MS,
+        threshold_ms: config.eventLoopKillMs,
       });
       return;
     }
-
-    // Sustained-lag kill — catches render hot-loops pinning the UI
-    // without ever crossing the spike threshold.
-    if (p99Ms >= EVENT_LOOP_SUSTAINED_MS) {
-      state.eventLoopSustainedCount += 1;
-      if (state.eventLoopSustainedCount >= EVENT_LOOP_SUSTAINED_SAMPLES) {
+    if (p99Ms >= config.eventLoopSustainedMs) {
+      state.eventLoopSustainedCount++;
+      if (state.eventLoopSustainedCount >= config.eventLoopSustainedSamples) {
         triggerKill("event_loop_sustained_lag", {
           p99_ms: p99Ms,
           max_ms: maxMs,
           consecutive_samples: state.eventLoopSustainedCount,
-          sample_interval_ms: EVENT_LOOP_SAMPLE_MS,
-          sustained_threshold_ms: EVENT_LOOP_SUSTAINED_MS,
+          sample_interval_ms: config.eventLoopSampleMs,
+          sustained_threshold_ms: config.eventLoopSustainedMs,
         });
         return;
       }
     } else {
       state.eventLoopSustainedCount = 0;
     }
-
-    if (p99Ms >= EVENT_LOOP_WARN_MS) {
-      warn("event_loop_lag", { p99_ms: p99Ms, max_ms: maxMs, threshold_ms: EVENT_LOOP_WARN_MS });
+    if (p99Ms >= config.eventLoopWarnMs) {
+      diagnostic("warn", "event_loop_lag", {
+        p99_ms: p99Ms,
+        max_ms: maxMs,
+        threshold_ms: config.eventLoopWarnMs,
+      });
     }
-  }, EVENT_LOOP_SAMPLE_MS);
-  eventLoopTimer.unref();
+  };
 
-  // 2. Memory monitor
-  memoryTimer = setInterval(() => {
-    if (isShuttingDown()) return;
-    const mu = process.memoryUsage();
-    const rssMb = round1(mu.rss / 1024 / 1024);
-    const heapMb = round1(mu.heapUsed / 1024 / 1024);
+  const sampleMemory = (): void => {
+    if (shutdownController?.isShuttingDown()) return;
+    const usage = process.memoryUsage();
+    const rssMb = round1(usage.rss / 1_024 / 1_024);
+    const heapMb = round1(usage.heapUsed / 1_024 / 1_024);
     state.rssMb = rssMb;
     state.heapMb = heapMb;
 
-    for (const cb of memSampleSubscribers) {
+    for (const callback of subscribers) {
       try {
-        cb(rssMb, heapMb);
+        callback(rssMb, heapMb);
       } catch {
-        // Subscriber failures must not crash the watchdog
+        // Subscriber failures must not compromise the watchdog.
       }
     }
 
     state.heapHistory.push(heapMb);
-    if (state.heapHistory.length > MEMORY_GROWTH_SAMPLES) {
-      state.heapHistory.shift();
-    }
+    if (state.heapHistory.length > config.memoryGrowthSamples) state.heapHistory.shift();
 
-    if (rssMb >= MAX_RSS_MB) {
-      triggerKill("rss_exceeded", { rss_mb: rssMb, threshold_mb: MAX_RSS_MB });
+    if (rssMb >= config.maxRssMb) {
+      try {
+        diagnostic("error", "rss_kill_heap_forensics", {
+          heap_stats: getHeapStatistics(),
+          heap_spaces: getHeapSpaceStatistics().map((space) => ({
+            name: space.space_name,
+            used_mb: round1(space.space_used_size / 1_024 / 1_024),
+          })),
+          memory_usage: {
+            rss_mb: rssMb,
+            heap_used_mb: heapMb,
+            external_mb: round1(usage.external / 1_024 / 1_024),
+            array_buffers_mb: round1(usage.arrayBuffers / 1_024 / 1_024),
+          },
+        });
+      } catch {
+        // Forensics must never delay the kill.
+      }
+      triggerKill("rss_exceeded", { rss_mb: rssMb, threshold_mb: config.maxRssMb });
       return;
     }
 
     if (
-      state.heapHistory.length >= MEMORY_GROWTH_SAMPLES &&
-      isMonotonicallyGrowing(state.heapHistory)
+      state.heapHistory.length >= config.memoryGrowthSamples &&
+      isMonotonicallyGrowing(state.heapHistory, config.memoryGrowthMinMb)
     ) {
       triggerKill("memory_leak_suspected", {
         samples: state.heapHistory.slice(),
-        sample_interval_ms: MEMORY_SAMPLE_MS,
+        sample_interval_ms: config.memorySampleMs,
+        minimum_growth_mb: config.memoryGrowthMinMb,
       });
     }
-  }, MEMORY_SAMPLE_MS);
-  memoryTimer.unref();
+  };
 
-  // 3. Idle / uptime monitor
-  idleTimer = setInterval(() => {
-    if (isShuttingDown()) return;
+  const checkIdle = (): void => {
+    if (shutdownController?.isShuttingDown()) return;
     const uptimeMs = Date.now() - state.startedAt;
     const idleMs = Date.now() - state.lastActivityTs;
-    if (uptimeMs >= IDLE_RESTART_AFTER_MS && idleMs >= IDLE_RESTART_QUIET_MS) {
+    if (uptimeMs >= config.idleRestartAfterMs && idleMs >= config.idleRestartQuietMs) {
       triggerKill("idle_restart", { uptime_ms: uptimeMs, idle_ms: idleMs });
     }
-  }, IDLE_CHECK_MS);
-  idleTimer.unref();
+  };
 
-  registerCleanup(() => {
-    if (eventLoopHistogram) {
-      eventLoopHistogram.disable();
-      eventLoopHistogram = null;
-    }
+  const dispose = (): void => {
+    if (eventLoopHistogram) eventLoopHistogram.disable();
+    eventLoopHistogram = null;
     if (eventLoopTimer) clearInterval(eventLoopTimer);
     if (memoryTimer) clearInterval(memoryTimer);
     if (idleTimer) clearInterval(idleTimer);
-  });
+    if (forceExitTimer) clearTimeout(forceExitTimer);
+    eventLoopTimer = null;
+    memoryTimer = null;
+    idleTimer = null;
+    forceExitTimer = null;
+    shutdownController?.unregisterCleanup(dispose);
+    installed = false;
+  };
 
-  info("watchdog_installed", {
-    event_loop_warn_ms: EVENT_LOOP_WARN_MS,
-    event_loop_kill_ms: EVENT_LOOP_KILL_MS,
-    event_loop_sustained_ms: EVENT_LOOP_SUSTAINED_MS,
-    event_loop_sustained_samples: EVENT_LOOP_SUSTAINED_SAMPLES,
-    max_rss_mb: MAX_RSS_MB,
-    memory_growth_samples: MEMORY_GROWTH_SAMPLES,
-    idle_restart_after_ms: IDLE_RESTART_AFTER_MS,
-  });
+  const install = (): void => {
+    if (installed) return;
+    installed = true;
+    state.lastEventLoopSampleTs = Date.now();
+    eventLoopHistogram = monitorEventLoopDelay({ resolution: 20 });
+    eventLoopHistogram.enable();
+    eventLoopTimer = setInterval(sampleEventLoop, config.eventLoopSampleMs);
+    eventLoopTimer.unref();
+    memoryTimer = setInterval(sampleMemory, config.memorySampleMs);
+    memoryTimer.unref();
+    if (config.idleRestart) {
+      idleTimer = setInterval(checkIdle, config.idleCheckMs);
+      idleTimer.unref();
+    }
+    shutdownController?.registerCleanup(dispose);
+    diagnostic("info", "watchdog_installed", {
+      env_prefix: envPrefix,
+      event_loop_warn_ms: config.eventLoopWarnMs,
+      event_loop_kill_ms: config.eventLoopKillMs,
+      event_loop_sustained_ms: config.eventLoopSustainedMs,
+      event_loop_sustained_samples: config.eventLoopSustainedSamples,
+      max_rss_mb: config.maxRssMb,
+      memory_growth_samples: config.memoryGrowthSamples,
+      memory_growth_min_mb: config.memoryGrowthMinMb,
+      idle_restart: config.idleRestart,
+      idle_restart_after_ms: config.idleRestartAfterMs,
+    });
+  };
+
+  const reset = (): void => {
+    dispose();
+    Object.assign(state, initialState());
+    state.heapHistory = [];
+    subscribers.clear();
+  };
+
+  return {
+    install,
+    dispose,
+    reset,
+    noteActivity: () => {
+      state.lastActivityTs = Date.now();
+    },
+    readState: () => state,
+    onMemorySample: (callback) => {
+      subscribers.add(callback);
+      return () => subscribers.delete(callback);
+    },
+  };
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────
-
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
+function initialState(): WatchdogState {
+  const now = Date.now();
+  return {
+    startedAt: now,
+    eventLoopP99Ms: 0,
+    eventLoopMaxMs: 0,
+    eventLoopSustainedCount: 0,
+    lastEventLoopSampleTs: now,
+    rssMb: 0,
+    heapMb: 0,
+    heapHistory: [],
+    lastActivityTs: now,
+    killReason: null,
+  };
 }
 
-/** Returns true iff every sample is >= the previous AND total growth >= 5 MB. */
-export function isMonotonicallyGrowing(samples: number[]): boolean {
+function normalizeEnvPrefix(prefix: string): string {
+  const normalized = prefix.replace(/_+$/, "").toUpperCase();
+  if (!/^[A-Z][A-Z0-9_]*$/.test(normalized)) {
+    throw new Error(`Invalid watchdog envPrefix "${prefix}"`);
+  }
+  return normalized;
+}
+
+function readPositiveNumber(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function writeStateSnapshot(path: string, state: WatchdogState): void {
+  if (!path) return;
+  try {
+    writeFileSync(
+      path,
+      JSON.stringify({
+        ts: Date.now(),
+        uptimeMs: Date.now() - state.startedAt,
+        eventLoopP99Ms: state.eventLoopP99Ms,
+        eventLoopMaxMs: state.eventLoopMaxMs,
+        eventLoopSustainedCount: state.eventLoopSustainedCount,
+        rssMb: state.rssMb,
+        heapMb: state.heapMb,
+        killReason: state.killReason,
+      }),
+    );
+  } catch {
+    // Observer writes are best-effort.
+  }
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+export function isMonotonicallyGrowing(samples: readonly number[], minimumGrowthMb = 25): boolean {
   if (samples.length < 2) return false;
   const first = samples[0];
-  const last = samples[samples.length - 1];
+  const last = samples.at(-1);
   if (first === undefined || last === undefined) return false;
-  let prev = first;
-  for (let i = 1; i < samples.length; i++) {
-    const v = samples[i];
-    if (v === undefined || v < prev) return false;
-    prev = v;
+  let previous = first;
+  for (let index = 1; index < samples.length; index++) {
+    const value = samples[index];
+    if (value === undefined || value < previous) return false;
+    previous = value;
   }
-  return last - first >= 5;
+  return last - first >= minimumGrowthMb;
 }
 
-function triggerKill(reason: string, data: Record<string, unknown>): void {
-  if (state.killReason) return;
-  state.killReason = reason;
-  error(`watchdog_kill: ${reason}`, data);
-  setTimeout(() => {
-    error("watchdog_force_exit — graceful shutdown stalled", { reason });
-    process.exit(137);
-  }, 5_000).unref();
-  shutdown(1).catch(() => process.exit(1));
+let defaultWatchdog: WatchdogController | undefined;
+
+function singleton(options?: WatchdogOptions): WatchdogController {
+  if (!defaultWatchdog) defaultWatchdog = createWatchdog(options);
+  return defaultWatchdog;
 }
 
-/**
- * Test-only: reset internal state. Do not call from production code.
- * @internal
- */
+export function installWatchdog(options: WatchdogOptions = {}): void {
+  singleton(options).install();
+}
+
+export function noteActivity(): void {
+  singleton().noteActivity();
+}
+
+export function readWatchdogState(): Readonly<WatchdogState> {
+  return singleton().readState();
+}
+
+export function onMemorySample(callback: MemorySampleCallback): () => void {
+  return singleton().onMemorySample(callback);
+}
+
+/** @internal */
 export function _resetForTests(): void {
-  state.startedAt = Date.now();
-  state.eventLoopP99Ms = 0;
-  state.eventLoopMaxMs = 0;
-  state.eventLoopSustainedCount = 0;
-  state.rssMb = 0;
-  state.heapMb = 0;
-  state.heapHistory.length = 0;
-  state.lastActivityTs = Date.now();
-  state.killReason = null;
-  memSampleSubscribers.clear();
-  if (eventLoopHistogram) {
-    eventLoopHistogram.disable();
-    eventLoopHistogram = null;
-  }
-  if (eventLoopTimer) {
-    clearInterval(eventLoopTimer);
-    eventLoopTimer = null;
-  }
-  if (memoryTimer) {
-    clearInterval(memoryTimer);
-    memoryTimer = null;
-  }
-  if (idleTimer) {
-    clearInterval(idleTimer);
-    idleTimer = null;
-  }
-  installed = false;
+  defaultWatchdog?.reset();
+  defaultWatchdog = undefined;
 }

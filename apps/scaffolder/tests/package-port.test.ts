@@ -17,7 +17,13 @@ import { inspectTarget } from "../src/core/target-inspection.js";
  * actual portPackage code path.
  */
 async function makeTestCtx(
-  opts: { dryRun?: boolean; name?: string; scope?: string; force?: boolean } = {},
+  opts: {
+    dryRun?: boolean;
+    name?: string;
+    scope?: string;
+    force?: boolean;
+    runtimeSource?: "registry" | "source";
+  } = {},
 ) {
   const cwd = await mkdtemp(join(tmpdir(), "scaffolder-port-test-"));
   const dryRun = opts.dryRun ?? false;
@@ -31,6 +37,7 @@ async function makeTestCtx(
   config.global.repoName.set(name);
   config.global.scope.set(opts.scope ?? "@george43g");
   config.global.mode.set("new");
+  config.global.runtimeSource.set(opts.runtimeSource ?? "source");
   const ctx: MigrationContext = {
     config,
     cwd,
@@ -41,6 +48,8 @@ async function makeTestCtx(
       explicitPackageManager: "pnpm",
     }),
     mode: "new",
+    existingStrategy: "safe",
+    explicitMigration: false,
     shell,
     fs,
     git,
@@ -112,6 +121,27 @@ describe("portPackage", () => {
     // Inspect a source file that has @george43g in imports:
     const idx = await readFile(join(cwd, "packages/robustness/src/index.ts"), "utf8");
     expect(idx).not.toContain("@george43g/"); // safety: no leftover scopes
+  });
+
+  it("keeps the public runtime external in registry mode", async () => {
+    const { cwd, ctx } = await makeTestCtx({
+      name: "foo",
+      scope: "@myorg",
+      runtimeSource: "registry",
+    });
+    cleanup.push(() => rm(cwd, { recursive: true, force: true }));
+
+    await portPackage(ctx, {
+      pkgDir: "apps/foo-mcp",
+      libPrefix: "08-app/lib/",
+    });
+
+    const pkg = JSON.parse(await readFile(join(cwd, "apps/foo-mcp/package.json"), "utf8"));
+    expect(pkg.dependencies["@george43g/robustness"]).toBe("^0.1.0");
+    expect(pkg.dependencies["@myorg/robustness"]).toBeUndefined();
+    expect(pkg.dependencies["@myorg/mcp-kit"]).toBe("workspace:*");
+    const entry = await readFile(join(cwd, "apps/foo-mcp/src/index.ts"), "utf8");
+    expect(entry).toContain('from "@george43g/robustness"');
   });
 
   it("dry-run: returns would-apply and writes nothing", async () => {

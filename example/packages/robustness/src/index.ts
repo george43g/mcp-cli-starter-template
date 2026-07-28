@@ -29,7 +29,14 @@ export {
 } from "./rate-limit.js";
 export type { RetryOptions } from "./retry.js";
 export { isTransientError, withRetry } from "./retry.js";
+export type {
+  CleanupFn,
+  RuntimeDiagnostic,
+  ShutdownController,
+  ShutdownControllerOptions,
+} from "./shutdown.js";
 export {
+  createShutdownController,
   enableOrphanWatchdog,
   enableStdinEofDetection,
   installShutdownHandlers,
@@ -38,8 +45,15 @@ export {
   shutdown,
   unregisterCleanup,
 } from "./shutdown.js";
-export type { WatchdogState } from "./watchdog.js";
+export type {
+  MemorySampleCallback,
+  WatchdogController,
+  WatchdogDiagnostic,
+  WatchdogOptions,
+  WatchdogState,
+} from "./watchdog.js";
 export {
+  createWatchdog,
   installWatchdog,
   isMonotonicallyGrowing,
   noteActivity,

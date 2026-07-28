@@ -7,7 +7,7 @@
 // Usage: node scripts/check-usage-freshness.mjs
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,12 +49,8 @@ function regen(tmp) {
 
 function checkOne(label, fresh, checkedIn) {
   if (!fileExists(checkedIn)) {
-    // Not-yet-generated is a soft state (first-run after scaffold).
-    // Print a hint but don't fail — the user runs `pnpm artifacts` and
-    // commits to lock the baseline. Drift detection kicks in once the
-    // file lands in the repo.
-    console.log(`· ${label}: not yet generated (run: pnpm artifacts)`);
-    return true;
+    console.error(`✗ ${label}: missing ${checkedIn} (generate: pnpm artifacts)`);
+    return false;
   }
   const a = readFileSync(fresh);
   const b = readFileSync(checkedIn);
@@ -108,10 +104,12 @@ if (fileExists(docsTmp) && fileExists(docsCheckedIn)) {
       ok = checkOne(`docs/cli/${f}`, join(docsTmp, f), join(docsCheckedIn, f)) && ok;
     }
   }
-} else if (fileExists(docsCheckedIn)) {
-  console.error("✗ docs/cli/ exists on disk but regen produced nothing");
+} else {
+  console.error("✗ docs/cli/ baseline is missing or regeneration produced nothing");
   ok = false;
 }
+
+rmSync(tmp, { recursive: true, force: true });
 
 if (!ok) {
   console.error("\n→ Fix: pnpm artifacts && git add completions/ man/ docs/cli/");

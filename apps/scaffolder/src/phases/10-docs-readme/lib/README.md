@@ -110,6 +110,12 @@ ln -s "$(pwd)/skills/example-repo/SKILL.md" ~/.claude/skills/example-repo/SKILL.
 | [`docs/TUI_DESIGN.md`](docs/TUI_DESIGN.md) | Theme system, keybindings, dev stats, cache invariants |
 | [`docs/GUARDRAILS_MCP_RESPONSES.md`](docs/GUARDRAILS_MCP_RESPONSES.md) | UUID-gated instructions + prompt-injection defense |
 | [`docs/RELEASE.md`](docs/RELEASE.md) | Enabling semantic-release for npm publish |
+| [`docs/NATIVE_SCAFFOLDERS.md`](docs/NATIVE_SCAFFOLDERS.md) | When to use official generators for new leaf workspaces |
+
+The repo-level `skills/cli-artifacts/SKILL.md` preserves usage docs,
+completions, and manpage generation if this MCP app is replaced or removed.
+`skills/workspace-scaffolding/SKILL.md` guides native generator selection for
+new apps and packages.
 
 ## What's inside (template author's eyes only)
 
