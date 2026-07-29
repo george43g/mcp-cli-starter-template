@@ -84,3 +84,11 @@ are ideas, not commitments; none is scheduled unless promoted into
     the body.** A commit whose body merely *described* the release commit's
     skip marker silently skipped every workflow on that push. Never write
     the literal marker in a commit message; say "skip-ci marker" instead.
+13. **`setup-node` with `registry-url` shadows npm OIDC trusted
+    publishing.** It writes an `.npmrc` auth line resolving a placeholder
+    `NODE_AUTH_TOKEN` (`XXXXX-…`); npm sends that bogus token and 401s
+    instead of performing the OIDC exchange. For trusted publishing, omit
+    `registry-url` entirely — `@semantic-release/npm` >= 12.0.2 detects the
+    Actions OIDC environment itself. (The semantic-release-monorepo `fail`
+    step also crashes with a TypeError while reporting failures, masking
+    the pretty error output — read the raw npm error above it.)
