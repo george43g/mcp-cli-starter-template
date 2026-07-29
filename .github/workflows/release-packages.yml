@@ -1,17 +1,37 @@
+# Release pipeline for the reusable packages (currently @george43g/robustness).
+#
+# Publishing uses npm OIDC trusted publishing — there is NO NPM_TOKEN secret.
+# On npmjs.com, the package's Trusted Publisher (GitHub Actions) must be:
+#   organization/user: george43g
+#   repository:        mcp-cli-starter-template
+#   workflow filename: release-packages.yml
+#   environment:       (leave empty)
+#
+# semantic-release drives versioning from Conventional Commits touching
+# packages/robustness (semantic-release-monorepo filters commits by package
+# path), writes CHANGELOG.md, commits the version bump back to main with
+# [skip ci], tags robustness-v<version>, publishes to npm (provenance comes
+# with trusted publishing), and creates the GitHub release. The full
+# verification matrix runs first — a red step means no publish.
+
 name: Release reusable packages
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/robustness/**"
   workflow_dispatch:
-    inputs:
-      publish:
-        description: Publish the verified package to npm
-        required: true
-        type: boolean
-        default: false
 
 permissions:
-  contents: read
+  contents: write
+  issues: write
+  pull-requests: write
   id-token: write
+
+concurrency:
+  group: release-packages
+  cancel-in-progress: false
 
 jobs:
   robustness:
@@ -19,6 +39,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -32,17 +54,25 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
+      - name: Show npm version (OIDC trusted publishing needs >= 11.5.1)
+        run: npm --version
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Verify repository
+      - name: Verify (lint + docs + typecheck + unit/integration tests + build)
         run: pnpm verify
 
-      - name: Verify packed package in a standalone consumer
+      - name: Test (TS fallback path)
+        run: pnpm test:no-native
+
+      - name: E2E — packed standalone-consumer smoke
         run: pnpm check:robustness-package
 
-      - name: Publish @george43g/robustness
-        if: inputs.publish
-        run: pnpm --filter @george43g/robustness publish --access public --provenance --no-git-checks
+      - name: E2E — 13-assertion MCP stress harness
+        run: pnpm stress
+
+      - name: Release (semantic-release → npm via OIDC + GitHub release)
+        run: pnpm --filter @george43g/robustness exec semantic-release
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

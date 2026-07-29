@@ -20,7 +20,7 @@ completed work, local-only work, and deliberately deferred work.
 | Working tree | clean |
 | Product boundary | fresh scaffolds are pnpm-only |
 | Runtime boundary | source is the pre-publication default; registry mode is staged |
-| Registry state | `@george43g/robustness` returned npm E404 on 2026-07-29 |
+| Registry state | `@george43g/robustness@0.1.0` published 2026-07-29; shasum `09d3076`; public-consumer smoke passed; tag `robustness-v0.1.0` |
 
 Always re-run `git status --short --branch` before relying on this snapshot.
 
@@ -263,21 +263,32 @@ Push, package publication, and the runtime-default flip are separate actions:
 
 1. **Push** — done 2026-07-29 with explicit user direction; `main` and
    `origin/main` are in sync and CI is green.
-2. **Publish robustness** — decided path (2026-07-29): the first publish runs
-   from the user's machine via the local npm CLI. `publishConfig.provenance`
-   was removed from the manifest because provenance generation requires CI
-   OIDC and a manifest-level `true` blocks local publishes (env overrides do
-   not win); the release workflow passes `--provenance` explicitly instead.
-   npm additionally requires an interactive browser auth at publish time, so
-   the publish command itself must run in the user's terminal.
-   No `NPM_TOKEN` secret will ever be created. After the first publish, the
-   user configures an OIDC trusted publisher on npmjs.com for this repo's
-   `release-packages.yml`; the workflow then drops its `NODE_AUTH_TOKEN` env
-   line and keeps `--provenance` (valid under OIDC).
-3. **Verify public consumption** — after publication, generate a clean consumer
-   with the public registry package rather than a local tarball.
-4. **Flip the default** — only after public consumption passes should
-   `runtime-source=registry` become the default.
+2. **Publish robustness** — DONE 2026-07-29. The user ran the local publish
+   in their own terminal (npm web auth requires a real TTY; agent sessions
+   hit EOTP). `publishConfig.provenance` was removed from the manifest
+   because a manifest-level `true` blocks local publishes and env overrides
+   do not win.
+3. **Verify public consumption** — DONE 2026-07-29: a clean consumer
+   installed `@george43g/robustness@0.1.0` from the public registry and the
+   canonical watchdog/shutdown smoke passed.
+4. **CI release automation** — built 2026-07-29 at the user's direction.
+   `release-packages.yml` now runs on pushes to `main` touching
+   `packages/robustness/**`: full verification (verify + no-native +
+   packed-consumer smoke + stress) then semantic-release from
+   `packages/robustness` (`.releaserc.json`, `extends
+   semantic-release-monorepo`, `tagFormat robustness-v${version}`,
+   changelog + npm + git + github plugins). Publishing uses npm OIDC
+   trusted publishing — no `NPM_TOKEN`, ever. The baseline tag
+   `robustness-v0.1.0` anchors versioning. Local `--dry-run` validated all
+   verifyConditions and commit filtering. BLOCKED on the user configuring
+   the Trusted Publisher on npmjs.com (org `george43g`, repo
+   `mcp-cli-starter-template`, workflow `release-packages.yml`, no
+   environment); until then the workflow still verifies but any publish
+   attempt would fail auth.
+5. **Flip the default** — public consumption has passed, so
+   `runtime-source=registry` as the default is now unblocked; it remains a
+   deliberate decision requiring template + example regeneration and full
+   verification.
 
 ### Safe re-verification command set
 
@@ -361,10 +372,13 @@ remediation:
    until a concrete need exists.
 5. Automatic Commander-to-usage specification integration. The current
    `.usage.kdl` artifacts remain generated and drift-checked through `usage`.
-6. Enabling semantic release. `.github/workflows/release.yml` remains disabled
-   until release ownership is decided deliberately. Credentials will come
-   from npm OIDC trusted publishing (configured on npmjs.com), not an
-   `NPM_TOKEN` secret.
+6. Enabling semantic release for the TEMPLATE output.
+   `.github/workflows/release.yml` (the lib-mirrored workflow shipped to
+   generated repos) remains disabled until release ownership is decided
+   deliberately. The META-repo's own package release automation
+   (`release-packages.yml` + `packages/robustness/.releaserc.json`) went
+   live on 2026-07-29 using npm OIDC trusted publishing — no `NPM_TOKEN`
+   secret anywhere.
 7. The breaking dependency migrations listed above.
 8. Flipping the default runtime source to `registry`. Do this only after
    `@george43g/robustness@0.1.0` is published and a clean consumer installs it

@@ -70,4 +70,13 @@ are ideas, not commitments; none is scheduled unless promoted into
     `publishConfig` and pass `--provenance` explicitly in the CI workflow,
     where OIDC makes it valid. Also: npm's web-based publish auth makes
     `npm publish` interactive (browser roundtrip), so agent-driven publishes
-    need the user's terminal regardless of login state.
+    need the user's terminal regardless of login state — a non-TTY session
+    fails with EOTP instead of waiting for the browser.
+11. **semantic-release 24 + semantic-release-monorepo 8 work together**, and
+    `GITHUB_TOKEN=$(gh auth token) … semantic-release --dry-run` is a cheap
+    full-pipeline validation (all verifyConditions + commit filtering) with
+    zero side effects. Tag the already-published version first
+    (`robustness-v0.1.0`) or semantic-release starts the package at 1.0.0.
+    Loop prevention matters twice: `[skip ci]` in the release commit AND the
+    workflow's `paths:` filter would otherwise re-trigger on the version
+    bump commit.

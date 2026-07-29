@@ -18,7 +18,7 @@ verification matrix, dependency decisions, and deferred work.
 | Remote check | `git fetch --prune` succeeded on 2026-07-29 |
 | Working tree | clean |
 | Push state | none of the three local commits are pushed |
-| Package state | `@george43g/robustness` returned npm E404 on 2026-07-29 |
+| Package state | `@george43g/robustness@0.1.0` published to npm on 2026-07-29 (user-run local publish); public-registry consumer smoke passed; baseline tag `robustness-v0.1.0` pushed |
 | Runtime default | `source`; registry mode is staged but not the default |
 
 On 2026-07-29 the user authorized committing the verified working tree. The
