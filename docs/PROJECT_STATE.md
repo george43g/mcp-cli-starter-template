@@ -264,8 +264,12 @@ Push, package publication, and the runtime-default flip are separate actions:
 1. **Push** — done 2026-07-29 with explicit user direction; `main` and
    `origin/main` are in sync and CI is green.
 2. **Publish robustness** — decided path (2026-07-29): the first publish runs
-   from the user's machine via the local npm CLI (`npm login`, then publish
-   with provenance disabled — provenance generation requires CI OIDC).
+   from the user's machine via the local npm CLI. `publishConfig.provenance`
+   was removed from the manifest because provenance generation requires CI
+   OIDC and a manifest-level `true` blocks local publishes (env overrides do
+   not win); the release workflow passes `--provenance` explicitly instead.
+   npm additionally requires an interactive browser auth at publish time, so
+   the publish command itself must run in the user's terminal.
    No `NPM_TOKEN` secret will ever be created. After the first publish, the
    user configures an OIDC trusted publisher on npmjs.com for this repo's
    `release-packages.yml`; the workflow then drops its `NODE_AUTH_TOKEN` env

@@ -149,9 +149,11 @@ remaining landing decisions are:
    ledger. Confirm `git status --short --branch`.
 2. Push — done 2026-07-29; `main` is in sync with `origin/main` and CI passed.
 3. Publish robustness: first publish from the user's machine via the local
-   npm CLI with provenance disabled; afterwards the user configures npm OIDC
-   trusted publishing for `release-packages.yml` (no `NPM_TOKEN` secret,
-   ever). Still requires the user to run `npm login` first.
+   npm CLI (`publishConfig.provenance` removed — the release workflow passes
+   `--provenance` explicitly; npm's web auth makes the publish command
+   interactive, so the user runs it in their own terminal). Afterwards the
+   user configures npm OIDC trusted publishing for `release-packages.yml`
+   (no `NPM_TOKEN` secret, ever).
 4. After publication, run a clean external registry consumer before considering
    `runtime-source=registry` as the default.
 

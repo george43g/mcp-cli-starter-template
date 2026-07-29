@@ -60,3 +60,14 @@ are ideas, not commitments; none is scheduled unless promoted into
    Opportunity: generate the spec's shared-flag blocks from
    `addCommonFlags`, which is deferred item 5 (Commander→usage integration)
    in PROJECT_STATE.md.
+
+## 2026-07-29 — first npm publish (robustness)
+
+10. **`publishConfig.provenance: true` blocks local publishes and env
+    overrides don't win.** `NPM_CONFIG_PROVENANCE=false pnpm publish` still
+    fails with "Automatic provenance generation not supported for provider:
+    null" — the manifest value takes precedence. Fix: keep provenance OUT of
+    `publishConfig` and pass `--provenance` explicitly in the CI workflow,
+    where OIDC makes it valid. Also: npm's web-based publish auth makes
+    `npm publish` interactive (browser roundtrip), so agent-driven publishes
+    need the user's terminal regardless of login state.
