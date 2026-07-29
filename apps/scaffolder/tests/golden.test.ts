@@ -76,6 +76,13 @@ const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
   // the lib copy is the CLONED-TOOL's agent guide with example-repo placeholders.
   // Different content by design.
   "11-agent-files/lib/AGENTS.md",
+  // The meta-repo's MCP client configs follow the dotfiles convention
+  // (.mcp.json is canonical; .cursor/mcp.json symlinks to it; opencode.json's
+  // mcp key is rendered from it — see the root AGENTS.md "MCP servers"
+  // section). The lib copies are the CLONED-TOOL's starter MCP config.
+  // Different content by design.
+  "11-agent-files/lib/.cursor/mcp.json",
+  "11-agent-files/lib/opencode.json",
 ]);
 
 async function walkFiles(root: string, acc: string[] = []): Promise<string[]> {
