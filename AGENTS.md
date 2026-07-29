@@ -113,3 +113,11 @@ Multi-hour, cross-surface, or risky work gets a checked-in ExecPlan under
 [`docs/plans/`](docs/plans/README.md) — never an external file outside the
 repo. Continuation state for the current thread lives in
 [`HANDOFF.md`](HANDOFF.md) and [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md).
+
+## MCP servers (project scope)
+
+Canonical set: `.mcp.json` (standard MCP schema, `${VAR}` placeholders only —
+never literal secrets). `.cursor/mcp.json` and `.warp/.mcp.json` are symlinks
+to it. `opencode.json`'s `mcp` key is GENERATED — after editing `.mcp.json`,
+run: `node ~/dotfiles/mcp/render.js --manifest .mcp.json --opencode opencode.json`.
+Global servers and scope decisions: `~/dotfiles/docs/mcp-registry.md`.
