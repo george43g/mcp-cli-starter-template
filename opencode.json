@@ -3,11 +3,7 @@
   "mcp": {
     "example-repo-mcp-dev": {
       "type": "local",
-      "command": [
-        "pnpm",
-        "tsx",
-        "apps/example-repo-mcp/scripts/mcp-dev-proxy.ts"
-      ],
+      "command": ["pnpm", "tsx", "apps/example-repo-mcp/scripts/mcp-dev-proxy.ts"],
       "enabled": true,
       "environment": {
         "MCP_DEV": "1",
@@ -17,10 +13,7 @@
     },
     "mise": {
       "type": "local",
-      "command": [
-        "mise",
-        "mcp"
-      ],
+      "command": ["mise", "mcp"],
       "enabled": true
     }
   }
