@@ -261,10 +261,15 @@ restart the bug hunt or regenerate everything by default.
 
 Push, package publication, and the runtime-default flip are separate actions:
 
-1. **Push** — requires explicit user direction. Three local commits are
-   unpushed.
-2. **Publish robustness** — requires a separate explicit release decision,
-   configured npm credentials, and the manual package workflow.
+1. **Push** — done 2026-07-29 with explicit user direction; `main` and
+   `origin/main` are in sync and CI is green.
+2. **Publish robustness** — decided path (2026-07-29): the first publish runs
+   from the user's machine via the local npm CLI (`npm login`, then publish
+   with provenance disabled — provenance generation requires CI OIDC).
+   No `NPM_TOKEN` secret will ever be created. After the first publish, the
+   user configures an OIDC trusted publisher on npmjs.com for this repo's
+   `release-packages.yml`; the workflow then drops its `NODE_AUTH_TOKEN` env
+   line and keeps `--provenance` (valid under OIDC).
 3. **Verify public consumption** — after publication, generate a clean consumer
    with the public registry package rather than a local tarball.
 4. **Flip the default** — only after public consumption passes should
@@ -353,7 +358,9 @@ remediation:
 5. Automatic Commander-to-usage specification integration. The current
    `.usage.kdl` artifacts remain generated and drift-checked through `usage`.
 6. Enabling semantic release. `.github/workflows/release.yml` remains disabled
-   until release ownership and `NPM_TOKEN` are configured deliberately.
+   until release ownership is decided deliberately. Credentials will come
+   from npm OIDC trusted publishing (configured on npmjs.com), not an
+   `NPM_TOKEN` secret.
 7. The breaking dependency migrations listed above.
 8. Flipping the default runtime source to `registry`. Do this only after
    `@george43g/robustness@0.1.0` is published and a clean consumer installs it

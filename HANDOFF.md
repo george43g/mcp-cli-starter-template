@@ -147,8 +147,11 @@ remaining landing decisions are:
 
 1. Re-read this file, `docs/PROJECT_STATE.md`, `AGENTS.md`, and the findings
    ledger. Confirm `git status --short --branch`.
-2. Push only after explicit user direction (three local commits are unpushed).
-3. Treat robustness publication as a separate explicit release action.
+2. Push — done 2026-07-29; `main` is in sync with `origin/main` and CI passed.
+3. Publish robustness: first publish from the user's machine via the local
+   npm CLI with provenance disabled; afterwards the user configures npm OIDC
+   trusted publishing for `release-packages.yml` (no `NPM_TOKEN` secret,
+   ever). Still requires the user to run `npm login` first.
 4. After publication, run a clean external registry consumer before considering
    `runtime-source=registry` as the default.
 
