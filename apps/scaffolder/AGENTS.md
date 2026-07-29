@@ -4,7 +4,7 @@
 > the root [`AGENTS.md`](../../AGENTS.md); read it first for orientation, the
 > golden-output rule, and root commands.
 
-The scaffolder is the meta-tool: 12 phases, 25 migrations, 172 generated
+The scaffolder is the meta-tool: 12 phases, 26 migrations, 172 generated
 template entries. It drives `init` (fresh scaffold), `apply`
 (target-profile-aware retrofit), `migrate <id>` (single migration), and
 `add-mcp-app` (append a second MCP app to an already-scaffolded monorepo —
@@ -67,7 +67,7 @@ Patterns lifted from oclif (and explicitly skipped) are documented in
 | `pnpm build:templates` | Codegen: scan `lib/**` → `src/generated/templates.ts` |
 | `pnpm start -- <args>` | Run via tsx (dev) |
 | `pnpm dev` | `vite build --watch` |
-| `pnpm test` | 128 tests across 12 files (unit + integration + golden + migrations) |
+| `pnpm test` | 131 tests across 12 files (unit + integration + golden + migrations) |
 | `mise run smoke` | E2E: scaffold into /tmp + assert install + tests pass |
 | `mise run docs` | Generate `docs/scaffolder-cli/*.md` |
 | `mise run completions` | bash + zsh + fish |

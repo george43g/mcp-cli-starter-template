@@ -134,7 +134,7 @@ apps/
   scaffolder/             the programmable scaffolder/migrator
     src/
       core/               Migration base + IoC config + phase runner + helpers
-      phases/             01-bootstrap … 12-ci-release (25 migrations, 172 generated template entries)
+      phases/             01-bootstrap … 12-ci-release (26 migrations, 172 generated template entries)
       ui/                 banner, recap, progress
     bin/cli.ts            commander dispatch
     scripts/              build-templates.mjs (codegen: lib/** → src/generated/templates.ts)

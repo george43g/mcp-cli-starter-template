@@ -42,6 +42,12 @@ cmd init help="Fresh scaffold into <target> (defaults to cwd)" {
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
     flag --no-semantic-release help="Skip the semantic-release workflow"
+    flag --cli-bin help="Bin name for the standalone usage(1) artifacts pipeline (08-app/m2-cli-artifacts)" {
+        arg <name>
+    }
+    flag --cli-dir help="Repo-relative directory receiving the usage(1) artifacts pipeline (default: .)" {
+        arg <dir>
+    }
     arg "[target]" help="Target directory (defaults to cwd)" required=#false
 }
 cmd apply help="Apply migrations to an existing repo" {
@@ -78,6 +84,12 @@ cmd apply help="Apply migrations to an existing repo" {
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
     flag --no-semantic-release help="Skip the semantic-release workflow"
+    flag --cli-bin help="Bin name for the standalone usage(1) artifacts pipeline (08-app/m2-cli-artifacts)" {
+        arg <name>
+    }
+    flag --cli-dir help="Repo-relative directory receiving the usage(1) artifacts pipeline (default: .)" {
+        arg <dir>
+    }
 }
 cmd plan help="Dry-run preview of which migrations would apply" {
     flag --target help="Path to target repo" {
@@ -116,6 +128,12 @@ cmd plan help="Dry-run preview of which migrations would apply" {
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
     flag --no-semantic-release help="Skip the semantic-release workflow"
+    flag --cli-bin help="Bin name for the standalone usage(1) artifacts pipeline (08-app/m2-cli-artifacts)" {
+        arg <name>
+    }
+    flag --cli-dir help="Repo-relative directory receiving the usage(1) artifacts pipeline (default: .)" {
+        arg <dir>
+    }
 }
 cmd migrate help="Run a single migration or one whole phase" {
     flag --target help="Path to target repo" {
@@ -151,6 +169,12 @@ cmd migrate help="Run a single migration or one whole phase" {
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
     flag --no-semantic-release help="Skip the semantic-release workflow"
+    flag --cli-bin help="Bin name for the standalone usage(1) artifacts pipeline (08-app/m2-cli-artifacts)" {
+        arg <name>
+    }
+    flag --cli-dir help="Repo-relative directory receiving the usage(1) artifacts pipeline (default: .)" {
+        arg <dir>
+    }
     arg <id> help="e.g. 04-robustness/m1-robustness-pkg, or just 04-robustness"
 }
 cmd add-mcp-app help="Add a second MCP app to apps/<name>-mcp/ inside an existing scaffolded repo" {

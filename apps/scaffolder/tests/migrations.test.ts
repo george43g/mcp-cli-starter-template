@@ -24,6 +24,7 @@ import M1Mise from "../src/phases/02-toolchain/m1-mise.js";
 import M3GitInit from "../src/phases/02-toolchain/m3-git-init.js";
 import M4Gitignore from "../src/phases/02-toolchain/m4-gitignore.js";
 import M5Gitattributes from "../src/phases/02-toolchain/m5-gitattributes.js";
+import M2CliArtifacts from "../src/phases/08-app/m2-cli-artifacts.js";
 import M1CiRelease from "../src/phases/12-ci-release/m1-ci-release.js";
 
 async function makeCtx(
@@ -243,5 +244,53 @@ describe("02-toolchain/m4-gitignore + m5-gitattributes (literal writers)", () =>
     expect(ga).toContain("*.sqlite");
     expect(ga).toContain("eol=lf");
     expect(ga).toContain("linguist-generated=true");
+  });
+});
+
+describe("08-app/m2-cli-artifacts", () => {
+  it("writes the pipeline into --cli-dir with the bin name substituted", async () => {
+    const { cwd, ctx } = await makeCtx();
+    trashCans.push(cwd);
+    ctx.config.cliArtifacts.bin.set("opkeep");
+    ctx.config.cliArtifacts.dir.set("apps/opkeep");
+
+    const result = await new M2CliArtifacts().apply(ctx);
+
+    expect(result.status).toBe("applied");
+    const kdl = await readFile(join(cwd, "apps/opkeep/.usage.kdl"), "utf8");
+    expect(kdl).toContain('name "opkeep"');
+    expect(kdl).toContain('bin "opkeep"');
+    const mise = await readFile(join(cwd, "apps/opkeep/mise.toml"), "utf8");
+    expect(mise).toContain('usage = "3.3.0"');
+    expect(mise).toContain("usage g completion bash opkeep");
+    expect(mise).toContain("completions/_opkeep");
+    expect(mise).toContain("man/opkeep.1");
+    expect(mise).toContain("node scripts/check-usage-freshness.mjs");
+    // The freshness script ships bin-agnostic (reads bin from .usage.kdl).
+    expect(existsSync(join(cwd, "apps/opkeep/scripts/check-usage-freshness.mjs"))).toBe(true);
+    expect(existsSync(join(cwd, "apps/opkeep/scripts/install-completions.sh"))).toBe(true);
+  });
+
+  it("preserves a divergent .usage.kdl when force=false", async () => {
+    const { cwd, ctx } = await makeCtx({ force: false });
+    trashCans.push(cwd);
+    ctx.config.cliArtifacts.bin.set("mytool");
+    ctx.config.cliArtifacts.dir.set(".");
+    const userSpec = 'name "mytool"\nbin "mytool"\ncmd "custom" help="mine"\n';
+    await ctx.fs.writeIfChanged(".usage.kdl", userSpec);
+
+    const result = await new M2CliArtifacts().apply(ctx);
+
+    expect(result.filesDivergent).toContain(".usage.kdl");
+    expect(await readFile(join(cwd, ".usage.kdl"), "utf8")).toBe(userSpec);
+  });
+
+  it("rejects a non-kebab-case bin name", async () => {
+    const { cwd, ctx } = await makeCtx();
+    trashCans.push(cwd);
+    ctx.config.cliArtifacts.bin.set("Bad_Name");
+    ctx.config.cliArtifacts.dir.set(".");
+
+    await expect(new M2CliArtifacts().apply(ctx)).rejects.toThrow(/kebab-case/);
   });
 });

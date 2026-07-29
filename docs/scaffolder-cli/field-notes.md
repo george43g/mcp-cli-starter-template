@@ -36,3 +36,27 @@ are ideas, not commitments; none is scheduled unless promoted into
 5. **Minor: `pnpm start -- list` rebuilds templates every invocation**
    (`build:templates` runs before tsx). Correct but adds startup latency to
    read-only commands like `list`; a staleness check could skip the rebuild.
+
+## 2026-07-29 — building 08-app/m2-cli-artifacts (the standalone migration)
+
+6. **Prompting config leaves hang sweep runs.** A migration whose `apply()`
+   reads an un-preset promptable leaf stalls non-interactive `apply` flows
+   (caught only by the 5s test timeout in `program.test.ts`). Resolved with
+   an explicit-only `shouldRun` (`ctx.explicitMigration`). Opportunity: a
+   convention (or test helper) asserting that non-explicit migrations never
+   reach `ask()` — timeouts are a poor detector.
+7. **`Migration.commanderOptions?()` is declared but never implemented or
+   consumed.** Real flag wiring is centralized in `addCommonFlags` +
+   `applyCmdOptsToConfig`. Either wire the hook into `buildProgram()` or
+   delete it — a declared-but-dead extension point misleads migration
+   authors.
+8. **`TEMPLATES[key]` is `string | undefined`** under
+   `noUncheckedIndexedAccess`, so each direct consumer needs a guard. A
+   shared `requireTemplate(key)` in `core/` would centralize the "run
+   build:templates" remediation message (m2 carries a local copy).
+9. **The scaffolder's `.usage.kdl` duplicates the shared flag block four
+   times** (init/apply/plan/migrate). Adding one flag means four identical
+   KDL edits; usage(1) KDL has no include/mixin mechanism we're using.
+   Opportunity: generate the spec's shared-flag blocks from
+   `addCommonFlags`, which is deferred item 5 (Commander→usage integration)
+   in PROJECT_STATE.md.

@@ -20,7 +20,7 @@ npx @george43g/mcp-scaffold plan --target ~/repos/my-existing-mcp --existing-str
 # Emit a machine-readable companion to the recap
 npx @george43g/mcp-scaffold apply --target ~/repos/my-existing-mcp --report-json /tmp/report.json
 
-# List all 25 migrations across 12 phases
+# List all 26 migrations across 12 phases
 npx @george43g/mcp-scaffold list
 ```
 
@@ -59,7 +59,7 @@ Existing-target policy:
 
 ## What gets generated
 
-12 phases applied in order, 25 migrations, 172 generated template entries:
+12 phases applied in order, 26 migrations, 172 generated template entries:
 
 | Phase | Scope |
 |-------|-------|

@@ -74,3 +74,11 @@ Skip the optional Rust acceleration crate
 ### `--no-semantic-release`
 
 Skip the semantic-release workflow
+
+### `--cli-bin <name>`
+
+Bin name for the standalone usage(1) artifacts pipeline (08-app/m2-cli-artifacts)
+
+### `--cli-dir <dir>`
+
+Repo-relative directory receiving the usage(1) artifacts pipeline (default: .)

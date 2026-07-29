@@ -54,7 +54,15 @@ function addCommonFlags(cmd: Command): Command {
     .option("--no-tui", "Skip the Ink/React TUI surface")
     .option("--no-http", "Skip the Streamable HTTP transport")
     .option("--no-rust-accel", "Skip the optional Rust acceleration crate")
-    .option("--no-semantic-release", "Skip the semantic-release workflow");
+    .option("--no-semantic-release", "Skip the semantic-release workflow")
+    .option(
+      "--cli-bin <name>",
+      "Bin name for the standalone usage(1) artifacts pipeline (08-app/m2-cli-artifacts)",
+    )
+    .option(
+      "--cli-dir <dir>",
+      "Repo-relative directory receiving the usage(1) artifacts pipeline (default: .)",
+    );
 }
 
 export function buildProgram(): Command {
@@ -226,6 +234,9 @@ function applyCmdOptsToConfig(cmdOpts: Record<string, unknown>, config: Config):
       `Invalid --runtime-source "${String(cmdOpts.runtimeSource)}"; expected source or registry`,
     );
   }
+
+  if (typeof cmdOpts.cliBin === "string") config.cliArtifacts.bin.set(cmdOpts.cliBin);
+  if (typeof cmdOpts.cliDir === "string") config.cliArtifacts.dir.set(cmdOpts.cliDir);
 
   // commander's `.option("--no-X", ...)` yields opts.X === false when the
   // user passed --no-X and opts.X === true (or undefined) otherwise.

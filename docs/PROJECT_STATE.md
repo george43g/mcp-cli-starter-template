@@ -377,9 +377,9 @@ remediation:
 ## Current structural facts
 
 - 12 phases
-- 25 registered migration files
+- 26 registered migration files
 - 172 generated template entries
-- 128 scaffolder tests across 12 test files
+- 131 scaffolder tests across 12 test files
 - 14 cloned-tool integration tests
 - 27 `mcp-kit` unit tests
 - 68 robustness unit tests across 8 test files

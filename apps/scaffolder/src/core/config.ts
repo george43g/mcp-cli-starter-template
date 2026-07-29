@@ -64,6 +64,14 @@ export class Config {
     semanticRelease: ConfigLeaf<boolean>;
   };
 
+  /** Settings for 08-app/m2-cli-artifacts (standalone usage(1) pipeline). */
+  cliArtifacts: {
+    /** Bin name the usage(1) spec + completions target (the command users type). */
+    bin: ConfigLeaf<string>;
+    /** Repo-relative directory that receives the artifacts pipeline. */
+    dir: ConfigLeaf<string>;
+  };
+
   constructor() {
     this.global = {
       mode: configLeaf<ApplyMode>({
@@ -194,6 +202,28 @@ export class Config {
               { name: "No — skip release infra", value: false },
             ],
             default: true,
+          }),
+      })(this),
+    };
+
+    this.cliArtifacts = {
+      bin: configLeaf<string>({
+        ask: async () => {
+          const suggested = this.global.repoName.peek();
+          return input({
+            message: "CLI bin name for usage(1) artifacts (the command users type)?",
+            ...(suggested === undefined ? {} : { default: suggested }),
+            validate: (v) =>
+              /^[a-z][a-z0-9-]*$/.test(v) || "kebab-case lowercase, starts with letter",
+          });
+        },
+      })(this),
+
+      dir: configLeaf<string>({
+        ask: async () =>
+          input({
+            message: "Directory for the CLI artifacts pipeline (repo-relative)?",
+            default: ".",
           }),
       })(this),
     };
