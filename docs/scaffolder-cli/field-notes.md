@@ -80,3 +80,7 @@ are ideas, not commitments; none is scheduled unless promoted into
     Loop prevention matters twice: `[skip ci]` in the release commit AND the
     workflow's `paths:` filter would otherwise re-trigger on the version
     bump commit.
+12. **GitHub honors `[skip ci]` anywhere in the commit message, including
+    the body.** A commit whose body merely *described* the release commit's
+    skip marker silently skipped every workflow on that push. Never write
+    the literal marker in a commit message; say "skip-ci marker" instead.
