@@ -50,8 +50,11 @@ jobs:
       # No registry-url here: setup-node would write an .npmrc line resolving
       # a placeholder NODE_AUTH_TOKEN, and that bogus token shadows the OIDC
       # exchange (npm sends it and gets 401 instead of doing trusted
-      # publishing). @semantic-release/npm >= 12.0.2 detects the Actions OIDC
-      # environment on its own.
+      # publishing). @semantic-release/npm must be >= 13.1.0 to detect the
+      # Actions OIDC environment itself — v12.x (the version semantic-release
+      # core bundles as its default plugin) has no OIDC awareness at all and
+      # always demands NPM_TOKEN, so packages/robustness/package.json pins an
+      # explicit ^13.1.5 devDependency to override that default resolution.
       - name: Setup Node
         uses: actions/setup-node@v6
         with:

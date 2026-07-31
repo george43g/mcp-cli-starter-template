@@ -88,7 +88,23 @@ are ideas, not commitments; none is scheduled unless promoted into
     publishing.** It writes an `.npmrc` auth line resolving a placeholder
     `NODE_AUTH_TOKEN` (`XXXXX-…`); npm sends that bogus token and 401s
     instead of performing the OIDC exchange. For trusted publishing, omit
-    `registry-url` entirely — `@semantic-release/npm` >= 12.0.2 detects the
-    Actions OIDC environment itself. (The semantic-release-monorepo `fail`
-    step also crashes with a TypeError while reporting failures, masking
-    the pretty error output — read the raw npm error above it.)
+    `registry-url` entirely. (The semantic-release-monorepo `fail` step also
+    crashes with a TypeError while reporting failures, masking the pretty
+    error output — read the raw npm error above it.)
+14. **Correction to #13: `@semantic-release/npm >= 12.0.2` does NOT detect
+    OIDC on its own** — that was an unverified assumption that produced a
+    second failed release run even after the `registry-url` fix, now
+    failing cleanly with `ENONPMTOKEN` instead of a 401. Real OIDC
+    trusted-publishing support (`lib/trusted-publishing/oidc-context.js`,
+    calling `@actions/core`'s `getIDToken()` and exchanging it with npm's
+    `-/npm/v1/oidc/token/exchange/package/<name>` endpoint) landed in
+    `@semantic-release/npm` v13.1.0. `semantic-release` core still bundles
+    `@semantic-release/npm: ^12.0.2` as its own dependency and resolves
+    plugins named in `.releaserc.json` from whatever's installed — since
+    nothing in the repo declared `@semantic-release/npm` explicitly, it
+    silently used the bundled v12. Fix: add an explicit
+    `@semantic-release/npm: ^13.1.5` devDependency next to
+    `semantic-release` in the consuming package. Lesson: when a plugin
+    "should" support a feature, read its actual installed source
+    (`node_modules/.pnpm/…`) rather than trusting the version range a
+    parent package happens to bundle.
