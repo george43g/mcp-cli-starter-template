@@ -50,7 +50,10 @@ const ROOT_PACKAGE_JSON = (name: string) =>
       type: "module",
       engines: { node: ">=24" },
       packageManager: "pnpm@10.29.3",
-      workspaces: ["apps/*", "packages/*"],
+      // No npm-style `workspaces` field: pnpm reads pnpm-workspace.yaml (written
+      // alongside this file), and an npm `workspaces` field only makes plain-npm
+      // tooling (e.g. @semantic-release/npm's `npm version`) traverse members and
+      // choke on pnpm's `workspace:*` protocol with EUNSUPPORTEDPROTOCOL.
       scripts: {
         build: "turbo run build",
         dev: "turbo run dev",
@@ -131,9 +134,8 @@ export default class MonorepoMigration extends Migration {
       rationale:
         "appliesTo=new — the migration writes root package.json, pnpm-workspace.yaml, and turbo.json from scratch, which would clobber an existing repo's metadata. Retrofitting requires merging fields, not overwriting them.",
       manualSteps: [
-        'Add `"workspaces": ["apps/*", "packages/*"]` to your root package.json.',
         'Set `"packageManager": "pnpm@10.29.3"` (or current pnpm pin) and `"type": "module"` in root package.json.',
-        "Create pnpm-workspace.yaml with `packages: [apps/*, packages/*]`.",
+        "Create pnpm-workspace.yaml with `packages: [apps/*, packages/*]` (this is pnpm's workspace source — do NOT add an npm `workspaces` field to package.json; it breaks plain-npm tooling on `workspace:*` deps).",
         "Install turbo as a root devDependency: `pnpm add -D -w turbo`.",
         "Create turbo.json with tasks: build (dependsOn ^build, outputs dist/**), typecheck, lint, test (dependsOn ^build), dev (cache:false, persistent:true), clean.",
         "Add root scripts: build/dev/test/lint/typecheck — all wrapping `turbo run <task>`. Plus a `verify` script that chains lint+typecheck+test+build.",
@@ -148,9 +150,10 @@ export default class MonorepoMigration extends Migration {
         `package.json metadata (name, description, version, keywords, author, license). ` +
         `Do these things in order:\n` +
         `\n` +
-        `1. Add to my root package.json: \`"workspaces": ["apps/*", "packages/*"]\`, ` +
-        `\`"packageManager": "pnpm@10.29.3"\`, \`"type": "module"\`, \`"private": true\`, ` +
-        `\`"engines": {"node": ">=24"}\`.\n` +
+        `1. Add to my root package.json: \`"packageManager": "pnpm@10.29.3"\`, ` +
+        `\`"type": "module"\`, \`"private": true\`, \`"engines": {"node": ">=24"}\`. ` +
+        `Do NOT add an npm \`"workspaces"\` field — pnpm uses pnpm-workspace.yaml ` +
+        `(step 4), and an npm \`workspaces\` field breaks plain-npm tooling on \`workspace:*\` deps.\n` +
         `2. Add (or merge) these scripts into root package.json: build="turbo run build", ` +
         `dev="turbo run dev", test="turbo run test", "test:no-native"="turbo run test:no-native", ` +
         `lint="biome check .", "lint:fix"="biome check --write .", format="biome format --write .", ` +

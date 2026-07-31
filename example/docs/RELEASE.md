@@ -36,6 +36,17 @@ The shipped workflow has a single trigger — `workflow_dispatch:` — so it nev
 4. **Set the `name` field** on each publishable package to match your npm scope (the starter uses `@george43g/*`; rename if you're publishing to a different scope or unscoped).
 5. **Push a commit with a conventional-commits prefix** (e.g. `feat: initial release`) — semantic-release will compute the first version and publish.
 
+> **pnpm `workspace:*` caveat.** `@semantic-release/npm` runs plain `npm`
+> (`npm version`, `npm publish`) under the hood, and plain npm cannot resolve
+> pnpm's `workspace:*` protocol — it fails with
+> `EUNSUPPORTEDPROTOCOL: Unsupported URL Type "workspace:"`. Publish only
+> **leaf** packages that have no `workspace:*` dependencies, or replace those
+> specifiers with real version ranges before publishing (pnpm rewrites them at
+> `pnpm publish` time, but `@semantic-release/npm` does not). This is why the
+> root `package.json` carries no npm `workspaces` field — pnpm uses
+> `pnpm-workspace.yaml` instead, and the npm field would make even
+> single-package `npm version` traverse and choke on sibling `workspace:*` deps.
+
 ## Conventional-commits cheat sheet
 
 | Prefix | Version bump |

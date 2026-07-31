@@ -8,10 +8,6 @@
     "node": ">=24"
   },
   "packageManager": "pnpm@10.29.3",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

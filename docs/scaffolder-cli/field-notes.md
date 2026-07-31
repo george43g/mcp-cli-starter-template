@@ -147,3 +147,30 @@ are ideas, not commitments; none is scheduled unless promoted into
     Worth considering whether the paths filter should also watch the root
     lockfile/package.json, at the cost of triggering on unrelated
     dependency bumps.
+18. **An npm-style `"workspaces"` field in a pnpm monorepo's root
+    `package.json` breaks `@semantic-release/npm`.** With OIDC finally
+    working, the release advanced to `@semantic-release/npm`'s `prepare`
+    step, which runs `npm version <next>` in the package dir. Plain npm
+    walks up to the root, sees the `workspaces` field, treats the repo as
+    an npm workspace, and tries to parse every member — several of which
+    use pnpm's `workspace:*` protocol — failing with
+    `EUNSUPPORTEDPROTOCOL: Unsupported URL Type "workspace:"`. `robustness`
+    itself has zero deps, so the field was the sole trigger. Fix: remove the
+    `workspaces` field from the root `package.json` — pnpm's workspace
+    source is `pnpm-workspace.yaml`, so the npm field is vestigial (nothing
+    in the repo reads it; turbo detects pnpm workspaces on its own).
+    Verified locally: `npm version` succeeds with the field gone, and pnpm
+    still resolves all 14 workspaces on a frozen install. The generator
+    (`01-bootstrap/m4-monorepo.ts`) emitted the same field into every
+    scaffolded repo, so it was removed there too (plus the two retrofit
+    prompts that told users to add it).
+    - **Residual, deferred:** the *generated* repo's disabled-by-default
+      `release.yml` publishes the root package via `@semantic-release/npm`,
+      and the generated root `package.json` legitimately carries
+      `workspace:*` devDeps (e.g. `@george43g/tsconfig`). Removing the
+      `workspaces` field does NOT fix that path — plain npm still can't
+      resolve a `workspace:*` in the published package's own manifest. A
+      generated repo that enables npm publishing must publish only leaf
+      packages free of `workspace:*` deps, or adopt a pnpm-aware publish
+      flow. Documented as a caveat in the generated `docs/RELEASE.md`; a
+      full pnpm-aware generated release pipeline is out of scope here.

@@ -93,7 +93,9 @@ describe("01-bootstrap/m4-monorepo", () => {
     expect(pkg.type).toBe("module");
     expect(pkg.engines.node).toBe(">=24");
     expect(pkg.packageManager).toMatch(/^pnpm@/);
-    expect(pkg.workspaces).toEqual(["apps/*", "packages/*"]);
+    // No npm `workspaces` field — pnpm uses pnpm-workspace.yaml (asserted above).
+    // An npm workspaces field makes plain-npm tooling choke on `workspace:*` deps.
+    expect(pkg.workspaces).toBeUndefined();
 
     // The full script set must be present, otherwise `pnpm build` fails at root.
     expect(Object.keys(pkg.scripts).sort()).toEqual(
