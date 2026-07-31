@@ -119,3 +119,21 @@ are ideas, not commitments; none is scheduled unless promoted into
     package in the graph, including nested/transitive ones. Verified via
     `readlink node_modules/.pnpm/semantic-release@*/node_modules/@semantic-release/npm`
     pointing at the 13.1.5 store entry before re-pushing.
+16. **`readme-check.yml`'s `src/` regex false-positives on `lib/` mirror
+    paths.** It matches `^(apps|packages)/[^/]+/src/`, which also matches
+    `apps/scaffolder/src/phases/*/lib/**` — pure golden-output mirror
+    content (enforced byte-identical by `tests/golden.test.ts`), not
+    scaffolder implementation. Syncing a `docs/RELEASE.md` change into its
+    lib mirror tripped the check even though the canonical `docs/RELEASE.md`
+    path itself isn't under `apps|packages/*/src/` at all. Fixed by
+    excluding `/lib/` paths from the src-changed count in both the PR and
+    push variants of the check — any genuine change always touches the
+    canonical path too, which still trips the check on its own.
+17. **`release-packages.yml`'s `paths: ["packages/robustness/**"]` trigger
+    missed the actual fix.** The pnpm-override fix for field-note #15 lives
+    in the root `package.json`/`pnpm-lock.yaml`, not under
+    `packages/robustness/**`, so the push didn't auto-trigger the release
+    workflow — had to `gh workflow run release-packages.yml` manually.
+    Worth considering whether the paths filter should also watch the root
+    lockfile/package.json, at the cost of triggering on unrelated
+    dependency bumps.
