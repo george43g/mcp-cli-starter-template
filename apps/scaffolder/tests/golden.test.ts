@@ -83,6 +83,14 @@ const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
   // Different content by design.
   "11-agent-files/lib/.cursor/mcp.json",
   "11-agent-files/lib/opencode.json",
+  // The meta-repo's readme-check.yml carries a scaffolder-specific exclusion
+  // (`grep -v '/lib/'`) so that syncing a canonical change into its golden
+  // lib/ mirror under apps/scaffolder/src/phases/*/lib/** doesn't trip the
+  // "source changed but README didn't" gate. That exclusion is meaningless —
+  // and mildly wrong (src/lib/ is legitimate source) — in a generated repo,
+  // which has no lib/ mirrors, so the lib copy ships the standard check.
+  // Different content by design.
+  "12-ci-release/lib/.github/workflows/readme-check.yml",
 ]);
 
 async function walkFiles(root: string, acc: string[] = []): Promise<string[]> {

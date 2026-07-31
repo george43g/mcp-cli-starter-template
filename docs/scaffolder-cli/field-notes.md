@@ -128,7 +128,17 @@ are ideas, not commitments; none is scheduled unless promoted into
     path itself isn't under `apps|packages/*/src/` at all. Fixed by
     excluding `/lib/` paths from the src-changed count in both the PR and
     push variants of the check — any genuine change always touches the
-    canonical path too, which still trips the check on its own.
+    canonical path too, which still trips the check on its own. **This
+    exclusion is meta-repo-only**: `readme-check.yml` is golden output, but
+    a generated repo has no `lib/` mirrors and `src/lib/` is legitimate
+    source there, so the fix does NOT ship downstream. The canonical file
+    is added to `EXEMPT_LIB_PATHS` in `golden.test.ts` and the lib mirror
+    keeps the standard check. (First round of this fix missed that the
+    canonical edit was un-synced to the lib mirror, so it landed a
+    golden-drift failure that only surfaced in CI's `pnpm verify` step —
+    the local edit-then-`check:docs`-only loop never ran `golden.test.ts`.
+    Lesson: after editing ANY file with a lib/ mirror or `example/`
+    counterpart, run the scaffolder test suite, not just `check:docs`.)
 17. **`release-packages.yml`'s `paths: ["packages/robustness/**"]` trigger
     missed the actual fix.** The pnpm-override fix for field-note #15 lives
     in the root `package.json`/`pnpm-lock.yaml`, not under

@@ -93,9 +93,13 @@ secret**. The workflow requests `id-token: write` and npm exchanges that for
 a short-lived publish token, provided the package's Trusted Publisher is
 configured on npmjs.com (organization/user, repository, and workflow
 filename must match exactly). `@semantic-release/npm` must be `>= 13.1.0` to
-detect this OIDC context — `packages/robustness/package.json` pins an
-explicit `^13.1.5` devDependency because `semantic-release` core still
-bundles the OIDC-unaware `^12.0.2` as its own default.
+detect this OIDC context, but `semantic-release` loads that plugin from
+inside its own `node_modules`, where it finds the OIDC-unaware `^12.0.2`
+copy it bundles as a default dependency — a plain devDependency in the
+consuming package cannot override that nested resolution. The root
+`package.json` therefore forces the version graph-wide with a
+`pnpm.overrides` entry (`"@semantic-release/npm": "^13.1.5"`), which pnpm
+applies to the nested copy too.
 
 The initial `0.1.0` publish was run manually from a maintainer's machine
 (`pnpm --filter @george43g/robustness publish`) — OIDC trusted publishing
