@@ -75,22 +75,32 @@ Semantic-release in its default config publishes one root package. If you need t
 
 ## Reusable package release
 
-The meta-repository prepares `@george43g/robustness@0.1.0` through
-`.github/workflows/release-packages.yml`. That workflow is manual and defaults
-to verification-only.
+> This section describes the meta-repository's own upstream release process
+> for `@george43g/robustness`. A freshly generated tool has no
+> `release-packages.yml` and does not need this section — it only applies to
+> maintainers of the template repository itself.
 
-Before publishing:
+`@george43g/robustness` publishes via `.github/workflows/release-packages.yml`
+on every push to `main` that touches `packages/robustness/**` (also
+`workflow_dispatch`-able for a manual rerun). It runs the full verification
+matrix — `pnpm verify`, `pnpm test:no-native`, `pnpm check:robustness-package`
+(packs the tarball, installs it into a standalone Node 24 project, exercises
+the public exports), and `pnpm stress` — before semantic-release touches the
+registry. A red step blocks the release.
 
-1. Run `pnpm verify`.
-2. Run `pnpm check:robustness-package`; it packs the actual tarball, installs it
-   into a standalone Node 24 project, and exercises the public exports.
-3. Confirm `pnpm audit --json` has no known vulnerabilities.
-4. Confirm the package version is absent from npm.
-5. Configure `NPM_TOKEN` for the `@george43g` scope.
+Publishing uses npm OIDC trusted publishing — there is **no `NPM_TOKEN`
+secret**. The workflow requests `id-token: write` and npm exchanges that for
+a short-lived publish token, provided the package's Trusted Publisher is
+configured on npmjs.com (organization/user, repository, and workflow
+filename must match exactly). `@semantic-release/npm` must be `>= 13.1.0` to
+detect this OIDC context — `packages/robustness/package.json` pins an
+explicit `^13.1.5` devDependency because `semantic-release` core still
+bundles the OIDC-unaware `^12.0.2` as its own default.
 
-Trigger **Release reusable packages** with `publish=false` for a CI rehearsal.
-Only rerun with `publish=true` after reviewing that result. The publish step uses
-public access and npm provenance.
+The initial `0.1.0` publish was run manually from a maintainer's machine
+(`pnpm --filter @george43g/robustness publish`) — OIDC trusted publishing
+only takes effect for versions after the package already exists on the
+registry.
 
 The scaffolder must not default to registry mode until a clean external
 `pnpm add @george43g/robustness@0.1.0` consumer passes.

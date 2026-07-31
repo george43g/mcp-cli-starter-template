@@ -12,6 +12,14 @@
 #      / packages you want to publish, then customize `.releaserc.json`
 #      accordingly.
 #
+# Do NOT add `registry-url` to the Setup Node step below. setup-node writes
+# an .npmrc auth line that resolves an unset NODE_AUTH_TOKEN to an empty
+# string, and @semantic-release/npm reads that npmrc (via NPM_CONFIG_USERCONFIG)
+# before checking its own NPM_TOKEN — so the empty/placeholder line wins and
+# publish fails with a 401, even with a correct NPM_TOKEN secret below.
+# @semantic-release/npm writes its own auth line straight from NPM_TOKEN;
+# it needs no help from setup-node.
+#
 # See docs/RELEASE.md for the full flow.
 
 name: Release
@@ -52,7 +60,6 @@ jobs:
         with:
           node-version: "24"
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable

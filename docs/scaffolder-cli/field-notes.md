@@ -99,12 +99,23 @@ are ideas, not commitments; none is scheduled unless promoted into
     calling `@actions/core`'s `getIDToken()` and exchanging it with npm's
     `-/npm/v1/oidc/token/exchange/package/<name>` endpoint) landed in
     `@semantic-release/npm` v13.1.0. `semantic-release` core still bundles
-    `@semantic-release/npm: ^12.0.2` as its own dependency and resolves
-    plugins named in `.releaserc.json` from whatever's installed — since
-    nothing in the repo declared `@semantic-release/npm` explicitly, it
-    silently used the bundled v12. Fix: add an explicit
-    `@semantic-release/npm: ^13.1.5` devDependency next to
-    `semantic-release` in the consuming package. Lesson: when a plugin
-    "should" support a feature, read its actual installed source
+    `@semantic-release/npm: ^12.0.2` as its own dependency. Lesson: when a
+    plugin "should" support a feature, read its actual installed source
     (`node_modules/.pnpm/…`) rather than trusting the version range a
     parent package happens to bundle.
+15. **A devDependency pin does NOT override which plugin version
+    `semantic-release` loads — only a pnpm `overrides` entry does.** The
+    first attempt at fixing #14 added `@semantic-release/npm: ^13.1.5` as an
+    explicit devDependency of `packages/robustness`; the next CI run still
+    loaded v12.0.2 and failed the same way. Root cause: `.releaserc.json`
+    plugin names resolve via Node module resolution from *inside*
+    `semantic-release`'s own installed location, which walks up through
+    `semantic-release`'s own nested `node_modules` and finds its own
+    private `@semantic-release/npm@^12.0.2` dependency there — it never
+    reaches the consuming package's `node_modules`, regardless of what that
+    package explicitly declares. Fix: add
+    `"pnpm": { "overrides": { "@semantic-release/npm": "^13.1.5" } }` to
+    the root `package.json`, which pnpm applies to every resolution of that
+    package in the graph, including nested/transitive ones. Verified via
+    `readlink node_modules/.pnpm/semantic-release@*/node_modules/@semantic-release/npm`
+    pointing at the 13.1.5 store entry before re-pushing.
