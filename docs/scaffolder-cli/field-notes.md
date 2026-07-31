@@ -174,3 +174,19 @@ are ideas, not commitments; none is scheduled unless promoted into
       packages free of `workspace:*` deps, or adopt a pnpm-aware publish
       flow. Documented as a caveat in the generated `docs/RELEASE.md`; a
       full pnpm-aware generated release pipeline is out of scope here.
+19. **Trusted publishing does NOT emit build provenance on its own.**
+    `@semantic-release/npm` v13's README says provenance is "automatically
+    generated" under trusted publishing, and the workflow comment repeated
+    that — but the published `0.1.1` came back with only npm's registry
+    `dist.signatures` (present on every publish) and no `dist.attestations`
+    (the provenance/SLSA bundle). `@semantic-release/npm` runs `npm publish`
+    without `--provenance`, and npm did not auto-enable it. Fix: set
+    `NPM_CONFIG_PROVENANCE=true` in the release step's `env` (equivalent to
+    `npm publish --provenance`; `id-token: write` already supplies the OIDC
+    token npm needs to attest). Deliberately NOT `publishConfig.provenance`
+    in the package — that also fires on local `pnpm publish`, which has no CI
+    OIDC provider and fails with "provenance generation not supported for
+    provider: null" (the field-note 10 footgun). Takes effect on the next
+    release; `0.1.1` itself stays provenance-less (a re-publish of an
+    identical version isn't possible, and a churn bump purely to attach
+    provenance wasn't warranted).

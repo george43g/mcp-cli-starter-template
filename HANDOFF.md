@@ -1,6 +1,6 @@
 # Current Handoff
 
-Last refreshed: 2026-07-29 (Australia/Melbourne)
+Last refreshed: 2026-08-01 (Australia/Melbourne)
 
 This is the front door for a fresh agent. Read
 [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) for the exhaustive history,
@@ -18,7 +18,8 @@ verification matrix, dependency decisions, and deferred work.
 | Remote check | `git fetch --prune` succeeded on 2026-07-29 |
 | Working tree | clean |
 | Push state | none of the three local commits are pushed |
-| Package state | `@george43g/robustness@0.1.0` published to npm on 2026-07-29 (user-run local publish); public-registry consumer smoke passed; baseline tag `robustness-v0.1.0` pushed |
+| Package state | `@george43g/robustness@0.1.1` published to npm on 2026-07-31 via the CI OIDC pipeline (0.1.0 was the earlier user-run local publish); tags `robustness-v0.1.0` + `robustness-v0.1.1`; GitHub release `robustness-v0.1.1` |
+| Release pipeline | `.github/workflows/release-packages.yml` PROVEN end-to-end: full verify matrix → npm OIDC trusted publishing (no `NPM_TOKEN`) → tag + CHANGELOG + GitHub release → `[skip ci]` bump commit (loop-safe, confirmed no re-trigger) |
 | Runtime default | `source`; registry mode is staged but not the default |
 
 On 2026-07-29 the user authorized committing the verified working tree. The
@@ -147,15 +148,25 @@ remaining landing decisions are:
 
 1. Re-read this file, `docs/PROJECT_STATE.md`, `AGENTS.md`, and the findings
    ledger. Confirm `git status --short --branch`.
-2. Push — done 2026-07-29; `main` is in sync with `origin/main` and CI passed.
-3. Publish robustness: first publish from the user's machine via the local
-   npm CLI (`publishConfig.provenance` removed — the release workflow passes
-   `--provenance` explicitly; npm's web auth makes the publish command
-   interactive, so the user runs it in their own terminal). Afterwards the
-   user configures npm OIDC trusted publishing for `release-packages.yml`
-   (no `NPM_TOKEN` secret, ever).
-4. After publication, run a clean external registry consumer before considering
-   `runtime-source=registry` as the default.
+2. Push — `main` is in sync with `origin/main` and CI passed.
+3. Publish robustness — DONE. `0.1.0` was the initial user-run local publish;
+   `0.1.1` published 2026-07-31 via `release-packages.yml` (npm OIDC trusted
+   publishing, no `NPM_TOKEN`). Getting the CI pipeline green took three
+   fixes, all landed: pin `@semantic-release/npm` to v13 via root
+   `pnpm.overrides` (v12 has no OIDC support — see field-notes 14/15); remove
+   `registry-url` from `setup-node` (it shadows OIDC auth — field-note 13);
+   remove the npm `workspaces` field from the root `package.json` (it made
+   `npm version` choke on pnpm `workspace:*` — field-note 18). `0.1.1` carries
+   npm's registry signature but NOT a build-provenance attestation — trusted
+   publishing did not emit provenance on its own (field-note 19), so
+   `NPM_CONFIG_PROVENANCE=true` was added to the release step to request it;
+   that attaches from the NEXT release onward (unverified until then).
+4. Publication done + clean external registry consumer already passed, so
+   flipping `runtime-source=registry` as the fresh-scaffold default is
+   unblocked — but it remains a deliberate, separate decision, not automatic.
+5. Deferred: the *generated* repo's disabled-by-default `release.yml` still
+   can't publish a root/package carrying `workspace:*` deps via plain-npm
+   tooling (field-note 18); a pnpm-aware generated release flow is unbuilt.
 
 ## Safety boundaries
 

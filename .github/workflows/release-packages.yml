@@ -10,9 +10,12 @@
 # semantic-release drives versioning from Conventional Commits touching
 # packages/robustness (semantic-release-monorepo filters commits by package
 # path), writes CHANGELOG.md, commits the version bump back to main with
-# [skip ci], tags robustness-v<version>, publishes to npm (provenance comes
-# with trusted publishing), and creates the GitHub release. The full
-# verification matrix runs first — a red step means no publish.
+# [skip ci], tags robustness-v<version>, publishes to npm with build
+# provenance (NPM_CONFIG_PROVENANCE below — trusted publishing did NOT emit
+# provenance on its own, so it is requested explicitly; the id-token: write
+# permission supplies the OIDC token npm needs to attest), and creates the
+# GitHub release. The full verification matrix runs first — a red step means
+# no publish.
 
 name: Release reusable packages
 
@@ -83,3 +86,9 @@ jobs:
         run: pnpm --filter @george43g/robustness exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Request build provenance at publish time. Kept out of the package's
+          # publishConfig on purpose: publishConfig.provenance:true also fires
+          # on local `pnpm publish`, which has no CI OIDC provider and fails
+          # ("provenance generation not supported for provider: null"). Scoping
+          # it to this CI step keeps local publishes working.
+          NPM_CONFIG_PROVENANCE: "true"
