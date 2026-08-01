@@ -5,16 +5,22 @@
  *   list                            servers×hosts drift grid across detected hosts
  *   import --from <host>            Pull a host's servers into the canonical manifest
  *   apply [--to host|all] [--only]  Push canonical servers to a host (or all)
+ *   sync [--to host|all]            Show a drift plan, then full-reconcile hosts
+ *   add <name> …                    Add/overwrite a server in the canonical manifest
+ *   remove <name> [--to host|all]   Remove from canonical (default) or a host
  *
  * Global flags come from cli-kit's buildProgram (--json / -q / -v / --no-color)
  * plus -c/--config for a non-default manifest path.
  */
 
 import { buildProgram, color, disableColors } from "@george43g/cli-kit";
+import { runAdd } from "./commands/add.js";
 import { runApply } from "./commands/apply.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runImport } from "./commands/import.js";
 import { runList } from "./commands/list.js";
+import { runRemove } from "./commands/remove.js";
+import { runSync } from "./commands/sync.js";
 
 const VERSION = "0.0.0";
 
@@ -73,7 +79,76 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
       });
     });
 
+  program
+    .command("sync")
+    .description("Show a drift plan, then full-reconcile a host (or all detected hosts)")
+    .option("--to <host>", 'Target host id, or "all"', "all")
+    .option("--dry-run", "Preview without writing")
+    .option("-y, --yes", "Skip the confirmation prompt")
+    .action(async (opts: { to?: string; dryRun?: boolean; yes?: boolean }) => {
+      await runSync({ to: opts.to, config: globals().config, dryRun: opts.dryRun, yes: opts.yes });
+    });
+
+  program
+    .command("add <name>")
+    .description("Add or overwrite a server in the canonical manifest")
+    .option("--command <cmd>", "Executable for a stdio server")
+    .option("--arg <value>", "Argument (repeatable)", collect, [])
+    .option("--env <K=V>", "Environment variable (repeatable)", collect, [])
+    .option("--transport <t>", "stdio | http | sse (inferred from --url if omitted)")
+    .option("--url <url>", "URL for an http/sse server")
+    .option("--header <K: V>", "Header (repeatable)", collect, [])
+    .option("--dry-run", "Preview without writing")
+    .action(
+      (
+        name: string,
+        opts: {
+          command?: string;
+          arg: string[];
+          env: string[];
+          transport?: string;
+          url?: string;
+          header: string[];
+          dryRun?: boolean;
+        },
+      ) => {
+        runAdd({
+          name,
+          command: opts.command,
+          args: opts.arg,
+          env: opts.env,
+          transport: opts.transport,
+          url: opts.url,
+          header: opts.header,
+          config: globals().config,
+          dryRun: opts.dryRun,
+        });
+      },
+    );
+
+  program
+    .command("remove <name>")
+    .alias("rm")
+    .description("Remove a server from the canonical manifest, or from a host with --to")
+    .option("--to <host>", 'Remove from this host id, or "all" (leaves canonical untouched)')
+    .option("--dry-run", "Preview without writing")
+    .option("-y, --yes", "Skip the confirmation prompt")
+    .action((name: string, opts: { to?: string; dryRun?: boolean; yes?: boolean }) => {
+      return runRemove({
+        name,
+        to: opts.to,
+        config: globals().config,
+        dryRun: opts.dryRun,
+        yes: opts.yes,
+      });
+    });
+
   await program.parseAsync(argv as string[]);
+}
+
+/** Commander reducer for repeatable options (--arg x --arg y → ["x","y"]). */
+function collect(value: string, previous: string[]): string[] {
+  return [...previous, value];
 }
 
 const isMain = (() => {

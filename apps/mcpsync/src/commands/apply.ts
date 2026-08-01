@@ -1,10 +1,6 @@
-import { homedir } from "node:os";
-import { createInterface } from "node:readline/promises";
-import { isInteractive } from "@george43g/cli-kit";
 import { readCanonical } from "../core/canonical.js";
-import { detectedHosts, HOSTS } from "../core/hosts/index.js";
-import type { HostAdapter } from "../core/hosts/types.js";
 import type { McpServer } from "../core/schema.js";
+import { ensureConfirmed, resolveTargets, writeToHosts } from "./write-hosts.js";
 
 export interface ApplyOpts {
   to?: string | undefined;
@@ -29,28 +25,12 @@ export function selectServers(
     .filter((s) => s.enabled !== false);
 }
 
-function resolveTargets(to: string | undefined): HostAdapter[] {
-  if (!to || to === "all") return detectedHosts();
-  const host = HOSTS[to];
-  return host ? [host] : [];
-}
-
-async function confirm(question: string): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
-  try {
-    const answer = (await rl.question(`${question} [y/N] `)).trim().toLowerCase();
-    return answer === "y" || answer === "yes";
-  } finally {
-    rl.close();
-  }
-}
-
 /**
  * Push canonical servers to one host or all detected hosts.
  *
- * A full apply (no `--only`) prunes: for a marker host, servers previously
- * managed but now absent are removed. An `--only` apply merges (never deletes).
- * Non-dry-run without a TTY refuses unless `--yes` is passed.
+ * A full apply (no `--only`) prunes: previously-managed servers now absent are
+ * removed. An `--only` apply merges (never deletes). Non-dry-run without a TTY
+ * refuses unless `--yes` is passed.
  */
 export async function runApply(opts: ApplyOpts): Promise<void> {
   const canonical = readCanonical(opts.config);
@@ -69,42 +49,12 @@ export async function runApply(opts: ApplyOpts): Promise<void> {
 
   const dryRun = opts.dryRun ?? false;
   const prune = !opts.only?.length;
-  const home = homedir();
+  const proceed = await ensureConfirmed({
+    dryRun,
+    yes: opts.yes ?? false,
+    summary: `Apply ${servers.length} server(s) to ${targets.map((t) => t.label).join(", ")}?`,
+  });
+  if (!proceed) return;
 
-  if (!dryRun && !opts.yes) {
-    if (!isInteractive()) {
-      process.stderr.write(
-        "✗ refusing to mutate host configs without a TTY. Pass --yes to confirm or --dry-run to preview.\n",
-      );
-      process.exitCode = 1;
-      return;
-    }
-    const ok = await confirm(
-      `Apply ${servers.length} server(s) to ${targets.map((t) => t.label).join(", ")}?`,
-    );
-    if (!ok) {
-      process.stdout.write("Aborted.\n");
-      return;
-    }
-  }
-
-  const restarts = new Set<string>();
-  for (const host of targets) {
-    process.stdout.write(`\n▸ ${host.label}${dryRun ? " (dry-run)" : ""}\n`);
-    const result = host.write(servers, { dryRun, prune });
-    const verb = dryRun ? "would write" : result.changed ? "wrote" : "unchanged";
-    const link = result.linkTarget
-      ? `  (via symlink → ${result.linkTarget.replace(home, "~")})`
-      : "";
-    const bak = result.backup ? `  (backup: ${result.backup.replace(home, "~")})` : "";
-    process.stdout.write(
-      `  ${verb} ${servers.length} server(s) → ${host.configPath.replace(home, "~")}${link}${bak}\n`,
-    );
-    if (host.restart && !host.restart.startsWith("Applies")) {
-      restarts.add(`${host.label}: ${host.restart}`);
-    }
-  }
-  if (restarts.size && !dryRun) {
-    process.stdout.write(`\nTo take effect:\n${[...restarts].map((r) => `  • ${r}`).join("\n")}\n`);
-  }
+  writeToHosts(targets, servers, { dryRun, prune });
 }

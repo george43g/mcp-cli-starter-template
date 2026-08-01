@@ -2,7 +2,8 @@
 
 Part of [mcpsync overview](2026-08-mcpsync-overview.md).
 
-**Status:** `pending`.
+**Status:** `complete` (2026-08-02) — all six hosts covered; byte-parity proven
+for codex + opencode against render.js. See the Status log at the bottom.
 
 ## Goal
 
@@ -29,24 +30,56 @@ All 6 hosts covered, plus full reconcile (`sync`) and canonical edits
 - Commands: `sync` (diff across all hosts + confirm), `add <name> …`,
   `remove <name>`.
 
-## Discoveries
+## Discoveries (recorded during the build)
 
-- (record TOML parsing edge cases, opencode schema confirmations, CLI flag syntax:
-  `claude mcp add [-e K=V] -- cmd args` / `--transport http <n> <url>`;
-  `codex mcp add [--env K=V] -- cmd args` / `--url <url>`.)
+- **Codex is a FILE writer, not `codex mcp add`.** The Stage-2 doc originally said
+  "Codex via official mcp add", but writing through the CLI lands outside the
+  dotfiles `# >>> dotfiles-mcp` block (risking duplicate, invalid TOML tables) and
+  diverges from render.js. Codex is implemented as a managed-block file writer
+  ported from render.js — byte-parity confirmed. Deviation, documented here.
+- **`matches` became a host-level method.** Drift equality is host-specific
+  (byte compare for file hosts, lenient field compare for CLI hosts, table compare
+  for codex), so `HostAdapter` gained `matches(canon, raw)` and an optional
+  `willSkip(name)` (codex out-of-block). `diff.ts` consumes both; `list` was
+  refactored onto `diffHost`. `WriteResult` gained `skipped` + `commands`.
+- opencode read/write reverse `${VAR}`↔`{env:VAR}` and use a `command[]` array;
+  key order matches render.js so the byte compare in `matches` is stable.
+- Claude Code flag syntax (from sync.sh): `claude mcp add --scope user [-e K=V] --
+  cmd args` and `--transport <t> <name> <url> --header "K: V"`; remove is
+  `claude mcp remove -s user <name>`. Read fidelity from `~/.claude.json`
+  top-level `mcpServers` (user scope), never `mcp list`.
+- **Live drift caught two real machine divergences** (both correct, not bugs):
+  codex `context7` is defined outside the managed block → `skip`; Claude Code
+  `github` references `${GITHUB_MCP_TOKEN}` while canonical uses `${GH_TOKEN}` →
+  `drift`. mcpsync flags both correctly.
 
 ## Decisions
 
-- CLI-host writes take no backup (the official CLI owns the file). `matches()` on
-  drift compares url/type/headers or command/args/env (port from `sync.sh`).
+- CLI-host writes take no backup (the official CLI owns the file). Codex file
+  writes ARE backed up (generalized-backup invariant, an improvement on render.js
+  which only backed up Desktop). `sync` = a drift-plan preamble + a full-reconcile
+  (`prune`) apply; `apply --only` / `applyServer` stay merge-only.
 
 ## Validation
 
-- vitest: CLI command-string construction; Codex managed-block round-trip preserves
-  out-of-block content; opencode round-trip.
-- Live `mcpsync sync --dry-run` across all 6 hosts; output parity with
-  `~/dotfiles/mcp` (`make mcp-render` / `status.js`).
+- vitest: 37 new tests (65 total) — TOML block parse/splice, codex
+  passthrough/bearer/round-trip + out-of-block skip + merge/prune, Claude Code
+  argv + lenient matches + dry-run reconcile plan (executes nothing), opencode
+  round-trip + key preservation, diff statuses, add/remove.
+- typecheck + build + biome green; root `pnpm lint` (257 files), `check:docs`, and
+  131 scaffolder tests unaffected.
+- **Live parity (read-only / temp copies, no real mutation):** codex managed-block
+  tables and opencode entries **byte-match `~/dotfiles/mcp/render.js`**; `doctor`
+  lists 6 hosts; `list`/`sync --dry-run` render the full grid; `sync` non-TTY
+  without `--yes` refuses; Cursor/Warp writes surface the dotfiles symlink target;
+  no `.bak.*` created on any real config.
 
 ## Recovery / Status log
 
-- (pending)
+- 2026-08-02: **Stage 2 built + verified.** New files: `core/toml.ts`,
+  `core/diff.ts`, `core/hosts/{codex-adapter,cli-adapter,opencode-adapter}.ts`,
+  `commands/{sync,add,remove,write-hosts}.ts`; edits to `types.ts` (+`matches`/
+  `willSkip`/`skipped`/`commands`), `json-adapter.ts` (+`matches`), `hosts/index.ts`
+  (register 3 hosts), `list.ts` (→`diffHost`), `apply.ts` (→shared `write-hosts`),
+  `cli.ts`/`index.ts`. All six hosts live. Next: **Stage 3** — generalized
+  extension `deploy` (from imsg `hot-deploy-ext`).

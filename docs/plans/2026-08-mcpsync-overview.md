@@ -1,38 +1,46 @@
 # ExecPlan: `apps/mcpsync` — cross-host MCP config sync + deploy (overview)
 
-**Status:** `active` — Stage 1 built + verified (2026-08-01); Stages 2–5 pending.
+**Status:** `active` — Stages 1–2 built + verified (2026-08-02); Stages 3–5 pending.
 
 This is the master record for the `mcpsync` work. It is self-contained: a fresh
 agent should be able to read this file plus the current stage doc and resume cold.
 Convention: [plans/README.md](README.md).
 
-## Resume handoff (2026-08-01)
+## Resume handoff (2026-08-02)
 
 **Where we are.** Branch `feat/mcpsync-tool` (stacked on `feat/scaffold-harness-layer`;
-both unpushed, both merge together later). **Stage 1 is BUILT + verified** — see its
-[stage doc](2026-08-mcpsync-1-core-and-file-hosts.md) Status log for the full evidence
-(28 tests, byte-parity with `render.js`, live safety-gate checks). `apps/mcpsync/`
-now holds 22 source files; `dist/` is gitignored.
+both unpushed, both merge together later). **Stages 1–2 are BUILT + verified** — all
+six automatable hosts are live (Claude Code, Codex, Claude Desktop, Cursor, Warp,
+opencode) plus `doctor`/`list`/`import`/`apply`/`sync`/`add`/`remove`. 65 tests;
+codex + opencode + Desktop render byte-identically to `~/dotfiles/mcp/render.js`. See
+the [Stage 1](2026-08-mcpsync-1-core-and-file-hosts.md) and
+[Stage 2](2026-08-mcpsync-2-cli-hosts-and-sync.md) Status logs for the evidence.
+`dist/` is gitignored.
 
 **First thing next session:** `git status --short` (tree should be clean on
-`feat/mcpsync-tool` after the Stage 1 commit); `pnpm install`; sanity `pnpm --filter
-@george43g/mcpsync test`. Then start **Stage 2**.
+`feat/mcpsync-tool` after the Stage 2 commit); `pnpm install`; sanity `pnpm --filter
+@george43g/mcpsync test`. Then start **Stage 3**.
 
-**Next up — Stage 2** ([2-cli-hosts-and-sync](2026-08-mcpsync-2-cli-hosts-and-sync.md)):
-add the CLI hosts (Claude Code, Codex — official `mcp add/remove`, read by parsing
-`~/.claude.json` / the codex TOML managed-block) + opencode (`command[]`/`environment`/
-`{env:VAR}`/`type:local|remote`) + `core/diff.ts` + commands `sync`/`add`/`remove`.
-Port codex managed-block markers (`# >>> dotfiles-mcp` / `# <<< dotfiles-mcp`) and the
-`bearer_token_env_var`/`env_vars` rules **verbatim** from `~/dotfiles/mcp/render.js`;
-opencode shape from `imsg-mcp/scripts/mcpsync.mjs`. Cross-check `sync --dry-run` against
-`render.js --dry-run` for all six hosts.
+**Next up — Stage 3** ([3-deploy](2026-08-mcpsync-3-deploy.md)): generalized Claude
+Desktop extension deploy — `core/deploy.ts` + `deploy <src-dir|.mcpb> [--ext-id]
+[--from <archive>] [--full] [--list] [--dry-run]`, ported/generalized from
+`imsg-mcp/scripts/hot-deploy-ext.mjs`. Locate `~/Library/Application Support/Claude/
+Claude Extensions`, match by `manifest.name`/`--ext-id`, sync `[dist, native,
+manifest.json, icon.png, assets]` (+`node_modules` with `--full`), print a reload
+reminder. Gate behind a dry-run preview; `--list` is read-only.
+
+**Note for Stage 4 (TUI):** switch `apps/mcpsync/tsconfig.json` from `node.json`
+back to `react.json` and add `react`/`ink`/`@george43g/tui-kit`/`@types/react` — they
+were deliberately deferred so Stages 1–3 stay dependency-honest. `@george43g/robustness`
+is declared but unused until the TUI installs its handlers.
 
 **Invariants (do not violate, all stages):** meta-repo-only (no `lib/` mirror, not in
 `LIB_TO_CANONICAL`); adapters take injectable paths; tests never touch real `~`
-configs; dry-run + backup by default; the `prune` merge/full-sync safety lever
-(`applyServer` + `--only` never delete; only a full `apply` prunes marked servers);
-preserve dotfiles conventions for coexistence (codex managed-block, desktop
-`_mcpManagedByDotfiles`). The full contract is below.
+configs; dry-run + backup by default (CLI hosts excepted — the CLI owns the file);
+the `prune` merge/full-sync safety lever (`applyServer` + `--only` never delete; only
+a full `apply`/`sync` prunes managed servers); preserve dotfiles conventions for
+coexistence (codex managed-block, desktop `_mcpManagedByDotfiles`). The full contract
+is below.
 
 ## Goal
 
@@ -148,7 +156,7 @@ managed-block; no per-project scope) · Claude Desktop (file; `$SHELL -lc` wrap 
 | Stage | Doc | Status |
 |---|---|---|
 | 1 — skeleton + core + file hosts | [1-core-and-file-hosts](2026-08-mcpsync-1-core-and-file-hosts.md) | complete |
-| 2 — CLI hosts + opencode + sync | [2-cli-hosts-and-sync](2026-08-mcpsync-2-cli-hosts-and-sync.md) | pending |
+| 2 — CLI hosts + opencode + sync | [2-cli-hosts-and-sync](2026-08-mcpsync-2-cli-hosts-and-sync.md) | complete |
 | 3 — generalized deploy | [3-deploy](2026-08-mcpsync-3-deploy.md) | pending |
 | 4 — Ink TUI grid | [4-tui](2026-08-mcpsync-4-tui.md) | pending |
 | 5 — secrets + project scope | [5-secrets-and-project-scope](2026-08-mcpsync-5-secrets-and-project-scope.md) | pending |
@@ -176,6 +184,11 @@ next stage doc and resumes.
   `~/dotfiles/mcp/render.js`. Deviations (all documented in the stage doc): tsconfig
   `node.json` (React deferred to Stage 4), `vitest.app` preset, `toDirectNative`
   omits empty `args`/`env`, robustness dep declared-but-unused until Stage 4.
+- 2026-08-02: **Stage 2 complete** — Claude Code (CLI), Codex (managed-block file
+  writer, NOT `codex mcp add`), opencode; `sync`/`add`/`remove`; `diff.ts`;
+  host-level `matches`/`willSkip`. 65 tests; codex + opencode byte-match render.js.
+  Live drift correctly flagged real machine divergences (codex context7 out-of-block
+  → skip; Claude Code github `${GITHUB_MCP_TOKEN}` vs canonical `${GH_TOKEN}` → drift).
 
 ## Recovery
 

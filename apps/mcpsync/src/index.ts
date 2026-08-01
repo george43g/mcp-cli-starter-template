@@ -14,6 +14,21 @@ export {
   writeCanonical,
 } from "./core/canonical.js";
 export {
+  diffHost,
+  type HostDiff,
+  type HostDiffEntry,
+  type ServerStatus,
+  STATUS_GLYPH,
+  statusOf,
+} from "./core/diff.js";
+export {
+  buildClaudeAdd,
+  buildClaudeRemove,
+  type CliAdapterConfig,
+  cliAdapter,
+} from "./core/hosts/cli-adapter.js";
+export { codexAdapter, toCodexTable } from "./core/hosts/codex-adapter.js";
+export {
   applyServer,
   detectedHosts,
   HOSTS,
@@ -26,6 +41,7 @@ export {
   toClaudeDesktopServer,
   toDirectNative,
 } from "./core/hosts/json-adapter.js";
+export { opencodeAdapter, toOpencode } from "./core/hosts/opencode-adapter.js";
 export type { HostAdapter, HostCapabilities, WriteResult } from "./core/hosts/types.js";
 export {
   type CanonicalConfig,
@@ -37,3 +53,12 @@ export {
   type Scope,
   type Transport,
 } from "./core/schema.js";
+export {
+  BLOCK_BEGIN,
+  BLOCK_END,
+  extractBlock,
+  namesOutsideBlock,
+  parseManagedTables,
+  type RawCodexTable,
+  spliceBlock,
+} from "./core/toml.js";

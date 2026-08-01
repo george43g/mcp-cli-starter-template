@@ -2,18 +2,30 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { normalize } from "../canonical.js";
 import type { McpServer } from "../schema.js";
+import { cliAdapter } from "./cli-adapter.js";
+import { codexAdapter } from "./codex-adapter.js";
 import { jsonMcpServersAdapter, toClaudeDesktopServer, toDirectNative } from "./json-adapter.js";
+import { opencodeAdapter } from "./opencode-adapter.js";
 import type { HostAdapter, WriteResult } from "./types.js";
 
 const HOME = homedir();
 
 /**
- * The file-merge hosts (Stage 1). CLI hosts (Claude Code, Codex) and opencode
- * land in Stage 2. The Claude Desktop marker key is `_mcpManagedByDotfiles` —
- * the SAME key ~/dotfiles/mcp/render.js uses — so mcpsync and the dotfiles
- * renderer coexist without clobbering each other's managed set.
+ * All six automatable hosts. File-merge hosts (Claude Desktop, Cursor, Warp,
+ * opencode, codex) write config files directly; CLI hosts (Claude Code) shell
+ * out to the official CLI. The Claude Desktop marker key and the codex managed
+ * block use the SAME conventions as ~/dotfiles/mcp — so mcpsync and the dotfiles
+ * renderer coexist without clobbering each other.
  */
 export const HOSTS: Record<string, HostAdapter> = {
+  "claude-code": cliAdapter({
+    id: "claude-code",
+    label: "Claude Code",
+    bin: "claude",
+    readPath: join(HOME, ".claude.json"),
+    restart: "Applies immediately.",
+  }),
+  codex: codexAdapter(join(HOME, ".codex", "config.toml")),
   "claude-desktop": jsonMcpServersAdapter({
     id: "claude-desktop",
     label: "Claude Desktop",
@@ -45,6 +57,7 @@ export const HOSTS: Record<string, HostAdapter> = {
     transform: toDirectNative,
     capabilities: { mechanism: "file", http: true, env: true, project: true },
   }),
+  opencode: opencodeAdapter(join(HOME, ".config", "opencode", "opencode.json")),
 };
 
 export function hostList(): HostAdapter[] {

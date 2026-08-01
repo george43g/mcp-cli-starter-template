@@ -122,6 +122,9 @@ export function jsonMcpServersAdapter(cfg: JsonAdapterConfig): HostAdapter {
     toNative(server: McpServer) {
       return transform(server);
     },
+    matches(canon: McpServer, raw: unknown) {
+      return JSON.stringify(transform(canon)) === JSON.stringify(raw);
+    },
     write(servers, opts = {}) {
       const { dryRun = false, prune = false } = opts;
       const doc = readRawJson(configPath);

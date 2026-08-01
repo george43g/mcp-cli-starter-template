@@ -22,6 +22,10 @@ export interface WriteResult {
   changed: boolean;
   /** The config path that would be / was written. */
   path?: string;
+  /** Server names intentionally not written (e.g. codex servers defined outside the managed block). */
+  skipped?: string[];
+  /** For CLI hosts: the commands that were / would be run, for display. */
+  commands?: string[];
 }
 
 /**
@@ -43,6 +47,17 @@ export interface HostAdapter {
   read(): McpServer[];
   /** Convert a canonical server into this host's native shape. */
   toNative(server: McpServer): unknown;
+  /**
+   * Whether a canonical server matches what is currently stored for it on the
+   * host (drift check). Per-host because equality is host-specific: a byte
+   * compare for file hosts, a field compare for CLI hosts.
+   */
+  matches(canon: McpServer, raw: unknown): boolean;
+  /**
+   * Optional: whether the host will intentionally NOT manage this server (e.g. a
+   * codex server defined outside the managed block). Absent ⇒ never skips.
+   */
+  willSkip?(name: string): boolean;
   /** Write servers into the host config. See json-adapter for `prune` semantics. */
   write(servers: McpServer[], opts?: { dryRun?: boolean; prune?: boolean }): WriteResult;
   /** Remove a server by name. */
