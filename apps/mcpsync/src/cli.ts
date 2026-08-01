@@ -9,12 +9,13 @@
  *   add <name> …                    Add/overwrite a server in the canonical manifest
  *   remove <name> [--to host|all]   Remove from canonical (default) or a host
  *   deploy [source] …               Hot-deploy a built extension into Claude Desktop
+ *   tui                             Interactive servers×hosts drift grid (TTY only)
  *
  * Global flags come from cli-kit's buildProgram (--json / -q / -v / --no-color)
  * plus -c/--config for a non-default manifest path.
  */
 
-import { buildProgram, color, disableColors } from "@george43g/cli-kit";
+import { buildProgram, color, disableColors, isInteractive } from "@george43g/cli-kit";
 import { runAdd } from "./commands/add.js";
 import { runApply } from "./commands/apply.js";
 import { runDeploy } from "./commands/deploy.js";
@@ -178,6 +179,20 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
         });
       },
     );
+
+  program
+    .command("tui")
+    .description("Launch the interactive servers×hosts drift grid (TTY only)")
+    .action(async () => {
+      if (!isInteractive()) {
+        process.stderr.write(
+          `${color.yellow("Refusing to launch TUI: stdin or stdout is not a TTY.")}\n`,
+        );
+        process.exit(1);
+      }
+      const { runTui } = await import("./tui/index.js");
+      await runTui(globals().config);
+    });
 
   await program.parseAsync(argv as string[]);
 }

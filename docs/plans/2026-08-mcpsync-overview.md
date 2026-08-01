@@ -1,6 +1,6 @@
 # ExecPlan: `apps/mcpsync` — cross-host MCP config sync + deploy (overview)
 
-**Status:** `active` — Stages 1–3 built + verified (2026-08-02); Stages 4–5 pending.
+**Status:** `active` — Stages 1–4 built + verified (2026-08-02); Stage 5 pending.
 
 This is the master record for the `mcpsync` work. It is self-contained: a fresh
 agent should be able to read this file plus the current stage doc and resume cold.
@@ -9,33 +9,38 @@ Convention: [plans/README.md](README.md).
 ## Resume handoff (2026-08-02)
 
 **Where we are.** Branch `feat/mcpsync-tool` (stacked on `feat/scaffold-harness-layer`;
-both unpushed, both merge together later). **Stages 1–3 are BUILT + verified** — all
+both unpushed, both merge together later). **Stages 1–4 are BUILT + verified** — all
 six automatable hosts are live (Claude Code, Codex, Claude Desktop, Cursor, Warp,
-opencode) plus `doctor`/`list`/`import`/`apply`/`sync`/`add`/`remove`/`deploy`. 86
-tests; codex + opencode + Desktop render byte-identically to `~/dotfiles/mcp/render.js`.
-See the [Stage 1](2026-08-mcpsync-1-core-and-file-hosts.md),
-[Stage 2](2026-08-mcpsync-2-cli-hosts-and-sync.md), and
-[Stage 3](2026-08-mcpsync-3-deploy.md) Status logs for the evidence. `dist/` is
-gitignored.
+opencode) plus `doctor`/`list`/`import`/`apply`/`sync`/`add`/`remove`/`deploy` and the
+`tui` grid. 99 tests; codex + opencode + Desktop render byte-identically to
+`~/dotfiles/mcp/render.js`; the TUI grid is byte-identical to `list`. See the
+[Stage 1](2026-08-mcpsync-1-core-and-file-hosts.md),
+[Stage 2](2026-08-mcpsync-2-cli-hosts-and-sync.md),
+[Stage 3](2026-08-mcpsync-3-deploy.md), and [Stage 4](2026-08-mcpsync-4-tui.md)
+Status logs for the evidence. `dist/` is gitignored.
 
 **First thing next session:** `git status --short` (tree should be clean on
-`feat/mcpsync-tool` after the Stage 3 commit); `pnpm install`; sanity `pnpm --filter
-@george43g/mcpsync test`. Then start **Stage 4**.
+`feat/mcpsync-tool` after the Stage 4 commit); `pnpm install`; sanity `pnpm --filter
+@george43g/mcpsync test`. Then start **Stage 5**.
 
-**Next up — Stage 4 (Ink TUI)** ([4-tui](2026-08-mcpsync-4-tui.md)): a servers×hosts
-grid. **Before writing any TUI code:** switch `apps/mcpsync/tsconfig.json` from
-`node.json` back to `react.json` and add `react`/`ink`/`@george43g/tui-kit`/
-`@types/react` — they were deliberately deferred so Stages 1–3 stay dependency-honest.
-`@george43g/robustness` is declared but unused until the TUI installs its handlers.
-Reuse `renderFullScreen`/`ThemeProvider`/`useVimKeys`/`StatusBar` from tui-kit; guard
-`mcpsync tui` behind `isInteractive()` and lazy-import it.
+**Next up — Stage 5 (secrets + project scope)**
+([5-secrets-and-project-scope](2026-08-mcpsync-5-secrets-and-project-scope.md)):
+`core/secrets.ts` — an optional `~/.mcpsync/credentials.json` @`0600` (dir `0700`),
+merged at apply time with `${VAR}` still preserved verbatim, ported from imsg's
+`src/app-config.ts` (unconditional `chmodSync`, read-never-throws). Then `doctor`
+flags any inlined plaintext secrets (port the scanner from dotfiles `status.js`), and
+`--scope project` targets repo `.mcp.json` / `.cursor/mcp.json` / `.warp/.mcp.json`
+(the dotfiles per-repo model). Assert `0600` in tests; project-scope apply writes repo
+files; keys never appear in host configs.
 
-Stage 3 is done: `core/deploy.ts` + `deploy [source] [--ext-id] [--from] [--full]
-[--list] [--dry-run] [--yes]` — locate `~/Library/Application Support/Claude/Claude
-Extensions`, match by `manifest.name`/`--ext-id`, replace `[dist, native,
-manifest.json, icon.png, assets]` (+`node_modules` with `--full`) via rm+cp, reload
-reminder. `--list` read-only; the rm+cp is gated behind a dry-run preview + TTY/`--yes`
-confirm (non-TTY refuses).
+Stage 4 is done: `tui` command → `renderFullScreen(<ThemeProvider><App/></…>)`; a
+servers×hosts grid (rows = canonical ∪ host-only servers, cols = detected hosts, cells
+= drift-status glyphs). Nav j/k/h/l + gg/G + ^d/^u; `a`/`A` apply current server to the
+focused host / all hosts through the same `applyServer` merge path as the CLI, gated by
+an in-TUI y/n confirm; `r` reloads; `q` quits. The grid model (`src/tui/model.ts`) is a
+pure, React-free, I/O-free seam unit-tested against stub adapters (13 tests); the only
+disk I/O is in `useHostMatrix`. `mcpsync tui` is guarded by `isInteractive()` and
+lazy-imported, so ink/react never load on plain CLI paths.
 
 **Invariants (do not violate, all stages):** meta-repo-only (no `lib/` mirror, not in
 `LIB_TO_CANONICAL`); adapters take injectable paths; tests never touch real `~`
@@ -161,7 +166,7 @@ managed-block; no per-project scope) · Claude Desktop (file; `$SHELL -lc` wrap 
 | 1 — skeleton + core + file hosts | [1-core-and-file-hosts](2026-08-mcpsync-1-core-and-file-hosts.md) | complete |
 | 2 — CLI hosts + opencode + sync | [2-cli-hosts-and-sync](2026-08-mcpsync-2-cli-hosts-and-sync.md) | complete |
 | 3 — generalized deploy | [3-deploy](2026-08-mcpsync-3-deploy.md) | complete |
-| 4 — Ink TUI grid | [4-tui](2026-08-mcpsync-4-tui.md) | pending |
+| 4 — Ink TUI grid | [4-tui](2026-08-mcpsync-4-tui.md) | complete |
 | 5 — secrets + project scope | [5-secrets-and-project-scope](2026-08-mcpsync-5-secrets-and-project-scope.md) | pending |
 
 ## Cross-cutting validation (every stage)
@@ -202,6 +207,18 @@ next stage doc and resumes.
   `--list` enumerated 8 installed extensions; `--dry-run` matched imsg by name and
   computed the plan; non-TTY without `--yes` refused a real matching target (mtime
   unchanged). `ensureConfirmed` gained an optional `refusal` message.
+- 2026-08-02: **Stage 4 complete** — `tui` command + Ink servers×hosts grid. 99 tests
+  (+13). tsconfig flipped `node.json` → `react.json`; added `react`/`ink`/
+  `fullscreen-ink`/`@george43g/tui-kit` (+ `@types/react`), so `@george43g/robustness`
+  is finally used (by `runTui`). Key decisions (documented in the stage doc): the grid
+  model (`src/tui/model.ts` — `buildMatrix`/`statusTone`/`cellText`/`clampIndex`) is a
+  pure, React-free seam reusing `diffHost`, so the TUI and CLI `list` can't diverge and
+  it tests against the same stub adapters; the only disk I/O is `useHostMatrix`. Apply
+  routes through the CLI's `applyServer` merge path, gated by an in-TUI y/n confirm
+  (the confirm IS the `--yes` equivalent); host-only servers refuse to apply. Deferred:
+  per-cell env/args editing + `useMouse`. Live: non-TTY guard refuses (exit 1); a PTY
+  render smoke (read-only, only `q` sent) drew the full grid byte-identical to `list`
+  and exited cleanly.
 
 ## Recovery
 

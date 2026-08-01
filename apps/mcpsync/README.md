@@ -11,8 +11,8 @@ the machine, with per-host fidelity, dry-run previews, and timestamped backups.
 
 ## Status
 
-**Stages 1–3** — canonical core + all six automatable hosts + full reconcile +
-Claude Desktop extension `deploy`:
+**Stages 1–4** — canonical core + all six automatable hosts + full reconcile +
+Claude Desktop extension `deploy` + an interactive `tui` grid:
 
 | Host | Mechanism | Config | Notes |
 |---|---|---|---|
@@ -23,7 +23,7 @@ Claude Desktop extension `deploy`:
 | Warp | file | `~/.warp/.mcp.json` | direct merge, symlink-aware |
 | opencode | file | `~/.config/opencode/opencode.json` | outlier shape: `mcp` key, `command[]`, `environment`, `type:local\|remote`, `${VAR}`→`{env:VAR}` |
 
-An Ink TUI and a secrets store land in later stages.
+A secrets store + project scope land in the last stage.
 
 ## Commands
 
@@ -36,7 +36,17 @@ mcpsync sync  [--to <host>|all] [--dry-run] [--yes]   # drift plan, then full-re
 mcpsync add <name> --command <cmd> [--arg x]… [--env K=V]… | --url <url> [--header "K: V"]…
 mcpsync remove <name> [--to <host>|all]              # canonical by default; --to targets a host
 mcpsync deploy [source] [--ext-id <id>] [--from <archive>] [--full] [--list] [--dry-run] [--yes]
+mcpsync tui                          # interactive servers×hosts grid (TTY only)
 ```
+
+`tui` opens the same servers×hosts drift grid as `list`, interactively: rows are
+servers, columns are detected hosts, cells are the drift-status glyphs. Navigate with
+`j/k` (server) and `h/l` (host) — plus `gg`/`G` and `^d`/`^u`; press `a` to apply the
+current server to the focused host or `A` to apply it to all hosts (both ask for a
+`y/n` confirm first — the same gate as the CLI's `--yes`); `r` re-reads from disk; `q`
+quits. Applies route through the same `applyServer` merge path as the CLI, so the TUI
+and CLI never disagree. It refuses to launch when stdin/stdout isn't a TTY. Theme via
+`MCPSYNC_TUI_THEME` (`safe`|`powerline`) and `MCPSYNC_TUI_ACCENT` (hex).
 
 `deploy` hot-installs a built MCP extension into Claude Desktop — no GUI reinstall.
 `source` is a built extension dir (with `manifest.json` + `dist/`) or a packed

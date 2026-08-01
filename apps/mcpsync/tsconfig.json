@@ -1,5 +1,5 @@
 {
-  "extends": "@george43g/tsconfig/node.json",
+  "extends": "@george43g/tsconfig/react.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": ".",
