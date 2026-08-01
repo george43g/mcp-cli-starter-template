@@ -3,7 +3,8 @@
 Part of [mcpsync overview](2026-08-mcpsync-overview.md) (read it first for the
 Locked Contract, prior-art sources, and safety invariants).
 
-**Status:** `active` (2026-08-01).
+**Status:** `complete` (2026-08-01) — built, verified, and parity-proven against
+`~/dotfiles/mcp/render.js`. See the Status log at the bottom.
 
 ## Goal
 
@@ -37,13 +38,25 @@ unit-tested. This slice already subsumes the "register mcpServers" hot-reload ne
   [--only a,b] [--dry-run]`.
 - `src/index.ts` — exports `applyServer`, `HOSTS`, `readCanonical`, schema.
 
-## Discoveries (fill in as you port)
+## Discoveries (recorded during the build)
 
-- Port desktop `$SHELL -lc` wrapping + `shdq()` POSIX quoting + `mcp-remote` bridge
-  verbatim from `~/dotfiles/mcp/render.js`.
-- Port key-preserving `readJson`/`writeJson` + symlink handling
-  (`lstatSync`/`realpathSync`) from `imsg-mcp/scripts/mcpsync.mjs`.
-- (record any format surprises here)
+- Ported the desktop `$SHELL -lc` wrap + `shdq()` + `mcp-remote` bridge and the
+  key-preserving/symlink-aware writes verbatim. **Fidelity confirmed:** rendering
+  each of the 7 live canonical servers through `HOSTS["claude-desktop"].toNative`
+  byte-matches `render.js --dry-run`, and the `_mcpManagedByDotfiles` marker array
+  matches — mcpsync and the dotfiles renderer produce identical Desktop output, so
+  they coexist safely (parity script in the Status log).
+- `render.js` quotes `exec` too (it maps `shdq` over `["exec", …]`), so the
+  faithful output is `"exec" "node" …`, not `exec "node" …`. Quoting a bareword is
+  a shell no-op; kept verbatim for byte-parity. (My first test expectations were
+  wrong here; the impl was right.)
+- **Empty-args drift:** the direct (Cursor/Warp) transform must OMIT empty `args`
+  (and empty `env`). imsg always wrote `args: []`, but the canonical/on-disk terse
+  form omits it (Cursor is symlinked to canonical here), so a bare `args: []` read
+  as spurious `drift` in `list`. Omitting it clears the false drift and keeps the
+  native shape identical to canonical. Refinement over imsg — see `toDirectNative`.
+- macOS `realpathSync` resolves `/var/...` → `/private/var/...`; symlink assertions
+  compare against `realpathSync(real)`, not the raw temp path.
 
 ## Decisions
 
@@ -136,3 +149,26 @@ later stages.
 
 - 2026-08-01: stage opened; design fully worked out (above); NO files written (empty dirs
   only). Session paused. Resume = implement the refined design + verify + commit.
+- 2026-08-01 (resumed): **Stage 1 built and verified.** 22 source files under
+  `apps/mcpsync/` (skeleton + `core/{schema,shell-quote,backup,canonical}` +
+  `core/hosts/{types,json-adapter,index}` + `commands/{doctor,list,import,apply}` +
+  `cli.ts`/`index.ts` + 4 test files + README). Green: `typecheck`, 28 vitest tests
+  (tmp fixtures only), `build` (dist/{index,cli}.js), `biome check` (0 warnings).
+  Cross-cutting: root `pnpm lint` (242 files), `pnpm check:docs`, and all 131
+  scaffolder tests (golden drift guard) pass — mcpsync has zero footprint on the
+  generated surface (no `lib/` mirror, not in `LIB_TO_CANONICAL`).
+  - **Live, read-only:** `doctor` + `list` render correctly; `list` correctly flags
+    `imsg-mcp` as `extra` (unmanaged sibling to preserve) and shows all
+    canonical↔cursor/warp servers `✓` after the empty-args fix.
+  - **Parity proof:** all 7 live canonical servers render byte-identically to
+    `node ~/dotfiles/mcp/render.js --dry-run` for Claude Desktop, marker included.
+  - **Safety gates verified live (no mutations):** `apply --dry-run` previews only;
+    `apply` piped/non-TTY without `--yes` refuses (exit 1); unknown `--to` errors
+    (exit 1); no `.bak.*` files were created anywhere.
+  - **Deviations from the refined design** (all deliberate, all documented):
+    tsconfig extends `node.json` not `react.json` (no React until the Stage 4 TUI —
+    keeps deps honest); `vitest.config` uses the `vitest.app` preset (correct for an
+    app) not `vitest.shared`; `toDirectNative` omits empty `args`/`env` (see
+    Discoveries); `@george43g/robustness` declared as a dep but unused until Stage 4.
+  - Next: **Stage 2** — CLI hosts (Claude Code, Codex) + opencode + `sync`/`add`/
+    `remove`. Switch tsconfig to `react.json` + add react/ink/tui-kit at Stage 4.
