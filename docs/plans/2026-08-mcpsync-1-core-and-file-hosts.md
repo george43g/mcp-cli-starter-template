@@ -69,6 +69,70 @@ If partial: the Status log below records the last completed file. Nothing mutate
 real configs unless a non-dry-run `apply` was run (backed up). Re-run build+test to
 re-establish the baseline.
 
+## Refined design (worked out by the Stage 1 build agent, 2026-08-01 — follow this)
+
+No source files were written (only empty dirs, untracked). These decisions are
+ready to implement:
+
+**Env/toolchain:** `packages/{cli-kit,robustness}/dist` already exist ⇒ typecheck
+resolves without a prior build. `tsconfig` base has `verbatimModuleSyntax` (use
+`import type`), `exactOptionalPropertyTypes` (never assign `undefined` to optional
+props — use conditional key assignment/spreads), `noUncheckedIndexedAccess`, NodeNext
+(`.js` extensions on relative imports). vitest: `import shared from
+"@george43g/vitest-config/vitest.shared"; export default shared;`. vite.config = copy
+example-repo-mcp exactly (entries `index`+`cli`, externals builtins+`/^@george43g\//`+
+`commander`+`zod`, banner shebang on `cli` only). cli-kit values: `color`,
+`disableColors`, `printAuto`, `printTable<T>(items,{head:string[],rows:(i)=>(string|number)[]})`,
+`printJson`, `resolveOutputMode({json?})` (→"json" when --json/non-TTY/CI), `isInteractive`.
+
+- **schema.ts**: `McpServerEntrySchema` (transport default "stdio"; command/args/env/url/
+  headers/cwd optional; enabled default true; scope default "user"); `McpServerSchema =
+  entry.extend({name})`; `CanonicalConfigSchema = {mcpServers: z.record(entry).default({})}`.
+- **normalize(hostShape,name)**: conditional key assignment (no undefined) then parse.
+  Transport: explicit `transport`, else `type==="sse"`→sse, else `type==="http"||url`→http,
+  else stdio. env falls back to `environment`.
+- **canonical.ts**: `readRawJson` (zero-throw→`{}`), `readCanonical()`, `writeCanonical(servers,
+  path,{dryRun}):{backup,changed}` — **backup before overwrite**, key-preserving; a
+  `toCanonicalEntry()` that STRIPS defaults (stdio/enabled=true/user) + empties so canonical
+  stays `${VAR}`-clean and round-trips.
+- **shell-quote.ts**: `shdq(s:string)` verbatim (`"${String(s).replace(/([\\"`])/g,"\\$1")}"`),
+  `$` left active, "controlled manifest values only" comment.
+- **json-adapter.ts** factory `jsonMcpServersAdapter({id,label,configPath,restart,transform,
+  marker?,capabilities})`. **`prune` is the key safety lever:** `write(servers,{dryRun?,prune?})`
+  — default `prune:false` = safe MERGE (add/update, never delete; marker = union(prev,names));
+  `prune:true` = full-sync = render.js `renderClaudeDesktop` (delete prev-marked-now-absent;
+  marker = names). Non-marker hosts never delete on write. `applyServer` + `apply --only` use
+  `prune:false`; full `apply` (no `--only`) uses `prune:true`. `changed` via stringify
+  before/after; backup+write only when changed & !dryRun. Symlink-aware (`lstatSync`/
+  `realpathSync`→`linkTarget` set conditionally); write-through is automatic.
+- **transforms**: `toClaudeDesktopServer` verbatim ($SHELL -lc + `exec` + shdq tokens; env
+  `K=shdq(v)` prefix; http→`exec npx -y mcp-remote <url> --header "k: v"`); `loginShell()`
+  helper reads `process.env.SHELL||"/bin/zsh"` at CALL time (deviation from render.js
+  load-time const, for testability). `toDirectNative` (cursor/warp): stdio→`{command,args,env?}`,
+  http/sse→`{type,url,headers?}`, `${VAR}` verbatim.
+- **hosts/index.ts**: 3 adapters (claude-desktop `marker:"_mcpManagedByDotfiles"` +
+  toClaudeDesktopServer; cursor `~/.cursor/mcp.json`; warp `~/.warp/.mcp.json` — both
+  toDirectNative). Export `HOSTS`, `hostList()`, `detectedHosts()` (`.detect()` = configPath
+  or parent dir exists).
+- **commands**: doctor (printAuto table: host/detected/validity/restart); list (native-level
+  drift: `host.toNative(canonical[name])` vs `host.readRaw()[name]`; cells `·`/`✓`/`drift`/
+  `extra`/`off`; `--json`); import `--from` (merge→writeCanonical; NOTE: import from
+  claude-desktop is lossy — $SHELL-wrapped — document, matches imsg); apply
+  `--to`/`--only`/`--dry-run`/`--yes` (dry-run prints plan; non-dry-run + !isInteractive +
+  !--yes → refuse+print+exit1; interactive → readline y/N).
+- **index.ts** exports: schema, readCanonical/writeCanonical/normalize, backup, shdq,
+  HOSTS/hostList/detectedHosts, factory+transforms, types, `applyServer(hostId,server,
+  {dryRun}?)` (hostId "all"→detectedHosts; always `prune:false`; returns Record<hostId,WriteResult>).
+- **cli.ts**: mirror example-repo-mcp; name `mcpsync`; global `--json`/`-q`/`-v`/`--no-color`/
+  `-c,--config <path>`; preAction `disableColors()` when `--no-color`.
+
+**Deviations to note:** `detectedHosts()` (not literal `detect()` module helper); `prune`
+option (safe-merge default protects `applyServer`/`--only` from deleting desktop siblings;
+full `apply` gets exact render.js semantics via `prune:true`); `loginShell()` call-time read;
+`import --from claude-desktop` lossy; `@george43g/robustness` dep declared but unused until
+later stages.
+
 ## Status log
 
-- 2026-08-01: stage opened.
+- 2026-08-01: stage opened; design fully worked out (above); NO files written (empty dirs
+  only). Session paused. Resume = implement the refined design + verify + commit.
