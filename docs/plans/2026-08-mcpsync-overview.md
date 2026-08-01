@@ -1,10 +1,45 @@
 # ExecPlan: `apps/mcpsync` — cross-host MCP config sync + deploy (overview)
 
-**Status:** `active` — Stage 1 in progress (2026-08-01).
+**Status:** `active` — Stage 1 NOT yet built at last pause (2026-08-01).
 
 This is the master record for the `mcpsync` work. It is self-contained: a fresh
 agent should be able to read this file plus the current stage doc and resume cold.
 Convention: [plans/README.md](README.md).
+
+## ⏸ Pause handoff (2026-08-01)
+
+**Where we are.** Branch `feat/mcpsync-tool` (stacked on `feat/scaffold-harness-layer`;
+both unpushed, both merge together later). Committed: `9f7f44c` (this doc set) and
+`01d7c42` (the harness-layer feature — fully verified). **`apps/mcpsync/` does NOT
+exist yet** — Stage 1 had been delegated to a background build agent that had not
+landed any files as of the pause (working tree was clean). 
+
+**First thing next session:** run `git status --short` and `ls apps/mcpsync`. If a
+partial `apps/mcpsync/` is present (a background agent may have written files after
+the pause snapshot), do NOT trust it — verify against
+[Stage 1 doc](2026-08-mcpsync-1-core-and-file-hosts.md) or `git clean`/discard and
+rebuild. Nothing was committed beyond `9f7f44c`, so discarding uncommitted
+`apps/mcpsync` is safe.
+
+**To resume Stage 1** (see [1-core-and-file-hosts](2026-08-mcpsync-1-core-and-file-hosts.md)):
+build `apps/mcpsync` (skeleton + `core/{schema,canonical,backup,shell-quote}` +
+`core/hosts/{types,index,json-adapter}` for Claude Desktop/Cursor/Warp + commands
+`doctor`/`list`/`import`/`apply` + vitest on tmp fixtures). Port fidelity **verbatim**
+from `/Users/george/dotfiles/mcp/render.js` (the `shdq` POSIX quoting, `$SHELL -lc`
+wrap, `npx mcp-remote` http bridge, `_mcpManagedByDotfiles` preserve/delete, timestamped
+backup) and core structure from `/Users/george/repos/imsg-mcp/scripts/mcpsync.mjs`
+(key-preserving `readJson`/`writeJson`, symlink-aware writes). Skeleton mirrors
+`apps/example-repo-mcp/{package.json,tsconfig.json,vite.config.ts,src/cli.ts}`.
+**Verify before committing:** `pnpm install`; `pnpm --filter @george43g/mcpsync
+{typecheck,test,build}`; root `pnpm lint`; `node apps/mcpsync/dist/cli.js doctor`
+(read-only); and the key parity check — `mcpsync apply --to claude-desktop --dry-run`
+output must match `~/dotfiles/mcp/render.js --dry-run` (fidelity proof). Then commit,
+set this stage's status `complete`, update the stage index below.
+
+**Invariants (do not violate):** meta-repo-only (no `lib/` mirror, not in
+`LIB_TO_CANONICAL`); adapters take injectable paths; tests never touch real `~`
+configs; dry-run + backup by default; preserve dotfiles conventions for coexistence.
+The full contract + safety invariants are in this doc below.
 
 ## Goal
 
