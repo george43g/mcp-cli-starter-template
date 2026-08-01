@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -6,6 +6,7 @@ import {
   normalize,
   readCanonical,
   readRawJson,
+  readRawJsonStrict,
   toCanonicalEntry,
   writeCanonical,
 } from "../src/core/canonical.js";
@@ -97,5 +98,33 @@ describe("readCanonical / writeCanonical", () => {
   it("does not write on a dry run", () => {
     writeCanonical({ srv: normalize({ command: "node" }, "srv") }, path, { dryRun: true });
     expect(existsSync(path)).toBe(false);
+  });
+});
+
+describe("readRawJsonStrict (write-path reads)", () => {
+  it("returns {} for a missing or empty file (fresh start)", () => {
+    expect(readRawJsonStrict(join(dir, "nope.json"))).toEqual({});
+    writeFileSync(path, "  \n");
+    expect(readRawJsonStrict(path)).toEqual({});
+  });
+
+  it("throws on corrupt JSON instead of silently returning {}", () => {
+    writeFileSync(path, "{ not json");
+    expect(() => readRawJsonStrict(path)).toThrow(/refusing to overwrite/);
+    // …while the read-path helper stays lenient:
+    expect(readRawJson(path)).toEqual({});
+  });
+
+  it("throws on a non-object document", () => {
+    writeFileSync(path, "[1,2]");
+    expect(() => readRawJsonStrict(path)).toThrow(/not a JSON object/);
+  });
+
+  it("writeCanonical refuses a corrupt file (no silent key discard, file untouched)", () => {
+    writeFileSync(path, "{ corrupt");
+    expect(() => writeCanonical({ srv: normalize({ command: "node" }, "srv") }, path)).toThrow(
+      /refusing to overwrite/,
+    );
+    expect(readFileSync(path, "utf8")).toBe("{ corrupt"); // byte-untouched
   });
 });

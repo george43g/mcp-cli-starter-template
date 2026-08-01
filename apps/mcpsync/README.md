@@ -62,11 +62,16 @@ deploy, reload the extension in Claude Desktop (toggle off/on, or Quit + reopen)
 `secret set` reads the value from stdin (so it never lands in shell history or the
 process table; `--value` is the explicit escape hatch), `secret list` shows only
 server + key names, never values. The vault is **never inlined into a host config**:
-`${VAR}` placeholders stay verbatim everywhere. Its only jobs are getting a secret out
-of the shell env into a `0600` file and powering `doctor`'s reachability report — which
+`${VAR}` placeholders stay verbatim everywhere. Its jobs are getting a secret out of
+the shell env into a `0600` file, powering `doctor`'s reachability report — which
 tells you, per `${VAR}` your servers reference, whether it resolves from the vault, the
-shell env, or is `UNRESOLVED`. `doctor` also scans detected host configs for inlined
-plaintext secrets and warns (redacted — never the value).
+shell env, or is `UNRESOLVED` — and backing the library's `resolveServerEnv()` (the
+concrete launch env for a server, vault-first, in memory only). `doctor` also scans the
+canonical manifest and every detected host config for inlined plaintext secrets and
+warns (redacted — never the value); for codex it scans the whole `config.toml`,
+including tables **outside** the managed block, where such leaks actually live. It
+additionally reports symlinked config chains, codex servers defined outside the
+managed block, and a missing Claude Desktop managed-set marker.
 
 `--scope project` (on `apply`/`sync`) targets the **repo-local** config set instead of
 your `~` files: canonical `<cwd>/.mcp.json` → `<cwd>/.cursor/mcp.json` +
@@ -107,10 +112,14 @@ codex server defined outside the managed block).
 ## Library
 
 ```ts
-import { applyServer, readCanonical, HOSTS } from "@george43g/mcpsync";
+import { applyServer, readCanonical, resolveServerEnv, HOSTS } from "@george43g/mcpsync";
 
 const servers = readCanonical();                 // name → McpServer
 applyServer("claude-desktop", servers.github);   // safe merge, backs up first
+
+// Launching a server yourself? Materialize its ${VAR}s (vault-first, then
+// process env) — in memory only, never written to a config:
+spawn(cmd, args, { env: { ...process.env, ...resolveServerEnv(servers.github) } });
 ```
 
 ## Develop

@@ -2,11 +2,17 @@
  * Redacted plaintext-secret scanner. Flags string values that look like a real
  * secret and are NOT a `${VAR}` / `{env:VAR}` placeholder. NEVER prints the
  * value — a hit reports only its location. Ported from `~/dotfiles/mcp/status.js`
- * (the guards there encode hard-won false-positive lessons), but it walks each
- * host adapter's `readRaw()` map instead of re-parsing config files — so it and
- * the sync path read hosts exactly one way.
+ * (the guards there encode hard-won false-positive lessons). JSON hosts are
+ * walked via the adapter's `readRaw()` map — one read path for sync and scan.
+ *
+ * codex is the exception: its `readRaw()` parses only the MANAGED block, but the
+ * real-world leak this scanner exists for (a context7 `--api-key` literal) lives
+ * in a table OUTSIDE the block. So codex is scanned from the raw file text —
+ * every `[mcp_servers.<name>]` table, managed and legacy alike — exactly like
+ * status.js does.
  */
 
+import { existsSync, readFileSync } from "node:fs";
 import type { HostAdapter } from "./hosts/types.js";
 
 const SECRET_HINT = /(key|token|secret|authorization|password|bearer|api[_-]?key)/i;
@@ -89,14 +95,51 @@ export function scanHostSecrets(hostLabel: string, servers: Record<string, unkno
   return out;
 }
 
+/**
+ * Scan a codex config.toml's `[mcp_servers.<name>]` tables — managed AND
+ * outside the managed block — for inlined literals: args values (flag-preceded
+ * or known-shape) plus every scalar string field. Pure over the file text.
+ */
+export function scanCodexText(text: string, hostLabel = "codex"): string[] {
+  const out: string[] = [];
+  const heads = [...text.matchAll(/^\[mcp_servers\.([A-Za-z0-9_-]+)\]/gm)];
+  for (const head of heads) {
+    const name = head[1] as string;
+    const rest = text.slice((head.index ?? 0) + head[0].length);
+    const next = rest.search(/^\[/m);
+    const body = next === -1 ? rest : rest.slice(0, next);
+    const argsMatch = body.match(/^\s*args\s*=\s*\[([^\]]*)\]/m);
+    if (argsMatch) {
+      const arr = [...(argsMatch[1] ?? "").matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(
+        (m) => m[1] as string,
+      );
+      scanArgs(arr, `${hostLabel}:${name}`, out, ["args"]);
+    }
+    for (const f of body.matchAll(/^\s*([A-Za-z0-9_]+)\s*=\s*"([^"]*)"/gm)) {
+      if (looksSecret(f[1] as string, f[2])) {
+        out.push(`${hostLabel}:${name}: literal secret in ${f[1]} (redacted) — use \${VAR}`);
+      }
+    }
+  }
+  return out;
+}
+
 export interface HostSecretReport {
   host: string;
   warnings: string[];
 }
 
-/** Scan every given host's `readRaw()` for inlined plaintext secrets (read-only). */
+/** Scan every given host for inlined plaintext secrets (read-only). */
 export function scanHostsForSecrets(hosts: HostAdapter[]): HostSecretReport[] {
   return hosts
-    .map((h) => ({ host: h.id, warnings: scanHostSecrets(h.id, h.readRaw()) }))
+    .map((h) => ({
+      host: h.id,
+      warnings:
+        // codex: scan the whole file so OUT-OF-BLOCK tables are covered too —
+        // readRaw() only sees the managed block and would miss the known leak.
+        h.id === "codex" && existsSync(h.configPath)
+          ? scanCodexText(readFileSync(h.configPath, "utf8"), h.id)
+          : scanHostSecrets(h.id, h.readRaw()),
+    }))
     .filter((r) => r.warnings.length > 0);
 }

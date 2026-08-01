@@ -245,6 +245,18 @@ next stage doc and resumes.
   `-rw-------`/dir `drwx------`; `doctor --json` = `{hosts:6,secrets:0,resolution:3}`
   (all `${VAR}` from env, no leaks); `--scope project` targeted the repo files with
   `${DEMO_TOKEN}` verbatim; `--to codex` under project scope refused (exit 1).
+- 2026-08-02: **Post-build parity audit + adversarial review** (user-requested,
+  full-code, against the real prior art — `~/dotfiles/mcp/*` and `~/repos/imsg-mcp`,
+  which EXISTS; the Stage 5 "imsg is gone" note looked at `~/imsg-mcp`). 144 tests
+  (+16). Headline: the codex secret scan only saw the managed block and missed the
+  actual out-of-block context7 `--api-key` leak — `scanCodexText` (full-file) now
+  catches it live. Also: doctor scans the canonical manifest + shows symlink chains +
+  codex out-of-block servers + Desktop marker note; vault file created at 0600 (no
+  transient window); `resolveServerEnv` (imsg merge-at-resolution — the vault was
+  write-only before); order-insensitive claude env/header matching (churn fix);
+  `spliceBlock` `$&`-substitution fix; corrupt-config writes refuse instead of
+  silently discarding non-MCP keys; `--scope` fail-closed. Details + accepted-as-is
+  list in the [Stage 5 doc](2026-08-mcpsync-5-secrets-and-project-scope.md) log.
 
 ## Recovery
 

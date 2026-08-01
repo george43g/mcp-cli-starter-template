@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { backup } from "../backup.js";
-import { normalize, readRawJson } from "../canonical.js";
+import { normalize, readRawJson, readRawJsonStrict } from "../canonical.js";
 import type { McpServer } from "../schema.js";
 import type { HostAdapter, WriteResult } from "./types.js";
 
@@ -79,8 +79,9 @@ export function opencodeAdapter(configPath: string): HostAdapter {
     },
     write(servers, opts = {}) {
       const { dryRun = false, prune = false } = opts;
+      // Strict read (aborts on corrupt, keeps non-mcp keys); fresh file gets $schema.
       const doc = existsSync(configPath)
-        ? (JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>)
+        ? readRawJsonStrict(configPath)
         : { $schema: "https://opencode.ai/config.json" };
       const before = JSON.stringify(doc);
       const current = prune ? {} : { ...readMcp() };
@@ -100,7 +101,7 @@ export function opencodeAdapter(configPath: string): HostAdapter {
     remove(name, opts = {}) {
       const { dryRun = false } = opts;
       if (!existsSync(configPath)) return { changed: false, path: configPath, backup: null };
-      const doc = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+      const doc = readRawJsonStrict(configPath);
       const before = JSON.stringify(doc);
       const current = { ...readMcp() };
       delete current[name];

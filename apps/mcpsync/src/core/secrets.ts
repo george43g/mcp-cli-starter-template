@@ -47,15 +47,22 @@ export function readCredentials(path: string = CREDENTIALS_DEFAULT): Credentials
 
 /**
  * Persist the vault, then unconditionally tighten permissions: dir 0700, file
- * 0600. The chmod is unconditional (not gated on "did we just create it") so a
- * vault whose mode drifted is repaired on the next write — this is imsg's
- * behaviour and the reason the mode assertion in the tests holds.
+ * 0600. The file is CREATED at 0600 (`writeFileSync` mode) so it is never
+ * world-readable even transiently; but that mode is masked by umask on create
+ * and ignored entirely when the file already exists — so the chmod is
+ * unconditional (not gated on "did we just create it"), which also repairs a
+ * vault whose mode drifted. Both behaviours ported from imsg's app-config.ts.
  */
 export function writeCredentials(creds: Credentials, path: string = CREDENTIALS_DEFAULT): void {
   const dir = dirname(path);
   mkdirSync(dir, { recursive: true });
-  chmodSync(dir, 0o700);
-  writeFileSync(path, `${JSON.stringify(creds, null, 2)}\n`);
+  try {
+    chmodSync(dir, 0o700);
+  } catch {
+    // Best-effort — a pre-existing shared dir may carry other perms (imsg parity);
+    // the file chmod below is the one that must never be skipped.
+  }
+  writeFileSync(path, `${JSON.stringify(creds, null, 2)}\n`, { mode: 0o600 });
   chmodSync(path, 0o600);
 }
 
@@ -121,4 +128,26 @@ export function resolveRef(
   if (creds[serverName]?.[varName] !== undefined) return "credentials";
   if (typeof env[varName] === "string" && env[varName] !== "") return "env";
   return "unresolved";
+}
+
+/**
+ * Materialize the concrete env for LAUNCHING a server: every `${VAR}` it
+ * references, resolved vault-first then process env. This is imsg's
+ * merge-at-resolution, ported: values exist only in memory for the launch —
+ * they are never written to any config, and `${VAR}` placeholders on disk stay
+ * verbatim. Unresolved vars are omitted (the child sees them unset, exactly
+ * like a missing shell export). Library consumers spawn with
+ * `{...process.env, ...resolveServerEnv(server)}`.
+ */
+export function resolveServerEnv(
+  server: McpServer,
+  creds: Credentials = readCredentials(),
+  env: NodeJS.ProcessEnv = process.env,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const name of referencedVars(server)) {
+    const value = creds[server.name]?.[name] ?? env[name];
+    if (typeof value === "string" && value !== "") out[name] = value;
+  }
+  return out;
 }

@@ -18,6 +18,31 @@ export function readRawJson(path: string): Record<string, unknown> {
 }
 
 /**
+ * Parse JSON at `path` for a WRITE path. Unlike `readRawJson` (never throws, so
+ * read-only surfaces don't crash on a corrupt file), an existing-but-unparseable
+ * file THROWS here: silently treating it as `{}` would rebuild the document and
+ * discard every non-MCP key the corrupt file still holds. A missing or empty
+ * file is a legitimate fresh start and returns {}.
+ */
+export function readRawJsonStrict(path: string): Record<string, unknown> {
+  if (!existsSync(path)) return {};
+  const text = readFileSync(path, "utf8");
+  if (text.trim() === "") return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    throw new Error(
+      `refusing to overwrite ${path}: existing content is not valid JSON (${(err as Error).message}). Fix or remove it first.`,
+    );
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`refusing to overwrite ${path}: existing content is not a JSON object.`);
+  }
+  return parsed as Record<string, unknown>;
+}
+
+/**
  * Coerce any host/user server shape into the canonical McpServer (validated).
  * Uses conditional key assignment (never assigns `undefined`) so the object
  * satisfies exactOptionalPropertyTypes before it is parsed.
@@ -96,7 +121,7 @@ export function writeCanonical(
   path: string = CANONICAL_DEFAULT,
   opts: { dryRun?: boolean } = {},
 ): CanonicalWriteResult {
-  const doc = readRawJson(path);
+  const doc = readRawJsonStrict(path); // throws on a corrupt file — never silently rebuild
   const before = JSON.stringify(doc);
   const mcpServers: Record<string, unknown> = {};
   for (const [n, s] of Object.entries(servers)) mcpServers[n] = toCanonicalEntry(s);

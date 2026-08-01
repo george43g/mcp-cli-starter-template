@@ -246,9 +246,16 @@ function collect(value: string, previous: string[]): string[] {
   return [...previous, value];
 }
 
-/** Coerce a --scope value; anything but "project" is user scope. */
+/**
+ * Validate a --scope value. Fail-closed: silently coercing a typo (e.g.
+ * "--scope Project") to user scope would mutate the ~ configs the user was
+ * explicitly trying NOT to touch.
+ */
 function parseScope(scope: string | undefined): Scope {
-  return scope === "project" ? "project" : "user";
+  if (scope === undefined || scope === "user") return "user";
+  if (scope === "project") return "project";
+  process.stderr.write(`${color.red(`invalid --scope "${scope}" (use "user" or "project")`)}\n`);
+  process.exit(2);
 }
 
 const isMain = (() => {

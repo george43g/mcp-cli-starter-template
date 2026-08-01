@@ -29,8 +29,12 @@ export async function runTui(config?: string | undefined): Promise<void> {
   startHeapMonitor();
   logStartup("mcpsync-tui");
 
-  const preset = envStr("MCPSYNC_TUI_THEME", "safe") as "safe" | "powerline";
-  const accent = envStr("MCPSYNC_TUI_ACCENT", "#1982FC");
+  // Validate env values instead of casting blindly (imsg app-config parity):
+  // an unknown theme or malformed accent falls back to the defaults.
+  const rawPreset = envStr("MCPSYNC_TUI_THEME", "safe");
+  const preset: "safe" | "powerline" = rawPreset === "powerline" ? "powerline" : "safe";
+  const rawAccent = envStr("MCPSYNC_TUI_ACCENT", "#1982FC");
+  const accent = /^#[0-9a-fA-F]{6}$/.test(rawAccent) ? rawAccent : "#1982FC";
 
   const screen = await renderFullScreen(
     <ThemeProvider preset={preset} accent={accent}>

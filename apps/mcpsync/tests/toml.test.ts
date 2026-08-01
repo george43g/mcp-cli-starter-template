@@ -97,4 +97,15 @@ describe("spliceBlock", () => {
     expect(next).toContain(BLOCK_BEGIN);
     expect(next.indexOf("[a]")).toBeLessThan(next.indexOf(BLOCK_BEGIN));
   });
+
+  it("never interprets $-substitution patterns in the new block ($&, $$, $1)", () => {
+    // String.replace treats $& / $$ / $` / $' specially in a replacement STRING;
+    // server args can legitimately contain them (awk scripts, shell snippets).
+    const block = `${BLOCK_BEGIN}\n[mcp_servers.x]\nargs = ["awk", "{print $1}", "$&", "$$"]\n${BLOCK_END}\n`;
+    const next = spliceBlock(sample, block);
+    expect(next).toContain('"$&"'); // NOT replaced by the old block text
+    expect(next).toContain('"$$"'); // NOT collapsed to a single $
+    expect(next).toContain("{print $1}");
+    expect(next).not.toContain("[mcp_servers.memory]"); // old block really replaced
+  });
 });

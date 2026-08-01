@@ -10,6 +10,7 @@ export {
   normalize,
   readCanonical,
   readRawJson,
+  readRawJsonStrict,
   toCanonicalEntry,
   writeCanonical,
 } from "./core/canonical.js";
@@ -74,6 +75,7 @@ export {
   type HostSecretReport,
   isPlaceholder,
   looksSecret,
+  scanCodexText,
   scanHostSecrets,
   scanHostsForSecrets,
 } from "./core/secret-scan.js";
@@ -85,6 +87,7 @@ export {
   referencedVars,
   removeCredential,
   resolveRef,
+  resolveServerEnv,
   setCredential,
   writeCredentials,
 } from "./core/secrets.js";

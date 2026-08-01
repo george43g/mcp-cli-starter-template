@@ -1,7 +1,7 @@
 import { existsSync, lstatSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { backup } from "../backup.js";
-import { normalize, readRawJson } from "../canonical.js";
+import { normalize, readRawJson, readRawJsonStrict } from "../canonical.js";
 import type { McpServer } from "../schema.js";
 import { shdq } from "../shell-quote.js";
 import type { HostAdapter, HostCapabilities, WriteResult } from "./types.js";
@@ -127,7 +127,9 @@ export function jsonMcpServersAdapter(cfg: JsonAdapterConfig): HostAdapter {
     },
     write(servers, opts = {}) {
       const { dryRun = false, prune = false } = opts;
-      const doc = readRawJson(configPath);
+      // Strict: a corrupt existing config must abort the write, not be silently
+      // rebuilt from {} (that would discard every non-MCP key it still holds).
+      const doc = readRawJsonStrict(configPath);
       const before = JSON.stringify(doc);
       const current = currentServers(doc);
       const names = servers.map((s) => s.name);
@@ -159,7 +161,7 @@ export function jsonMcpServersAdapter(cfg: JsonAdapterConfig): HostAdapter {
     },
     remove(name, opts = {}) {
       const { dryRun = false } = opts;
-      const doc = readRawJson(configPath);
+      const doc = readRawJsonStrict(configPath);
       const before = JSON.stringify(doc);
       const current = currentServers(doc);
       delete current[name];

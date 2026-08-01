@@ -115,8 +115,10 @@ export function spliceBlock(existing: string, block: string): string {
   const current = extractBlock(existing);
   if (current) {
     // Consume a trailing newline after the block so we don't accumulate blanks.
+    // The replacement is a FUNCTION so `$&`/`$$`-style GetSubstitution patterns
+    // inside the rendered block (possible in server args) are never interpreted.
     const withTrailing = existing.includes(`${current}\n`) ? `${current}\n` : current;
-    return existing.replace(withTrailing, block);
+    return existing.replace(withTrailing, () => block);
   }
   return `${existing.replace(/\s*$/, "")}\n\n${block}`;
 }

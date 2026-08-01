@@ -69,6 +69,40 @@ describe("cliAdapter", () => {
     expect(a.matches(normalize({ url: "https://u" }, "a"), { url: "https://u" })).toBe(true); // type undefined ok
   });
 
+  it("matches env/headers order-insensitively (no churn when ~/.claude.json reorders keys)", () => {
+    const a = make();
+    // sync.sh compared Python dicts (unordered); a stringify compare would
+    // report perpetual drift here and remove+re-add on every sync.
+    expect(
+      a.matches(normalize({ command: "x", env: { A: "1", B: "2" } }, "s"), {
+        command: "x",
+        args: [],
+        env: { B: "2", A: "1" },
+      }),
+    ).toBe(true);
+    expect(
+      a.matches(normalize({ url: "https://u", headers: { A: "1", B: "2" } }, "s"), {
+        url: "https://u",
+        headers: { B: "2", A: "1" },
+      }),
+    ).toBe(true);
+    // …but VALUE differences are still drift:
+    expect(
+      a.matches(normalize({ command: "x", env: { A: "1" } }, "s"), {
+        command: "x",
+        args: [],
+        env: { A: "2" },
+      }),
+    ).toBe(false);
+    // …and args stay ORDER-SENSITIVE (argv order matters):
+    expect(
+      a.matches(normalize({ command: "x", args: ["a", "b"] }, "s"), {
+        command: "x",
+        args: ["b", "a"],
+      }),
+    ).toBe(false);
+  });
+
   it("dry-run write plans remove-extraneous + skip-matched + re-add-drifted, executing nothing", () => {
     writeFileSync(
       readPath,

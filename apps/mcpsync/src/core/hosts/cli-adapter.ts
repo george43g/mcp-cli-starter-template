@@ -24,6 +24,22 @@ export function buildClaudeAdd(s: McpServer): string[] {
 export const buildClaudeRemove = (name: string): string[] => ["mcp", "remove", "-s", "user", name];
 
 /**
+ * Order-insensitive equality for env/header maps. sync.sh compared Python
+ * dicts (unordered); a JSON.stringify compare here would report perpetual
+ * false drift when ~/.claude.json stores the keys in a different order,
+ * causing a remove+re-add churn on every sync.
+ */
+function recordEq(a: unknown, b: unknown): boolean {
+  const norm = (o: unknown) =>
+    JSON.stringify(
+      Object.entries((o && typeof o === "object" ? o : {}) as Record<string, unknown>).sort(
+        ([x], [y]) => x.localeCompare(y),
+      ),
+    );
+  return norm(a) === norm(b);
+}
+
+/**
  * Field-level drift for a CLI host — the stored entry matches the canonical
  * server. Lenient on `type` (Claude omits it for stdio and may store
  * http/sse/undefined for remote), exactly like sync.sh's `matches()`.
@@ -35,13 +51,13 @@ function claudeMatches(canon: McpServer, raw: unknown): boolean {
     return (
       cur.url === canon.url &&
       (type === "http" || type === "sse" || type === undefined) &&
-      JSON.stringify(cur.headers ?? {}) === JSON.stringify(canon.headers ?? {})
+      recordEq(cur.headers, canon.headers)
     );
   }
   return (
     cur.command === canon.command &&
-    JSON.stringify(cur.args ?? []) === JSON.stringify(canon.args ?? []) &&
-    JSON.stringify(cur.env ?? {}) === JSON.stringify(canon.env ?? {})
+    JSON.stringify(cur.args ?? []) === JSON.stringify(canon.args ?? []) && // args are ordered
+    recordEq(cur.env, canon.env)
   );
 }
 

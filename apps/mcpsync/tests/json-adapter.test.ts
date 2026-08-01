@@ -135,3 +135,20 @@ describe("marker (claude-desktop) adapter — prune safety lever", () => {
     expect(readDoc(p)._mcpManagedByDotfiles).toEqual([]);
   });
 });
+
+describe("corrupt existing config", () => {
+  it("write refuses (throws) instead of silently rebuilding from {} — file untouched", () => {
+    const p = join(dir, "cd.json");
+    writeFileSync(p, '{ "globalShortcut": "x", CORRUPT');
+    expect(() => desktopAdapter(p).write([normalize({ command: "a" }, "a")])).toThrow(
+      /refusing to overwrite/,
+    );
+    expect(readFileSync(p, "utf8")).toBe('{ "globalShortcut": "x", CORRUPT');
+  });
+
+  it("readRaw stays lenient for the drift grid (corrupt → empty, no crash)", () => {
+    const p = join(dir, "cd.json");
+    writeFileSync(p, "{ CORRUPT");
+    expect(desktopAdapter(p).readRaw()).toEqual({});
+  });
+});

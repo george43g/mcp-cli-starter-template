@@ -100,6 +100,37 @@ Stop leaking API keys into world-readable configs, and support per-repo configs.
 
 ## Recovery / Status log
 
+- 2026-08-02 (later): **Post-build parity audit + adversarial review** (all five
+  stages, against the actual prior-art sources — `~/dotfiles/mcp/*` AND
+  `~/repos/imsg-mcp` (the imsg repo exists; the earlier "gone" claim looked at the
+  wrong path). 7 fixes + 5 absorptions, 144 tests total (+16):
+  - **Codex secret scan covered only the managed block** — the real-world context7
+    `--api-key` leak lives in a table OUTSIDE it. Added `scanCodexText` (full-file,
+    ported from status.js) routed via `scanHostsForSecrets`; live doctor now flags
+    `codex:context7: literal secret in args.3 (after --api-key) (redacted)` on this
+    machine — the exact leak the previous scan missed.
+  - doctor now also scans the canonical manifest, shows symlinked config chains
+    (cursor/warp → dotfiles), lists codex out-of-block servers, and notes a missing
+    Desktop marker (status.js parity). JSON report gained `notes` + per-host `link`.
+  - `writeCredentials`: file CREATED at mode 0600 (no transient world-readable
+    window) + tolerant dir chmod — both imsg app-config behaviours.
+  - `resolveServerEnv(server, creds?, env?)`: imsg's merge-at-resolution actually
+    absorbed — materializes a launch env vault-first, in memory only. Previously the
+    vault was write-only (nothing could ever use a stored value).
+  - `claudeMatches`: env/headers compare made order-insensitive (sync.sh compared
+    Python dicts; stringify compare ⇒ perpetual false drift + remove/re-add churn).
+  - `spliceBlock`: replacement function so `$&`/`$$` in server args can't corrupt
+    the TOML (String.replace GetSubstitution; render.js has the same latent bug).
+  - Corrupt-config writes now REFUSE (`readRawJsonStrict` in writeCanonical +
+    json/opencode adapters) instead of silently rebuilding from `{}` and discarding
+    non-MCP keys. Reads stay lenient (drift grid never crashes).
+  - `--scope` fail-closed: an invalid value exits 2 instead of coercing to user
+    scope (which would mutate `~` configs the user was avoiding).
+  - TUI env vars validated (unknown theme/malformed accent → defaults, imsg parity).
+  - Reviewed-and-accepted as-is (documented): claude-code scan is mcpServers-only
+    (whole-file would false-positive on the CLI's own OAuth state); a string mixing
+    `${VAR}` + a literal secret is skipped (status.js-equal); desktop import stays
+    lossy (wrapper); grid shows codex out-of-block servers only via doctor notes.
 - 2026-08-02: **Stage 5 built + verified.** New files: `src/core/secrets.ts`,
   `src/core/secret-scan.ts`, `src/commands/secret.ts`,
   `tests/{secrets,secret-scan,scope}.test.ts`. Edits: `src/commands/doctor.ts`

@@ -9,6 +9,7 @@ import {
   referencedVars,
   removeCredential,
   resolveRef,
+  resolveServerEnv,
   setCredential,
   writeCredentials,
 } from "../src/core/secrets.js";
@@ -118,5 +119,29 @@ describe("resolveRef", () => {
   it("reports unresolved when neither has it (empty env value counts as unset)", () => {
     expect(resolveRef("GITHUB_TOKEN", "other", creds, {})).toBe("unresolved");
     expect(resolveRef("GITHUB_TOKEN", "other", creds, { GITHUB_TOKEN: "" })).toBe("unresolved");
+  });
+});
+
+describe("resolveServerEnv (imsg merge-at-resolution)", () => {
+  const server = () =>
+    normalize({ command: "node", env: { A: "${TOK_A}", B: "${TOK_B}", C: "${TOK_C}" } }, "gh");
+
+  it("resolves vault-first, then process env, omitting unresolved vars", () => {
+    const creds: Credentials = { gh: { TOK_A: "from-vault" } };
+    const env = { TOK_A: "from-env-shadowed", TOK_B: "from-env" };
+    expect(resolveServerEnv(server(), creds, env)).toEqual({
+      TOK_A: "from-vault", // vault wins over env
+      TOK_B: "from-env",
+      // TOK_C omitted — unresolved behaves like a missing shell export
+    });
+  });
+
+  it("keys the vault per server name (another server's entry never leaks in)", () => {
+    const creds: Credentials = { other: { TOK_A: "not-yours" } };
+    expect(resolveServerEnv(server(), creds, {})).toEqual({});
+  });
+
+  it("treats an empty env value as unset", () => {
+    expect(resolveServerEnv(server(), {}, { TOK_A: "" })).toEqual({});
   });
 });
