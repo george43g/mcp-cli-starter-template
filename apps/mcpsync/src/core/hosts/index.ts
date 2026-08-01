@@ -68,6 +68,37 @@ export function detectedHosts(): HostAdapter[] {
   return hostList().filter((h) => h.detect());
 }
 
+/** Host ids that support a per-repo config (`capabilities.project`). */
+export const PROJECT_HOST_IDS = ["cursor", "warp"] as const;
+
+/**
+ * Project-scope hosts: the file hosts that support a per-repo config, bound to
+ * `<cwd>`-relative paths (`.cursor/mcp.json`, `.warp/.mcp.json`) — the same
+ * per-repo model as ~/dotfiles. Returned unfiltered by `detect()` so a fresh
+ * repo can have these files created. Claude Code / Claude Desktop / codex /
+ * opencode have no per-project MCP mechanism and are intentionally excluded.
+ */
+export function projectHosts(cwd: string = process.cwd()): HostAdapter[] {
+  return [
+    jsonMcpServersAdapter({
+      id: "cursor",
+      label: "Cursor (project)",
+      configPath: join(cwd, ".cursor", "mcp.json"),
+      restart: "Reload the Cursor window.",
+      transform: toDirectNative,
+      capabilities: { mechanism: "file", http: true, env: true, project: true },
+    }),
+    jsonMcpServersAdapter({
+      id: "warp",
+      label: "Warp (project)",
+      configPath: join(cwd, ".warp", ".mcp.json"),
+      restart: "Warp reloads MCP config on change (or via the MCP panel).",
+      transform: toDirectNative,
+      capabilities: { mechanism: "file", http: true, env: true, project: true },
+    }),
+  ];
+}
+
 /**
  * Apply a single server to one host (or "all" detected hosts). Always a safe
  * MERGE (`prune: false`) so sibling servers are never removed — this is the

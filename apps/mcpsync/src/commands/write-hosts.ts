@@ -1,12 +1,25 @@
 import { homedir } from "node:os";
 import { createInterface } from "node:readline/promises";
 import { isInteractive } from "@george43g/cli-kit";
-import { detectedHosts, HOSTS } from "../core/hosts/index.js";
+import { detectedHosts, HOSTS, projectHosts } from "../core/hosts/index.js";
 import type { HostAdapter } from "../core/hosts/types.js";
-import type { McpServer } from "../core/schema.js";
+import type { McpServer, Scope } from "../core/schema.js";
 
-/** Resolve a `--to` value to target hosts: a host id, "all"/unset → detected. */
-export function resolveTargets(to: string | undefined): HostAdapter[] {
+/**
+ * Resolve a `--to` value to target hosts. User scope: a host id, or "all"/unset
+ * → all detected hosts. Project scope: the per-repo host set (cursor/warp) bound
+ * to `cwd`, filtered by `--to`; a non-project host id resolves to none (the
+ * command reports the scope-aware reason).
+ */
+export function resolveTargets(
+  to: string | undefined,
+  scope: Scope = "user",
+  cwd?: string,
+): HostAdapter[] {
+  if (scope === "project") {
+    const pool = projectHosts(cwd);
+    return !to || to === "all" ? pool : pool.filter((h) => h.id === to);
+  }
   if (!to || to === "all") return detectedHosts();
   const host = HOSTS[to];
   return host ? [host] : [];

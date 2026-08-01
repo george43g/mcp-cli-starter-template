@@ -48,6 +48,8 @@ export {
   detectedHosts,
   HOSTS,
   hostList,
+  PROJECT_HOST_IDS,
+  projectHosts,
 } from "./core/hosts/index.js";
 export {
   type JsonAdapterConfig,
@@ -68,6 +70,24 @@ export {
   type Scope,
   type Transport,
 } from "./core/schema.js";
+export {
+  type HostSecretReport,
+  isPlaceholder,
+  looksSecret,
+  scanHostSecrets,
+  scanHostsForSecrets,
+} from "./core/secret-scan.js";
+export {
+  CREDENTIALS_DEFAULT,
+  type Credentials,
+  type RefSource,
+  readCredentials,
+  referencedVars,
+  removeCredential,
+  resolveRef,
+  setCredential,
+  writeCredentials,
+} from "./core/secrets.js";
 export {
   BLOCK_BEGIN,
   BLOCK_END,

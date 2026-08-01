@@ -1,5 +1,8 @@
+import { join } from "node:path";
 import { readCanonical } from "../core/canonical.js";
 import { diffHost, STATUS_GLYPH } from "../core/diff.js";
+import { PROJECT_HOST_IDS } from "../core/hosts/index.js";
+import type { Scope } from "../core/schema.js";
 import { selectServers } from "./apply.js";
 import { ensureConfirmed, resolveTargets, writeToHosts } from "./write-hosts.js";
 
@@ -8,6 +11,7 @@ export interface SyncOpts {
   config?: string | undefined;
   dryRun?: boolean | undefined;
   yes?: boolean | undefined;
+  scope?: Scope | undefined;
 }
 
 /**
@@ -17,16 +21,24 @@ export interface SyncOpts {
  * change before writing.
  */
 export async function runSync(opts: SyncOpts): Promise<void> {
-  const canonical = readCanonical(opts.config);
+  const scope: Scope = opts.scope ?? "user";
+  const cwd = process.cwd();
+  const canonicalPath = opts.config ?? (scope === "project" ? join(cwd, ".mcp.json") : undefined);
+  const canonical = readCanonical(canonicalPath);
   const servers = selectServers(canonical);
   if (!servers.length) {
-    process.stderr.write("✗ no enabled servers in canonical config\n");
+    const where = scope === "project" ? `${canonicalPath}` : "canonical config";
+    process.stderr.write(`✗ no enabled servers in ${where}\n`);
     process.exitCode = 1;
     return;
   }
-  const targets = resolveTargets(opts.to);
+  const targets = resolveTargets(opts.to, scope, cwd);
   if (!targets.length) {
-    process.stderr.write(`✗ no such host: ${opts.to}\n`);
+    const hint =
+      scope === "project"
+        ? `project scope supports ${PROJECT_HOST_IDS.join(", ")} — Claude Code/Desktop/codex/opencode have no per-project MCP config`
+        : `no such host: ${opts.to}`;
+    process.stderr.write(`✗ ${hint}\n`);
     process.exitCode = 1;
     return;
   }

@@ -11,8 +11,9 @@ the machine, with per-host fidelity, dry-run previews, and timestamped backups.
 
 ## Status
 
-**Stages 1–4** — canonical core + all six automatable hosts + full reconcile +
-Claude Desktop extension `deploy` + an interactive `tui` grid:
+**Complete** — canonical core + all six automatable hosts + full reconcile +
+Claude Desktop extension `deploy` + an interactive `tui` grid + a local 0600
+credentials vault, a redacted plaintext-secret scanner, and per-repo project scope:
 
 | Host | Mechanism | Config | Notes |
 |---|---|---|---|
@@ -23,18 +24,18 @@ Claude Desktop extension `deploy` + an interactive `tui` grid:
 | Warp | file | `~/.warp/.mcp.json` | direct merge, symlink-aware |
 | opencode | file | `~/.config/opencode/opencode.json` | outlier shape: `mcp` key, `command[]`, `environment`, `type:local\|remote`, `${VAR}`→`{env:VAR}` |
 
-A secrets store + project scope land in the last stage.
-
 ## Commands
 
 ```
-mcpsync doctor                       # which hosts are present + config paths
+mcpsync doctor                       # hosts present + inlined-secret scan + ${VAR} reachability
 mcpsync list                         # servers×hosts drift grid across detected hosts
 mcpsync import --from cursor         # pull a host's servers into the canonical manifest
-mcpsync apply [--to <host>|all] [--only a,b] [--dry-run] [--yes]
-mcpsync sync  [--to <host>|all] [--dry-run] [--yes]   # drift plan, then full-reconcile
+mcpsync apply [--to <host>|all] [--only a,b] [--scope user|project] [--dry-run] [--yes]
+mcpsync sync  [--to <host>|all] [--scope user|project] [--dry-run] [--yes]   # drift plan, then full-reconcile
 mcpsync add <name> --command <cmd> [--arg x]… [--env K=V]… | --url <url> [--header "K: V"]…
 mcpsync remove <name> [--to <host>|all]              # canonical by default; --to targets a host
+mcpsync secret set <server> <KEY>    # store a value in the 0600 vault (read from stdin)
+mcpsync secret list | rm <server> [KEY]             # list (names only) / remove vault entries
 mcpsync deploy [source] [--ext-id <id>] [--from <archive>] [--full] [--list] [--dry-run] [--yes]
 mcpsync tui                          # interactive servers×hosts grid (TTY only)
 ```
@@ -55,6 +56,23 @@ and replaces `dist`, `native`, `manifest.json`, `icon.png`, `assets` (add
 `node_modules` with `--full`). `--list` enumerates installed extensions (read-only);
 the replace is gated behind a `--dry-run` preview and a TTY/`--yes` confirm. After a
 deploy, reload the extension in Claude Desktop (toggle off/on, or Quit + reopen).
+
+`secret` manages an **optional** local vault at `~/.mcpsync/credentials.json`
+(file mode `0600`, dir `0700`). It holds real secret values keyed by server name —
+`secret set` reads the value from stdin (so it never lands in shell history or the
+process table; `--value` is the explicit escape hatch), `secret list` shows only
+server + key names, never values. The vault is **never inlined into a host config**:
+`${VAR}` placeholders stay verbatim everywhere. Its only jobs are getting a secret out
+of the shell env into a `0600` file and powering `doctor`'s reachability report — which
+tells you, per `${VAR}` your servers reference, whether it resolves from the vault, the
+shell env, or is `UNRESOLVED`. `doctor` also scans detected host configs for inlined
+plaintext secrets and warns (redacted — never the value).
+
+`--scope project` (on `apply`/`sync`) targets the **repo-local** config set instead of
+your `~` files: canonical `<cwd>/.mcp.json` → `<cwd>/.cursor/mcp.json` +
+`<cwd>/.warp/.mcp.json` (the two hosts with a per-project MCP mechanism). Claude
+Code / Claude Desktop / codex / opencode have none and are refused with a clear
+message. `-c/--config` still overrides the canonical path.
 
 Global flags: `--json`, `-q/--quiet`, `-v/--verbose`, `--no-color`,
 `-c/--config <path>`.
@@ -81,7 +99,10 @@ codex server defined outside the managed block).
   block — so it and `~/dotfiles/mcp/render.js` produce byte-identical output and
   don't clobber each other. codex servers defined outside the block are skipped.
 - **`${VAR}`-only.** Canonical entries carry placeholders, never literal
-  secrets; per-host rewriting happens at render time.
+  secrets; per-host rewriting happens at render time. The optional `secret` vault
+  (`~/.mcpsync/credentials.json`, mode `0600`) is the one place real values may
+  live — mcpsync never copies them into a host config. `doctor` scans for any that
+  leaked in anyway (redacted).
 
 ## Library
 

@@ -8,8 +8,12 @@
  *   sync [--to host|all]            Show a drift plan, then full-reconcile hosts
  *   add <name> …                    Add/overwrite a server in the canonical manifest
  *   remove <name> [--to host|all]   Remove from canonical (default) or a host
+ *   secret set|list|rm …            Manage the local 0600 credentials vault
  *   deploy [source] …               Hot-deploy a built extension into Claude Desktop
  *   tui                             Interactive servers×hosts drift grid (TTY only)
+ *
+ * `apply`/`sync` take `--scope project` to target the repo-local .mcp.json +
+ * .cursor/mcp.json + .warp/.mcp.json instead of the user (~) configs.
  *
  * Global flags come from cli-kit's buildProgram (--json / -q / -v / --no-color)
  * plus -c/--config for a non-default manifest path.
@@ -23,7 +27,9 @@ import { runDoctor } from "./commands/doctor.js";
 import { runImport } from "./commands/import.js";
 import { runList } from "./commands/list.js";
 import { runRemove } from "./commands/remove.js";
+import { runSecretList, runSecretRemove, runSecretSet } from "./commands/secret.js";
 import { runSync } from "./commands/sync.js";
+import type { Scope } from "./core/schema.js";
 
 const VERSION = "0.0.0";
 
@@ -43,8 +49,8 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
 
   program
     .command("doctor")
-    .description("Show which MCP hosts are present and their config paths")
-    .action(() => runDoctor({ json: globals().json }));
+    .description("Diagnose hosts, scan for inlined plaintext secrets, check ${VAR} reachability")
+    .action(() => runDoctor({ json: globals().json, config: globals().config }));
 
   program
     .command("list")
@@ -65,31 +71,48 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
     .description("Push canonical servers to a host (or all detected hosts)")
     .option("--to <host>", 'Target host id, or "all"', "all")
     .option("--only <names>", "Comma-separated server names to apply")
+    .option("--scope <scope>", "user (~) | project (repo .mcp.json + .cursor/.warp)", "user")
     .option("--dry-run", "Preview without writing")
     .option("-y, --yes", "Skip the confirmation prompt")
-    .action(async (opts: { to?: string; only?: string; dryRun?: boolean; yes?: boolean }) => {
-      await runApply({
-        to: opts.to,
-        only: opts.only
-          ? opts.only
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : undefined,
-        config: globals().config,
-        dryRun: opts.dryRun,
-        yes: opts.yes,
-      });
-    });
+    .action(
+      async (opts: {
+        to?: string;
+        only?: string;
+        scope?: string;
+        dryRun?: boolean;
+        yes?: boolean;
+      }) => {
+        await runApply({
+          to: opts.to,
+          only: opts.only
+            ? opts.only
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : undefined,
+          scope: parseScope(opts.scope),
+          config: globals().config,
+          dryRun: opts.dryRun,
+          yes: opts.yes,
+        });
+      },
+    );
 
   program
     .command("sync")
     .description("Show a drift plan, then full-reconcile a host (or all detected hosts)")
     .option("--to <host>", 'Target host id, or "all"', "all")
+    .option("--scope <scope>", "user (~) | project (repo .mcp.json + .cursor/.warp)", "user")
     .option("--dry-run", "Preview without writing")
     .option("-y, --yes", "Skip the confirmation prompt")
-    .action(async (opts: { to?: string; dryRun?: boolean; yes?: boolean }) => {
-      await runSync({ to: opts.to, config: globals().config, dryRun: opts.dryRun, yes: opts.yes });
+    .action(async (opts: { to?: string; scope?: string; dryRun?: boolean; yes?: boolean }) => {
+      await runSync({
+        to: opts.to,
+        scope: parseScope(opts.scope),
+        config: globals().config,
+        dryRun: opts.dryRun,
+        yes: opts.yes,
+      });
     });
 
   program
@@ -146,6 +169,27 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
       });
     });
 
+  const secret = program
+    .command("secret")
+    .description("Manage the local 0600 credentials vault (~/.mcpsync/credentials.json)");
+  secret
+    .command("set <server> <key>")
+    .description("Store a secret value (read from stdin, or --value); vault written at mode 0600")
+    .option("--value <value>", "Value to store inline (leaks into shell history — prefer stdin)")
+    .action((server: string, key: string, opts: { value?: string }) =>
+      runSecretSet(server, key, { value: opts.value }),
+    );
+  secret
+    .command("list")
+    .alias("ls")
+    .description("List stored server + key names (values never shown)")
+    .action(() => runSecretList({ json: globals().json }));
+  secret
+    .command("remove <server> [key]")
+    .alias("rm")
+    .description("Remove one key, or a whole server entry when key is omitted")
+    .action((server: string, key: string | undefined) => runSecretRemove(server, key));
+
   program
     .command("deploy [source]")
     .description("Hot-deploy a built MCP extension (dir or .mcpb/.dxt) into Claude Desktop")
@@ -200,6 +244,11 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
 /** Commander reducer for repeatable options (--arg x --arg y → ["x","y"]). */
 function collect(value: string, previous: string[]): string[] {
   return [...previous, value];
+}
+
+/** Coerce a --scope value; anything but "project" is user scope. */
+function parseScope(scope: string | undefined): Scope {
+  return scope === "project" ? "project" : "user";
 }
 
 const isMain = (() => {

@@ -1,6 +1,7 @@
 # ExecPlan: `apps/mcpsync` — cross-host MCP config sync + deploy (overview)
 
-**Status:** `active` — Stages 1–4 built + verified (2026-08-02); Stage 5 pending.
+**Status:** `complete` — all five stages built + verified (2026-08-02). Feature
+branch still local (unpushed); merge/publish pending explicit authorization.
 
 This is the master record for the `mcpsync` work. It is self-contained: a fresh
 agent should be able to read this file plus the current stage doc and resume cold.
@@ -9,46 +10,53 @@ Convention: [plans/README.md](README.md).
 ## Resume handoff (2026-08-02)
 
 **Where we are.** Branch `feat/mcpsync-tool` (stacked on `feat/scaffold-harness-layer`;
-both unpushed, both merge together later). **Stages 1–4 are BUILT + verified** — all
-six automatable hosts are live (Claude Code, Codex, Claude Desktop, Cursor, Warp,
-opencode) plus `doctor`/`list`/`import`/`apply`/`sync`/`add`/`remove`/`deploy` and the
-`tui` grid. 99 tests; codex + opencode + Desktop render byte-identically to
-`~/dotfiles/mcp/render.js`; the TUI grid is byte-identical to `list`. See the
-[Stage 1](2026-08-mcpsync-1-core-and-file-hosts.md),
-[Stage 2](2026-08-mcpsync-2-cli-hosts-and-sync.md),
-[Stage 3](2026-08-mcpsync-3-deploy.md), and [Stage 4](2026-08-mcpsync-4-tui.md)
-Status logs for the evidence. `dist/` is gitignored.
+both unpushed, both merge together later). **ALL FIVE STAGES ARE BUILT + verified.**
+All six automatable hosts are live (Claude Code, Codex, Claude Desktop, Cursor, Warp,
+opencode) plus the full command surface —
+`doctor`/`list`/`import`/`apply`/`sync`/`add`/`remove`/`secret`/`deploy`/`tui` — with a
+0600 credentials vault, a redacted plaintext-secret scanner + `${VAR}` reachability
+report in `doctor`, and `--scope project`. **128 tests**; codex + opencode + Desktop
+render byte-identically to `~/dotfiles/mcp/render.js`; the TUI grid is byte-identical
+to `list`. See each stage doc's Status log for the evidence. `dist/` is gitignored.
 
-**First thing next session:** `git status --short` (tree should be clean on
-`feat/mcpsync-tool` after the Stage 4 commit); `pnpm install`; sanity `pnpm --filter
-@george43g/mcpsync test`. Then start **Stage 5**.
+**The build is functionally done.** No stage remains. The only open items are the
+DEFERRED, non-build follow-ups and the merge/publish decision (below) — none to be
+started without explicit user authorization.
 
-**Next up — Stage 5 (secrets + project scope)**
-([5-secrets-and-project-scope](2026-08-mcpsync-5-secrets-and-project-scope.md)):
-`core/secrets.ts` — an optional `~/.mcpsync/credentials.json` @`0600` (dir `0700`),
-merged at apply time with `${VAR}` still preserved verbatim, ported from imsg's
-`src/app-config.ts` (unconditional `chmodSync`, read-never-throws). Then `doctor`
-flags any inlined plaintext secrets (port the scanner from dotfiles `status.js`), and
-`--scope project` targets repo `.mcp.json` / `.cursor/mcp.json` / `.warp/.mcp.json`
-(the dotfiles per-repo model). Assert `0600` in tests; project-scope apply writes repo
-files; keys never appear in host configs.
+**Deferred (not build tasks; do NOT start unprompted):**
+- Retire `~/dotfiles/mcp/{render.js,status.js,sync.sh}` + Makefile targets and update
+  `~/dotfiles/docs/mcp-registry.md` — the user's "migrate later," only once mcpsync is
+  trusted in daily use.
+- In-TUI per-cell env/args editing (text-input modals) + `useMouse` nav — the pure
+  model + single write path make both additive (see Stage 4 doc).
+- **Merge/publish:** `feat/scaffold-harness-layer` + `feat/mcpsync-tool` merge together,
+  ONLY with explicit authorization. `mcpsync` is `private:true` (bundle the `@george43g/*`
+  kits via Vite, or publish them, when it graduates to a published home). NO `NPM_TOKEN`
+  (OIDC only); do not enable `release.yml` or push without being asked.
 
-Stage 4 is done: `tui` command → `renderFullScreen(<ThemeProvider><App/></…>)`; a
-servers×hosts grid (rows = canonical ∪ host-only servers, cols = detected hosts, cells
-= drift-status glyphs). Nav j/k/h/l + gg/G + ^d/^u; `a`/`A` apply current server to the
-focused host / all hosts through the same `applyServer` merge path as the CLI, gated by
-an in-TUI y/n confirm; `r` reloads; `q` quits. The grid model (`src/tui/model.ts`) is a
-pure, React-free, I/O-free seam unit-tested against stub adapters (13 tests); the only
-disk I/O is in `useHostMatrix`. `mcpsync tui` is guarded by `isInteractive()` and
-lazy-imported, so ink/react never load on plain CLI paths.
+**First thing next session (if resuming):** `git status --short` (tree clean on
+`feat/mcpsync-tool`); `pnpm install`; sanity `pnpm --filter @george43g/mcpsync test`
+(expect 128 passing).
 
-**Invariants (do not violate, all stages):** meta-repo-only (no `lib/` mirror, not in
-`LIB_TO_CANONICAL`); adapters take injectable paths; tests never touch real `~`
-configs; dry-run + backup by default (CLI hosts excepted — the CLI owns the file);
-the `prune` merge/full-sync safety lever (`applyServer` + `--only` never delete; only
-a full `apply`/`sync` prunes managed servers); preserve dotfiles conventions for
-coexistence (codex managed-block, desktop `_mcpManagedByDotfiles`). The full contract
-is below.
+**Stage 5 recap:** `core/secrets.ts` = opt-in `~/.mcpsync/credentials.json` @`0600`
+(dir `0700`, unconditional `chmodSync`, read-never-throws), values keyed by server
+name and NEVER inlined into a host config — `${VAR}` stays verbatim; the vault only
+gets secrets out of the shell env and powers `doctor` reachability. `core/secret-scan.ts`
+runs the dotfiles `status.js` guards over each adapter's `readRaw()` map (one read path
+for sync + scan). `doctor` adds a redacted secret scan + `${VAR}` resolution report
+(`from credentials`/`from env`/`UNRESOLVED`); `--json` returns `{hosts,secrets,resolution}`.
+A `secret set|list|rm` command manages the vault (values via stdin, never shell history).
+`apply`/`sync --scope project` read `<cwd>/.mcp.json` and target cwd-bound cursor+warp
+(`projectHosts`); non-project hosts refuse with a scope-aware message.
+
+**Invariants (do not violate):** meta-repo-only (no `lib/` mirror, not in
+`LIB_TO_CANONICAL`, never scaffolded); adapters take injectable paths; tests never touch
+real `~` configs; secrets never inlined into host configs (`${VAR}` verbatim; the vault
+is 0600 and never written to a world-readable file); dry-run + backup by default (CLI
+hosts excepted — the CLI owns the file); the `prune` merge/full-sync safety lever
+(`applyServer` + `--only` never delete; only a full `apply`/`sync` prunes managed
+servers); preserve dotfiles conventions for coexistence (codex managed-block, desktop
+`_mcpManagedByDotfiles`). The full contract is below.
 
 ## Goal
 
@@ -167,6 +175,7 @@ managed-block; no per-project scope) · Claude Desktop (file; `$SHELL -lc` wrap 
 | 2 — CLI hosts + opencode + sync | [2-cli-hosts-and-sync](2026-08-mcpsync-2-cli-hosts-and-sync.md) | complete |
 | 3 — generalized deploy | [3-deploy](2026-08-mcpsync-3-deploy.md) | complete |
 | 4 — Ink TUI grid | [4-tui](2026-08-mcpsync-4-tui.md) | complete |
+| 5 — secrets vault + project scope | [5-secrets-and-project-scope](2026-08-mcpsync-5-secrets-and-project-scope.md) | complete |
 | 5 — secrets + project scope | [5-secrets-and-project-scope](2026-08-mcpsync-5-secrets-and-project-scope.md) | pending |
 
 ## Cross-cutting validation (every stage)
@@ -219,6 +228,23 @@ next stage doc and resumes.
   per-cell env/args editing + `useMouse`. Live: non-TTY guard refuses (exit 1); a PTY
   render smoke (read-only, only `q` sent) drew the full grid byte-identical to `list`
   and exited cleanly.
+- 2026-08-02: **Stage 5 complete** — 0600 credentials vault + redacted secret scanner
+  in `doctor` + `--scope project`. 128 tests (+29). New: `core/secrets.ts`,
+  `core/secret-scan.ts`, `commands/secret.ts`. imsg-mcp source was gone, so the vault
+  was ported from the contract recorded in this overview (0600/0700, unconditional
+  `chmodSync`, read-never-throws). Key decisions (in the stage doc): the vault holds
+  real values keyed by server name but is NEVER inlined — `${VAR}` stays verbatim
+  (live-verified); it only moves secrets out of the shell env into a 0600 file and
+  powers `doctor`'s reachability report. The scanner walks each adapter's `readRaw()`
+  map (not per-file re-parsing like `status.js`), reusing the ported redaction guards.
+  Added a `secret set|list|rm` command (values via stdin, never shell history) beyond
+  the doc's three deliverables so the vault is usable + its 0600 path live-testable.
+  `doctor --json` shape widened to `{hosts,secrets,resolution}`. `resolveOutputMode`
+  used consistently (fixed a mixed-output bug: auto-JSON array + human sections when
+  piped). Live (writes to a throwaway HOME/tmp repo, real `~` untouched): vault at
+  `-rw-------`/dir `drwx------`; `doctor --json` = `{hosts:6,secrets:0,resolution:3}`
+  (all `${VAR}` from env, no leaks); `--scope project` targeted the repo files with
+  `${DEMO_TOKEN}` verbatim; `--to codex` under project scope refused (exit 1).
 
 ## Recovery
 
