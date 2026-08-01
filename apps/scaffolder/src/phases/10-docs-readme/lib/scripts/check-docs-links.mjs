@@ -3,12 +3,13 @@
 /**
  * Docs integrity check: agent-facing markdown must stay navigable.
  *
- * 1. Relative links in repo-facing markdown resolve to real files.
+ * 1. Relative links in the agent/docs surfaces resolve to real files.
  * 2. CLAUDE.md / .cursorrules stay symlinks pointing at AGENTS.md.
  * 3. Every top-level docs/*.md has a row in the docs index (docs/README.md).
  *
- * Template surfaces (example/, apps/scaffolder/src/phases/[star]/lib/) are
- * excluded: their links are written for the generated repo's layout.
+ * Wired into `pnpm verify` and CI so a broken link, a severed agent-file
+ * symlink, or a doc missing from the index fails the build. Node builtins
+ * only — no dependencies.
  */
 
 import { existsSync, lstatSync, readlinkSync } from "node:fs";
@@ -17,8 +18,8 @@ import { dirname, join, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 
-/** Directories whose markdown is never checked (generated or template-owned). */
-const EXCLUDED_DIR_PARTS = ["node_modules", "example", "lib", "dist", "man", ".turbo"];
+/** Directories whose markdown is never checked (generated or vendored). */
+const EXCLUDED_DIR_PARTS = ["node_modules", "dist", "man", ".turbo", "coverage"];
 
 /** Markdown roots that must stay link-clean. */
 const SCAN_ROOTS = [
@@ -27,8 +28,6 @@ const SCAN_ROOTS = [
   "README.md",
   "llms-install.md",
   "skills.md",
-  "apps/scaffolder/AGENTS.md",
-  "apps/scaffolder/README.md",
   "docs",
   "skills",
 ];
@@ -37,7 +36,6 @@ const SCAN_ROOTS = [
 const REQUIRED_SYMLINKS = [
   ["CLAUDE.md", "AGENTS.md"],
   [".cursorrules", "AGENTS.md"],
-  ["apps/scaffolder/CLAUDE.md", "AGENTS.md"],
 ];
 
 const failures = [];

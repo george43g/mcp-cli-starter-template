@@ -72,6 +72,19 @@ const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
   "04-robustness/lib/README.md",
   // Root README — see LIB_TO_CANONICAL comment.
   "10-docs-readme/lib/README.md",
+  // Harness onboarding docs + guardrail. These are CLONED-TOOL templates whose
+  // meta-repo canonical siblings are this repo's own live/self-referential
+  // files — different content by design. The generated index/state/handoff are
+  // authored for a freshly scaffolded repo; check-docs-links.mjs is genericized
+  // (no apps/scaffolder scan roots, no scaffolder-only symlink pair). HANDOFF.md
+  // and scripts/ have no LIB_TO_CANONICAL mapping at all, so the exempt-first
+  // skip is what keeps them from tripping "no entry covers this path". Lib↔
+  // example consistency stays enforced by the separate example/ sync check.
+  "10-docs-readme/lib/docs/README.md",
+  "10-docs-readme/lib/docs/PROJECT_STATE.md",
+  "10-docs-readme/lib/docs/plans/README.md",
+  "10-docs-readme/lib/HANDOFF.md",
+  "10-docs-readme/lib/scripts/check-docs-links.mjs",
   // AGENTS.md at the repo root describes the SCAFFOLDER (the meta-tool);
   // the lib copy is the CLONED-TOOL's agent guide with example-repo placeholders.
   // Different content by design.

@@ -386,17 +386,25 @@ remediation:
 9. Publishing additional shared packages. `mcp-kit`, `tui-kit`, `cli-kit`, and
    `env-loader` remain generated source until their public contracts and
    independent versioning value are proven.
-10. Propagating the harness-engineering additions (docs index, ExecPlan
-    convention, docs-integrity check) into the generated template output.
-    That touches phase 10/11 `lib/` mirrors plus tracked `example/` and needs
-    its own regeneration + verification pass; the 2026-07-29 pass deliberately
-    changed only repo-facing surfaces.
+10. DONE (2026-08-01): the harness-engineering self-correcting layer now ships
+    into generated repos. Added under `10-docs-readme/lib/` (auto-emitted by
+    portPackage): docs index (`docs/README.md` + coverage gate), ExecPlan
+    convention (`docs/plans/README.md`), and self-referential
+    `docs/PROJECT_STATE.md` + `HANDOFF.md` authored for a freshly scaffolded
+    repo (not empty stubs). A genericized `scripts/check-docs-links.mjs`
+    (no `apps/scaffolder` scan roots, no scaffolder-only symlink pair) is wired
+    into the generated `package.json` `verify` chain and CI as a `check:docs`
+    step between lint and typecheck (`01-bootstrap/m4-monorepo.ts` +
+    `12-ci-release/lib/.github/workflows/ci.yml`). Five lib files are exempted
+    in `golden.test.ts` (template-only; meta canonical twins differ by design);
+    lib↔example drift stays caught by the example/ sync check. `example/`
+    regenerated and the generated guardrail runs green inside the scaffold.
 
 ## Current structural facts
 
 - 12 phases
 - 26 registered migration files
-- 172 generated template entries
+- 177 generated template entries
 - 131 scaffolder tests across 12 test files
 - 14 cloned-tool integration tests
 - 27 `mcp-kit` unit tests

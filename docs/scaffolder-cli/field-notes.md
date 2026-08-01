@@ -190,3 +190,44 @@ are ideas, not commitments; none is scheduled unless promoted into
     release; `0.1.1` itself stays provenance-less (a re-publish of an
     identical version isn't possible, and a churn bump purely to attach
     provenance wasn't warranted).
+
+## 2026-08-01 — propagating the harness layer into generated repos
+
+20. **Shipping new files into a generated repo is nearly free; the golden test
+    is the only surface that needs thought.** `10-docs-readme/m1` ports its
+    whole `lib/` subtree via `portPackage({ pkgDir: ".", libPrefix:
+    "10-docs-readme/lib/" })`, which iterates *all* `TEMPLATES` keys under the
+    prefix — and `build-templates.mjs` walks `lib/**` with no extension filter —
+    so a new `.md`/`.mjs` dropped under `lib/` is emitted at its mirrored path
+    with zero migration-code change (even into a net-new repo-root `scripts/`
+    dir, which generated repos didn't have before). What DOES need attention:
+    `golden.test.ts` byte-compares `lib/docs/**` against the meta repo's own
+    `docs/**`. Since the generated docs index / PROJECT_STATE / plans convention
+    are deliberately *different* from this repo's live versions, they must be
+    exempted — and because the test **checks `EXEMPT_LIB_PATHS` before the
+    `LIB_TO_CANONICAL` lookup**, an exemption alone suffices: template-only
+    files with no canonical twin (e.g. `HANDOFF.md`,
+    `scripts/check-docs-links.mjs`) need only an exempt entry, not a mapping.
+    Lib↔example drift stays caught by the separate example/ sync check, so
+    exempting from the golden test loses no coverage.
+21. **The docs guardrail genericizes by changing three constants only.** The meta
+    `scripts/check-docs-links.mjs` hardcodes `apps/scaffolder/*` scan roots, a
+    scaffolder-only `CLAUDE.md` symlink pair, and `example`/`lib` dir exclusions
+    — all meaningless (the symlink pair actively wrong) downstream. The generated
+    copy drops those and keeps the three checks (links, symlinks, index
+    coverage), `stripCode`, and the `resolve(import.meta.dirname, "..")` anchor
+    verbatim. The coverage check filters `.endsWith(".md")`, so the top-level
+    `.mdx` Mintlify pages need no index rows (the meta repo already passes with
+    the same shape). Adding the check to generated CI means the meta repo's own
+    "scaffolder E2E smoke" step (`pnpm verify` inside a fresh scaffold) now
+    exercises it — a broken relative link in any shipped generated doc/skill
+    fails the meta build, which is the guardrail working as intended.
+22. **"Inherit the full system" meant authored onboarding, not stubs.** The user
+    wanted the generated `PROJECT_STATE.md`/`HANDOFF.md` custom-written to kick
+    off a project and self-referentially explain where/why it is — so they're
+    real narratives for the just-scaffolded moment (four surfaces wired, ships
+    green, next steps), not empty skeletons. m4's *retrofit* prose was left
+    without `check:docs` on purpose: that prompt scopes to the monorepo skeleton
+    and doesn't create the script, so referencing it there would be broken
+    guidance (existing-repo retrofits that run phase 10 do get the harness but
+    keep their own pre-existing `verify` — a separate, deferred retrofit gap).

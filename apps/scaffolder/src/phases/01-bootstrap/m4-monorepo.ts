@@ -64,7 +64,10 @@ const ROOT_PACKAGE_JSON = (name: string) =>
         format: "biome format --write .",
         typecheck: "turbo run typecheck",
         stress: "turbo run stress",
-        verify: "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+        // Docs integrity gate (index coverage + relative links + agent-file
+        // symlinks). Ships via 10-docs-readme's scripts/check-docs-links.mjs.
+        "check:docs": "node scripts/check-docs-links.mjs",
+        verify: "pnpm lint && pnpm check:docs && pnpm typecheck && pnpm test && pnpm build",
         clean: "turbo run clean && rm -rf node_modules .turbo coverage",
       },
       devDependencies: {
