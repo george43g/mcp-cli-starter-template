@@ -25,17 +25,19 @@ async function confirm(question: string): Promise<boolean> {
 /**
  * Gate a mutating operation. Returns true to proceed. Dry-run and `--yes`
  * proceed silently; an interactive TTY prompts y/N; a non-TTY without `--yes`
- * refuses (prints the reason, sets exit code 1) and returns false.
+ * refuses (prints the reason, sets exit code 1) and returns false. `refusal`
+ * overrides the default (host-config) wording for other mutating commands.
  */
 export async function ensureConfirmed(opts: {
   dryRun: boolean;
   yes: boolean;
   summary: string;
+  refusal?: string;
 }): Promise<boolean> {
   if (opts.dryRun || opts.yes) return true;
   if (!isInteractive()) {
     process.stderr.write(
-      "✗ refusing to mutate host configs without a TTY. Pass --yes to confirm or --dry-run to preview.\n",
+      `${opts.refusal ?? "✗ refusing to mutate host configs without a TTY. Pass --yes to confirm or --dry-run to preview."}\n`,
     );
     process.exitCode = 1;
     return false;

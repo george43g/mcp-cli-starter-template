@@ -14,6 +14,21 @@ export {
   writeCanonical,
 } from "./core/canonical.js";
 export {
+  DEPLOY_ITEMS,
+  type DeployItem,
+  defaultExtRoot,
+  type ExtManifest,
+  executeDeploy,
+  findManifest,
+  type InstalledExtension,
+  installedExtensions,
+  isArchive,
+  matchTarget,
+  planDeploy,
+  type ResolvedSource,
+  resolveSource,
+} from "./core/deploy.js";
+export {
   diffHost,
   type HostDiff,
   type HostDiffEntry,

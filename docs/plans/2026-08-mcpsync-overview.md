@@ -1,6 +1,6 @@
 # ExecPlan: `apps/mcpsync` — cross-host MCP config sync + deploy (overview)
 
-**Status:** `active` — Stages 1–2 built + verified (2026-08-02); Stages 3–5 pending.
+**Status:** `active` — Stages 1–3 built + verified (2026-08-02); Stages 4–5 pending.
 
 This is the master record for the `mcpsync` work. It is self-contained: a fresh
 agent should be able to read this file plus the current stage doc and resume cold.
@@ -9,30 +9,33 @@ Convention: [plans/README.md](README.md).
 ## Resume handoff (2026-08-02)
 
 **Where we are.** Branch `feat/mcpsync-tool` (stacked on `feat/scaffold-harness-layer`;
-both unpushed, both merge together later). **Stages 1–2 are BUILT + verified** — all
+both unpushed, both merge together later). **Stages 1–3 are BUILT + verified** — all
 six automatable hosts are live (Claude Code, Codex, Claude Desktop, Cursor, Warp,
-opencode) plus `doctor`/`list`/`import`/`apply`/`sync`/`add`/`remove`. 65 tests;
-codex + opencode + Desktop render byte-identically to `~/dotfiles/mcp/render.js`. See
-the [Stage 1](2026-08-mcpsync-1-core-and-file-hosts.md) and
-[Stage 2](2026-08-mcpsync-2-cli-hosts-and-sync.md) Status logs for the evidence.
-`dist/` is gitignored.
+opencode) plus `doctor`/`list`/`import`/`apply`/`sync`/`add`/`remove`/`deploy`. 86
+tests; codex + opencode + Desktop render byte-identically to `~/dotfiles/mcp/render.js`.
+See the [Stage 1](2026-08-mcpsync-1-core-and-file-hosts.md),
+[Stage 2](2026-08-mcpsync-2-cli-hosts-and-sync.md), and
+[Stage 3](2026-08-mcpsync-3-deploy.md) Status logs for the evidence. `dist/` is
+gitignored.
 
 **First thing next session:** `git status --short` (tree should be clean on
-`feat/mcpsync-tool` after the Stage 2 commit); `pnpm install`; sanity `pnpm --filter
-@george43g/mcpsync test`. Then start **Stage 3**.
+`feat/mcpsync-tool` after the Stage 3 commit); `pnpm install`; sanity `pnpm --filter
+@george43g/mcpsync test`. Then start **Stage 4**.
 
-**Next up — Stage 3** ([3-deploy](2026-08-mcpsync-3-deploy.md)): generalized Claude
-Desktop extension deploy — `core/deploy.ts` + `deploy <src-dir|.mcpb> [--ext-id]
-[--from <archive>] [--full] [--list] [--dry-run]`, ported/generalized from
-`imsg-mcp/scripts/hot-deploy-ext.mjs`. Locate `~/Library/Application Support/Claude/
-Claude Extensions`, match by `manifest.name`/`--ext-id`, sync `[dist, native,
-manifest.json, icon.png, assets]` (+`node_modules` with `--full`), print a reload
-reminder. Gate behind a dry-run preview; `--list` is read-only.
+**Next up — Stage 4 (Ink TUI)** ([4-tui](2026-08-mcpsync-4-tui.md)): a servers×hosts
+grid. **Before writing any TUI code:** switch `apps/mcpsync/tsconfig.json` from
+`node.json` back to `react.json` and add `react`/`ink`/`@george43g/tui-kit`/
+`@types/react` — they were deliberately deferred so Stages 1–3 stay dependency-honest.
+`@george43g/robustness` is declared but unused until the TUI installs its handlers.
+Reuse `renderFullScreen`/`ThemeProvider`/`useVimKeys`/`StatusBar` from tui-kit; guard
+`mcpsync tui` behind `isInteractive()` and lazy-import it.
 
-**Note for Stage 4 (TUI):** switch `apps/mcpsync/tsconfig.json` from `node.json`
-back to `react.json` and add `react`/`ink`/`@george43g/tui-kit`/`@types/react` — they
-were deliberately deferred so Stages 1–3 stay dependency-honest. `@george43g/robustness`
-is declared but unused until the TUI installs its handlers.
+Stage 3 is done: `core/deploy.ts` + `deploy [source] [--ext-id] [--from] [--full]
+[--list] [--dry-run] [--yes]` — locate `~/Library/Application Support/Claude/Claude
+Extensions`, match by `manifest.name`/`--ext-id`, replace `[dist, native,
+manifest.json, icon.png, assets]` (+`node_modules` with `--full`) via rm+cp, reload
+reminder. `--list` read-only; the rm+cp is gated behind a dry-run preview + TTY/`--yes`
+confirm (non-TTY refuses).
 
 **Invariants (do not violate, all stages):** meta-repo-only (no `lib/` mirror, not in
 `LIB_TO_CANONICAL`); adapters take injectable paths; tests never touch real `~`
@@ -157,7 +160,7 @@ managed-block; no per-project scope) · Claude Desktop (file; `$SHELL -lc` wrap 
 |---|---|---|
 | 1 — skeleton + core + file hosts | [1-core-and-file-hosts](2026-08-mcpsync-1-core-and-file-hosts.md) | complete |
 | 2 — CLI hosts + opencode + sync | [2-cli-hosts-and-sync](2026-08-mcpsync-2-cli-hosts-and-sync.md) | complete |
-| 3 — generalized deploy | [3-deploy](2026-08-mcpsync-3-deploy.md) | pending |
+| 3 — generalized deploy | [3-deploy](2026-08-mcpsync-3-deploy.md) | complete |
 | 4 — Ink TUI grid | [4-tui](2026-08-mcpsync-4-tui.md) | pending |
 | 5 — secrets + project scope | [5-secrets-and-project-scope](2026-08-mcpsync-5-secrets-and-project-scope.md) | pending |
 
@@ -189,6 +192,16 @@ next stage doc and resumes.
   host-level `matches`/`willSkip`. 65 tests; codex + opencode byte-match render.js.
   Live drift correctly flagged real machine divergences (codex context7 out-of-block
   → skip; Claude Code github `${GITHUB_MCP_TOKEN}` vs canonical `${GH_TOKEN}` → drift).
+- 2026-08-02: **Stage 3 complete** — `core/deploy.ts` (pure, injectable-path
+  functions) + `deploy` command. 86 tests (+21). Deviations (documented in the stage
+  doc): positional `[source]` accepts a dir OR `.mcpb`/`.dxt` (mcpsync isn't run from
+  the ext repo, unlike the imsg script's cwd default); injectable `unzip` + a
+  single-wrapping-subdir `findManifest` fallback for archive layouts; deploy takes NO
+  backup (it replaces regenerable build artifacts, not user config) but is gated
+  behind the same dry-run + TTY/`--yes` confirm as host writes. Live read-only smoke:
+  `--list` enumerated 8 installed extensions; `--dry-run` matched imsg by name and
+  computed the plan; non-TTY without `--yes` refused a real matching target (mtime
+  unchanged). `ensureConfirmed` gained an optional `refusal` message.
 
 ## Recovery
 

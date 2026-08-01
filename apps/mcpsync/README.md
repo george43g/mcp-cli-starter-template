@@ -11,7 +11,8 @@ the machine, with per-host fidelity, dry-run previews, and timestamped backups.
 
 ## Status
 
-**Stages 1–2** — canonical core + all six automatable hosts + full reconcile:
+**Stages 1–3** — canonical core + all six automatable hosts + full reconcile +
+Claude Desktop extension `deploy`:
 
 | Host | Mechanism | Config | Notes |
 |---|---|---|---|
@@ -22,8 +23,7 @@ the machine, with per-host fidelity, dry-run previews, and timestamped backups.
 | Warp | file | `~/.warp/.mcp.json` | direct merge, symlink-aware |
 | opencode | file | `~/.config/opencode/opencode.json` | outlier shape: `mcp` key, `command[]`, `environment`, `type:local\|remote`, `${VAR}`→`{env:VAR}` |
 
-A generalized extension `deploy`, an Ink TUI, and a secrets store land in later
-stages.
+An Ink TUI and a secrets store land in later stages.
 
 ## Commands
 
@@ -35,7 +35,16 @@ mcpsync apply [--to <host>|all] [--only a,b] [--dry-run] [--yes]
 mcpsync sync  [--to <host>|all] [--dry-run] [--yes]   # drift plan, then full-reconcile
 mcpsync add <name> --command <cmd> [--arg x]… [--env K=V]… | --url <url> [--header "K: V"]…
 mcpsync remove <name> [--to <host>|all]              # canonical by default; --to targets a host
+mcpsync deploy [source] [--ext-id <id>] [--from <archive>] [--full] [--list] [--dry-run] [--yes]
 ```
+
+`deploy` hot-installs a built MCP extension into Claude Desktop — no GUI reinstall.
+`source` is a built extension dir (with `manifest.json` + `dist/`) or a packed
+`.mcpb`/`.dxt`. It matches the installed extension by `manifest.name` (or `--ext-id`)
+and replaces `dist`, `native`, `manifest.json`, `icon.png`, `assets` (add
+`node_modules` with `--full`). `--list` enumerates installed extensions (read-only);
+the replace is gated behind a `--dry-run` preview and a TTY/`--yes` confirm. After a
+deploy, reload the extension in Claude Desktop (toggle off/on, or Quit + reopen).
 
 Global flags: `--json`, `-q/--quiet`, `-v/--verbose`, `--no-color`,
 `-c/--config <path>`.
@@ -49,7 +58,9 @@ codex server defined outside the managed block).
 - **Dry-run + backup by default.** Every file write is preceded by a
   `.bak.<epoch>` copy; `--dry-run` previews with no writes; a non-dry-run
   `apply`/`sync` without a TTY refuses unless `--yes` is given. CLI hosts
-  (Claude Code) take no backup — the official CLI owns the file.
+  (Claude Code) take no backup — the official CLI owns the file. `deploy` replaces
+  regenerable build artifacts (not config), so it takes no backup either, but is
+  gated by the same dry-run preview + TTY/`--yes` confirm.
 - **Merge vs. full-sync.** `apply --only …` (and the library `applyServer`)
   MERGE — they never delete sibling servers. A full `apply`/`sync` prunes the
   host down to the canonical set, but only servers mcpsync/dotfiles marked as

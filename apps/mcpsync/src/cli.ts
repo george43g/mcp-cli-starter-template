@@ -8,6 +8,7 @@
  *   sync [--to host|all]            Show a drift plan, then full-reconcile hosts
  *   add <name> …                    Add/overwrite a server in the canonical manifest
  *   remove <name> [--to host|all]   Remove from canonical (default) or a host
+ *   deploy [source] …               Hot-deploy a built extension into Claude Desktop
  *
  * Global flags come from cli-kit's buildProgram (--json / -q / -v / --no-color)
  * plus -c/--config for a non-default manifest path.
@@ -16,6 +17,7 @@
 import { buildProgram, color, disableColors } from "@george43g/cli-kit";
 import { runAdd } from "./commands/add.js";
 import { runApply } from "./commands/apply.js";
+import { runDeploy } from "./commands/deploy.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runImport } from "./commands/import.js";
 import { runList } from "./commands/list.js";
@@ -142,6 +144,40 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
         yes: opts.yes,
       });
     });
+
+  program
+    .command("deploy [source]")
+    .description("Hot-deploy a built MCP extension (dir or .mcpb/.dxt) into Claude Desktop")
+    .option("--ext-id <id>", "Match the installed extension by dir id (not manifest name)")
+    .option("--from <archive>", "Deploy from a packed .mcpb/.dxt archive")
+    .option("--full", "Also sync node_modules (slow)")
+    .option("--list", "List installed extensions and exit (read-only)")
+    .option("--dry-run", "Preview without writing")
+    .option("-y, --yes", "Skip the confirmation prompt")
+    .action(
+      async (
+        source: string | undefined,
+        opts: {
+          extId?: string;
+          from?: string;
+          full?: boolean;
+          list?: boolean;
+          dryRun?: boolean;
+          yes?: boolean;
+        },
+      ) => {
+        await runDeploy({
+          source,
+          from: opts.from,
+          extId: opts.extId,
+          full: opts.full,
+          list: opts.list,
+          dryRun: opts.dryRun,
+          yes: opts.yes,
+          json: globals().json,
+        });
+      },
+    );
 
   await program.parseAsync(argv as string[]);
 }
