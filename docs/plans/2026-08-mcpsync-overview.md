@@ -25,9 +25,9 @@ DEFERRED, non-build follow-ups and the merge/publish decision (below) — none t
 started without explicit user authorization.
 
 **Deferred (not build tasks; do NOT start unprompted):**
-- Retire `~/dotfiles/mcp/{render.js,status.js,sync.sh}` + Makefile targets and update
-  `~/dotfiles/docs/mcp-registry.md` — the user's "migrate later," only once mcpsync is
-  trusted in daily use.
+- ~~Retire `~/dotfiles/mcp/{render.js,status.js,sync.sh}` + Makefile targets and update
+  `~/dotfiles/docs/mcp-registry.md`~~ — DONE 2026-08-03 (user-authorized; see the
+  migration log entry below).
 - In-TUI per-cell env/args editing (text-input modals) + `useMouse` nav — the pure
   model + single write path make both additive (see Stage 4 doc).
 - **Merge/publish:** `feat/scaffold-harness-layer` + `feat/mcpsync-tool` merge together,
@@ -297,6 +297,22 @@ next stage doc and resumes.
   rebuilds are picked up live; note `pnpm add -g .` mis-resolves `.` against
   the global manifest dir, so use the absolute path) and verified:
   `mcpsync --version` → 0.1.0, `doctor --json` coherent.
+
+- 2026-08-03: **Migration COMPLETE (user-authorized) — mcpsync is the single
+  tool.** (1) opencode joined `--scope project` (`<cwd>/opencode.json`),
+  closing the last render.js parity gap; live dry-run against this repo's
+  render.js-generated opencode.json reported in-sync. (2) `~/dotfiles/mcp/`
+  deleted entirely (render.js, sync.sh tracked; status.js, mcpsync.mjs were
+  uncommitted prototypes whose logic mcpsync had already absorbed) — dotfiles
+  commit `97629cd`: mcp-* make targets are now thin mcpsync wrappers,
+  mcp-registry.md documents the new mechanism. (3) imsg-mcp
+  `apps/imsg-mcp/scripts/hot-deploy-ext.mjs` deleted (`mcpsync deploy`
+  replaced it) — imsg commit `bcb8451` on main. (4) Both meta AGENTS.md and
+  dotfiles AGENTS.md project-scope instructions now say
+  `mcpsync sync --scope project`. Field finding from first live sync: a
+  RUNNING Claude Desktop rewrites claude_desktop_config.json from stale
+  in-memory state on quit, clobbering external writes — quit Desktop BEFORE
+  syncing; a detect-and-warn in the Desktop adapter is the top follow-up.
 
 ## Recovery
 
