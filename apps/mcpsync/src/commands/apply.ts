@@ -52,7 +52,7 @@ export async function runApply(opts: ApplyOpts): Promise<void> {
   if (!targets.length) {
     const hint =
       scope === "project"
-        ? `project scope supports ${PROJECT_HOST_IDS.join(", ")} — Claude Code/Desktop/codex/opencode have no per-project MCP config`
+        ? `project scope supports ${PROJECT_HOST_IDS.join(", ")} — Claude Code/Desktop/codex have no per-project MCP config`
         : `no such host: ${opts.to}`;
     process.stderr.write(`✗ ${hint}\n`);
     process.exitCode = 1;

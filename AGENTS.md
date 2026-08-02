@@ -119,5 +119,6 @@ repo. Continuation state for the current thread lives in
 Canonical set: `.mcp.json` (standard MCP schema, `${VAR}` placeholders only —
 never literal secrets). `.cursor/mcp.json` and `.warp/.mcp.json` are symlinks
 to it. `opencode.json`'s `mcp` key is GENERATED — after editing `.mcp.json`,
-run: `node ~/dotfiles/mcp/render.js --manifest .mcp.json --opencode opencode.json`.
+run: `mcpsync sync --scope project --yes` (the `mcpsync` bin from
+`apps/mcpsync`, installed globally; it replaced `~/dotfiles/mcp/render.js`).
 Global servers and scope decisions: `~/dotfiles/docs/mcp-registry.md`.

@@ -92,8 +92,9 @@ managed block, and a missing Claude Desktop managed-set marker.
 
 `--scope project` (on `apply`/`sync`) targets the **repo-local** config set instead of
 your `~` files: canonical `<cwd>/.mcp.json` → `<cwd>/.cursor/mcp.json` +
-`<cwd>/.warp/.mcp.json` (the two hosts with a per-project MCP mechanism). Claude
-Code / Claude Desktop / codex / opencode have none and are refused with a clear
+`<cwd>/.warp/.mcp.json` + `<cwd>/opencode.json` (the hosts with a per-project MCP
+mechanism; the opencode `mcp` key replaces the old `render.js --opencode` flow).
+Claude Code / Claude Desktop / codex have none and are refused with a clear
 message. `-c/--config` still overrides the canonical path.
 
 Global flags: `--json`, `-q/--quiet`, `-v/--verbose`, `--no-color`,

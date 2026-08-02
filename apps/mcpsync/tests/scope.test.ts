@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -16,11 +16,12 @@ afterEach(() => {
 });
 
 describe("projectHosts", () => {
-  it("returns cursor + warp bound to <cwd>-relative paths", () => {
+  it("returns cursor + warp + opencode bound to <cwd>-relative paths", () => {
     const hosts = projectHosts(dir);
     expect(hosts.map((h) => h.id)).toEqual([...PROJECT_HOST_IDS]);
     expect(hosts[0]?.configPath).toBe(join(dir, ".cursor", "mcp.json"));
     expect(hosts[1]?.configPath).toBe(join(dir, ".warp", ".mcp.json"));
+    expect(hosts[2]?.configPath).toBe(join(dir, "opencode.json"));
     // Never a home path.
     for (const h of hosts) expect(h.configPath.startsWith(homedir())).toBe(false);
   });
@@ -58,5 +59,35 @@ describe("project apply write path", () => {
     // The placeholder passes through untouched — never resolved into the file.
     expect(text).toContain("${GITHUB_TOKEN}");
     expect(JSON.parse(text).mcpServers.gh.env.TOK).toBe("${GITHUB_TOKEN}");
+  });
+
+  it("opencode project host writes <cwd>/opencode.json in the opencode shape", () => {
+    const server = normalize({ command: "node", env: { TOK: "${GITHUB_TOKEN}" } }, "gh");
+    const opencode = projectHosts(dir)[2];
+
+    opencode?.write([server], { dryRun: false, prune: false });
+
+    const path = join(dir, "opencode.json");
+    expect(existsSync(path)).toBe(true);
+    const doc = JSON.parse(readFileSync(path, "utf8"));
+    // opencode's outlier shape: mcp key, command[], environment, {env:VAR}.
+    expect(doc.mcp.gh.command).toEqual(["node"]);
+    expect(doc.mcp.gh.environment.TOK).toBe("{env:GITHUB_TOKEN}");
+    expect(doc.$schema).toBe("https://opencode.ai/config.json");
+  });
+
+  it("opencode project write preserves sibling top-level keys (render.js parity)", () => {
+    const path = join(dir, "opencode.json");
+    const opencode = projectHosts(dir)[2];
+    const first = normalize({ command: "node" }, "a");
+    opencode?.write([first], { dryRun: false, prune: false });
+    const withExtras = JSON.parse(readFileSync(path, "utf8"));
+    withExtras.theme = "custom";
+    writeFileSync(path, `${JSON.stringify(withExtras, null, 2)}\n`);
+
+    opencode?.write([normalize({ command: "deno" }, "b")], { dryRun: false, prune: false });
+    const doc = JSON.parse(readFileSync(path, "utf8"));
+    expect(doc.theme).toBe("custom");
+    expect(Object.keys(doc.mcp).sort()).toEqual(["a", "b"]);
   });
 });

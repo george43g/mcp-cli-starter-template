@@ -69,14 +69,16 @@ export function detectedHosts(): HostAdapter[] {
 }
 
 /** Host ids that support a per-repo config (`capabilities.project`). */
-export const PROJECT_HOST_IDS = ["cursor", "warp"] as const;
+export const PROJECT_HOST_IDS = ["cursor", "warp", "opencode"] as const;
 
 /**
  * Project-scope hosts: the file hosts that support a per-repo config, bound to
- * `<cwd>`-relative paths (`.cursor/mcp.json`, `.warp/.mcp.json`) — the same
- * per-repo model as ~/dotfiles. Returned unfiltered by `detect()` so a fresh
- * repo can have these files created. Claude Code / Claude Desktop / codex /
- * opencode have no per-project MCP mechanism and are intentionally excluded.
+ * `<cwd>`-relative paths (`.cursor/mcp.json`, `.warp/.mcp.json`,
+ * `opencode.json`) — the same per-repo model as ~/dotfiles (opencode reads a
+ * repo-root `opencode.json`; this replaces `render.js --opencode`). Returned
+ * unfiltered by `detect()` so a fresh repo can have these files created.
+ * Claude Code / Claude Desktop / codex have no per-project MCP mechanism and
+ * are intentionally excluded.
  */
 export function projectHosts(cwd: string = process.cwd()): HostAdapter[] {
   return [
@@ -96,6 +98,7 @@ export function projectHosts(cwd: string = process.cwd()): HostAdapter[] {
       transform: toDirectNative,
       capabilities: { mechanism: "file", http: true, env: true, project: true },
     }),
+    opencodeAdapter(join(cwd, "opencode.json"), { label: "opencode (project)" }),
   ];
 }
 

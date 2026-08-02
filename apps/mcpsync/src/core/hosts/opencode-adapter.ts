@@ -56,7 +56,7 @@ function fromOpencode(name: string, raw: unknown): McpServer {
  * ($schema, config) are preserved. Full-sync (`prune`) replaces `mcp` with
  * exactly the given servers; a merge adds/updates while keeping the rest.
  */
-export function opencodeAdapter(configPath: string): HostAdapter {
+export function opencodeAdapter(configPath: string, opts: { label?: string } = {}): HostAdapter {
   const readMcp = (): Record<string, unknown> => {
     const doc = readRawJson(configPath);
     return doc.mcp && typeof doc.mcp === "object" ? (doc.mcp as Record<string, unknown>) : {};
@@ -64,10 +64,10 @@ export function opencodeAdapter(configPath: string): HostAdapter {
 
   return {
     id: "opencode",
-    label: "opencode",
+    label: opts.label ?? "opencode",
     configPath,
     restart: "Restart opencode.",
-    capabilities: { mechanism: "file", http: true, env: true, project: false },
+    capabilities: { mechanism: "file", http: true, env: true, project: true },
     detect: () => existsSync(configPath) || existsSync(dirname(configPath)),
     readRaw: readMcp,
     read() {
