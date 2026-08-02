@@ -277,6 +277,16 @@ next stage doc and resumes.
   (meta.ts pattern) instead of a hardcoded string. Consumer smoke green: bin via
   symlink, doctor JSON, library import + types, non-TTY tui guard.
 
+- 2026-08-03: **npm publish DEFERRED (user decision).** The package stays
+  publish-ready (bundled kits, d.ts, pack:check, .releaserc all in place), but
+  the `release-packages.yml` mcpsync job is gated to `workflow_dispatch` only
+  and `apps/mcpsync/**` is removed from the workflow's push paths — merges no
+  longer attempt a publish that would fail without the bootstrap. Interim
+  install is the local global bin (`pnpm --filter @george43g/mcpsync build`,
+  then `pnpm add -g .` from `apps/mcpsync`). To publish later: one-time manual
+  `npm publish` of 0.1.0, add the npm trusted publisher, then dispatch the
+  workflow (optionally re-enable the push trigger for automatic releases).
+
 ## Recovery
 
 Branch `feat/mcpsync-tool`. If a stage's build is partial, its stage doc's Status

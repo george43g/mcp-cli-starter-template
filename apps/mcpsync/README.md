@@ -5,20 +5,26 @@ Cross-host MCP config sync. One canonical manifest (`~/.mcp.json`, standard
 the machine, with per-host fidelity, dry-run previews, and timestamped backups.
 
 > Meta-repo tool. Like `apps/scaffolder`, this is **not** scaffolded into
-> generated repos and has no `lib/` mirror. It is published to npm as
-> `@george43g/mcpsync` from this repo (the unpublished workspace kits are
-> bundled into its `dist/`). Staged build: see
+> generated repos and has no `lib/` mirror. It is publish-ready as
+> `@george43g/mcpsync` (the unpublished workspace kits are bundled into its
+> `dist/`; npm publish itself is deferred — see Install). Staged build: see
 > [`docs/plans/2026-08-mcpsync-overview.md`](../../docs/plans/2026-08-mcpsync-overview.md).
 
 ## Install
 
+npm publish is deferred (the package is publish-ready; the release job runs on
+manual dispatch only). Until it lands on npm, install the global bin from a
+checkout of this repo:
+
 ```
-npm i -g @george43g/mcpsync     # or: pnpm add -g @george43g/mcpsync
+pnpm --filter @george43g/mcpsync build
+cd apps/mcpsync && pnpm add -g .
 mcpsync doctor
 ```
 
-Or one-shot without installing: `npx @george43g/mcpsync doctor`. As a library:
-`npm i @george43g/mcpsync` and import — see [Library](#library).
+Once published: `npm i -g @george43g/mcpsync` (or `npx @george43g/mcpsync doctor`
+one-shot). As a library: `npm i @george43g/mcpsync` and import — see
+[Library](#library).
 
 ## Status
 
