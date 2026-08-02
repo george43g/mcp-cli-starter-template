@@ -1,11 +1,25 @@
-# Release pipeline for the reusable packages (currently @george43g/robustness).
+# Release pipeline for the published packages:
+#   @george43g/robustness  (packages/robustness)
+#   @george43g/mcpsync     (apps/mcpsync — bin `mcpsync`; bundles the
+#                           unpublished cli-kit/tui-kit into its dist)
 #
 # Publishing uses npm OIDC trusted publishing — there is NO NPM_TOKEN secret.
-# On npmjs.com, the package's Trusted Publisher (GitHub Actions) must be:
+# On npmjs.com, EACH package's Trusted Publisher (GitHub Actions) must be:
 #   organization/user: george43g
 #   repository:        mcp-cli-starter-template
 #   workflow filename: release-packages.yml
 #   environment:       (leave empty)
+# (Trusted publishing config requires the package to already exist — each new
+# package needs a one-time manual `npm publish` bootstrap, like robustness
+# 0.1.0 was.)
+#
+# mcpsync's npm publish is DEFERRED (user decision 2026-08-03): the package is
+# publish-ready but not yet bootstrapped, so its job only runs on manual
+# workflow_dispatch and pushes touching apps/mcpsync do not trigger this
+# workflow. To start publishing: `npm publish` 0.1.0 from apps/mcpsync, add
+# the trusted publisher on npmjs.com, then run this workflow manually (and
+# optionally restore `apps/mcpsync/**` to the push paths + drop the job's
+# `if:` guard for automatic releases).
 #
 # semantic-release drives versioning from Conventional Commits touching
 # packages/robustness (semantic-release-monorepo filters commits by package
@@ -91,4 +105,53 @@ jobs:
           # on local `pnpm publish`, which has no CI OIDC provider and fails
           # ("provenance generation not supported for provider: null"). Scoping
           # it to this CI step keeps local publishes working.
+          NPM_CONFIG_PROVENANCE: "true"
+
+  # Serialized after robustness (`needs`) — both jobs' semantic-release push a
+  # [skip ci] bump commit to main, and concurrent pushes would race. The
+  # semantic-release-monorepo path filter means a push touching only one
+  # package produces a release only for that package; the other job no-ops.
+  mcpsync:
+    # Publish deferred — manual dispatch only until the 0.1.0 bootstrap +
+    # trusted-publisher config exist (see header).
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: robustness
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          # Pull the tip of main, not the triggering SHA: if the robustness job
+          # released, main has moved by its bump commit and semantic-release
+          # must sit on top of it to push its own.
+          ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.29.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Show npm version (OIDC trusted publishing needs >= 11.5.1)
+        run: npm --version
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify (lint + docs + typecheck + unit/integration tests + build)
+        run: pnpm verify
+
+      - name: Pack sanity (bin + dist + types present in the tarball)
+        run: pnpm --filter @george43g/mcpsync pack:check
+
+      - name: Release (semantic-release → npm via OIDC + GitHub release)
+        run: pnpm --filter @george43g/mcpsync exec semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"

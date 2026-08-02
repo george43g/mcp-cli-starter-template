@@ -4,6 +4,8 @@
 
 This repo was generated from `mcp-cli-starter-template` via `mcp-scaffold init`. Names and scopes have already been substituted; you can start working directly.
 
+New here? Start with [`HANDOFF.md`](HANDOFF.md) for orientation and first steps, then [`docs/README.md`](docs/README.md) (the docs index) and [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) for what exists and why. `pnpm check:docs` keeps those links and the docs index honest.
+
 ## What This Repo Is
 
 A Turborepo monorepo that ships **four surfaces** from a **single bin** (`example-repo`):
@@ -64,7 +66,8 @@ packages/
 | `pnpm lint` | Biome check |
 | `pnpm lint:fix` | Biome write |
 | `pnpm stress` | Run 13-assertion stress harness against the built MCP |
-| `pnpm verify` | lint + typecheck + test + build (CI shape) |
+| `pnpm verify` | lint + docs check + typecheck + test + build (CI shape) |
+| `pnpm check:docs` | Docs integrity: index coverage + relative links + agent-file symlinks |
 | `pnpm --filter example-repo-mcp artifacts` | Regenerate CLI help docs, completions, and manpage |
 | `pnpm --filter example-repo-mcp check:usage` | Byte-check generated CLI artifacts |
 
@@ -194,7 +197,7 @@ Types are hand-mirrored between `packages/shared-types/src/index.ts` (Zod) and `
 
 ## CI / Release
 
-- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, runs lint + typecheck + test + test:no-native + build + `pnpm check:usage` (completions/manpage/docs freshness gate) + `npm pack --dry-run` + stress (all 13 assertions).
+- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, runs lint + docs integrity (`pnpm check:docs`) + typecheck + test + test:no-native + build + `pnpm check:usage` (completions/manpage/docs freshness gate) + `npm pack --dry-run` + stress (all 13 assertions).
 - `.github/workflows/release.yml` — semantic-release with `@semantic-release/{commit-analyzer,release-notes-generator,changelog,npm,github,git}`. **Disabled by default** — `on:` trigger is commented. To enable: uncomment + add `NPM_TOKEN` secret. See `docs/RELEASE.md`.
 - `.github/workflows/readme-check.yml` — fails CI if `src/**` changed without a `README.md` update. Bypass with `[skip-readme]` in commit/PR title.
 

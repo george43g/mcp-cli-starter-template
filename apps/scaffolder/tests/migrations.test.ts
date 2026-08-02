@@ -101,6 +101,7 @@ describe("01-bootstrap/m4-monorepo", () => {
     expect(Object.keys(pkg.scripts).sort()).toEqual(
       [
         "build",
+        "check:docs",
         "clean",
         "dev",
         "format",
@@ -114,7 +115,8 @@ describe("01-bootstrap/m4-monorepo", () => {
       ].sort(),
     );
     expect(pkg.scripts.build).toBe("turbo run build");
-    expect(pkg.scripts.verify).toMatch(/lint.*typecheck.*test.*build/);
+    expect(pkg.scripts["check:docs"]).toBe("node scripts/check-docs-links.mjs");
+    expect(pkg.scripts.verify).toMatch(/lint.*check:docs.*typecheck.*test.*build/);
 
     // Root tsconfig resolution requires the workspace config package to be linked here.
     expect(Object.keys(pkg.devDependencies)).toEqual(

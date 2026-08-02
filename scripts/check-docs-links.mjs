@@ -79,6 +79,9 @@ function checkLinks(fileAbs, content) {
     if (/^(?:https?:|mailto:|#)/.test(target)) continue;
     const pathPart = target.split("#")[0];
     if (pathPart === "") continue;
+    // VHS-generated media (docs/screenshots/*.gif) is produced by CI, so a
+    // hero-image link into it is legitimately absent in a fresh checkout.
+    if (pathPart.includes("screenshots/")) continue;
     // usage(1)-generated CLI docs emit site-absolute links (/init.md) that
     // mean "sibling page"; no repo-root-absolute links exist in this repo.
     const resolved = pathPart.startsWith("/")

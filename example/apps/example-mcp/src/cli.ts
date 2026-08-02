@@ -14,6 +14,8 @@
  * To remove TUI support: delete the `tui` subcommand below + `src/tui/`.
  */
 
+import { realpathSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { color, isInteractive } from "@george43g/cli-kit";
 import { Command } from "commander";
 import { checkLocalAccess, formatAccessReport } from "./access-check.js";
@@ -143,10 +145,16 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
   await program.parseAsync(argv as string[]);
 }
 
+/**
+ * Run main() only when this file is the executed entry point. argv[1] is
+ * realpath'd because npm installs bins as `node_modules/.bin/<name>` SYMLINKS —
+ * a plain `argv[1].endsWith("/dist/cli.js")` check fails there and the bin
+ * exits silently.
+ */
 const isMain = (() => {
   try {
-    const arg = process.argv[1] ?? "";
-    return arg.endsWith("/dist/cli.js") || arg.endsWith("/src/cli.ts");
+    const arg = process.argv[1];
+    return arg !== undefined && import.meta.url === pathToFileURL(realpathSync(arg)).href;
   } catch {
     return false;
   }

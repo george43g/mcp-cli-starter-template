@@ -42,6 +42,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Docs integrity (links, agent-file symlinks, index coverage)
+        run: pnpm check:docs
+
       - name: Typecheck
         run: pnpm typecheck
 
