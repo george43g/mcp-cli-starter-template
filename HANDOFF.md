@@ -1,6 +1,6 @@
 # Current Handoff
 
-Last refreshed: 2026-08-01 (Australia/Melbourne)
+Last refreshed: 2026-08-03 (Australia/Melbourne)
 
 This is the front door for a fresh agent. Read
 [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) for the exhaustive history,
@@ -12,12 +12,13 @@ verification matrix, dependency decisions, and deferred work.
 | --- | --- |
 | Repository | `/Users/george/repos/mcp-cli-starter-template` |
 | Branch | `main` |
-| `origin/main` | `e431399e9be02b0fefd7db3cf14a23a9f0e87d7b` |
-| Ahead/behind | ahead 3, behind 0 |
-| Local commits | `8e6fce9` (generated verification), `ef3809b` (the verified implementation), plus the harness-engineering docs pass containing this refresh |
-| Remote check | `git fetch --prune` succeeded on 2026-07-29 |
+| `origin/main` | `0842336` — merge of PR #1, merged 2026-08-03 with CI green |
+| Ahead/behind | in sync |
+| Local commits | none |
+| Remote check | fetch + push succeeded on 2026-08-03 |
 | Working tree | clean |
-| Push state | none of the three local commits are pushed |
+| Push state | everything pushed; `feat/mcpsync-tool` + `feat/scaffold-harness-layer` deleted after merge |
+| mcpsync | `apps/mcpsync` landed (5 stages + audit + publish prep); npm publish DEFERRED — release job is `workflow_dispatch`-only; local global bin installed via `pnpm add -g` (see [docs/plans/2026-08-mcpsync-overview.md](docs/plans/2026-08-mcpsync-overview.md)) |
 | Package state | `@george43g/robustness@0.1.1` published to npm on 2026-07-31 via the CI OIDC pipeline (0.1.0 was the earlier user-run local publish); tags `robustness-v0.1.0` + `robustness-v0.1.1`; GitHub release `robustness-v0.1.1` |
 | Release pipeline | `.github/workflows/release-packages.yml` PROVEN end-to-end: full verify matrix → npm OIDC trusted publishing (no `NPM_TOKEN`) → tag + CHANGELOG + GitHub release → `[skip ci]` bump commit (loop-safe, confirmed no re-trigger) |
 | Runtime default | `source`; registry mode is staged but not the default |
@@ -148,7 +149,8 @@ remaining landing decisions are:
 
 1. Re-read this file, `docs/PROJECT_STATE.md`, `AGENTS.md`, and the findings
    ledger. Confirm `git status --short --branch`.
-2. Push — `main` is in sync with `origin/main` and CI passed.
+2. Push — DONE (2026-08-03): everything is on `origin/main` via PR #1;
+   `apps/mcpsync` landed with it (npm publish deferred to manual dispatch).
 3. Publish robustness — DONE. `0.1.0` was the initial user-run local publish;
    `0.1.1` published 2026-07-31 via `release-packages.yml` (npm OIDC trusted
    publishing, no `NPM_TOKEN`). Getting the CI pipeline green took three

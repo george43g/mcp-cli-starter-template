@@ -1,6 +1,6 @@
 # Project State and Continuation Handoff
 
-Last refreshed: 2026-07-29
+Last refreshed: 2026-08-03
 
 This document is the durable continuation record for
 `mcp-cli-starter-template`. It exists so a context compact, a restarted agent, or
@@ -12,15 +12,16 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| `origin/main` | `e431399e9be02b0fefd7db3cf14a23a9f0e87d7b` |
-| Ahead/behind | ahead 3, behind 0 |
-| Local commits | `8e6fce9` (generated verification), `ef3809b` (verified implementation), plus the harness-engineering docs pass |
-| Push state | all three local commits are unpushed |
-| Remote check | fetched successfully on 2026-07-29 |
+| `origin/main` | `0842336` — merge of PR #1 (`feat/mcpsync-tool`, which contained `feat/scaffold-harness-layer`), merged 2026-08-03 with CI green |
+| Ahead/behind | in sync |
+| Local commits | none |
+| Push state | everything pushed; both feature branches deleted after merge |
+| Remote check | fetched successfully on 2026-08-03 |
 | Working tree | clean |
 | Product boundary | fresh scaffolds are pnpm-only |
 | Runtime boundary | source is the pre-publication default; registry mode is staged |
-| Registry state | `@george43g/robustness@0.1.0` published 2026-07-29; shasum `09d3076`; public-consumer smoke passed; tag `robustness-v0.1.0` |
+| Registry state | `@george43g/robustness@0.1.1` published 2026-07-31 via CI OIDC (0.1.0 was the 2026-07-29 user-run bootstrap); tags `robustness-v0.1.0`/`-v0.1.1` |
+| mcpsync | `apps/mcpsync` landed on `main` (all 5 stages + audit + publish prep); npm publish DEFERRED — `release-packages.yml` mcpsync job is `workflow_dispatch`-only; interim install is the local global bin (`pnpm add -g <abs path to apps/mcpsync>`, installed 2026-08-03); see [plans/2026-08-mcpsync-overview.md](plans/2026-08-mcpsync-overview.md) |
 
 Always re-run `git status --short --branch` before relying on this snapshot.
 

@@ -1,7 +1,8 @@
 # ExecPlan: `apps/mcpsync` — cross-host MCP config sync + deploy (overview)
 
-**Status:** `complete` — all five stages built + verified (2026-08-02). Feature
-branch still local (unpushed); merge/publish pending explicit authorization.
+**Status:** `complete` — all five stages built + verified (2026-08-02); MERGED
+to `main` via PR #1 with CI green (2026-08-03). npm publish deferred — the
+release job is manual-dispatch-only; interim install is the local global bin.
 
 This is the master record for the `mcpsync` work. It is self-contained: a fresh
 agent should be able to read this file plus the current stage doc and resume cold.
@@ -286,6 +287,16 @@ next stage doc and resumes.
   then `pnpm add -g .` from `apps/mcpsync`). To publish later: one-time manual
   `npm publish` of 0.1.0, add the npm trusted publisher, then dispatch the
   workflow (optionally re-enable the push trigger for automatic releases).
+
+- 2026-08-03: **MERGED.** PR #1 (`feat/mcpsync-tool`, containing
+  `feat/scaffold-harness-layer`) merged to `main` at `0842336` with CI green
+  (ubuntu+macos matrix, README check, CLI Artifacts Drift). The merge did NOT
+  trigger `release-packages.yml` (paths are robustness-only now — the deferral
+  gating worked). Both feature branches deleted. The local global bin is
+  installed via `pnpm add -g /abs/path/to/apps/mcpsync` (a `link:` install —
+  rebuilds are picked up live; note `pnpm add -g .` mis-resolves `.` against
+  the global manifest dir, so use the absolute path) and verified:
+  `mcpsync --version` → 0.1.0, `doctor --json` coherent.
 
 ## Recovery
 
