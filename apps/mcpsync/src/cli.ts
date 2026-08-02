@@ -19,6 +19,9 @@
  * plus -c/--config for a non-default manifest path.
  */
 
+import { readFileSync, realpathSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildProgram, color, disableColors, isInteractive } from "@george43g/cli-kit";
 import { runAdd } from "./commands/add.js";
 import { runApply } from "./commands/apply.js";
@@ -31,7 +34,22 @@ import { runSecretList, runSecretRemove, runSecretSet } from "./commands/secret.
 import { runSync } from "./commands/sync.js";
 import type { Scope } from "./core/schema.js";
 
-const VERSION = "0.0.0";
+/**
+ * Version read from package.json at runtime (dist/cli.js → ../package.json;
+ * src/cli.ts → ../package.json) so semantic-release bumps propagate without
+ * hand-syncing — same pattern as the template's meta.ts.
+ */
+const VERSION = (() => {
+  try {
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const pkg = JSON.parse(readFileSync(resolve(dir, "..", "package.json"), "utf8")) as {
+      version: string;
+    };
+    return pkg.version;
+  } catch {
+    return "0.0.0";
+  }
+})();
 
 export async function main(argv: readonly string[] = process.argv): Promise<void> {
   const program = buildProgram({
@@ -258,10 +276,16 @@ function parseScope(scope: string | undefined): Scope {
   process.exit(2);
 }
 
+/**
+ * Run main() only when this file is the executed entry point. argv[1] is
+ * realpath'd because npm installs bins as `node_modules/.bin/<name>` SYMLINKS —
+ * a plain `argv[1].endsWith("/dist/cli.js")` check fails there and the bin
+ * exits silently (found by the packed-tarball consumer smoke).
+ */
 const isMain = (() => {
   try {
-    const arg = process.argv[1] ?? "";
-    return arg.endsWith("/dist/cli.js") || arg.endsWith("/src/cli.ts");
+    const arg = process.argv[1];
+    return arg !== undefined && import.meta.url === pathToFileURL(realpathSync(arg)).href;
   } catch {
     return false;
   }

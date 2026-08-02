@@ -5,9 +5,20 @@ Cross-host MCP config sync. One canonical manifest (`~/.mcp.json`, standard
 the machine, with per-host fidelity, dry-run previews, and timestamped backups.
 
 > Meta-repo tool. Like `apps/scaffolder`, this is **not** scaffolded into
-> generated repos and has no `lib/` mirror. It lives here until it graduates to a
-> published home. Staged build: see
+> generated repos and has no `lib/` mirror. It is published to npm as
+> `@george43g/mcpsync` from this repo (the unpublished workspace kits are
+> bundled into its `dist/`). Staged build: see
 > [`docs/plans/2026-08-mcpsync-overview.md`](../../docs/plans/2026-08-mcpsync-overview.md).
+
+## Install
+
+```
+npm i -g @george43g/mcpsync     # or: pnpm add -g @george43g/mcpsync
+mcpsync doctor
+```
+
+Or one-shot without installing: `npx @george43g/mcpsync doctor`. As a library:
+`npm i @george43g/mcpsync` and import — see [Library](#library).
 
 ## Status
 

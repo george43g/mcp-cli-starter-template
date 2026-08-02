@@ -13,8 +13,12 @@ import { defineConfig } from "vite";
  * vite chunks it into dist/ automatically; ink/react stay external.
  *
  * Shebang is added only to dist/cli.js. dist/index.js is a plain library file.
- * Workspace kits (workspace:*) and commander/zod/ink/react stay external
- * `import`s — Node resolves them at runtime; we never bundle them.
+ *
+ * PUBLISH SHAPE: the unpublished workspace kits (@george43g/cli-kit, tui-kit)
+ * are BUNDLED into dist (they are devDependencies — consumers never install
+ * them). Everything with a published home stays an external `import` and a
+ * real dependency: @george43g/robustness (npm), the kits' own runtime deps
+ * (cli-table3, picocolors), and commander/zod/ink/react/fullscreen-ink.
  */
 export default defineConfig({
   build: {
@@ -34,10 +38,12 @@ export default defineConfig({
       external: [
         ...builtinModules,
         ...builtinModules.map((m) => `node:${m}`),
-        /^@george43g\//,
+        "@george43g/robustness",
+        "cli-table3",
         "commander",
         "fullscreen-ink",
         "ink",
+        "picocolors",
         "react",
         "react/jsx-runtime",
         "react/jsx-dev-runtime",

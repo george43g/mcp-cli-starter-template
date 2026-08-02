@@ -1,0 +1,13 @@
+{
+  "extends": "@george43g/tsconfig/react.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": false
+  },
+  "include": ["src/index.ts", "src/core/**/*"],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

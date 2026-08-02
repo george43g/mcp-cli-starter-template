@@ -258,6 +258,25 @@ next stage doc and resumes.
   silently discarding non-MCP keys; `--scope` fail-closed. Details + accepted-as-is
   list in the [Stage 5 doc](2026-08-mcpsync-5-secrets-and-project-scope.md) log.
 
+- 2026-08-03: **Publish prep (user-authorized).** Decisions: mcpsync publishes as
+  `@george43g/mcpsync` from this repo; the unpublished kits (cli-kit/tui-kit) are
+  BUNDLED into its dist (moved to devDependencies — consumers never install them;
+  PROJECT_STATE #9 "kits stay unpublished" holds); `@george43g/robustness` becomes a
+  real `^0.1.1` npm dep; the kits' runtime deps (cli-table3, picocolors) become
+  direct deps. Version 0.1.0 for the one-time manual bootstrap publish (trusted
+  publishing needs the package to exist — robustness-0.1.0 pattern), then
+  `release-packages.yml` (new `mcpsync` job, serialized `needs: robustness`, checks
+  out `main` tip to avoid bump-commit races) takes over via OIDC. Types via
+  `tsconfig.build.json` (declarations for the `index` + `core` graph only). Verified
+  by a packed-tarball consumer smoke, which caught a REAL bug: the bin's
+  `argv[1].endsWith("/dist/cli.js")` is-main gate fails through npm's
+  `node_modules/.bin` SYMLINK — the installed bin exited 0 silently. Fixed with
+  `import.meta.url === pathToFileURL(realpathSync(argv[1])).href` in mcpsync AND the
+  golden template (canonical + 08-app lib mirror + example/ regen — same latent bug
+  shipped to every generated repo). `--version` now reads package.json at runtime
+  (meta.ts pattern) instead of a hardcoded string. Consumer smoke green: bin via
+  symlink, doctor JSON, library import + types, non-TTY tui guard.
+
 ## Recovery
 
 Branch `feat/mcpsync-tool`. If a stage's build is partial, its stage doc's Status
