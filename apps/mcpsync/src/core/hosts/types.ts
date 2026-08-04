@@ -26,6 +26,13 @@ export interface WriteResult {
   skipped?: string[];
   /** For CLI hosts: the commands that were / would be run, for display. */
   commands?: string[];
+  /**
+   * A reason writing to this host RIGHT NOW is unsafe — e.g. Claude Desktop is
+   * running and will overwrite the file from stale in-memory state when it next
+   * quits. When present on a non-dry-run, non-forced write, nothing was written
+   * (`changed` is false); with `--force` or on a dry-run it is an advisory note.
+   */
+  hazard?: string;
 }
 
 /**
@@ -58,8 +65,16 @@ export interface HostAdapter {
    * codex server defined outside the managed block). Absent ⇒ never skips.
    */
   willSkip?(name: string): boolean;
-  /** Write servers into the host config. See json-adapter for `prune` semantics. */
-  write(servers: McpServer[], opts?: { dryRun?: boolean; prune?: boolean }): WriteResult;
+  /**
+   * Write servers into the host config. See json-adapter for `prune` semantics.
+   * `force` overrides a `writeHazard` skip (e.g. writing Claude Desktop's config
+   * while Desktop is running); default false, so callers are protected unless
+   * they opt in.
+   */
+  write(
+    servers: McpServer[],
+    opts?: { dryRun?: boolean; prune?: boolean; force?: boolean },
+  ): WriteResult;
   /** Remove a server by name. */
   remove(name: string, opts?: { dryRun?: boolean }): WriteResult;
 }

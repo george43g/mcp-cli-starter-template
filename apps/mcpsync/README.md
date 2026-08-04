@@ -112,6 +112,13 @@ codex server defined outside the managed block).
   (Claude Code) take no backup — the official CLI owns the file. `deploy` replaces
   regenerable build artifacts (not config), so it takes no backup either, but is
   gated by the same dry-run preview + TTY/`--yes` confirm.
+- **Won't write Claude Desktop's config while Desktop is running.** Desktop keeps
+  `mcpServers` in memory and flushes that (stale) state back to the file when it
+  quits — silently clobbering an external write. So `apply`/`sync` **skip** the
+  Desktop host while it's running (other hosts still apply), print a warning, and
+  tell you to quit Desktop and re-run. `--force` writes anyway (then fully Quit +
+  reopen to load it). Detection is macOS-only and fail-open (a detection error is
+  treated as "not running"), so it never wedges a legitimate write.
 - **Merge vs. full-sync.** `apply --only …` (and the library `applyServer`)
   MERGE — they never delete sibling servers. A full `apply`/`sync` prunes the
   host down to the canonical set, but only servers mcpsync/dotfiles marked as

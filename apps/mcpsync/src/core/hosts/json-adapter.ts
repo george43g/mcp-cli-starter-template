@@ -70,6 +70,13 @@ export interface JsonAdapterConfig {
   /** Top-level marker array key tracking servers we manage (Claude Desktop). */
   marker?: string;
   capabilities: HostCapabilities;
+  /**
+   * Optional pre-write hazard check. Returns a reason writing now is unsafe
+   * (e.g. Claude Desktop is running and will clobber the file on quit), or null
+   * when safe. A hazard SKIPS a non-dry-run write unless `force` is passed; on a
+   * dry-run or forced write it becomes an advisory note. Called at write time.
+   */
+  writeHazard?: () => string | null;
 }
 
 /**
@@ -87,7 +94,7 @@ export interface JsonAdapterConfig {
  * Non-marker hosts never delete on write regardless of `prune`.
  */
 export function jsonMcpServersAdapter(cfg: JsonAdapterConfig): HostAdapter {
-  const { id, label, configPath, restart, transform, marker, capabilities } = cfg;
+  const { id, label, configPath, restart, transform, marker, capabilities, writeHazard } = cfg;
 
   const currentServers = (doc: Record<string, unknown>): Record<string, unknown> =>
     doc.mcpServers && typeof doc.mcpServers === "object"
@@ -126,7 +133,8 @@ export function jsonMcpServersAdapter(cfg: JsonAdapterConfig): HostAdapter {
       return JSON.stringify(transform(canon)) === JSON.stringify(raw);
     },
     write(servers, opts = {}) {
-      const { dryRun = false, prune = false } = opts;
+      const { dryRun = false, prune = false, force = false } = opts;
+      const hazard = writeHazard?.() ?? null;
       // Strict: a corrupt existing config must abort the write, not be silently
       // rebuilt from {} (that would discard every non-MCP key it still holds).
       const doc = readRawJsonStrict(configPath);
@@ -151,8 +159,21 @@ export function jsonMcpServersAdapter(cfg: JsonAdapterConfig): HostAdapter {
       if (link !== undefined) result.linkTarget = link;
       const firstName = names[0];
       if (servers.length === 1 && firstName !== undefined) result.native = current[firstName];
+      if (hazard) result.hazard = hazard;
 
-      if (dryRun || !changed) {
+      // Dry-run never writes — carry the hazard as an advisory in the preview.
+      if (dryRun) {
+        result.backup = null;
+        return result;
+      }
+      // Fail-closed: a live hazard (e.g. Desktop running) skips the write so a
+      // quit-time flush can't silently clobber it. `--force` writes anyway.
+      if (hazard && !force) {
+        result.changed = false;
+        result.backup = null;
+        return result;
+      }
+      if (!changed) {
         result.backup = null;
         return result;
       }

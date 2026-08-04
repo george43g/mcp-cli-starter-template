@@ -92,6 +92,7 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
     .option("--scope <scope>", "user (~) | project (repo .mcp.json + .cursor/.warp)", "user")
     .option("--dry-run", "Preview without writing")
     .option("-y, --yes", "Skip the confirmation prompt")
+    .option("--force", "Write Claude Desktop's config even while Desktop is running")
     .action(
       async (opts: {
         to?: string;
@@ -99,6 +100,7 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
         scope?: string;
         dryRun?: boolean;
         yes?: boolean;
+        force?: boolean;
       }) => {
         await runApply({
           to: opts.to,
@@ -112,6 +114,7 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
           config: globals().config,
           dryRun: opts.dryRun,
           yes: opts.yes,
+          force: opts.force,
         });
       },
     );
@@ -123,15 +126,25 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
     .option("--scope <scope>", "user (~) | project (repo .mcp.json + .cursor/.warp)", "user")
     .option("--dry-run", "Preview without writing")
     .option("-y, --yes", "Skip the confirmation prompt")
-    .action(async (opts: { to?: string; scope?: string; dryRun?: boolean; yes?: boolean }) => {
-      await runSync({
-        to: opts.to,
-        scope: parseScope(opts.scope),
-        config: globals().config,
-        dryRun: opts.dryRun,
-        yes: opts.yes,
-      });
-    });
+    .option("--force", "Write Claude Desktop's config even while Desktop is running")
+    .action(
+      async (opts: {
+        to?: string;
+        scope?: string;
+        dryRun?: boolean;
+        yes?: boolean;
+        force?: boolean;
+      }) => {
+        await runSync({
+          to: opts.to,
+          scope: parseScope(opts.scope),
+          config: globals().config,
+          dryRun: opts.dryRun,
+          yes: opts.yes,
+          force: opts.force,
+        });
+      },
+    );
 
   program
     .command("add <name>")
