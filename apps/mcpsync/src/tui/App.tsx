@@ -75,7 +75,14 @@ export function App({ config }: { config?: string | undefined }) {
         if (!target) throw new Error(`${req.server} is not in the canonical manifest`);
         const results = applyServer(req.kind === "all" ? "all" : req.hostId, target);
         const changed = Object.values(results).filter((r) => r.changed).length;
-        setMessage(`applied ${req.server} → ${req.label} (${changed} changed)`);
+        // A hazard-skipped host (e.g. Claude Desktop running) wrote nothing —
+        // surface it rather than reporting a false success.
+        const hazard = Object.values(results).find((r) => r.hazard && !r.changed)?.hazard;
+        setMessage(
+          hazard
+            ? `⚠ ${req.server}: skipped — ${hazard}`
+            : `applied ${req.server} → ${req.label} (${changed} changed)`,
+        );
         reload();
       } catch (err) {
         setMessage(`✗ ${(err as Error).message}`);

@@ -53,6 +53,20 @@ function cursorAdapter(configPath: string): HostAdapter {
   });
 }
 
+/** A desktop-style adapter with an injectable, always-on write hazard. */
+function hazardAdapter(configPath: string, hazard: string | null = "DESKTOP RUNNING"): HostAdapter {
+  return jsonMcpServersAdapter({
+    id: "claude-desktop",
+    label: "Claude Desktop",
+    configPath,
+    restart: "restart",
+    transform: toClaudeDesktopServer,
+    marker: "_mcpManagedByDotfiles",
+    capabilities: { mechanism: "file", http: true, env: true, project: false },
+    writeHazard: () => hazard,
+  });
+}
+
 describe("direct (cursor/warp) adapter", () => {
   it("merges into mcpServers, preserving siblings and non-mcp keys", () => {
     const p = join(dir, "mcp.json");
@@ -133,6 +147,54 @@ describe("marker (claude-desktop) adapter — prune safety lever", () => {
     expect(r.changed).toBe(true);
     expect(serversOf(p).a).toBeUndefined();
     expect(readDoc(p)._mcpManagedByDotfiles).toEqual([]);
+  });
+});
+
+describe("write hazard (Claude Desktop running) — fail-closed skip", () => {
+  it("skips the write when a hazard is live: nothing lands, hazard reported", () => {
+    const p = join(dir, "cd.json");
+    writeFileSync(p, JSON.stringify({ mcpServers: { keep: { command: "x" } } }));
+    const r = hazardAdapter(p).write([normalize({ command: "a" }, "a")], { prune: true });
+    expect(r.hazard).toMatch(/DESKTOP RUNNING/);
+    expect(r.changed).toBe(false);
+    expect(r.backup).toBeNull();
+    // File is byte-untouched — no clobber, and the pre-existing server survives.
+    expect(serversOf(p)).toEqual({ keep: { command: "x" } });
+    expect(readDoc(p)._mcpManagedByDotfiles).toBeUndefined();
+  });
+
+  it("--force writes through the hazard (still reported as an advisory)", () => {
+    const p = join(dir, "cd.json");
+    writeFileSync(p, JSON.stringify({ mcpServers: {} }));
+    const r = hazardAdapter(p).write([normalize({ command: "a" }, "a")], {
+      prune: true,
+      force: true,
+    });
+    expect(r.hazard).toMatch(/DESKTOP RUNNING/);
+    expect(r.changed).toBe(true);
+    expect(r.backup).toBeTruthy();
+    expect(serversOf(p).a).toBeTruthy();
+  });
+
+  it("dry-run carries the hazard as an advisory and writes nothing", () => {
+    const p = join(dir, "cd.json");
+    writeFileSync(p, JSON.stringify({ mcpServers: {} }));
+    const r = hazardAdapter(p).write([normalize({ command: "a" }, "a")], {
+      prune: true,
+      dryRun: true,
+    });
+    expect(r.hazard).toMatch(/DESKTOP RUNNING/);
+    expect(r.backup).toBeNull();
+    expect(serversOf(p)).toEqual({});
+  });
+
+  it("no hazard (null) writes normally with no hazard field", () => {
+    const p = join(dir, "cd.json");
+    writeFileSync(p, JSON.stringify({ mcpServers: {} }));
+    const r = hazardAdapter(p, null).write([normalize({ command: "a" }, "a")], { prune: true });
+    expect(r.hazard).toBeUndefined();
+    expect(r.changed).toBe(true);
+    expect(serversOf(p).a).toBeTruthy();
   });
 });
 

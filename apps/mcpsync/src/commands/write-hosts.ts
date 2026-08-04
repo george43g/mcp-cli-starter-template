@@ -64,13 +64,28 @@ export async function ensureConfirmed(opts: {
 export function writeToHosts(
   targets: HostAdapter[],
   servers: McpServer[],
-  opts: { dryRun: boolean; prune: boolean },
+  opts: { dryRun: boolean; prune: boolean; force?: boolean },
 ): void {
   const home = homedir();
+  const force = opts.force ?? false;
   const restarts = new Set<string>();
   for (const host of targets) {
     process.stdout.write(`\n▸ ${host.label}${opts.dryRun ? " (dry-run)" : ""}\n`);
-    const result = host.write(servers, { dryRun: opts.dryRun, prune: opts.prune });
+    const result = host.write(servers, { dryRun: opts.dryRun, prune: opts.prune, force });
+
+    // A live write hazard (e.g. Desktop running) skips the write unless forced.
+    // On dry-run or with --force it is an advisory, and the normal line follows.
+    if (result.hazard) {
+      if (!opts.dryRun && !force) {
+        process.stdout.write(
+          `  ⚠ skipped — ${result.hazard}.\n    Quit it and re-run, or pass --force to write anyway.\n`,
+        );
+        continue;
+      }
+      process.stdout.write(
+        `  ⚠ ${result.hazard}${force ? " — writing anyway (--force); fully Quit + reopen to load it" : ""}\n`,
+      );
+    }
 
     if (result.commands) {
       if (result.commands.length) {

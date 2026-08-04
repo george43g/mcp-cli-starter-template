@@ -4,6 +4,7 @@ import { normalize } from "../canonical.js";
 import type { McpServer } from "../schema.js";
 import { cliAdapter } from "./cli-adapter.js";
 import { codexAdapter } from "./codex-adapter.js";
+import { desktopRunning } from "./desktop-state.js";
 import { jsonMcpServersAdapter, toClaudeDesktopServer, toDirectNative } from "./json-adapter.js";
 import { opencodeAdapter } from "./opencode-adapter.js";
 import type { HostAdapter, WriteResult } from "./types.js";
@@ -36,10 +37,16 @@ export const HOSTS: Record<string, HostAdapter> = {
       "Claude",
       "claude_desktop_config.json",
     ),
-    restart: "Fully Quit + reopen Claude Desktop.",
+    restart: "Open Claude Desktop (or fully Quit + reopen if it was already running).",
     transform: toClaudeDesktopServer,
     marker: "_mcpManagedByDotfiles",
     capabilities: { mechanism: "file", http: true, env: true, project: false },
+    // A running Desktop rewrites this file from memory on quit — skip the write
+    // (fail-closed) unless --force so a quit-time flush can't clobber it.
+    writeHazard: () =>
+      desktopRunning()
+        ? "Claude Desktop is running — it will overwrite this file from memory when it next quits"
+        : null,
   }),
   cursor: jsonMcpServersAdapter({
     id: "cursor",
@@ -110,7 +117,7 @@ export function projectHosts(cwd: string = process.cwd()): HostAdapter[] {
 export function applyServer(
   hostId: string,
   server: McpServer,
-  opts: { dryRun?: boolean } = {},
+  opts: { dryRun?: boolean; force?: boolean } = {},
 ): Record<string, WriteResult> {
   const targets =
     hostId === "all" ? detectedHosts() : HOSTS[hostId] ? [HOSTS[hostId] as HostAdapter] : [];
@@ -120,7 +127,13 @@ export function applyServer(
   const normalized = normalize(server, server.name);
   const out: Record<string, WriteResult> = {};
   for (const h of targets) {
-    out[h.id] = h.write([normalized], { dryRun: opts.dryRun ?? false, prune: false });
+    // force defaults false: an autonomous "an MCP configures itself" call is
+    // protected from clobbering a running Claude Desktop unless it opts in.
+    out[h.id] = h.write([normalized], {
+      dryRun: opts.dryRun ?? false,
+      prune: false,
+      force: opts.force ?? false,
+    });
   }
   return out;
 }

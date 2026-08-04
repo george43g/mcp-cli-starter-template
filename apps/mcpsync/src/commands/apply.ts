@@ -11,6 +11,7 @@ export interface ApplyOpts {
   dryRun?: boolean | undefined;
   yes?: boolean | undefined;
   scope?: Scope | undefined;
+  force?: boolean | undefined;
 }
 
 /**
@@ -68,5 +69,5 @@ export async function runApply(opts: ApplyOpts): Promise<void> {
   });
   if (!proceed) return;
 
-  writeToHosts(targets, servers, { dryRun, prune });
+  writeToHosts(targets, servers, { dryRun, prune, force: opts.force ?? false });
 }

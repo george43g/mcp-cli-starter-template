@@ -314,6 +314,23 @@ next stage doc and resumes.
   in-memory state on quit, clobbering external writes — quit Desktop BEFORE
   syncing; a detect-and-warn in the Desktop adapter is the top follow-up.
 
+- 2026-08-05: **Desktop-running write guard built** (the follow-up above).
+  New `core/hosts/desktop-state.ts::desktopRunning()` (macOS `pgrep -x Claude`,
+  fail-open on detection error). The json-adapter gained an injectable
+  `writeHazard` hook + a `force` write opt: a live hazard SKIPS a non-dry-run
+  write (fail-closed, file byte-untouched) and reports it; `--force` writes
+  anyway; dry-run carries it as an advisory. Wired into `apply`/`sync`
+  (`--force` flag, per-host skip that doesn't abort the other hosts),
+  `applyServer` (force defaults false → the library/TUI/"an MCP configures
+  itself" path is protected), and the TUI apply message. Desktop restart hint
+  inverted to "Open … (or fully Quit + reopen if it was already running)".
+  Proven end-to-end against the real adapter with a simulated `Claude` process
+  (config sha256 unchanged on skip); +5 tests (151 total); root `pnpm verify`
+  green. The recovery this session that surfaced the bug also revealed the
+  post-crash `imsg-mcp → EQStack` repo rename (dir moved, `~/repos/imsg-mcp`
+  now a symlink, GitHub remote renamed) — session commits landed fine via
+  GitHub's redirect.
+
 ## Recovery
 
 Branch `feat/mcpsync-tool`. If a stage's build is partial, its stage doc's Status

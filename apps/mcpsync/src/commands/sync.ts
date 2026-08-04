@@ -12,6 +12,7 @@ export interface SyncOpts {
   dryRun?: boolean | undefined;
   yes?: boolean | undefined;
   scope?: Scope | undefined;
+  force?: boolean | undefined;
 }
 
 /**
@@ -68,5 +69,5 @@ export async function runSync(opts: SyncOpts): Promise<void> {
   });
   if (!proceed) return;
 
-  writeToHosts(targets, servers, { dryRun, prune: true });
+  writeToHosts(targets, servers, { dryRun, prune: true, force: opts.force ?? false });
 }
