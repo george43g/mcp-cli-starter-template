@@ -16,7 +16,7 @@ This repo is two things at once:
 
 2. **A programmable scaffolder/migrator** (`apps/scaffolder/`, bin `mcp-scaffold`) — runs the same template assembly as 25 ordered migrations across 12 phases. Generates fresh starters into empty directories, OR retrofits subsets of the rules to existing MCP servers.
 
-Both produce the same output. The scaffolder exists because copy-and-rename works once; selective retrofit against existing MCP servers (like `imsg-mcp` or `Gmail-MCP-Server`) needs something programmable.
+Both produce the same output. The scaffolder exists because copy-and-rename works once; selective retrofit against existing MCP servers (like `EQStack` or `Gmail-MCP-Server`) needs something programmable.
 
 ## Quickstart — scaffold a new tool
 

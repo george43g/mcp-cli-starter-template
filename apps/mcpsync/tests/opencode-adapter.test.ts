@@ -35,6 +35,18 @@ describe("toOpencode", () => {
       headers: { Authorization: "Bearer {env:T}" },
     });
   });
+
+  it("converts ${VAR} inside the command array to {env:VAR}", () => {
+    // opencode substitutes {env:VAR} in config values everywhere, not just the
+    // environment block; a bare ${VAR} in an arg would never resolve.
+    expect(
+      toOpencode(normalize({ command: "psql", args: ["${SID}/${KEY}:${SECRET}"] }, "db")),
+    ).toEqual({
+      type: "local",
+      command: ["psql", "{env:SID}/{env:KEY}:{env:SECRET}"],
+      enabled: true,
+    });
+  });
 });
 
 describe("opencodeAdapter", () => {
@@ -54,6 +66,18 @@ describe("opencodeAdapter", () => {
     expect(read.l?.env).toEqual({ K: "${K}" });
     expect(read.r?.transport).toBe("http");
     expect(read.r?.headers).toEqual({ Authorization: "Bearer ${T}" });
+  });
+
+  it("round-trips ${VAR} embedded in command args (write → read)", () => {
+    opencodeAdapter(path).write(
+      [normalize({ command: "psql", args: ["${SID}:${SECRET}"] }, "db")],
+      {
+        prune: true,
+      },
+    );
+    const doc = JSON.parse(readFileSync(path, "utf8"));
+    expect(doc.mcp.db.command).toEqual(["psql", "{env:SID}:{env:SECRET}"]);
+    expect(opencodeAdapter(path).read()[0]?.args).toEqual(["${SID}:${SECRET}"]);
   });
 
   it("preserves $schema and other top-level keys; merge keeps siblings, prune replaces", () => {

@@ -13,7 +13,7 @@
  *   tui                             Interactive servers×hosts drift grid (TTY only)
  *
  * `apply`/`sync` take `--scope project` to target the repo-local .mcp.json +
- * .cursor/mcp.json + .warp/.mcp.json instead of the user (~) configs.
+ * .cursor/mcp.json + .warp/.mcp.json + opencode.json instead of the user (~) configs.
  *
  * Global flags come from cli-kit's buildProgram (--json / -q / -v / --no-color)
  * plus -c/--config for a non-default manifest path.
@@ -89,7 +89,11 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
     .description("Push canonical servers to a host (or all detected hosts)")
     .option("--to <host>", 'Target host id, or "all"', "all")
     .option("--only <names>", "Comma-separated server names to apply")
-    .option("--scope <scope>", "user (~) | project (repo .mcp.json + .cursor/.warp)", "user")
+    .option(
+      "--scope <scope>",
+      "user (~) | project (repo .mcp.json + .cursor/.warp/opencode)",
+      "user",
+    )
     .option("--dry-run", "Preview without writing")
     .option("-y, --yes", "Skip the confirmation prompt")
     .option("--force", "Write Claude Desktop's config even while Desktop is running")
@@ -123,7 +127,11 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
     .command("sync")
     .description("Show a drift plan, then full-reconcile a host (or all detected hosts)")
     .option("--to <host>", 'Target host id, or "all"', "all")
-    .option("--scope <scope>", "user (~) | project (repo .mcp.json + .cursor/.warp)", "user")
+    .option(
+      "--scope <scope>",
+      "user (~) | project (repo .mcp.json + .cursor/.warp/opencode)",
+      "user",
+    )
     .option("--dry-run", "Preview without writing")
     .option("-y, --yes", "Skip the confirmation prompt")
     .option("--force", "Write Claude Desktop's config even while Desktop is running")
