@@ -12,7 +12,7 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| `origin/main` | `95f6c03` — merge of PR #2 (`feat/mcpsync-desktop-guard`) atop PR #1 `0842336`; CI green |
+| `origin/main` | `9d90a2c` — merge of PR #3 (mcpsync deferred-items) atop PR #2 `95f6c03`; CI green |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Push state | everything pushed; both feature branches deleted after merge |
@@ -21,7 +21,7 @@ completed work, local-only work, and deliberately deferred work.
 | Product boundary | fresh scaffolds are pnpm-only |
 | Runtime boundary | source is the pre-publication default; registry mode is staged |
 | Registry state | `@george43g/robustness@0.1.1` published 2026-07-31 via CI OIDC (0.1.0 was the 2026-07-29 user-run bootstrap); tags `robustness-v0.1.0`/`-v0.1.1` |
-| mcpsync | `apps/mcpsync` landed on `main` (all 5 stages + audit + publish prep); npm publish DEFERRED — `release-packages.yml` mcpsync job is `workflow_dispatch`-only; interim install is the local global bin (`pnpm add -g <abs path to apps/mcpsync>`, installed 2026-08-03); MIGRATION COMPLETE 2026-08-03: opencode joined project scope, `~/dotfiles/mcp/` scripts and imsg `hot-deploy-ext.mjs` deleted — mcpsync is the single MCP config/deploy tool. **Guard (2026-08-05):** Desktop write-guard merged (`95f6c03`, PR #2). **Follow-ups (2026-08-05, `fix/mcpsync-deferred-items`, in flight):** 3 life-stack findings resolved (opencode project-scope help, backup prune-to-5 + gitignore, `${VAR}`→`{env:VAR}` in opencode command/args), `imsg-mcp`→`EQStack` doc rename, home locked = stay + publish + import. See [plans/2026-08-mcpsync-overview.md](plans/2026-08-mcpsync-overview.md) |
+| mcpsync | `apps/mcpsync` landed on `main` (all 5 stages + audit + publish prep); npm publish DEFERRED — `release-packages.yml` mcpsync job is `workflow_dispatch`-only; interim install is the local global bin (`pnpm add -g <abs path to apps/mcpsync>`, installed 2026-08-03); MIGRATION COMPLETE 2026-08-03: opencode joined project scope, `~/dotfiles/mcp/` scripts and imsg `hot-deploy-ext.mjs` deleted — mcpsync is the single MCP config/deploy tool. **Guard (2026-08-05):** Desktop write-guard merged (`95f6c03`, PR #2). **Follow-ups merged 2026-08-05 (`9d90a2c`, PR #3):** 3 life-stack findings resolved (opencode project-scope help, backup prune-to-5 + gitignore, `${VAR}`→`{env:VAR}` in opencode command/args), `imsg-mcp`→`EQStack` doc rename. **Home decision REVERSED same session** → relocate mcpsync to life-stack after publishing the kits (see DEFERRED.md #10; generated-tools-import retracted for an optional `npx` shell-out). See [plans/2026-08-mcpsync-overview.md](plans/2026-08-mcpsync-overview.md) |
 
 Always re-run `git status --short --branch` before relying on this snapshot.
 

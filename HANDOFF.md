@@ -12,13 +12,13 @@ verification matrix, dependency decisions, and deferred work.
 | --- | --- |
 | Repository | `/Users/george/repos/mcp-cli-starter-template` |
 | Branch | `main` |
-| `origin/main` | `95f6c03` — merge of PR #2 (Desktop write-guard) atop PR #1 `0842336`; CI green |
+| `origin/main` | `9d90a2c` — merge of PR #3 (mcpsync deferred-items) atop PR #2 `95f6c03`; CI green |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Remote check | fetch + push succeeded on 2026-08-03 |
 | Working tree | clean |
 | Push state | everything pushed; `feat/mcpsync-tool` + `feat/scaffold-harness-layer` deleted after merge |
-| mcpsync | `apps/mcpsync` landed (5 stages + audit + publish prep); npm publish DEFERRED — release job is `workflow_dispatch`-only; local global bin installed via `pnpm add -g`. Desktop write-guard merged (`95f6c03`, PR #2). Round 2026-08-05 (`fix/mcpsync-deferred-items`, in flight): 3 life-stack findings resolved + `imsg-mcp`→`EQStack` doc rename + home locked (stay + publish + import). (see [docs/plans/2026-08-mcpsync-overview.md](docs/plans/2026-08-mcpsync-overview.md)) |
+| mcpsync | `apps/mcpsync` landed (5 stages + audit + publish prep); npm publish DEFERRED — release job is `workflow_dispatch`-only; local global bin installed via `pnpm add -g`. Desktop write-guard merged (`95f6c03`, PR #2). Round 2026-08-05 merged (`9d90a2c`, PR #3): 3 life-stack findings resolved + `imsg-mcp`→`EQStack` doc rename. Home decision REVERSED same session → relocate mcpsync to life-stack after publishing the kits (DEFERRED #10; import-as-library retracted for an optional `npx` shell-out). (see [docs/plans/2026-08-mcpsync-overview.md](docs/plans/2026-08-mcpsync-overview.md)) |
 | Package state | `@george43g/robustness@0.1.1` published to npm on 2026-07-31 via the CI OIDC pipeline (0.1.0 was the earlier user-run local publish); tags `robustness-v0.1.0` + `robustness-v0.1.1`; GitHub release `robustness-v0.1.1` |
 | Release pipeline | `.github/workflows/release-packages.yml` PROVEN end-to-end: full verify matrix → npm OIDC trusted publishing (no `NPM_TOKEN`) → tag + CHANGELOG + GitHub release → `[skip ci]` bump commit (loop-safe, confirmed no re-trigger) |
 | Runtime default | `source`; registry mode is staged but not the default |
