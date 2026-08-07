@@ -80,13 +80,28 @@ never inlined; output is byte-parity with what `~/dotfiles/mcp` produces today
 - Auto-included by the `apps/*` workspace glob; turbo tasks inherited. Golden test
   only walks `phases/*/lib/**` ⇒ no obligation. `check:usage` is `*-mcp`-scoped ⇒
   skips it. `example/` sync + scaffolder smoke reflect generated output only.
-- **Home decision (locked 2026-08-05): stay + publish + import.** mcpsync stays in this
-  meta-repo as a peer of `apps/scaffolder` — it is NOT migrated into life-stack (life-stack
-  is a *consumer* that dogfoods mcpsync, not a home). It publishes to npm as
-  `@george43g/mcpsync` (the `workspace:*` kits bundle into `dist/` via Vite; the npm
-  bootstrap publish is the user's manual step, still deferred). life-stack and generated
-  MCP tools consume it as a **library** (`applyServer`/`deployExtension`/`HOSTS`/
-  `resolveServerEnv`) for self-config/self-deploy. `private:true` stays until that publish.
+- **Home decision — reversed and re-locked (2026-08-05).** An earlier same-day call was
+  "stay + publish + import" (keep mcpsync here, publish it, let generated tools *import* it as
+  a library for self-deploy). That was **reversed the same session** once the "generated
+  tools import mcpsync" premise was retracted. The governing **inclusion rule** the repo now
+  follows: *a thing belongs in this repo iff it is either (a) part of the scaffolding
+  machinery, or (b) framework code that generated tools depend on long-term and don't heavily
+  customize* (the published kits + `robustness`). The golden template + `example/` are here
+  because they *are* the thing being scaffolded.
+  - By that rule **mcpsync does not belong here**: it doesn't scaffold tools (meta-repo-only,
+    no `lib/` mirror) and no generated tool depends on it. It only *consumes* `cli-kit` /
+    `tui-kit` — exactly what an external consumer does (life-stack consumes mcpsync the same
+    way). Co-location buys only the mechanical convenience that the kits are `workspace:*` +
+    Vite-bundled (no publish needed first); it also *costs* this repo a special-cased
+    `workflow_dispatch` release job and meta-suite test runs.
+  - **New decision (locked 2026-08-05, supersedes the above): relocate mcpsync to life-stack**
+    (sibling of `opkeep`), publish it, and let it depend on the published kits like any other
+    consumer — but only AFTER publishing the kits it leans on (`cli-kit`, `tui-kit`;
+    `robustness@^0.1.1` is already on npm), else the `workspace:*` links break. Self-setup for
+    a generated tool becomes an **optional documented `npx @george43g/mcpsync …` runtime
+    shell-out**, NOT a build-time library dependency baked into every tool (`npx` works
+    regardless of where the source lives — it only requires mcpsync to be *published*, not
+    *co-located*). Sequenced work in `DEFERRED.md` #10.
 
 ## Prior art being consolidated (load-bearing)
 

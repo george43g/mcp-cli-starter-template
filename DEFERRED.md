@@ -128,22 +128,78 @@ edit the focused server's env/args, write back to canonical via a new `core` hel
 
 ---
 
-## 10. Generated tools import mcpsync (self-config / self-deploy)
+## 10. Relocate mcpsync out of this repo (to life-stack), after publishing its kits
 
-**Status**: not started. The home decision (2026-08-05, see
-`docs/plans/2026-08-mcpsync-overview.md`) is **stay + publish + import**: generated MCP
-tools should be able to depend on `@george43g/mcpsync` and call `applyServer` /
-`deployExtension` / `HOSTS` / `resolveServerEnv` to configure or hot-deploy themselves. The
-library exports already exist; the scaffolder wiring does not.
+**Status**: not started. **This SUPERSEDES the earlier same-session "stay + publish + import"
+home decision** (see `docs/plans/2026-08-mcpsync-overview.md`). Governing **inclusion rule**:
+a thing belongs in this repo iff it is (a) scaffolding machinery or (b) framework code that
+generated tools depend on long-term and don't heavily customize. mcpsync is neither — it's a
+standalone product that merely *consumes* the kits, exactly like an external consumer. It's a
+sibling of `opkeep`, not framework code.
 
-**Why deferred**: gated on the one-time npm bootstrap publish (the user's manual step), and
-no generated tool needs self-deploy yet.
+**Retraction**: the "generated tools import mcpsync as a library for self-deploy" idea is
+dropped. A tool that wants self-setup instead documents an **optional one-time
+`npx @george43g/mcpsync …` runtime shell-out** — no build-time dependency baked into every
+generated tool. `npx` works regardless of where the source lives; it only needs mcpsync to be
+*published*, not *co-located*.
 
-**Trigger to action**: the first generated tool that wants to self-configure or self-deploy,
-once `@george43g/mcpsync` is published.
+**Sequenced work**:
+1. Publish the kits mcpsync leans on so its `workspace:*` links resolve from npm:
+   `@george43g/cli-kit` + `@george43g/tui-kit` (bundled into `dist/` today via Vite), and
+   decide `@george43g/tsconfig` + `@george43g/vitest-config` (publish or vendor at the new
+   home). `@george43g/robustness@^0.1.1` is already on npm.
+2. Move `apps/mcpsync` to life-stack (sibling of `opkeep`); rewrite `workspace:*` → the
+   published versions; publish `@george43g/mcpsync` from there.
+3. Remove mcpsync from this repo: its `workflow_dispatch` release job, its meta-suite tests,
+   and the AGENTS.md `.mcp.json`/`opencode.json` sync note that points at the local bin.
 
-**Cost**: TBD — an opt-in scaffolder phase/flag adding the dependency + a small self-config
-entrypoint. Needs its own plan.
+**Trigger to action**: when you're ready to publish the kits (the one real migration cost).
+
+**Cost**: ~half a day once the kits are published — mostly mechanical (dep rewrites + move +
+release wiring at the new home).
+
+---
+
+## 11. `packages/secrets` — confirm it's a depended-upon resolution lib, or retire it
+
+**Status**: unverified. `packages/secrets` is the in-process `env-JSON → 1Password → file`
+*resolution chain* a generated tool imports to look up its own `${VAR}` secrets at runtime — a
+different layer from `opkeep` (life-stack's standalone secret-*provisioning* CLI). On their
+face they're complementary, not duplicative. But by the inclusion rule, `packages/secrets`
+only earns its place if generated tools actually import it and don't each customize secret
+handling (same category as `robustness`).
+
+**Preliminary signal (2026-08-05)**: a grep found NO `import` of `@george43g/secrets` in the
+example MCP app's source — only the package itself (mirrored into `example/`) and a convention
+mention in a skill doc. Also, mcpsync rolled its *own* 0600 vault
+(`~/.mcpsync/credentials.json`, ported from imsg-mcp) rather than using `packages/secrets` —
+weak evidence that secret handling gets customized per tool.
+
+**The test to settle it**: does the generated `example` tool (and any real consumer) actually
+`import` `@george43g/secrets`? If yes → framework code, it stays (mcpsync's own vault is then
+just provenance). If nothing consumes it → dead weight; make it a copied stub or move it out.
+Either way the boundary between "in-process resolution lib" and "opkeep the CLI" isn't written
+down anywhere — writing it down is the real deliverable.
+
+**Trigger to action**: alongside the mcpsync relocation, or whenever the secrets layer is next
+touched.
+
+**Cost**: ~1–2 hrs to trace consumers + document the layer boundary.
+
+---
+
+## 12. Repo / directory rename — it has outgrown "template + scaffolder"
+
+**Status**: idea. The repo is no longer just a static template or a scaffolder — it's a
+framework (published kits + `robustness`) + a schematics-style generator/migrator + a golden
+reference implementation, all in one monorepo. The name `mcp-cli-starter-template` undersells
+that.
+
+**Trigger to action**: once the inclusion-rule cleanup (mcpsync relocated, secrets settled)
+stabilizes what actually lives here, so the new name reflects what stays.
+
+**Cost**: low mechanically (rename repo + dir + update the symlinked agent files + docs
+links), but coordinate with published-package names and the git remote.
 
 ---
 
