@@ -110,6 +110,43 @@ Recommended: A (just document it). The trust prompt IS the right UX for security
 
 ---
 
+## 9. mcpsync — TUI env/args editing
+
+**Status**: not built. The TUI (`apps/mcpsync/src/tui/App.tsx`) applies servers to hosts
+but can't edit a server's `env`/`args` in place.
+
+**Why deferred**: `packages/tui-kit` has no text-input primitive (only `useVimKeys` /
+`useMouse` / `StatusBar` / `HelpBar`), so this needs a new ink text-edit surface plus a
+canonical `.mcp.json` write-back path — a real feature, not a quick win.
+
+**Trigger to action**: when editing servers from the grid (vs. `mcpsync add` or an editor)
+is wanted often enough to justify it.
+
+**Cost**: ~half a day. Add an `e` edit mode over ink's `useInput` (or add `ink-text-input`),
+edit the focused server's env/args, write back to canonical via a new `core` helper, then
+`reload()`. Needs its own plan.
+
+---
+
+## 10. Generated tools import mcpsync (self-config / self-deploy)
+
+**Status**: not started. The home decision (2026-08-05, see
+`docs/plans/2026-08-mcpsync-overview.md`) is **stay + publish + import**: generated MCP
+tools should be able to depend on `@george43g/mcpsync` and call `applyServer` /
+`deployExtension` / `HOSTS` / `resolveServerEnv` to configure or hot-deploy themselves. The
+library exports already exist; the scaffolder wiring does not.
+
+**Why deferred**: gated on the one-time npm bootstrap publish (the user's manual step), and
+no generated tool needs self-deploy yet.
+
+**Trigger to action**: the first generated tool that wants to self-configure or self-deploy,
+once `@george43g/mcpsync` is published.
+
+**Cost**: TBD — an opt-in scaffolder phase/flag adding the dependency + a small self-config
+entrypoint. Needs its own plan.
+
+---
+
 ## Out-of-scope (don't lift)
 
 These are imsg-mcp-specific items from `glowing-percolating-key.md`. They stay in imsg-mcp:
@@ -120,6 +157,46 @@ These are imsg-mcp-specific items from `glowing-percolating-key.md`. They stay i
 - URL-scheme integration (sms://, imessage://, etc.)
 - contact:N disambiguation selector
 - HEIC → PNG conversion for attachments
+
+---
+
+## mcpsync — issues found in downstream use (life-stack, 2026-08-05) — ALL RESOLVED
+
+Surfaced while using `mcpsync -c ./.mcp.json apply --scope project --to opencode`
+to reconcile a repo's `opencode.json` after removing a server from its
+`.mcp.json` (replacing the retired `~/dotfiles/mcp/render.js`). **The core
+reconcile was correct**: the written server set matched the manifest, `env`
+`${VAR}` was converted to opencode's `{env:VAR}`, and no secret values were
+inlined. All three minor items fixed on `fix/mcpsync-deferred-items` (2026-08-05):
+
+1. **`apply --scope project` help text omits `opencode`.** ✓ RESOLVED — the
+   `--scope` option help on `apply`/`sync` now reads
+   `project (repo .mcp.json + .cursor/.warp/opencode)` and the `cli.ts` header
+   comment lists `opencode.json`. (`README.md` already named it.)
+
+2. **`opencode.json.bak.<timestamp>` backups accumulate.** ✓ RESOLVED — `backup()`
+   now calls `pruneBackups(path, keep = 5)` after each copy (single choke point, so
+   every host benefits), keeping only the 5 newest `.bak.<epoch>` siblings;
+   `.gitignore` gained `*.bak.[0-9]*`. Proven live: 8 stale + 1 write → 5 survive.
+
+3. **`${VAR}` inside `command`/`args` passed through verbatim.** ✓ RESOLVED —
+   confirmed against opencode docs that `{env:VAR}` substitution applies to *all*
+   config values (incl. the `command[]` array) and `${VAR}` is NOT understood, so
+   the verbatim passthrough was a latent bug. `toOpencode`/`fromOpencode` now
+   convert command/args like the env block; a `${SID}/${KEY}:${SECRET}` arg now
+   resolves. (render.js behaved the same, but it's retired — no coexistence risk.)
+
+---
+
+## `imsg-mcp` → `EQStack` rename — doc references intentionally retained (2026-08-05)
+
+The repo was renamed (on disk `~/repos/imsg-mcp` is now a symlink → `~/repos/EQStack`).
+Only the one live "a server you'd retrofit" example in `README.md` was switched to the
+current name. Every other `imsg-mcp` mention in this repo is deliberately kept — it is
+**provenance** ("ported from imsg-mcp"), **dated history** (the 2026-07 retrofit
+evaluation `docs/scaffolder-cli/evaluations/imsg-mcp-2026-07.md`, the rename record in the
+plan docs), or a **test fixture** (an arbitrary unmanaged-server name in
+`json-adapter.test.ts`). Renaming those would falsify the record, so they stand.
 
 ---
 

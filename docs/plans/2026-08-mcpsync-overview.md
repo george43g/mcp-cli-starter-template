@@ -80,8 +80,13 @@ never inlined; output is byte-parity with what `~/dotfiles/mcp` produces today
 - Auto-included by the `apps/*` workspace glob; turbo tasks inherited. Golden test
   only walks `phases/*/lib/**` ⇒ no obligation. `check:usage` is `*-mcp`-scoped ⇒
   skips it. `example/` sync + scaffolder smoke reflect generated output only.
-- `private:true` for now; migrate to a published/life-stack home later (bundle the
-  `workspace:*` kits via Vite or publish them at that point).
+- **Home decision (locked 2026-08-05): stay + publish + import.** mcpsync stays in this
+  meta-repo as a peer of `apps/scaffolder` — it is NOT migrated into life-stack (life-stack
+  is a *consumer* that dogfoods mcpsync, not a home). It publishes to npm as
+  `@george43g/mcpsync` (the `workspace:*` kits bundle into `dist/` via Vite; the npm
+  bootstrap publish is the user's manual step, still deferred). life-stack and generated
+  MCP tools consume it as a **library** (`applyServer`/`deployExtension`/`HOSTS`/
+  `resolveServerEnv`) for self-config/self-deploy. `private:true` stays until that publish.
 
 ## Prior art being consolidated (load-bearing)
 

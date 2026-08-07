@@ -26,7 +26,11 @@ export function toOpencode(s: McpServer): Record<string, unknown> {
   }
   const entry: Record<string, unknown> = {
     type: "local",
-    command: [s.command ?? "", ...(s.args ?? [])],
+    // Convert ${VAR} → {env:VAR} in the command array too, not just `environment`
+    // — opencode's variable substitution applies to config values throughout the
+    // file, and it does NOT understand ${VAR}. A ${VAR} left in an arg (e.g. a
+    // connection string) would otherwise never resolve.
+    command: [s.command ?? "", ...(s.args ?? [])].map(toOpencodeEnv),
     enabled: true,
   };
   if (s.env && Object.keys(s.env).length) entry.environment = mapValues(s.env, toOpencodeEnv);
@@ -43,7 +47,7 @@ function fromOpencode(name: string, raw: unknown): McpServer {
         : undefined;
     return normalize({ url: e.url, ...(headers ? { headers } : {}) }, name);
   }
-  const cmd = Array.isArray(e.command) ? (e.command as string[]) : [];
+  const cmd = (Array.isArray(e.command) ? (e.command as string[]) : []).map(fromOpencodeEnv);
   const env =
     e.environment && typeof e.environment === "object"
       ? mapValues(e.environment as Record<string, string>, fromOpencodeEnv)
