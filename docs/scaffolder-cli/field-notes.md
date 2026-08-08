@@ -351,3 +351,19 @@ are ideas, not commitments; none is scheduled unless promoted into
     printed. Do not read that as a failed publish: `npm trust list <pkg>`
     succeeding is proof the package exists registry-side, since trust config
     requires it. Just wait for the read path to catch up before verifying.
+34. **Re-running an older release run is a silent no-op, and the commit subject
+    decides the version even when the change is metadata.** Two lessons from the
+    same run. (a) `gh run rerun <id>` keeps the original triggering SHA, so if
+    `main` has moved, semantic-release logs "The local branch main is behind the
+    remote one, therefore a new version won't be published" and exits 0 — a
+    GREEN run that released nothing. Fixed by giving the robustness job the same
+    `ref: main` checkout the other jobs already had; re-running a push run is
+    otherwise the right way to retrigger, since `workflow_dispatch` would also
+    un-skip the deliberately-deferred mcpsync job. (b) The robustness metadata
+    fix was supposed to be `fix(robustness):` → 0.1.2, but it was bundled into a
+    `feat(packages):` commit, so commit-analyzer computed **0.2.0**. That is not
+    cosmetic: `tui-kit@0.1.0` declares peer `@george43g/robustness: ^0.1.1`, and
+    a caret on a 0.x release pins the MINOR — `^0.1.1` means `>=0.1.1 <0.2.0`,
+    so 0.2.0 falls outside its own consumer's range and yields ERESOLVE. Fixed
+    by widening the peer to `^0.1.1 || ^0.2.0`. In a 0.x monorepo, check what a
+    bump does to sibling peer ranges before letting it out.
