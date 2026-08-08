@@ -358,18 +358,53 @@ these survived. See #15.
 
 ## 15. Published-kit quality gaps found in the pre-adoption sweep (2026-08-09)
 
-**Status**: recorded, not actioned. Full findings in the session transcript; the load-bearing ones:
+**Status**: coverage infrastructure ✅ **DONE 2026-08-09**; API-shape items still open (see below).
 
-- **Coverage gates are fiction.** `packages/vitest-config` declares 80/70/70/70 and `AGENTS.md`
-  advertises it, but `@vitest/coverage-v8` is not installed anywhere and no `test` script passes
-  `--coverage`. They have never run. Worse, `coverage.include`/`test.include` are `*.ts` only, so
-  every `.tsx` component is unmeasurable and `*.test.tsx` files cannot even be discovered.
-  `ink-testing-library` is a devDependency with zero references.
+- ~~**Coverage gates are fiction.**~~ **RESOLVED.** `@vitest/coverage-v8` is installed in all nine
+  test-running workspaces, `test:coverage` exists everywhere, `pnpm verify` runs it instead of
+  plain `test`, and CI's test step is now the coverage step. `.tsx` is included in both the test
+  and coverage globs.
+
+  What the first-ever run found, beyond "they never executed":
+
+  | workspace | stmts | branch | funcs | lines | vs target |
+  |---|---|---|---|---|---|
+  | robustness | 78.29 | 81.25 | 79.59 | 78.29 | short 1.7 on stmts |
+  | cli-kit | 25.47 | 82.35 | 64.28 | 25.47 | far short |
+  | tui-kit | 31.49 | 86.30 | 81.57 | 31.49 | far short (19.57 before MemoryCache tests) |
+  | mcp-kit | 83.43 | 75.53 | 95.23 | 83.43 | meets 80/70/70/70 |
+  | shared-types | 100 | 100 | 100 | 100 | meets |
+  | secret-store | 85.53 | 79.01 | 91.30 | 85.53 | meets |
+  | example-repo-mcp | 29.83 | 79.59 | 92.85 | 29.83 | short of 50/40/40/40 |
+  | mcpsync | 53.44 | 86.45 | 78.67 | 53.44 | meets |
+  | scaffolder | 86.63 | 80.76 | 85.45 | 86.63 | meets, by a wide margin |
+
+  Two of those numbers were wrong for structural reasons, and both are fixed:
+
+  - **`shared-types` measured 0/0/0/0.** The preset excluded `src/**/index.ts` as "a barrel", but
+    that package's entire implementation lives there. The file set was empty, so it reported zero
+    with no rows and no threshold error. Barrel exclusions are gone — including a real barrel
+    costs ~nothing, excluding a real implementation removes it from the gate.
+  - **The scaffolder measured ~50%, and is actually 86.6%.** `src/phases/**/lib/**` — the template
+    payload, byte copies of the golden output that the scaffolder never executes — was in the
+    coverage denominator at 0%. It was excluded from test discovery but not from coverage.
+
+  Workspaces below target now carry an explicit `withCoverageFloor()` set to what they measure.
+  A floor is a ratchet, not a target: it fails on regression, and the distance to the preset above
+  it is the visible debt. Raising 80/70/70/70 everywhere would have meant a red build; deleting it
+  would have meant no gate. `ink-testing-library` remains an unreferenced devDependency of tui-kit.
+
+  Verified the gate discriminates: a 200-line uncovered file dropped secret-store to 46.83% and
+  exited 1; removing it returned exit 0.
 - **Test-to-export coverage of the published surface**: cli-kit 4/16, tui-kit 6/25,
   robustness 21/40. The untested robustness region was precisely the singleton API where #14 lived
   — `installShutdownHandlers` / `installWatchdog` and the `reconfigure()` paths are now covered
   (2026-08-09), but the rest of the singleton surface still is not.
-  `runRepl` (85 lines, hand-rolled tokenizer) and `MemoryCache` and `useVimKeys` have no tests at all.
+  `runRepl` (85 lines, hand-rolled tokenizer) and `useVimKeys` have no tests at all — deliberately,
+  since 16a replaces both and tests written today would be deleted with the code they cover.
+  `MemoryCache` now has 12 (2026-08-09), taking that file to 93%; the uncovered remainder is the
+  `pressureMb` branch, which needs `installWatchdog()` and therefore a `_resetForTests()` the
+  robustness barrel does not export.
 - **API-shape items that are a major bump after adoption**: `commander` is a plain dependency of
   cli-kit while its types cross the public boundary (should be a peer, as ink/react correctly are in
   tui-kit); `FullScreenHandle` is not exported so the return type of `renderFullScreen` is

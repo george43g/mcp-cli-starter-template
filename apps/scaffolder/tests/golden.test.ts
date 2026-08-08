@@ -43,6 +43,9 @@ const PHASES_DIR = resolve(SCAFFOLDER_ROOT, "src/phases");
  * If you ADD a new phase that ships verbatim source, append a mapping here.
  */
 const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
+  // Only the two preset files live in lib/; vitest-config's package.json stays
+  // inline in the migration because its scope is substituted per target.
+  ["03-configs/lib/vitest-config", "packages/vitest-config"],
   ["06-mcp-kit/lib", "packages/mcp-kit"],
   ["07-shared-types/lib", "packages/shared-types"],
   ["08-app/lib", "apps/example-repo-mcp"],

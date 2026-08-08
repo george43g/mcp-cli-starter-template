@@ -28,15 +28,17 @@
     "check:usage": "pnpm --filter @george43g/mcp-scaffold check:usage && pnpm --filter \"@george43g/*-mcp\" check:usage",
     "check:docs": "node scripts/check-docs-links.mjs",
     "check:publishable-manifests": "node scripts/check-publishable-manifests.mjs",
-    "verify": "pnpm lint && pnpm check:docs && pnpm check:publishable-manifests && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm lint && pnpm check:docs && pnpm check:publishable-manifests && pnpm typecheck && pnpm test:coverage && pnpm build",
     "regen:example": "pnpm --filter @george43g/mcp-scaffold build && rm -rf example && node apps/scaffolder/dist/cli.js init example --name example --no-banner --no-install && rm -f example/biome.json && MISE_TRUSTED_CONFIG_PATHS=\"$PWD/example\" mise run --cd example/apps/example-mcp docs && MISE_TRUSTED_CONFIG_PATHS=\"$PWD/example\" mise run --cd example/apps/example-mcp completions && MISE_TRUSTED_CONFIG_PATHS=\"$PWD/example\" mise run --cd example/apps/example-mcp manpage",
-    "clean": "turbo run clean && rm -rf node_modules .turbo coverage"
+    "clean": "turbo run clean && rm -rf node_modules .turbo coverage",
+    "test:coverage": "turbo run test:coverage"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.5",
     "@george43g/tsconfig": "workspace:*",
     "@george43g/vitest-config": "workspace:*",
     "@types/node": "^24.13.3",
+    "@vitest/coverage-v8": "^3.2.7",
     "tsx": "^4.23.1",
     "turbo": "^2.10.7",
     "typescript": "^5.7.0",
