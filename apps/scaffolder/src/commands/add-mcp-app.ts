@@ -11,7 +11,6 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { RuntimeSource } from "../core/config.js";
 import type { FsHelper } from "../core/fs.js";
 import { nameUpperOf, substitute } from "../core/templating.js";
 import { TEMPLATES } from "../generated/templates.js";
@@ -79,38 +78,6 @@ export function detectScope(cwd: string): string {
   throw new Error(
     `Couldn't detect npm scope from any apps/*-mcp/package.json under ${cwd}. ` +
       `Pass --scope @your-scope explicitly.`,
-  );
-}
-
-/**
- * Detect whether existing apps consume the shared runtime from the workspace
- * or npm. Mixed/missing declarations are ambiguous and require an override.
- */
-export function detectRuntimeSource(cwd: string): RuntimeSource {
-  const detected = new Set<RuntimeSource>();
-  const apps = readdirSync(resolve(cwd, "apps"), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.endsWith("-mcp"))
-    .map((entry) => entry.name)
-    .sort();
-
-  for (const app of apps) {
-    try {
-      const pkg = JSON.parse(readFileSync(resolve(cwd, "apps", app, "package.json"), "utf8")) as {
-        dependencies?: Record<string, unknown>;
-      };
-      for (const [name, range] of Object.entries(pkg.dependencies ?? {})) {
-        if (!name.endsWith("/robustness") || typeof range !== "string") continue;
-        detected.add(range.startsWith("workspace:") ? "source" : "registry");
-      }
-    } catch {
-      // Try the remaining apps before declaring the repository ambiguous.
-    }
-  }
-
-  if (detected.size === 1) return [...detected][0] as RuntimeSource;
-  throw new Error(
-    `Couldn't detect one runtime source from apps/*-mcp/package.json under ${cwd}. ` +
-      "Pass --runtime-source source or --runtime-source registry explicitly.",
   );
 }
 

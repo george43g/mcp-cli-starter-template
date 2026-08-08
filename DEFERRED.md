@@ -483,7 +483,7 @@ HANDOFF.md and PROJECT_STATE.md three different ways — see field-note 35).
 - Published packages: `@george43g/robustness@0.2.1`, `@george43g/cli-kit@0.1.0`,
   `@george43g/tui-kit@0.1.1`. `@george43g/mcpsync` bootstrap-pending.
 - Workspaces: 14 (excludes `example/**`)
-- Scaffolder: 12 phases, 24 migrations, 12 test files (131 tests)
+- Scaffolder: 10 phases, 21 migrations, 12 test files (129 tests)
 - Stress: 13 assertions
 - Test files by workspace: scaffolder 12, mcpsync 17, robustness 8, mcp-kit 5,
   cli-kit 2, tui-kit 2, shared-types 2, env-loader 1, secrets 1,

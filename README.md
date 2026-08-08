@@ -14,7 +14,7 @@ This repo is two things at once:
 
 1. **A static starter template** — clone, run a rename script, and you have a working MCP server with single-bin CLI/TUI/REPL surfaces, optional Rust acceleration, robustness harness (watchdog + logger + shutdown + retry), CI matrix, and Mintlify-ready docs.
 
-2. **A programmable scaffolder/migrator** (`apps/scaffolder/`, bin `mcp-scaffold`) — runs the same template assembly as 24 ordered migrations across 12 phases. Generates fresh starters into empty directories, OR retrofits subsets of the rules to existing MCP servers.
+2. **A programmable scaffolder/migrator** (`apps/scaffolder/`, bin `mcp-scaffold`) — runs the same template assembly as 21 ordered migrations across 10 phases. Generates fresh starters into empty directories, OR retrofits subsets of the rules to existing MCP servers.
 
 Both produce the same output. The scaffolder exists because copy-and-rename works once; selective retrofit against existing MCP servers (like `EQStack` or `Gmail-MCP-Server`) needs something programmable.
 
@@ -31,9 +31,6 @@ mise install
 pnpm install
 pnpm --filter @george43g/mcp-scaffold build
 node apps/scaffolder/dist/cli.js init /path/to/new-tool --name foo
-
-# Consume the published runtime instead of generating its source
-node apps/scaffolder/dist/cli.js init /path/to/new-tool --name foo --runtime-source registry
 ```
 
 Then in the new tool's directory:
@@ -49,7 +46,7 @@ node apps/foo-mcp/dist/cli.js mcp          # run the MCP server
 
 ## What the scaffolder produces
 
-Twelve phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffold list` for the full ordered list, or `skills/mcp-starter-architect/SKILL.md` for the canonical AI-readable guide describing every rule + how to apply it manually.
+Ten phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffold list` for the full ordered list, or `skills/mcp-starter-architect/SKILL.md` for the canonical AI-readable guide describing every rule + how to apply it manually.
 
 | Phase | Scope |
 |-------|-------|
@@ -134,7 +131,7 @@ apps/
   scaffolder/             the programmable scaffolder/migrator
     src/
       core/               Migration base + IoC config + phase runner + helpers
-      phases/             01-bootstrap … 12-ci-release (24 migrations, 169 generated template entries)
+      phases/             01-bootstrap … 12-ci-release (21 migrations, 123 generated template entries)
       ui/                 banner, recap, progress
     bin/cli.ts            commander dispatch
     scripts/              build-templates.mjs (codegen: lib/** → src/generated/templates.ts)

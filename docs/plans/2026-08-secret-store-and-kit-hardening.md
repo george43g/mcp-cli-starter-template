@@ -136,6 +136,18 @@ Recorded as stages land.
   the two deleted packages. `pnpm install --frozen-lockfile` accepts the regenerated
   lockfile (-36 lines). `pnpm regen:example` proven **idempotent** — a second run leaves the
   tree byte-identical — and `example/packages/` no longer contains either package.
+- PR 4a (de-vendoring): scaffolder **129 passed** after rewriting the tests that assumed
+  vendored source. Five failed first, and each failure was real rather than cosmetic — one
+  test asserted `@george43g/cli-kit` should be rewritten to `@myorg/cli-kit`, which is
+  precisely the bug (a published name rewritten to the target's scope resolves to nothing).
+  Ranges are asserted against `rangeFor()` rather than literals, since a hardcoded `^0.1.0`
+  is what let the old value drift a full minor behind. Templates dropped 169 → 123 entries;
+  phases 12 → 10; migrations 24 → 21. `pnpm verify` 14/14 + 10/10, `test:no-native` 7/7,
+  `stress` 13/0, `check:usage` fresh after regenerating artifacts without the flag.
+- **The E2E that matters**: `mise run smoke` scaffolds into `/tmp` and installs. The target
+  resolved `@george43g+robustness@0.2.1` into its pnpm store — a real registry install, not
+  a workspace symlink — and its tests passed. Generated `packages/` contains only the
+  unpublished (`mcp-kit`, `shared-types`) and never-published config packages.
 
 ## Recovery
 

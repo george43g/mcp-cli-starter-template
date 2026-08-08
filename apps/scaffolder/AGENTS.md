@@ -4,7 +4,7 @@
 > the root [`AGENTS.md`](../../AGENTS.md); read it first for orientation, the
 > golden-output rule, and root commands.
 
-The scaffolder is the meta-tool: 12 phases, 24 migrations, 169 generated
+The scaffolder is the meta-tool: 10 phases, 21 migrations, 123 generated
 template entries. It drives `init` (fresh scaffold), `apply`
 (target-profile-aware retrofit), `migrate <id>` (single migration), and
 `add-mcp-app` (append a second MCP app to an already-scaffolded monorepo —
@@ -52,10 +52,12 @@ overwrite.
 **Run reports**: `--report-json` (`src/core/run-report.ts`) emits a
 schema-versioned machine-readable companion to the human recap.
 
-**Runtime source**: fresh generation supports
-`--runtime-source source|registry` (`src/core/runtime-source.ts`). Source is
-the default until `@george43g/robustness` is published; see
-[`docs/SHARED_RUNTIME.md`](../../docs/SHARED_RUNTIME.md).
+**Published packages** (`src/core/runtime-source.ts`): generated repos depend
+on `robustness`, `cli-kit`, `tui-kit` and `secret-store` from npm rather than
+vendoring their source, so those phases and their `lib/` mirrors no longer
+exist. Ranges are DERIVED at build time from `packages/*/package.json` into
+`src/generated/published-versions.ts` — never hand-write one. There is no
+`--runtime-source` flag; see [`docs/SHARED_RUNTIME.md`](../../docs/SHARED_RUNTIME.md).
 
 Patterns lifted from oclif (and explicitly skipped) are documented in
 [`src/core/CREDITS.md`](src/core/CREDITS.md).

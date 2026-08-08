@@ -21,15 +21,6 @@ Path to the scaffolded repo
 
 Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted.
 
-### `--runtime-source <source>`
-
-source | registry. Auto-detected from existing app dependencies if omitted.
-
-**Choices:**
-
-- `source`
-- `registry`
-
 ### `--no-tui`
 
 Skip the Ink/React TUI surface for the new app

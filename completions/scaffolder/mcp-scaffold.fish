@@ -26,11 +26,6 @@ cmd init help="Fresh scaffold into <target> (defaults to cwd)" {
             choices pnpm npm bun
         }
     }
-    flag --runtime-source help="source | registry (source remains default until the first public runtime release)" {
-        arg <source> {
-            choices source registry
-        }
-    }
     flag --no-tui help="Skip the Ink/React TUI surface"
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
@@ -66,11 +61,6 @@ cmd apply help="Apply migrations to an existing repo" {
     flag --package-manager help="pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)" {
         arg <pm> {
             choices pnpm npm bun
-        }
-    }
-    flag --runtime-source help="source | registry (source remains default until the first public runtime release)" {
-        arg <source> {
-            choices source registry
         }
     }
     flag --no-tui help="Skip the Ink/React TUI surface"
@@ -112,11 +102,6 @@ cmd plan help="Dry-run preview of which migrations would apply" {
             choices pnpm npm bun
         }
     }
-    flag --runtime-source help="source | registry (source remains default until the first public runtime release)" {
-        arg <source> {
-            choices source registry
-        }
-    }
     flag --no-tui help="Skip the Ink/React TUI surface"
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
@@ -153,11 +138,6 @@ cmd migrate help="Run a single migration or one whole phase" {
             choices pnpm npm bun
         }
     }
-    flag --runtime-source help="source | registry (source remains default until the first public runtime release)" {
-        arg <source> {
-            choices source registry
-        }
-    }
     flag --no-tui help="Skip the Ink/React TUI surface"
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
@@ -176,11 +156,6 @@ cmd add-mcp-app help="Add a second MCP app to apps/<name>-mcp/ inside an existin
     }
     flag --scope help="Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted." {
         arg <scope>
-    }
-    flag --runtime-source help="source | registry. Auto-detected from existing app dependencies if omitted." {
-        arg <source> {
-            choices source registry
-        }
     }
     flag --no-tui help="Skip the Ink/React TUI surface for the new app"
     flag --no-http help="Skip the Streamable HTTP transport for the new app"

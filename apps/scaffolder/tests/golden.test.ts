@@ -8,8 +8,13 @@
  * scaffolder will silently emit stale output. This test catches that drift.
  *
  * Mechanism: for every file in lib/, compute the canonical source path via
- * the LIB_TO_CANONICAL mapping, read both, byte-compare. Files in canonical
- * that have no lib/ counterpart (new files) are also flagged.
+ * the LIB_TO_CANONICAL mapping, read both, byte-compare.
+ *
+ * NOTE: the walk is one-directional, lib/ → canonical. A canonical file with no
+ * lib/ counterpart is NOT flagged — adding `packages/<new>/` never trips this
+ * test. What IS caught is the reverse: deleting a canonical file while its lib/
+ * mirror survives fails with "canonical file missing". (This comment previously
+ * claimed new canonical files were flagged. They are not.)
  *
  * Substitution note: lib/ preserves `example-repo` and `@george43g` placeholders
  * (the scaffolder substitutes them at write time, not at copy time). The
@@ -38,9 +43,6 @@ const PHASES_DIR = resolve(SCAFFOLDER_ROOT, "src/phases");
  * If you ADD a new phase that ships verbatim source, append a mapping here.
  */
 const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
-  ["04-robustness/lib", "packages/robustness"],
-  ["05-utility-pkgs/lib/cli-kit", "packages/cli-kit"],
-  ["05-utility-pkgs/lib/tui-kit", "packages/tui-kit"],
   ["06-mcp-kit/lib", "packages/mcp-kit"],
   ["07-shared-types/lib", "packages/shared-types"],
   ["08-app/lib", "apps/example-repo-mcp"],
@@ -66,8 +68,6 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
  * Adding entries here should always come with a comment justifying why.
  */
 const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
-  // Source-mode package guidance differs from the public npm package README.
-  "04-robustness/lib/README.md",
   // Root README — see LIB_TO_CANONICAL comment.
   "10-docs-readme/lib/README.md",
   // Harness onboarding docs + guardrail. These are CLONED-TOOL templates whose

@@ -19,7 +19,6 @@ import type { ApplyMode } from "./migration.js";
 
 export type { ApplyMode };
 export type PackageManager = "pnpm" | "npm" | "bun";
-export type RuntimeSource = "registry" | "source";
 
 export function assertValidRepoName(value: string): void {
   if (!/^[a-z][a-z0-9-]*$/.test(value)) {
@@ -42,8 +41,6 @@ export class Config {
     scope: ConfigLeaf<string>;
     /** Package manager to use. */
     packageManager: ConfigLeaf<PackageManager>;
-    /** Consume the shared runtime from npm or generate its source locally. */
-    runtimeSource: ConfigLeaf<RuntimeSource>;
     /** Set up as a Turborepo monorepo, vs flat single-package layout. */
     monorepo: ConfigLeaf<boolean>;
   };
@@ -120,24 +117,6 @@ export class Config {
               { name: "bun", value: "bun" as const },
             ],
             default: "pnpm",
-          }),
-      })(this),
-
-      runtimeSource: configLeaf<RuntimeSource>({
-        ask: async () =>
-          select({
-            message: "Consume @george43g/robustness from npm or generate its source locally?",
-            choices: [
-              {
-                name: "Generate source (pre-publication default)",
-                value: "source" as const,
-              },
-              {
-                name: "Use public registry package",
-                value: "registry" as const,
-              },
-            ],
-            default: "source",
           }),
       })(this),
 

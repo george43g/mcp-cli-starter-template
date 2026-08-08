@@ -51,15 +51,6 @@ pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)
 - `npm`
 - `bun`
 
-### `--runtime-source <source>`
-
-source | registry (source remains default until the first public runtime release)
-
-**Choices:**
-
-- `source`
-- `registry`
-
 ### `--no-tui`
 
 Skip the Ink/React TUI surface

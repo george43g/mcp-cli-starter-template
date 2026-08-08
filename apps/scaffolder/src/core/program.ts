@@ -19,7 +19,6 @@ import { resolve } from "node:path";
 import { Command } from "commander";
 import {
   assertInsideScaffoldedRepo,
-  detectRuntimeSource,
   detectScope,
   writePerAppAgentFiles,
 } from "../commands/add-mcp-app.js";
@@ -45,11 +44,6 @@ function addCommonFlags(cmd: Command): Command {
     .option(
       "--package-manager <pm>",
       "pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)",
-    )
-    .option(
-      "--runtime-source <source>",
-      "source | registry (source remains default until the first public runtime release)",
-      "source",
     )
     .option("--no-tui", "Skip the Ink/React TUI surface")
     .option("--no-http", "Skip the Streamable HTTP transport")
@@ -161,10 +155,6 @@ export function buildProgram(): Command {
       "--scope <scope>",
       "Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted.",
     )
-    .option(
-      "--runtime-source <source>",
-      "source | registry. Auto-detected from existing app dependencies if omitted.",
-    )
     .option("--no-tui", "Skip the Ink/React TUI surface for the new app")
     .option("--no-http", "Skip the Streamable HTTP transport for the new app")
     .option("--no-rust-accel", "Skip the rust-accel workspace dep for the new app")
@@ -175,14 +165,9 @@ export function buildProgram(): Command {
       assertInsideScaffoldedRepo(cwd);
       // Auto-detect scope from existing apps unless the user passed --scope.
       const scope = typeof opts.scope === "string" ? opts.scope : detectScope(cwd);
-      const runtimeSource =
-        opts.runtimeSource === "source" || opts.runtimeSource === "registry"
-          ? opts.runtimeSource
-          : detectRuntimeSource(cwd);
       // Funnel both into cmdOpts so applyCmdOptsToConfig populates the IoC config.
       opts.name = name;
       opts.scope = scope;
-      opts.runtimeSource = runtimeSource;
       // mode='add', dryRun=false, phaseFilter='08-app', force=true (the
       // collision guard in m1-app-port prevents clobbering existing apps).
       await runScaffolder("add", cwd, globalOpts, opts, false, "08-app", true);
@@ -227,14 +212,6 @@ function applyCmdOptsToConfig(cmdOpts: Record<string, unknown>, config: Config):
   ) {
     config.global.packageManager.set(cmdOpts.packageManager);
   }
-  if (cmdOpts.runtimeSource === "source" || cmdOpts.runtimeSource === "registry") {
-    config.global.runtimeSource.set(cmdOpts.runtimeSource);
-  } else if (cmdOpts.runtimeSource !== undefined) {
-    throw new Error(
-      `Invalid --runtime-source "${String(cmdOpts.runtimeSource)}"; expected source or registry`,
-    );
-  }
-
   if (typeof cmdOpts.cliBin === "string") config.cliArtifacts.bin.set(cmdOpts.cliBin);
   if (typeof cmdOpts.cliDir === "string") config.cliArtifacts.dir.set(cmdOpts.cliDir);
 

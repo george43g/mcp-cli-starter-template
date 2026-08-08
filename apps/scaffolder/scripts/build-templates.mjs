@@ -27,6 +27,50 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = resolve(__dirname, "..");
 const PHASES_DIR = resolve(APP_ROOT, "src/phases");
 const OUT_FILE = resolve(APP_ROOT, "src/generated/templates.ts");
+const REPO_ROOT = resolve(APP_ROOT, "../..");
+const PACKAGES_DIR = resolve(REPO_ROOT, "packages");
+const VERSIONS_OUT_FILE = resolve(APP_ROOT, "src/generated/published-versions.ts");
+
+/**
+ * Scan packages/&#42;/package.json and collect the ones actually published to npm.
+ *
+ * The test is `publishConfig.access === "public"`, which IS the definition of
+ * publishable — scripts/check-publishable-manifests.mjs fails the build if any
+ * package declares it without being registered there, so the two cannot drift.
+ *
+ * Generated repos depend on these by version range instead of vendoring their
+ * source, so the range has to track the real published version. Deriving it
+ * here rather than hand-writing it in runtime-source.ts is deliberate: the
+ * hand-written `^0.1.0` sat there while robustness shipped 0.2.1, and a caret
+ * on a 0.x pins the MINOR — so registry mode would have installed 0.1.x and
+ * silently missed every fix in 0.2.x.
+ */
+async function collectPublishedPackages() {
+  let dirs;
+  try {
+    dirs = (await readdir(PACKAGES_DIR, { withFileTypes: true }))
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort();
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const dir of dirs) {
+    const manifestPath = join(PACKAGES_DIR, dir, "package.json");
+    if (!existsSync(manifestPath)) continue;
+    let pkg;
+    try {
+      pkg = JSON.parse(await readFile(manifestPath, "utf8"));
+    } catch {
+      continue;
+    }
+    if (pkg?.publishConfig?.access !== "public") continue;
+    if (typeof pkg.name !== "string" || typeof pkg.version !== "string") continue;
+    out.push({ dir, name: pkg.name, version: pkg.version });
+  }
+  return out;
+}
 
 async function walk(dir, files = []) {
   let entries;
@@ -101,6 +145,45 @@ export function loadTemplate(key: string): string {
   await writeFile(OUT_FILE, header + body + footer);
   process.stdout.write(
     `build-templates: wrote ${entries.length} entries → ${relative(APP_ROOT, OUT_FILE)}\n`,
+  );
+
+  const published = await collectPublishedPackages();
+  const versionsHeader = `/**
+ * AUTO-GENERATED — do not edit by hand.
+ *
+ * Source: packages/*&#47;package.json with \`publishConfig.access === "public"\`
+ * Generator: apps/scaffolder/scripts/build-templates.mjs
+ *
+ * Generated repos depend on these from the registry rather than vendoring
+ * their source, so these ranges must track the real published versions.
+ */
+
+export interface PublishedPackage {
+  /** Directory under packages/, e.g. "robustness". */
+  dir: string;
+  /** Public npm name, e.g. "@george43g/robustness". */
+  name: string;
+  /** Version at build time, e.g. "0.2.1". */
+  version: string;
+  /** Caret range paired with that version, e.g. "^0.2.1". */
+  range: string;
+}
+
+export const PUBLISHED_PACKAGES: readonly PublishedPackage[] = [
+`;
+  const versionsBody = published
+    .map(
+      (p) =>
+        `  { dir: ${JSON.stringify(p.dir)}, name: ${JSON.stringify(p.name)}, ` +
+        `version: ${JSON.stringify(p.version)}, range: ${JSON.stringify(`^${p.version}`)} },`,
+    )
+    .join("\n");
+  const versionsFooter = `
+];
+`;
+  await writeFile(VERSIONS_OUT_FILE, versionsHeader + versionsBody + versionsFooter);
+  process.stdout.write(
+    `build-templates: wrote ${published.length} published packages → ${relative(APP_ROOT, VERSIONS_OUT_FILE)}\n`,
   );
 }
 

@@ -8,7 +8,7 @@
 
 import { TEMPLATES } from "../generated/templates.js";
 import type { MigrationContext, MigrationResult } from "./migration.js";
-import { runtimeDependencyRange, runtimePackageName } from "./runtime-source.js";
+import { applyPublishedRanges } from "./runtime-source.js";
 import { requireRepoName } from "./target-inspection.js";
 import { nameUpperOf, substitute } from "./templating.js";
 
@@ -63,8 +63,6 @@ export async function portPackage(
     name,
     nameUpper: nameUpperOf(name),
     scope,
-    runtimePackage: runtimePackageName(ctx, scope),
-    runtimeVersion: runtimeDependencyRange(ctx),
   };
 
   const prefix = opts.pkgDir === "" || opts.pkgDir === "." ? "" : `${opts.pkgDir}/`;
@@ -75,13 +73,10 @@ export async function portPackage(
     // legitimately contain `example-repo` markers (e.g. `skills/example-repo/SKILL.md`
     // → `skills/foo/SKILL.md`); content substitution is the standard case.
     const targetPath = substitute(`${prefix}${rel}`, vars);
-    let content = substitute(TEMPLATES[key] ?? "", vars);
-    if (ctx.config.global.runtimeSource.peek() === "registry") {
-      content = content.replace(
-        `"${vars.runtimePackage}": "workspace:*"`,
-        `"${vars.runtimePackage}": "${vars.runtimeVersion}"`,
-      );
-    }
+    // Published packages come from the registry, always. substitute() has
+    // already shielded their names from scope rewriting, so this only has to
+    // swap the `workspace:*` protocol for the real range.
+    const content = applyPublishedRanges(substitute(TEMPLATES[key] ?? "", vars));
     recordOutcome(targetPath, await ctx.fs.writeIfChanged(targetPath, content));
   }
 

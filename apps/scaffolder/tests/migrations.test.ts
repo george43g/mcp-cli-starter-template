@@ -43,7 +43,6 @@ async function makeCtx(
   config.global.scope.set(opts.scope ?? "@george43g");
   config.global.mode.set("new");
   config.global.packageManager.set("pnpm");
-  config.global.runtimeSource.set("source");
   config.global.monorepo.set(true);
   const ctx: MigrationContext = {
     config,

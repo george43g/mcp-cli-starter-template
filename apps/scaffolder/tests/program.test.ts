@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildProgram } from "../src/core/program.js";
+import { rangeFor } from "../src/core/runtime-source.js";
 
 const cleanup: string[] = [];
 
@@ -58,23 +59,25 @@ describe("migrate command safety defaults", () => {
     },
   );
 
-  it("supports a registry-backed runtime without generating local robustness source", async () => {
+  it("never generates local source for a published package", async () => {
     const cwd = await target();
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-    await buildProgram().parseAsync(
-      ["--no-banner", "init", cwd, "--name", "fresh-tool", "--runtime-source", "registry"],
-      { from: "user" },
-    );
+    await buildProgram().parseAsync(["--no-banner", "init", cwd, "--name", "fresh-tool"], {
+      from: "user",
+    });
 
     expect(existsSync(join(cwd, "packages", "robustness"))).toBe(false);
     const pkg = JSON.parse(
       await readFile(join(cwd, "apps", "fresh-tool-mcp", "package.json"), "utf8"),
     );
-    expect(pkg.dependencies["@george43g/robustness"]).toBe("^0.1.0");
+    // Derived, not literal — a hardcoded range here is what let the scaffolder
+    // ship "^0.1.0" while robustness was on 0.2.1.
+    const expected = rangeFor("@george43g/robustness");
+    expect(pkg.dependencies["@george43g/robustness"]).toBe(expected);
     const mcpKit = JSON.parse(
       await readFile(join(cwd, "packages", "mcp-kit", "package.json"), "utf8"),
     );
-    expect(mcpKit.dependencies["@george43g/robustness"]).toBe("^0.1.0");
+    expect(mcpKit.dependencies["@george43g/robustness"]).toBe(expected);
   });
 
   it("ships a named CLI artifact baseline and portable workspace skills", async () => {
@@ -129,7 +132,6 @@ describe("existing target strategies and reports", () => {
     const report = JSON.parse(await readFile(reportPath, "utf8"));
     expect(report.target.profile).toBe("generic-existing");
     expect(report.command.existingStrategy).toBe("safe");
-    expect(report.command.runtimeSource).toBe("source");
     expect(
       report.phases
         .flatMap(
@@ -137,8 +139,7 @@ describe("existing target strategies and reports", () => {
             phase.migrations,
         )
         .find(
-          (migration: { migrationId: string }) =>
-            migration.migrationId === "04-robustness/m1-robustness-pkg",
+          (migration: { migrationId: string }) => migration.migrationId === "06-mcp-kit/m1-mcp-kit",
         )?.status,
     ).toBe("skipped");
   });
@@ -156,7 +157,7 @@ describe("existing target strategies and reports", () => {
     });
 
     expect(existsSync(join(cwd, "mise.toml"))).toBe(true);
-    expect(existsSync(join(cwd, "packages", "robustness", "package.json"))).toBe(true);
+    expect(existsSync(join(cwd, "packages", "mcp-kit", "package.json"))).toBe(true);
   });
 
   it("lets full strategy opt a generic target into starter infrastructure", async () => {
@@ -166,6 +167,6 @@ describe("existing target strategies and reports", () => {
       ["--no-banner", "apply", "--target", cwd, "--execute", "--existing-strategy", "full"],
       { from: "user" },
     );
-    expect(existsSync(join(cwd, "packages", "robustness", "package.json"))).toBe(true);
+    expect(existsSync(join(cwd, "packages", "mcp-kit", "package.json"))).toBe(true);
   });
 });

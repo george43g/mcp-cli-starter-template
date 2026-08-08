@@ -86,19 +86,24 @@ describe("substitute", () => {
     ).toBe('"name": "@myorg/foo"');
   });
 
-  it("protects the public runtime package from project-scope substitution", () => {
+  it("protects every published package from project-scope substitution", () => {
+    // robustness AND cli-kit are both published, so both keep the scope they
+    // are published under. Only locally-generated packages (mcp-kit here) take
+    // the target's scope — rewriting a published name yields @myorg/cli-kit,
+    // which resolves to nothing on npm.
     expect(
       substitute(
-        'import { installWatchdog } from "@george43g/robustness"; import x from "@george43g/cli-kit";',
+        'import { installWatchdog } from "@george43g/robustness"; ' +
+          'import x from "@george43g/cli-kit"; import y from "@george43g/mcp-kit";',
         {
           name: "foo",
           nameUpper: "FOO",
           scope: "@myorg",
-          runtimePackage: "@george43g/robustness",
         },
       ),
     ).toBe(
-      'import { installWatchdog } from "@george43g/robustness"; import x from "@myorg/cli-kit";',
+      'import { installWatchdog } from "@george43g/robustness"; ' +
+        'import x from "@george43g/cli-kit"; import y from "@myorg/mcp-kit";',
     );
   });
 

@@ -12,6 +12,8 @@
  * comments and formatting.
  */
 
+import { PUBLIC_SCOPE, PUBLISHED_NAMES } from "./runtime-source.js";
+
 export interface TemplateVars {
   /** kebab-case name (e.g. "wm-stack-mcp"). */
   name: string;
@@ -19,10 +21,6 @@ export interface TemplateVars {
   nameUpper: string;
   /** Npm scope with leading @, or empty string for unscoped. */
   scope?: string;
-  /** Shared runtime import, either the public package or generated workspace package. */
-  runtimePackage?: string;
-  /** Dependency range paired with runtimePackage. */
-  runtimeVersion?: string;
 }
 
 // Placeholder syntax: filesystem-safe literal strings instead of curly-
@@ -35,8 +33,6 @@ const NAME_UPPER_KEBAB_RE = /EXAMPLE-REPO/g;
 const NAME_ROFF_RE = /example\\-repo/g;
 const UPPER_RE = /EXAMPLE_REPO/g;
 const SCOPE_RE = /@george43g/g;
-const RUNTIME_PACKAGE_RE = /@george43g\/robustness/g;
-const RUNTIME_VERSION_RE = /ROBUSTNESS_VERSION/g;
 
 export function nameUpperOf(name: string): string {
   return name.toUpperCase().replace(/-/g, "_");
@@ -55,17 +51,28 @@ export function substitute(content: string, vars: TemplateVars): string {
   // two patterns are case-sensitive and have no overlap — `EXAMPLE_REPO`
   // never contains `example-repo`), but explicit ordering keeps the
   // intent obvious to future readers.
-  const runtimeSentinel = "__MCP_SCAFFOLD_RUNTIME_PACKAGE__";
-  let out = vars.runtimePackage ? content.replace(RUNTIME_PACKAGE_RE, runtimeSentinel) : content;
+  //
+  // Published package names are shielded from scope rewriting by a sentinel
+  // pass. A repo scaffolded under `@acme` still depends on
+  // `@george43g/robustness`, because that is the package that exists on npm —
+  // rewriting the scope would produce `@acme/robustness`, which resolves to
+  // nothing. Every published name needs this, not just the runtime: the same
+  // bug would hit cli-kit, tui-kit and secret-store.
+  const sentinelFor = (index: number) => `__MCP_SCAFFOLD_PUBLISHED_${index}__`;
+  let out = content;
+  PUBLISHED_NAMES.forEach((name, i) => {
+    out = out.replaceAll(name, sentinelFor(i));
+  });
   out = out.replace(UPPER_RE, vars.nameUpper);
   out = out.replace(NAME_UPPER_KEBAB_RE, vars.name.toUpperCase());
   out = out.replace(NAME_SNAKE_RE, nameSnakeOf(vars.name));
   out = out.replace(NAME_ROFF_RE, nameRoffOf(vars.name));
   out = out.replace(NAME_RE, vars.name);
-  if (vars.runtimeVersion) out = out.replace(RUNTIME_VERSION_RE, vars.runtimeVersion);
-  if (vars.scope && vars.scope !== "@george43g") {
+  if (vars.scope && vars.scope !== PUBLIC_SCOPE) {
     out = out.replace(SCOPE_RE, vars.scope);
   }
-  if (vars.runtimePackage) out = out.replaceAll(runtimeSentinel, vars.runtimePackage);
+  PUBLISHED_NAMES.forEach((name, i) => {
+    out = out.replaceAll(sentinelFor(i), name);
+  });
   return out;
 }

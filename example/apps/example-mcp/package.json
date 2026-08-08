@@ -50,11 +50,11 @@
     "clean": "rm -rf dist coverage *.mcpb"
   },
   "dependencies": {
-    "@george43g/cli-kit": "workspace:*",
+    "@george43g/cli-kit": "^0.1.0",
     "@george43g/mcp-kit": "workspace:*",
-    "@george43g/robustness": "workspace:*",
+    "@george43g/robustness": "^0.2.1",
     "@george43g/shared-types": "workspace:*",
-    "@george43g/tui-kit": "workspace:*",
+    "@george43g/tui-kit": "^0.1.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "commander": "^14.0.0",
     "fullscreen-ink": "^0.1.0",
