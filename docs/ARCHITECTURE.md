@@ -19,13 +19,8 @@ packages/
   tui-kit/        — Ink theme system, hooks (useDevStats / useMouse /
                     useVimKeys), components (DevStatsPanel, StatusBar,
                     HelpBar, FullScreenInk), memoryCache, boundIfNeeded.
-  secret-store/   — env → .env → OS keychain → exec (opt-in). A mechanism,
-                    not a policy: it reads where a secret already is and
-                    never talks to a vault. Absorbs env-loader's loadEnv.
   env-loader/     — Vite-style .env precedence in plain Node.
-                    RETIRING — absorbed by secret-store, see DEFERRED #11.
   secrets/        — env-JSON → 1Password → file chain (no Keychain).
-                    RETIRING — superseded by secret-store, see DEFERRED #11.
   shared-types/   — Zod schemas + Rust mirror + drift-check test.
   tsconfig/       — base.json + node.json + react.json.
   biome-config/   — single biome.json source for the whole workspace.
