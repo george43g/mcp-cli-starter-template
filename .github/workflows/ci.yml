@@ -120,7 +120,16 @@ jobs:
         run: |
           set -euo pipefail
           EXAMPLE_TMP="$(mktemp -d)"
-          node apps/scaffolder/dist/cli.js init "$EXAMPLE_TMP" --name example --no-banner
+          # --no-install must match package.json's `regen:example`. example/ is
+          # a committed snapshot, not a working repo: installing here would
+          # produce a pnpm-lock.yaml the committed copy does not have, and this
+          # check would fail on a repo that is perfectly in sync.
+          #
+          # NOTE: this step re-implements `regen:example` rather than calling
+          # it (that script writes into the repo; this needs a tempdir). The two
+          # definitions have to be kept in step by hand — that is exactly how
+          # this drifted.
+          node apps/scaffolder/dist/cli.js init "$EXAMPLE_TMP" --name example --no-banner --no-install
           # example/biome.json is intentionally stripped from the committed
           # reference (would be picked up by the parent biome as a competing
           # root config). Mirror that strip on the tempdir side.
