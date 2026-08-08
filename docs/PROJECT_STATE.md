@@ -12,10 +12,10 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| `origin/main` | `c5777ff` — CI release bumps (robustness 0.2.0, tui-kit 0.1.1) atop PR #6 `f054fd2`; CI green |
+| `origin/main` | `4a322aa` — merge of PR #7 (pre-adoption sweep) atop the CI release bumps `c5777ff`; CI green |
 | Ahead/behind | in sync |
 | Local commits | none |
-| Push state | everything pushed; 4 merged branches remain on origin, safe to delete |
+| Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |
 | Remote check | fetched successfully on 2026-08-09 |
 | Working tree | clean |
 | Product boundary | fresh scaffolds are pnpm-only |
