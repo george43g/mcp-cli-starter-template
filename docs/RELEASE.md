@@ -104,6 +104,19 @@ plus `pnpm test:no-native`, `pnpm check:robustness-package`, and `pnpm stress`
 for robustness, or a `pack:check` for the others — before semantic-release
 touches the registry. A red step blocks the release.
 
+### What is never published
+
+Shared-tool-config packages — `tsconfig`, `vitest-config`, `biome-config` — are
+**not dependencies**. They are per-monorepo config meant to be customised for the
+repo they live in, so they stay `private: true` and are never released. A package
+that relocates to another monorepo depends on *that* repo's equivalent (creating
+one if it is missing); it never carries these with it.
+
+That is why `packages/cli-kit` and `packages/tui-kit` simply dropped their
+`@george43g/tsconfig` / `@george43g/vitest-config` devDependencies when they were
+made publishable, following `packages/robustness`, which resolves both through the
+root workspace hoist.
+
 ### Adding a package to the pipeline
 
 The order is forced by npm: a Trusted Publisher can only be configured for a

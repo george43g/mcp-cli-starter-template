@@ -91,6 +91,13 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
 - **No emojis in source code unless the user requests.** Comments stay terse and "why"-focused.
 - **Prefer canonical CLIs** (`pnpm init`, `pnpm pkg set`, `git init`) over file-copying for setup steps. Templates live in `lib/`; raw fs writes for small literals.
 - **Conventional Commits** drive semver via the (disabled-by-default) `release.yml` workflow.
+- **Shared-tool-config packages are NEVER published.** `tsconfig`, `vitest-config`,
+  and `biome-config` are per-monorepo shared config, meant to be customised for
+  the repo they live in — not real dependencies. They stay `private: true`. A
+  package that moves to another monorepo depends on *that* repo's equivalent
+  (creating one if absent), it does not carry these along. Publishable packages
+  are listed in `scripts/check-publishable-manifests.mjs`, which fails the build
+  if anything else declares `publishConfig.access: "public"`.
 
 ## Validation & CI
 

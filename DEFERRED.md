@@ -145,13 +145,15 @@ generated tool. `npx` works regardless of where the source lives; it only needs 
 
 **Sequenced work**:
 1. ✅ **DONE 2026-08-08** — `@george43g/cli-kit@0.1.0` and `@george43g/tui-kit@0.1.0` are
-   published, so mcpsync's `workspace:*` devDeps can resolve from npm.
-   `@george43g/robustness@^0.1.1` was already there.
-   **Still undecided**: `@george43g/tsconfig` + `@george43g/vitest-config` (publish, or vendor
-   at the new home). They stayed private here — cli-kit/tui-kit simply dropped the devDeps and
-   resolve both via the root workspace hoist, the way `packages/robustness` always has. That
-   trick does NOT survive the move: life-stack has no such hoist, so this is a real decision at
-   relocation time.
+   published, so mcpsync's `workspace:*` devDeps resolve from npm.
+   `@george43g/robustness` is on npm too (now `0.2.0`).
+   **The tsconfig/vitest-config question is CLOSED, and the answer is "neither".** Shared-tool
+   config packages are never published (see the rule in `AGENTS.md`) — a relocated package
+   depends on the destination monorepo's own equivalent. Verified: life-stack already ships
+   `packages/{tsconfig,vitest-config,biome-config}` under the **same** `@george43g/*` names and
+   all private, so mcpsync's `"@george43g/tsconfig": "workspace:*"` devDeps resolve there with
+   **zero manifest changes**. (EQStack uses `@eqstack/*` for its own — same pattern, its own
+   scope.) No work required for this sub-step.
 2. Move `apps/mcpsync` to life-stack (sibling of `opkeep`); rewrite `workspace:*` → the
    published versions; publish `@george43g/mcpsync` from there. It can also stop bundling the
    kits via Vite (`apps/mcpsync/vite.config.ts` externals) and take them as real deps —
