@@ -24,6 +24,7 @@ import M1Mise from "../src/phases/02-toolchain/m1-mise.js";
 import M3GitInit from "../src/phases/02-toolchain/m3-git-init.js";
 import M4Gitignore from "../src/phases/02-toolchain/m4-gitignore.js";
 import M5Gitattributes from "../src/phases/02-toolchain/m5-gitattributes.js";
+import { requireTemplate } from "../src/phases/03-configs/m3-vitest-pkg.js";
 import M2CliArtifacts from "../src/phases/08-app/m2-cli-artifacts.js";
 import M1CiRelease from "../src/phases/12-ci-release/m1-ci-release.js";
 
@@ -295,5 +296,21 @@ describe("08-app/m2-cli-artifacts", () => {
     ctx.config.cliArtifacts.dir.set(".");
 
     await expect(new M2CliArtifacts().apply(ctx)).rejects.toThrow(/kebab-case/);
+  });
+});
+
+describe("03-configs/m3-vitest-pkg requireTemplate", () => {
+  it("returns the real preset for a known name", () => {
+    const shared = requireTemplate("vitest.shared.ts");
+    // Assert on the preset's contract, not a byte match — golden.test.ts
+    // already enforces byte equality with packages/vitest-config/.
+    expect(shared).toContain("withCoverageFloor");
+    expect(shared).toContain('provider: "v8"');
+  });
+
+  it("throws a remediable error for a missing name", () => {
+    // The point of the throw: falling back to "" would emit an empty preset
+    // and every generated repo would silently run with no coverage gate.
+    expect(() => requireTemplate("vitest.nope.ts")).toThrow(/pnpm build:templates/);
   });
 });

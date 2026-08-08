@@ -523,3 +523,41 @@ are ideas, not commitments; none is scheduled unless promoted into
     between "the tests pass" and "the tests would have caught this". Same
     discipline the coverage-gate work needs (DEFERRED #15): a gate that has never
     failed has never been shown to run.
+
+47. **A quality gate nobody has watched fail is not a gate.** `vitest-config`
+    declared 80/70/70/70, `AGENTS.md` advertised it, and every doc repeated it —
+    while `@vitest/coverage-v8` was installed nowhere and no script passed
+    `--coverage`. The thresholds had never executed once. The tell was not in
+    the config, which looked immaculate; it was that no build had ever gone red
+    because of it. Before trusting any gate, make it fail on purpose: a
+    200-line uncovered file dropped secret-store to 46.83% and exited 1, and
+    removing it returned exit 0. That pair of observations is the evidence —
+    "the gate passes" on its own is consistent with the gate not running.
+
+48. **Coverage exclusions are guesses about the code, and wrong guesses are
+    invisible.** The preset excluded `src/**/index.ts` and `src/**/types.ts` on
+    the theory that index files are barrels. `shared-types` keeps its entire
+    implementation in `src/index.ts`, so its file set was empty: it reported
+    0/0/0/0, printed no file rows, and raised no threshold error — a package
+    with 100% real coverage looked like a package with none, and either way
+    nothing failed. Separately, the scaffolder's `src/phases/**/lib/**`
+    template payload sat in the denominator at 0%, which is why an app at 86.6%
+    reported ~50% against a 50% gate.
+
+    The two errors are not symmetric. Including a barrel costs almost nothing —
+    it is imported everywhere, reports ~100%, and barely moves the average.
+    Excluding real code removes it from the gate entirely. When unsure, measure
+    it. And when a coverage number looks surprising in either direction, read
+    the per-file table before believing the total.
+
+49. **Prefer a ratchet at the honest number over a target nobody meets.** Four
+    of nine workspaces were under the advertised thresholds, two by more than
+    fifty points. Raising the bar meant a red build; deleting it meant no gate.
+    A floor pinned to the measured value is the third option: it cannot be met
+    by accident, it fails the moment coverage regresses, and the gap to the
+    aspiration above it is a visible measure of the debt rather than a silent
+    one. The rule that keeps it honest is "floors move up, never down" — which
+    has teeth: a refactor here deleted ~65 lines of covered constants and
+    pushed the scaffolder from 50.45% to 49.92%, and the temptation was to drop
+    the floor by one point. The real cause turned out to be the denominator bug
+    above, and finding it was worth more than the point.

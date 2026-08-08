@@ -54,8 +54,14 @@ jobs:
       - name: Build (TS workspace + optional native)
         run: pnpm build
 
-      - name: Test (default — native path when built)
-        run: pnpm test
+      - name: Test + coverage gates (default — native path when built)
+        # `test:coverage`, not `test`: it runs the same suites with v8
+        # instrumentation and then enforces each workspace's thresholds.
+        # Running plain `test` here as well would just execute everything
+        # twice. Until 2026-08-09 the thresholds had never executed at all —
+        # @vitest/coverage-v8 was not installed and no script passed
+        # --coverage — so this step is what makes them real.
+        run: pnpm test:coverage
 
       - name: Test (TS fallback path)
         env:

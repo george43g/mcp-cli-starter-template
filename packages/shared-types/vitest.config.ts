@@ -1,11 +1,7 @@
 import shared from "@george43g/vitest-config/vitest.shared";
-import { defineConfig, mergeConfig } from "vitest/config";
 
-export default mergeConfig(
-  shared,
-  defineConfig({
-    test: {
-      include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
-    },
-  }),
-);
+// No overrides. This file used to re-declare `test.include` with exactly the
+// preset's own value, which silently reverted the preset's `.tsx` support for
+// this package the moment that was added. A local copy of a shared default is
+// drift waiting to happen.
+export default shared;

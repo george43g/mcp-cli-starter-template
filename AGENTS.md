@@ -63,7 +63,8 @@ packages/
   shared-types/       Zod schemas + Rust drift-check
   tsconfig/           base/node/react TS configs
   biome-config/       single biome.json source
-  vitest-config/      shared preset (80/70/70/70 packages, 50/40/40/40 apps)
+  vitest-config/      shared preset (target 80/70/70/70 packages, 50/40/40/40
+                      apps) + `withCoverageFloor()` for workspaces below it
 ```
 
 ## Commands
@@ -73,12 +74,13 @@ packages/
 | `pnpm install` | Install all workspaces |
 | `pnpm build` | Turbo: build TS workspaces + (optional) Rust crate |
 | `pnpm test` | All workspace tests, including the scaffolder suite |
+| `pnpm test:coverage` | Same suites + enforce each workspace's coverage floor |
 | `pnpm test:no-native` | Force TS fallback (`MCP_DISABLE_NATIVE=1`) |
 | `pnpm typecheck` | `tsc --noEmit` per package |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm check:docs` | Docs integrity: relative links, agent-file symlinks, docs index coverage |
 | `pnpm check:publishable-manifests` | Publish shape of the npm-published packages: repository metadata, `files`, no `workspace:` in shipped deps |
-| `pnpm verify` | lint + docs check + manifest check + typecheck + test + build (the CI shape) |
+| `pnpm verify` | lint + docs check + manifest check + typecheck + test:coverage + build (the CI shape) |
 | `pnpm stress` | 13-assertion MCP stress harness against `apps/example-repo-mcp/` |
 | `pnpm regen:example` | Rebuild the tracked `example/` output from the scaffolder |
 
@@ -102,9 +104,10 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
 ## Validation & CI
 
 `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, node 24:
-install → lint → docs check → typecheck → build → test → test:no-native →
-usage(1) artifact freshness → npm pack dry-run → scaffolder E2E smoke →
-13-assertion stress harness → example/ sync check.
+install → lint → docs check → manifest check → typecheck → build →
+test + coverage gates → test:no-native → usage(1) artifact freshness →
+npm pack dry-run → scaffolder E2E smoke → 13-assertion stress harness →
+example/ sync check.
 
 Other workflows: `release.yml` (semantic-release, disabled by default — see
 [`docs/RELEASE.md`](docs/RELEASE.md)), `screenshots.yml` (VHS-driven),

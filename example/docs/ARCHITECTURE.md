@@ -25,7 +25,8 @@ packages/
   tsconfig/       — base.json + node.json + react.json.
   biome-config/   — single biome.json source for the whole workspace.
   vitest-config/  — shared preset for packages + lower-threshold preset
-                    for apps.
+                    for apps, plus withCoverageFloor() for workspaces that
+                    do not meet the target yet.
 ```
 
 ## Dependency direction (always upward)
