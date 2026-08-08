@@ -1,10 +1,20 @@
 {
   "name": "@george43g/cli-kit",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Commander helpers + TTY/color/output utilities + env↔flag binder + interactive REPL. Building blocks for the `example-repo-cli` bin in any tool cloned from the starter.",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/george43g/mcp-cli-starter-template.git",
+    "directory": "packages/cli-kit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -14,12 +24,17 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:watch": "vitest",
+    "pack:check": "pnpm build && npm pack --dry-run --json",
     "clean": "rm -rf dist coverage"
   },
   "dependencies": {
@@ -28,10 +43,22 @@
     "picocolors": "^1.1.0"
   },
   "devDependencies": {
-    "@george43g/tsconfig": "workspace:*",
-    "@george43g/vitest-config": "workspace:*",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/npm": "^13.1.5",
     "@types/node": "^24.13.3",
+    "semantic-release": "^24.2.0",
+    "semantic-release-monorepo": "^8.0.2",
     "typescript": "^5.7.0",
     "vitest": "^3.2.7"
-  }
+  },
+  "keywords": [
+    "cli",
+    "commander",
+    "repl",
+    "tty",
+    "terminal",
+    "mcp"
+  ],
+  "author": "George G"
 }

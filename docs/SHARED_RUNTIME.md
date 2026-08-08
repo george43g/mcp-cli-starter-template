@@ -30,8 +30,13 @@ product-specific changes:
 - Native acceleration and its cross-language contract.
 - Project skills, documentation, environment policy, and release decisions.
 
-`mcp-kit`, `tui-kit`, `cli-kit`, and `env-loader` remain local packages for now.
-They can become public later only after their consumer contracts are proven.
+`cli-kit` and `tui-kit` also exist as published packages
+(`@george43g/cli-kit`, `@george43g/tui-kit`), for consumers outside a generated
+repo. That does **not** change what a generated tool receives: it still gets
+them as local source. `--runtime-source registry` covers `robustness` only.
+
+`mcp-kit` and `env-loader` remain local packages. They can become public later
+only after their consumer contracts are proven.
 
 ## Choosing a runtime source
 

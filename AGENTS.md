@@ -77,7 +77,8 @@ packages/
 | `pnpm typecheck` | `tsc --noEmit` per package |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm check:docs` | Docs integrity: relative links, agent-file symlinks, docs index coverage |
-| `pnpm verify` | lint + docs check + typecheck + test + build (the CI shape) |
+| `pnpm check:publishable-manifests` | Publish shape of the npm-published packages: repository metadata, `files`, no `workspace:` in shipped deps |
+| `pnpm verify` | lint + docs check + manifest check + typecheck + test + build (the CI shape) |
 | `pnpm stress` | 13-assertion MCP stress harness against `apps/example-repo-mcp/` |
 | `pnpm regen:example` | Rebuild the tracked `example/` output from the scaffolder |
 

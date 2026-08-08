@@ -144,16 +144,25 @@ generated tool. `npx` works regardless of where the source lives; it only needs 
 *published*, not *co-located*.
 
 **Sequenced work**:
-1. Publish the kits mcpsync leans on so its `workspace:*` links resolve from npm:
-   `@george43g/cli-kit` + `@george43g/tui-kit` (bundled into `dist/` today via Vite), and
-   decide `@george43g/tsconfig` + `@george43g/vitest-config` (publish or vendor at the new
-   home). `@george43g/robustness@^0.1.1` is already on npm.
+1. ✅ **DONE 2026-08-08** — `@george43g/cli-kit@0.1.0` and `@george43g/tui-kit@0.1.0` are
+   published, so mcpsync's `workspace:*` devDeps can resolve from npm.
+   `@george43g/robustness@^0.1.1` was already there.
+   **Still undecided**: `@george43g/tsconfig` + `@george43g/vitest-config` (publish, or vendor
+   at the new home). They stayed private here — cli-kit/tui-kit simply dropped the devDeps and
+   resolve both via the root workspace hoist, the way `packages/robustness` always has. That
+   trick does NOT survive the move: life-stack has no such hoist, so this is a real decision at
+   relocation time.
 2. Move `apps/mcpsync` to life-stack (sibling of `opkeep`); rewrite `workspace:*` → the
-   published versions; publish `@george43g/mcpsync` from there.
-3. Remove mcpsync from this repo: its `workflow_dispatch` release job, its meta-suite tests,
-   and the AGENTS.md `.mcp.json`/`opencode.json` sync note that points at the local bin.
+   published versions; publish `@george43g/mcpsync` from there. It can also stop bundling the
+   kits via Vite (`apps/mcpsync/vite.config.ts` externals) and take them as real deps —
+   optional, and it means moving `cli-table3`/`picocolors`/`ink`/`react` back out of its own
+   `dependencies`.
+3. Remove mcpsync from this repo: its release job in `release-packages.yml` (now chained after
+   `tui-kit`), its entry in `PUBLISHABLE` in `scripts/check-publishable-manifests.mjs`, its
+   meta-suite tests, and the AGENTS.md `.mcp.json`/`opencode.json` sync note that points at the
+   local bin.
 
-**Trigger to action**: when you're ready to publish the kits (the one real migration cost).
+**Trigger to action**: unblocked — step 1 is done. Remaining cost is the move itself.
 
 **Cost**: ~half a day once the kits are published — mostly mechanical (dep rewrites + move +
 release wiring at the new home).
@@ -200,6 +209,20 @@ stabilizes what actually lives here, so the new name reflects what stays.
 
 **Cost**: low mechanically (rename repo + dir + update the symlinked agent files + docs
 links), but coordinate with published-package names and the git remote.
+
+---
+
+## 13. Local validation for `.github/workflows/*.yml`
+
+**Status**: not started, deliberately. Nothing in the repo parses workflow YAML, so a
+malformed workflow is only discovered by pushing it — and it surfaces as an opaque 0-second
+run with no logs (field-note 28). A `scripts/check-workflows.mjs` wired into `pnpm verify`
+would catch it pre-push, but it needs a YAML parser dependency the repo does not carry, and
+CI already reports the failure within 15 seconds.
+
+**Trigger to action**: if this bites a second time, or if a YAML parser arrives in the
+dependency graph for another reason. Would also be a natural home for asserting release-job
+invariants (every publishable package has a job; jobs stay chained via `needs`).
 
 ---
 
@@ -263,8 +286,10 @@ plan docs), or a **test fixture** (an arbitrary unmanaged-server name in
 - mcp-kit unit tests: **27 passing**
 - Stress cases: **11 / 11** (all required for HTTP-enabled builds)
 - Lint: **0 errors, 4 warnings** (all pre-existing suppressions-unused on intentional biome-ignore comments)
-- CI gates: lint, typecheck, test, test:no-native, usage(1) freshness, npm pack dry-run, scaffolder E2E smoke, example/ diff vs scaffolder output, stress
+- CI gates: lint, docs integrity, publishable-manifest shape, typecheck, test, test:no-native, usage(1) freshness, npm pack dry-run, scaffolder E2E smoke, example/ diff vs scaffolder output, stress
 - Workspaces: 14 (excludes `example/**`)
 - Template entries: 154 (`apps/scaffolder/src/generated/templates.ts`)
+- Published packages: `@george43g/robustness@0.1.1`, `@george43g/cli-kit@0.1.0`,
+  `@george43g/tui-kit@0.1.0`. `@george43g/mcpsync` remains bootstrap-pending.
 
-Last reviewed: 2026-05-26.
+Last reviewed: 2026-05-26 (published-package line added 2026-08-08).
