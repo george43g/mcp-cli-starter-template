@@ -20,7 +20,7 @@ npx @george43g/mcp-scaffold plan --target ~/repos/my-existing-mcp --existing-str
 # Emit a machine-readable companion to the recap
 npx @george43g/mcp-scaffold apply --target ~/repos/my-existing-mcp --report-json /tmp/report.json
 
-# List all 26 migrations across 12 phases
+# List all 24 migrations across 12 phases
 npx @george43g/mcp-scaffold list
 ```
 
@@ -59,7 +59,7 @@ Existing-target policy:
 
 ## What gets generated
 
-12 phases applied in order, 26 migrations, 172 generated template entries:
+12 phases applied in order, 24 migrations, 169 generated template entries:
 
 | Phase | Scope |
 |-------|-------|
@@ -67,7 +67,7 @@ Existing-target policy:
 | 02-toolchain | mise, node, git, .gitignore (LFS anti-footgun), .gitattributes |
 | 03-configs | shared tsconfig + biome + vitest + full turbo.json |
 | 04-robustness | env + NDJSON logger + watchdog + shutdown + withTimeout + health + retry + rate-limit |
-| 05-utility-pkgs | env-loader, secrets, cli-kit, tui-kit |
+| 05-utility-pkgs | cli-kit, tui-kit |
 | 06-mcp-kit | tool-registry, dispatcher (6 invariants), stdio + HTTP transports, sanitize, guardrails |
 | 07-shared-types | Zod schemas + Rust drift-check |
 | 08-app | the user-facing tool — single bin, MCP/CLI/TUI/REPL, dev MCP proxy, stress harness |

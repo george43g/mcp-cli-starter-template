@@ -60,8 +60,6 @@ packages/
   cli-kit/            commander + tty + color + REPL + env↔flag binder
   tui-kit/            ink themes + hooks + components
   secret-store/       env → .env → OS keychain → exec. No vault vendor code
-  env-loader/         Vite-style .env precedence (retiring — see DEFERRED #11)
-  secrets/            env-JSON → 1Password → file chain (retiring — see DEFERRED #11)
   shared-types/       Zod schemas + Rust drift-check
   tsconfig/           base/node/react TS configs
   biome-config/       single biome.json source

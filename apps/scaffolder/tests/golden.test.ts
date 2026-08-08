@@ -39,8 +39,6 @@ const PHASES_DIR = resolve(SCAFFOLDER_ROOT, "src/phases");
  */
 const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   ["04-robustness/lib", "packages/robustness"],
-  ["05-utility-pkgs/lib/env-loader", "packages/env-loader"],
-  ["05-utility-pkgs/lib/secrets", "packages/secrets"],
   ["05-utility-pkgs/lib/cli-kit", "packages/cli-kit"],
   ["05-utility-pkgs/lib/tui-kit", "packages/tui-kit"],
   ["06-mcp-kit/lib", "packages/mcp-kit"],

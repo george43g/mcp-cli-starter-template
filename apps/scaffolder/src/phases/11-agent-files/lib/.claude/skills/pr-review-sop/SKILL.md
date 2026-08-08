@@ -26,7 +26,7 @@ Lifted from Gmail-MCP-Server's `pr-review-sop` skill and generalized.
 | UUID-gated instructions | Any embedded instructions use `wrapInstructions(text, uuid)` and require the user to echo the UUID | Authorization for follow-on actions |
 | AbortSignal | All new long loops check `signal?.aborted` | Honors MCP cancellation |
 | Timeout declared | New tools have a `timeoutMs` or use the default | Prevents wedged calls |
-| Secrets | No new env reads of obvious secret names without going through `@george43g/secrets` | Centralized chain |
+| Secrets | Secret values come from the environment, never a literal in source, a committed file, or a log line | A secret in git history is a secret you have to rotate |
 | Schema validation | All tool inputs use Zod schemas with `.describe()` on every field | LLM-readable docs + runtime safety |
 | Filesystem writes | New writes are sandboxed (no `path.join(homedir, userInput)` without validation) | Path traversal |
 | Shell exec | No new `execSync` / `spawn` calls with user input concatenated into the command | Command injection |

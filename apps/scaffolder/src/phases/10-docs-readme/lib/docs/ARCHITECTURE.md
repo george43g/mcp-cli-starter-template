@@ -1,6 +1,6 @@
 # Architecture
 
-`mcp-cli-starter-template` is a Turborepo monorepo with two apps and ten packages. The split is intentional: anything that doesn't depend on the tool's domain lives in a package and is reused; anything that does lives in the app.
+`mcp-cli-starter-template` is a Turborepo monorepo with two apps and a handful of packages. The split is intentional: anything that doesn't depend on the tool's domain lives in a package and is reused; anything that does lives in the app.
 
 ## Workspace map
 
@@ -19,8 +19,6 @@ packages/
   tui-kit/        — Ink theme system, hooks (useDevStats / useMouse /
                     useVimKeys), components (DevStatsPanel, StatusBar,
                     HelpBar, FullScreenInk), memoryCache, boundIfNeeded.
-  env-loader/     — Vite-style .env precedence in plain Node.
-  secrets/        — env-JSON → 1Password → file chain (no Keychain).
   shared-types/   — Zod schemas + Rust mirror + drift-check test.
   tsconfig/       — base.json + node.json + react.json.
   biome-config/   — single biome.json source for the whole workspace.
@@ -99,18 +97,16 @@ Type contract: hand-mirrored. `packages/shared-types/src/index.ts` declares the 
 
 ## Env layout
 
-Two complementary mechanisms:
-
-1. **Node-native `--env-file-if-exists`** in every package.json script. Loads in order: `.env`, `.env.local`, `.env.[mode]`, `.env.[mode].local`. Vite-style precedence — last write wins.
-2. **`@george43g/env-loader`** for tools that need to read env before spawning a subprocess (e.g., the dev MCP proxy).
+**Node-native `--env-file-if-exists`** in every package.json script. Loads in order: `.env`, `.env.local`, `.env.[mode]`, `.env.[mode].local`. Vite-style precedence — last write wins.
 
 Every recognized env var is also accepted as a CLI flag via `@george43g/cli-kit/env-flag-binder`. `MCP_LOG_DIR` ↔ `--log-dir`, `MCP_HTTP_TOKEN` ↔ `--http-token`, etc.
 
 ## Secrets
 
-Default chain: env-JSON → 1Password CLI → file (`~/.example-repo/credentials.json`). Apple Keychain is deliberately omitted from the starter; add per-tool if needed.
-
-Env-JSON is the CI / Docker / k8s primary path. 1Password is optional — gracefully degrades when the `op` CLI isn't installed.
+Nothing built in. Read them from the environment, populated by whatever secret
+manager you run (mise, direnv, a systemd unit, a CI secret store). Getting a
+secret *out of* a vault is a manager's job, not a tool's — keeping that boundary
+is what stops vault credentials leaking into every tool's dependency tree.
 
 ## Removing surfaces
 

@@ -140,7 +140,7 @@ apps/
   rust-accel/               napi-rs crate (optional acceleration)
 
 packages/
-  robustness, mcp-kit, cli-kit, tui-kit, env-loader, secrets, shared-types,
+  robustness, mcp-kit, cli-kit, tui-kit, shared-types,
   tsconfig, biome-config, vitest-config
 
 mise.toml                   toolchain pins (node, pnpm) + named tasks

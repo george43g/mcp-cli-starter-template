@@ -21,7 +21,7 @@ export interface PackagePortOptions {
   tsconfig?: (scope: string) => string;
   /** vitest.config.ts content. Omit if shipped under lib/. */
   vitestConfig?: (scope: string) => string;
-  /** TEMPLATES key prefix to strip — e.g. "05-utility-pkgs/lib/env-loader/". */
+  /** TEMPLATES key prefix to strip — e.g. "05-utility-pkgs/lib/cli-kit/". */
   libPrefix: string;
   /** Optional: additional inline files (rare). */
   extraFiles?: Array<[string, string]>;

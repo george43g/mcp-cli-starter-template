@@ -45,8 +45,6 @@ example-repo/                           # the cloned tool, one git repo
 │   ├── mcp-kit/                    # tool-registry + dispatch + transports + guardrails
 │   ├── cli-kit/                    # commander + tty + color + env↔flag binder + REPL
 │   ├── tui-kit/                    # ink themes + hooks + components
-│   ├── env-loader/                 # Vite-style .env precedence
-│   ├── secrets/                    # env-JSON → 1Password → file chain
 │   ├── shared-types/               # Zod schemas + Rust mirror + drift-check
 │   ├── tsconfig/                   # base/node/react TS configs
 │   ├── biome-config/               # single biome.json source
@@ -163,10 +161,8 @@ thresholds, idle restart, diagnostics, process-exit behavior, and lifecycle
 hooks are injectable. Keep project-specific tools, schemas, native contracts,
 and application wiring as generated source.
 
-### 05-utility-pkgs — env-loader, secrets, cli-kit, tui-kit
+### 05-utility-pkgs — cli-kit, tui-kit
 
-- **env-loader** (`@george43g/env-loader`): Vite-style precedence loader. Reads `.env → .env.local → .env.[mode] → .env.[mode].local` in plain Node. Use when reading env BEFORE spawning a subprocess (e.g. the dev MCP proxy).
-- **secrets** (`@george43g/secrets`): chain of env-JSON → 1Password (`op://` reference, peer-dep on `op` CLI, gracefully degrades) → file fallback at `~/.example-repo/credentials.json`. **No Apple Keychain** — add per-tool if you need it.
 - **cli-kit** (`@george43g/cli-kit`): commander helpers, TTY/color (`picocolors`, no-op on non-TTY/--no-color), output table-vs-JSON switch (`cli-table3`), `env-flag-binder` registry (every `MCP_X` env also `--x-y` flag), interactive REPL (`runRepl` — readline loop driving the dispatcher).
 - **tui-kit** (`@george43g/tui-kit`): theme system (accent-driven palette derivation; `safe` vs `powerline` glyph presets), hooks (`useDevStats`/`useMouse`/`useVimKeys`), components (`DevStatsPanel`, `StatusBar`, `HelpBar`, `FullScreenInk`), `messageCache` (TTL + memory-pressure LRU), `bounded-list` (generic eviction with gap markers). **Mouse**: SGR protocol only (`?1000h + ?1006h`); never `?1003h` (causes 100% CPU on Linux).
 

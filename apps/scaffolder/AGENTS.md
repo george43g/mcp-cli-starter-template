@@ -4,7 +4,7 @@
 > the root [`AGENTS.md`](../../AGENTS.md); read it first for orientation, the
 > golden-output rule, and root commands.
 
-The scaffolder is the meta-tool: 12 phases, 26 migrations, 172 generated
+The scaffolder is the meta-tool: 12 phases, 24 migrations, 169 generated
 template entries. It drives `init` (fresh scaffold), `apply`
 (target-profile-aware retrofit), `migrate <id>` (single migration), and
 `add-mcp-app` (append a second MCP app to an already-scaffolded monorepo —
