@@ -328,3 +328,26 @@ are ideas, not commitments; none is scheduled unless promoted into
     per-directory-intuition. `RELEASE.md` was exempted rather than synced: its
     new content is a runbook for this repo's own npm pipeline and is wrong
     guidance downstream.
+31. **npm 2FA blocks agent-driven publishing at three separate points, and the
+    `!`-prefix shell does not help.** With 2FA-on-publish enabled: `pnpm/npm
+    publish` needs a browser roundtrip (already field-note 10), `npm trust`
+    needs one too (it is an account change), and running either through Claude
+    Code's `!` prefix fails the same way — that shell is not an interactive TTY,
+    so npm prints the auth URL and exits rather than waiting. Relaying a TOTP
+    code through the conversation and passing `--otp=` loses the race more often
+    than not: codes rotate every 30s and the round-trip usually eats the window.
+    The only reliable route is the user running the whole chain in a real
+    terminal. Chain the publishes and the `npm trust github` calls with `&&` in
+    ONE block — npm caches the authorization for a few minutes, so a single
+    browser roundtrip covers all of them.
+32. **`npm trust github` on an already-configured package returns `E409
+    Conflict`** — that is "a trust config already exists", not a failure. Read
+    the current state with `npm trust list <pkg>` (which, unlike the write, is
+    satisfied by the cached session). Its `--file` argument is the workflow
+    *filename* only (`release-packages.yml`), not a path.
+33. **A freshly published scoped package 404s on the read path for a while.**
+    `npm view`, and even an unauthenticated cache-busted GET of the packument,
+    return `Not found` for a minute or more after `+ <pkg>@<version>` is
+    printed. Do not read that as a failed publish: `npm trust list <pkg>`
+    succeeding is proof the package exists registry-side, since trust config
+    requires it. Just wait for the read path to catch up before verifying.

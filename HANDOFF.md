@@ -19,7 +19,7 @@ verification matrix, dependency decisions, and deferred work.
 | Working tree | clean |
 | Push state | everything pushed; `feat/mcpsync-tool` + `feat/scaffold-harness-layer` deleted after merge |
 | mcpsync | `apps/mcpsync` landed (5 stages + audit + publish prep); npm publish DEFERRED — release job is `workflow_dispatch`-only; local global bin installed via `pnpm add -g`. Desktop write-guard merged (`95f6c03`, PR #2). Round 2026-08-05 merged (`9d90a2c`, PR #3): 3 life-stack findings resolved + `imsg-mcp`→`EQStack` doc rename. Home decision REVERSED same session → relocate mcpsync to life-stack after publishing the kits (DEFERRED #10; import-as-library retracted for an optional `npx` shell-out). (see [docs/plans/2026-08-mcpsync-overview.md](docs/plans/2026-08-mcpsync-overview.md)) |
-| Package state | `@george43g/robustness@0.1.1` published 2026-07-31 via the CI OIDC pipeline (0.1.0 was the earlier user-run local publish); tags `robustness-v0.1.0` + `robustness-v0.1.1`. **2026-08-08: `@george43g/cli-kit@0.1.0` + `@george43g/tui-kit@0.1.0` prepared for publish** — manifests, READMEs, LICENSEs, `.releaserc.json`, release jobs all landed. The bootstrap `pnpm publish` + npmjs.com Trusted Publisher config are the USER's manual steps; until they run, the new CI jobs no-op. `@george43g/mcpsync` still bootstrap-pending. |
+| Package state | Published: `@george43g/robustness@0.1.1` (2026-07-31, CI OIDC; 0.1.0 was the earlier user-run bootstrap), **`@george43g/cli-kit@0.1.0` + `@george43g/tui-kit@0.1.0` (2026-08-08, user-run bootstrap)**. Tags: `robustness-v0.1.0`/`-v0.1.1`, `cli-kit-v0.1.0`, `tui-kit-v0.1.0`. Trusted Publishers configured for all three. `@george43g/mcpsync` remains bootstrap-pending (its job is still `workflow_dispatch`-only). |
 | Release pipeline | `.github/workflows/release-packages.yml` PROVEN end-to-end: full verify matrix → npm OIDC trusted publishing (no `NPM_TOKEN`) → tag + CHANGELOG + GitHub release → `[skip ci]` bump commit (loop-safe, confirmed no re-trigger). Now four chained jobs (robustness → cli-kit → tui-kit → mcpsync), serialized because each pushes a bump commit. **Build provenance is deliberately OFF** — it requires a public source repo and this one is private; requesting it 422s the publish (field-note 23, which supersedes 19). |
 | Runtime default | `source`; registry mode is staged but not the default |
 
@@ -147,22 +147,17 @@ After `ef3809b`, a docs/harness pass applied the practices from
 The next agent should not begin another feature sweep by default. The
 remaining landing decisions are:
 
-0. **AWAITING THE USER (2026-08-08): bootstrap-publish the kits.** Everything in
-   the repo is ready; these two steps cannot be automated (npm's publish auth is
-   interactive, and a Trusted Publisher can only be attached to a package that
-   already exists). From the repo root after `pnpm install && pnpm build`:
+0. **DONE (2026-08-08): the kits are published and CI-releasable.**
+   `@george43g/cli-kit@0.1.0` and `@george43g/tui-kit@0.1.0` are on npm; tags
+   `cli-kit-v0.1.0` / `tui-kit-v0.1.0` point at `cb21bea`; Trusted Publishers
+   are configured for both (`npm trust github … --file release-packages.yml
+   --allow-publish`). robustness returned `E409` — it already had one from the
+   original web-UI setup, which is the expected "already configured" response.
 
-   ```sh
-   pnpm --filter @george43g/cli-kit publish
-   pnpm --filter @george43g/tui-kit publish
-   git tag cli-kit-v0.1.0 && git tag tui-kit-v0.1.0 && git push origin --tags
-   ```
-
-   Then add each package's Trusted Publisher on npmjs.com (user `george43g`,
-   repo `mcp-cli-starter-template`, workflow `release-packages.yml`, no
-   environment). Tagging is not optional: without it semantic-release finds no
-   prior tag and starts the next release at `1.0.0`. Full procedure in
-   `docs/RELEASE.md` → "Adding a package to the pipeline".
+   The publish chain had to run in the user's own terminal: npm 2FA blocks it
+   at three points and Claude Code's `!` prefix is not an interactive TTY
+   either (field-note 31). Chain the publishes and `npm trust` calls with `&&`
+   in one block so a single browser roundtrip covers all of them.
 1. Re-read this file, `docs/PROJECT_STATE.md`, `AGENTS.md`, and the findings
    ledger. Confirm `git status --short --branch`.
 2. Push — DONE (2026-08-03): everything is on `origin/main` via PR #1;
