@@ -20,7 +20,7 @@ npx @george43g/mcp-scaffold plan --target ~/repos/my-existing-mcp --existing-str
 # Emit a machine-readable companion to the recap
 npx @george43g/mcp-scaffold apply --target ~/repos/my-existing-mcp --report-json /tmp/report.json
 
-# List all 24 migrations across 12 phases
+# List all 21 migrations across 10 phases
 npx @george43g/mcp-scaffold list
 ```
 
@@ -45,10 +45,12 @@ Feature opt-outs (init/apply/plan/migrate):
 
 Runtime distribution:
 
-- `--runtime-source source` generates an editable local robustness package.
-- `--runtime-source registry` uses `@george43g/robustness:^0.1.0`.
-- Source remains the default until the first public release is verified;
-  registry is the intended post-release default.
+- Generated repos depend on the published `@george43g/robustness`, `cli-kit`,
+  `tui-kit` and `secret-store` rather than vendoring their source.
+- Version ranges are derived from the real package manifests at build time, so
+  they cannot drift behind what is actually published.
+- `tsconfig`, `vitest-config` and `biome-config` are still generated: they are
+  per-monorepo config, deliberately never published.
 
 Existing-target policy:
 
@@ -59,7 +61,7 @@ Existing-target policy:
 
 ## What gets generated
 
-12 phases applied in order, 24 migrations, 169 generated template entries:
+10 phases applied in order, 21 migrations, 123 generated template entries:
 
 | Phase | Scope |
 |-------|-------|

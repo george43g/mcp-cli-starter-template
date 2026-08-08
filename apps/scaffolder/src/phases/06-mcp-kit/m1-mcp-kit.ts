@@ -12,7 +12,7 @@ import {
   standardNodeTsconfig,
   standardVitestConfig,
 } from "../../core/package-port.js";
-import { runtimeDependencyRange, runtimePackageName } from "../../core/runtime-source.js";
+import { PUBLIC_SCOPE, rangeFor } from "../../core/runtime-source.js";
 
 const PKG_JSON = (scope: string, ctx: MigrationContext) => `{
   "name": "${scope}/mcp-kit",
@@ -47,7 +47,7 @@ const PKG_JSON = (scope: string, ctx: MigrationContext) => `{
     "clean": "rm -rf dist coverage"
   },
   "dependencies": {
-    "${runtimePackageName(ctx, scope)}": "${runtimeDependencyRange(ctx)}",
+    "${PUBLIC_SCOPE}/robustness": "${rangeFor(`${PUBLIC_SCOPE}/robustness`)}",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.25.0"

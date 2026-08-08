@@ -8,6 +8,7 @@ import { makeGit } from "../src/core/git.js";
 import { makeLogger } from "../src/core/logger.js";
 import type { MigrationContext } from "../src/core/migration.js";
 import { portPackage } from "../src/core/package-port.js";
+import { PUBLISHED_NAMES, rangeFor } from "../src/core/runtime-source.js";
 import { makeShell } from "../src/core/shell.js";
 import { inspectTarget } from "../src/core/target-inspection.js";
 
@@ -17,13 +18,7 @@ import { inspectTarget } from "../src/core/target-inspection.js";
  * actual portPackage code path.
  */
 async function makeTestCtx(
-  opts: {
-    dryRun?: boolean;
-    name?: string;
-    scope?: string;
-    force?: boolean;
-    runtimeSource?: "registry" | "source";
-  } = {},
+  opts: { dryRun?: boolean; name?: string; scope?: string; force?: boolean } = {},
 ) {
   const cwd = await mkdtemp(join(tmpdir(), "scaffolder-port-test-"));
   const dryRun = opts.dryRun ?? false;
@@ -37,7 +32,6 @@ async function makeTestCtx(
   config.global.repoName.set(name);
   config.global.scope.set(opts.scope ?? "@george43g");
   config.global.mode.set("new");
-  config.global.runtimeSource.set(opts.runtimeSource ?? "source");
   const ctx: MigrationContext = {
     config,
     cwd,
@@ -69,25 +63,24 @@ describe("portPackage", () => {
   });
 
   it("substitutes example-repo placeholders in file content (real lib copy)", async () => {
-    // 04-robustness/lib/src/logger.ts contains "example-repo" placeholders in its
-    // comments. After portPackage, those should become the user's name.
+    // 08-app/lib is now the only shipped lib carrying "example-repo"
+    // placeholders — the published packages are no longer vendored, so
+    // 04-robustness/lib does not exist.
     const { cwd, ctx } = await makeTestCtx({ name: "foo" });
     cleanup.push(() => rm(cwd, { recursive: true, force: true }));
 
     const result = await portPackage(ctx, {
-      pkgDir: "packages/robustness",
-      libPrefix: "04-robustness/lib/",
+      pkgDir: "apps/foo-mcp",
+      libPrefix: "08-app/lib/",
     });
 
     expect(result.status).toBe("applied");
     expect(result.filesChanged?.length).toBeGreaterThan(0);
-    expect(result.filesChanged).toContain("packages/robustness/src/logger.ts");
+    expect(result.filesChanged).toContain("apps/foo-mcp/src/cli.ts");
 
-    const logger = await readFile(join(cwd, "packages/robustness/src/logger.ts"), "utf8");
-    // The canonical logger comments mention `mcp/example-repo-mcp` log paths in
-    // comments — those should now reference `foo` after substitution.
-    expect(logger).toContain("foo");
-    expect(logger).not.toContain("example-repo");
+    const cli = await readFile(join(cwd, "apps/foo-mcp/src/cli.ts"), "utf8");
+    expect(cli).toContain("foo");
+    expect(cli).not.toContain("example-repo");
   });
 
   it("substitutes example-repo placeholders in PATHS too", async () => {
@@ -111,23 +104,23 @@ describe("portPackage", () => {
     cleanup.push(() => rm(cwd, { recursive: true, force: true }));
 
     await portPackage(ctx, {
-      pkgDir: "packages/robustness",
-      libPrefix: "04-robustness/lib/",
+      pkgDir: "apps/foo-mcp",
+      libPrefix: "08-app/lib/",
     });
 
-    // package.json content should reference @myorg, not @george43g
-    // (the metaFiles branch templates it via the PKG_JSON function in the
-    // robustness migration; portPackage itself doesn't write pkg.json here).
-    // Inspect a source file that has @george43g in imports:
-    const idx = await readFile(join(cwd, "packages/robustness/src/index.ts"), "utf8");
-    expect(idx).not.toContain("@george43g/"); // safety: no leftover scopes
+    // Locally-generated packages take the target's scope...
+    const pkg = JSON.parse(await readFile(join(cwd, "apps/foo-mcp/package.json"), "utf8"));
+    expect(pkg.dependencies["@myorg/mcp-kit"]).toBe("workspace:*");
+    // ...while PUBLISHED packages keep the scope they are published under.
+    // Rewriting those to @myorg would point at packages that do not exist.
+    expect(pkg.dependencies["@myorg/robustness"]).toBeUndefined();
+    expect(pkg.dependencies["@george43g/robustness"]).toBeDefined();
   });
 
-  it("keeps the public runtime external in registry mode", async () => {
+  it("depends on published packages by their derived registry range", async () => {
     const { cwd, ctx } = await makeTestCtx({
       name: "foo",
       scope: "@myorg",
-      runtimeSource: "registry",
     });
     cleanup.push(() => rm(cwd, { recursive: true, force: true }));
 
@@ -137,7 +130,15 @@ describe("portPackage", () => {
     });
 
     const pkg = JSON.parse(await readFile(join(cwd, "apps/foo-mcp/package.json"), "utf8"));
-    expect(pkg.dependencies["@george43g/robustness"]).toBe("^0.1.0");
+    // Asserted against the DERIVED range, not a literal. A hardcoded "^0.1.0"
+    // here is exactly what let runtime-source.ts drift a whole minor behind the
+    // published robustness while still passing.
+    for (const name of PUBLISHED_NAMES) {
+      if (pkg.dependencies?.[name] === undefined) continue;
+      expect(pkg.dependencies[name]).toBe(rangeFor(name));
+      expect(pkg.dependencies[name]).not.toContain("workspace:");
+    }
+    expect(pkg.dependencies["@george43g/robustness"]).toBe(rangeFor("@george43g/robustness"));
     expect(pkg.dependencies["@myorg/robustness"]).toBeUndefined();
     expect(pkg.dependencies["@myorg/mcp-kit"]).toBe("workspace:*");
     const entry = await readFile(join(cwd, "apps/foo-mcp/src/index.ts"), "utf8");
@@ -149,14 +150,14 @@ describe("portPackage", () => {
     cleanup.push(() => rm(cwd, { recursive: true, force: true }));
 
     const result = await portPackage(ctx, {
-      pkgDir: "packages/robustness",
-      libPrefix: "04-robustness/lib/",
+      pkgDir: "apps/foo-mcp",
+      libPrefix: "08-app/lib/",
     });
 
     expect(result.status).toBe("would-apply");
     expect(result.filesChanged?.length).toBeGreaterThan(0);
     // Nothing actually written:
-    await expect(readFile(join(cwd, "packages/robustness/src/logger.ts"))).rejects.toThrow();
+    await expect(readFile(join(cwd, "apps/foo-mcp/src/cli.ts"))).rejects.toThrow();
   });
 
   it("noop on re-run when content is identical", async () => {
@@ -164,12 +165,12 @@ describe("portPackage", () => {
     cleanup.push(() => rm(cwd, { recursive: true, force: true }));
 
     await portPackage(ctx, {
-      pkgDir: "packages/robustness",
-      libPrefix: "04-robustness/lib/",
+      pkgDir: "apps/foo-mcp",
+      libPrefix: "08-app/lib/",
     });
     const second = await portPackage(ctx, {
-      pkgDir: "packages/robustness",
-      libPrefix: "04-robustness/lib/",
+      pkgDir: "apps/foo-mcp",
+      libPrefix: "08-app/lib/",
     });
 
     expect(second.status).toBe("noop");
@@ -206,7 +207,10 @@ describe("portPackage", () => {
 
     await portPackage(ctx, {
       pkgDir: "packages/x",
-      libPrefix: "04-robustness/lib/", // borrow the robustness lib just for source
+      // 11-agent-files/lib ships no package.json of its own. That matters:
+      // the TEMPLATES pass runs after metaFiles, so a lib that DOES contain
+      // one would overwrite the inline version and this would assert nothing.
+      libPrefix: "11-agent-files/lib/",
       packageJson: () => '{ "name": "custom" }\n',
     });
 

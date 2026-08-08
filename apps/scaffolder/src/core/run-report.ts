@@ -22,7 +22,7 @@ export interface RunReportInput {
  */
 export async function writeRunReport(path: string, input: RunReportInput): Promise<void> {
   const report = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     command: {
       mode: input.commandMode,
       cwd: input.cwd,
@@ -31,7 +31,6 @@ export async function writeRunReport(path: string, input: RunReportInput): Promi
       existingStrategy: input.existingStrategy,
       explicitMigration: input.explicitMigration,
       migrationFilter: input.migrationFilter,
-      runtimeSource: input.ctx.config.global.runtimeSource.peek(),
     },
     target: input.ctx.target,
     retrofitIntentCount: input.retrofitIntentCount,

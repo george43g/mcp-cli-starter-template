@@ -228,7 +228,7 @@ Final checks completed on 2026-07-27:
 - arbitrary-name fresh scaffold (`hyphen-tool`) — initial markdown docs,
   bash/zsh/fish completions, and manpage present; its own `pnpm check:usage`
   passed without a prior regeneration
-- generated `example/` regenerated with 169 template entries
+- generated `example/` regenerated with 123 template entries
 
 The root frozen install initially exposed a stale Turbo specifier in
 `pnpm-lock.yaml`; a normal install refreshed it, and the subsequent frozen
@@ -309,10 +309,10 @@ Push, package publication, and the runtime-default flip are separate actions:
    `mcp-cli-starter-template`, workflow `release-packages.yml`, no
    environment); until then the workflow still verifies but any publish
    attempt would fail auth.
-5. **Flip the default** — public consumption has passed, so
-   `runtime-source=registry` as the default is now unblocked; it remains a
-   deliberate decision requiring template + example regeneration and full
-   verification.
+5. **Flip the default** — DONE 2026-08-09, and taken further than "flip the
+   default": `--runtime-source` is gone entirely. Generated repos depend on the
+   published packages, the vendoring phases and their `lib/` mirrors were
+   deleted, and ranges are derived from the real manifests at build time.
 
 ### Safe re-verification command set
 
@@ -435,7 +435,7 @@ remediation:
 - 12 phases
 - 26 registered migration files
 - 177 generated template entries
-- 131 scaffolder tests across 12 test files
+- 129 scaffolder tests across 12 test files
 - 14 cloned-tool integration tests
 - 27 `mcp-kit` unit tests
 - 68 robustness unit tests across 8 test files

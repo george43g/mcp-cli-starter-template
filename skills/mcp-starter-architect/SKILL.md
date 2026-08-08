@@ -146,13 +146,11 @@ Manual retrofit: copy the three packages verbatim (they're small) and the root c
 - **rate-limit.ts** — `TokenBucket` + default singleton
 - All exported via `index.ts` barrel (40+ exports)
 
-Distribution choices:
+Distribution:
 
-- `--runtime-source source` copies the whole package under the target scope for
-  project-owned customization.
-- `--runtime-source registry` depends on
-  `@george43g/robustness:^0.1.0` and omits the local package. Use this only after
-  that release exists in the registry.
+- Generated repos depend on the published `@george43g/robustness`; its source is
+  never copied into the target. The same holds for `cli-kit`, `tui-kit` and
+  `secret-store`. There is no source-vendoring mode.
 
 Prefer the registry package for generic lifecycle behavior that should receive
 upstream fixes. Configure policy through `createWatchdog()` and

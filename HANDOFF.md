@@ -105,7 +105,7 @@ Preserve the invariants in
 - Nine breaking majors remain intentionally deferred.
 - Canonical files, phase `lib/` mirrors, generated CLI artifacts, and tracked
   `example/` output were synchronized.
-- Structure at that commit: 12 phases, 24 migrations, 169 generated template entries,
+- Structure at that commit: 10 phases, 21 migrations, 123 generated template entries,
   128 scaffolder tests, 68 robustness tests, and 13 stress assertions.
 
 ## imsg evaluation
@@ -173,9 +173,8 @@ remaining landing decisions are:
    unavailable from a private source repo and would have returned 422, failing
    the release rather than skipping attestation (field-note 23). Packages keep
    the registry signature; revisit only if this repo goes public.
-4. Publication done + clean external registry consumer already passed, so
-   flipping `runtime-source=registry` as the fresh-scaffold default is
-   unblocked — but it remains a deliberate, separate decision, not automatic.
+4. DONE 2026-08-09 — superseded by full de-vendoring. `--runtime-source` no
+   longer exists; generated repos always depend on the published packages.
 5. Deferred: the *generated* repo's disabled-by-default `release.yml` still
    can't publish a root/package carrying `workspace:*` deps via plain-npm
    tooling (field-note 18); a pnpm-aware generated release flow is unbuilt.
