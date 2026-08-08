@@ -6,7 +6,7 @@ the machine, with per-host fidelity, dry-run previews, and timestamped backups.
 
 > Meta-repo tool. Like `apps/scaffolder`, this is **not** scaffolded into
 > generated repos and has no `lib/` mirror. It is publish-ready as
-> `@george43g/mcpsync` (the unpublished workspace kits are bundled into its
+> `@george43g/mcpsync` (the workspace kits are bundled into its
 > `dist/`; npm publish itself is deferred — see Install). Staged build: see
 > [`docs/plans/2026-08-mcpsync-overview.md`](../../docs/plans/2026-08-mcpsync-overview.md).
 

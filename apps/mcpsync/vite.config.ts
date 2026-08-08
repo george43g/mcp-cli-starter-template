@@ -14,7 +14,8 @@ import { defineConfig } from "vite";
  *
  * Shebang is added only to dist/cli.js. dist/index.js is a plain library file.
  *
- * PUBLISH SHAPE: the unpublished workspace kits (@george43g/cli-kit, tui-kit)
+ * PUBLISH SHAPE: the workspace kits (@george43g/cli-kit, tui-kit) — NOTE: both
+ * are now PUBLISHED, so this bundling is legacy; see DEFERRED #10 step 2
  * are BUNDLED into dist (they are devDependencies — consumers never install
  * them). Everything with a published home stays an external `import` and a
  * real dependency: @george43g/robustness (npm), the kits' own runtime deps

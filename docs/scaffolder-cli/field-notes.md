@@ -367,3 +367,22 @@ are ideas, not commitments; none is scheduled unless promoted into
     so 0.2.0 falls outside its own consumer's range and yields ERESOLVE. Fixed
     by widening the peer to `^0.1.1 || ^0.2.0`. In a 0.x monorepo, check what a
     bump does to sibling peer ranges before letting it out.
+35. **The three status blocks disagreed with each other and with reality.**
+    `HANDOFF.md`, `docs/PROJECT_STATE.md`, `DEFERRED.md` and `README.md` each
+    carried counts (migrations, template entries, scaffolder tests, stress
+    assertions) and none matched: template entries were logged as 172 / 177 /
+    154 against a measured 237; `DEFERRED.md`'s snapshot said "Last reviewed:
+    2026-05-26" on a file whose items were dated 2026-08-08. Hand-maintained
+    metrics in prose rot silently and then get quoted as fact. Either generate
+    them or keep them in exactly one place — `DEFERRED.md`'s snapshot is now the
+    single measured block, and the others should defer to it.
+36. **A guardrail only guards what it was told to check.**
+    `check-publishable-manifests.mjs` was written to reject `workspace:` in
+    shipped deps, and it did — so field-note 34's peer-range bug recurred
+    *immediately afterwards* in `apps/mcpsync`, which pinned
+    `@george43g/robustness: "^0.1.1"` while robustness shipped 0.2.0. The
+    original fix widened `tui-kit` and missed the sibling. Added a
+    sibling-range invariant: every workspace dependency on a package we publish
+    must admit that package's current version. Note it compares against the
+    LOCAL manifest version, so it only fires once CI's release bump commits are
+    pulled — a stale checkout reports a false pass.

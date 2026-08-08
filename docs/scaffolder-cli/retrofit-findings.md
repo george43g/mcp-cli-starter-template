@@ -18,7 +18,7 @@ source references in the individual findings remain as discovery evidence.
 - **Related safety defects resolved**: `migrate` now defaults to existing-mode dry-run/preservation, symlink writes verify targets and honor `--force`, and phase 11 preserves combined changed/divergent metadata.
 - **Product boundary**: fresh scaffolds are pnpm-only. npm and Bun are detected for accurate minimal documentation in existing repositories; they are not supported fresh-scaffold architectures. Full existing-repo infrastructure migrations remain pnpm/Turborepo-oriented and emit a warning for npm/Bun targets.
 - **2026-07-27 hardening**: generic existing repositories now default to a safe migration profile instead of receiving every `appliesTo: both` starter migration. `--existing-strategy full` and a named `migrate <id>` are explicit opt-ins. Machine-readable reports and an isolated-clone evaluator cover real-product reconnaissance.
-- **Shared runtime staging**: `@george43g/robustness` is prepared as a public `0.1.0` package. Source generation remains the pre-publication default; registry mode becomes the default only after publication and registry-consumer verification.
+- **Shared runtime staging**: `@george43g/robustness` is published (now `0.2.0`). Source generation remains the default by choice; registry mode becomes the default only after publication and registry-consumer verification.
 - **Deferred**: the strategic “when to build a dedicated MCP server” guidance remains recorded below and is not promoted to user-facing documentation in this remediation.
 
 ---

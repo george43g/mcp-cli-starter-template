@@ -92,10 +92,63 @@ function checkFilesEntry(dir, pkg, name) {
   }
 }
 
+/**
+ * Every workspace dependency on a package WE publish must admit that package's
+ * current version. A caret on a 0.x release pins the MINOR (`^0.1.1` means
+ * `>=0.1.1 <0.2.0`), so bumping a sibling to 0.2.0 silently strands every
+ * consumer still on `^0.1.x` — they ERESOLVE (field-note 34). This caught
+ * apps/mcpsync, which the first round of that fix missed.
+ */
+function checkSiblingRanges(dir, pkg, versions) {
+  for (const field of ["dependencies", "peerDependencies"]) {
+    for (const [name, range] of Object.entries(pkg[field] ?? {})) {
+      const current = versions.get(name);
+      if (!current || typeof range !== "string") continue;
+      if (range.startsWith("workspace:")) continue; // reported separately
+      if (!satisfiesLoose(range, current)) {
+        failures.push(
+          `${dir}: ${field}.${name} is "${range}" but that package is now at ${current}\n` +
+            `    Fix: widen to admit it (e.g. "${range} || ^${current}"). A caret on a 0.x ` +
+            `pins the minor, so a sibling bump strands this consumer with ERESOLVE.`,
+        );
+      }
+    }
+  }
+}
+
+/** Minimal range check: does any `^X.Y`/`~X.Y`/exact clause cover `version`? */
+function satisfiesLoose(range, version) {
+  const [vMajor, vMinor] = version.split(".");
+  return range.split("||").some((clause) => {
+    const c = clause.trim();
+    const m = c.match(/^([\^~]?)(\d+)\.(\d+)/);
+    if (!m) return true; // ranges we don't model (*, >=, x) — don't guess
+    const [, op, major, minor] = m;
+    if (op === "^") {
+      // ^0.x pins the minor; ^X.y (X>0) pins the major.
+      return major === "0" ? major === vMajor && minor === vMinor : major === vMajor;
+    }
+    if (op === "~") return major === vMajor && minor === vMinor;
+    return c === version;
+  });
+}
+
 const seen = new Set();
+
+// Current version of every package we publish, for the sibling-range check.
+const publishedVersions = new Map();
+for (const { dir, manifestAbs } of await collectManifests()) {
+  if (!PUBLISHABLE.has(dir)) continue;
+  const pkg = JSON.parse(await readFile(manifestAbs, "utf8"));
+  if (pkg.name && pkg.version) publishedVersions.set(pkg.name, pkg.version);
+}
 
 for (const { dir, manifestAbs } of await collectManifests()) {
   const pkg = JSON.parse(await readFile(manifestAbs, "utf8"));
+
+  // Applies to EVERY workspace package, published or not: anyone depending on a
+  // package we publish must track its version.
+  checkSiblingRanges(dir, pkg, publishedVersions);
 
   if (!PUBLISHABLE.has(dir)) {
     // Catch a package made publish-shaped without being registered here (and

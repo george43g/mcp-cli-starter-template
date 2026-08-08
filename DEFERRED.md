@@ -14,6 +14,12 @@ Items intentionally not done in the current shipping series. Each has a "trigger
 
 ## 1. Scaffolder's own usage(1) freshness gate in CI
 
+**Status**: ✅ DONE (confirmed 2026-08-09). `apps/scaffolder/scripts/check-usage-freshness.mjs`
+exists, root `package.json` chains `check:usage`, `ci.yml` runs it, and
+`.github/workflows/cli-artifacts-drift.yml` is a second gate. Item closed.
+
+<details><summary>original note</summary>
+
 **Status**: missing — only the SCAFFOLDED output has a gate.
 
 **Why deferred**: the scaffolded output's freshness gate (`apps/example-repo-mcp/scripts/check-usage-freshness.mjs` + the CI step that runs it) is the user-facing value. The scaffolder repo itself uses `usage` via `mise run completions` from `apps/scaffolder/mise.toml` but ships its checked-in artifacts at `completions/scaffolder/` + `docs/scaffolder-cli/` + `man/mcp-scaffold.1` without a CI gate.
@@ -21,6 +27,10 @@ Items intentionally not done in the current shipping series. Each has a "trigger
 **Trigger to action**: if drift between `apps/scaffolder/.usage.kdl` and the checked-in scaffolder completions lands on `main` (would mean someone edited the spec without regen — visible in PR review for now).
 
 **Cost**: ~30 minutes. Copy the cloned-tool's `check-usage-freshness.mjs` pattern into `apps/scaffolder/scripts/`, point it at `apps/scaffolder/.usage.kdl`, wire into `.github/workflows/ci.yml` before the lint step.
+
+---
+
+</details>
 
 ---
 
@@ -228,6 +238,114 @@ invariants (every publishable package has a job; jobs stay chained via `needs`).
 
 ---
 
+## 14. `@george43g/robustness` — two verified singleton bugs (P0, published)
+
+**Status**: VERIFIED, not fixed. Both are in `robustness@0.2.0`, live on npm. Found by audit
+2026-08-09, independently reproduced twice, and independently re-found by the EQStack parity
+audit (its D1/D5). Repro scripts are checked in at `docs/repros/`.
+
+**Shared root cause: replace-instead-of-reconfigure.** Both APIs throw away consumer-registered
+state when handed options, silently.
+
+**14a — `installShutdownHandlers(opts)` discards every already-registered cleanup.**
+`packages/robustness/src/shutdown.ts:233-239` calls `dispose()` and builds a NEW controller,
+whose `registry` Set starts empty. Proven with a control pair (`docs/repros/robustness-b2-*.mjs`):
+identical scripts, the only difference being whether one option is passed —
+`cleanup-ran=1` without options, `cleanup-ran=0` with. The trigger is "did you pass an object",
+not "did anything change", so `installShutdownHandlers({ forceExitAfterMs: 3000 })` (semantically
+the default) nukes the registry.
+*Cross-package impact*: `tui-kit`'s `renderFullScreen` calls `registerCleanup` — so a consumer who
+mounts the TUI then configures shutdown loses terminal restore and is left in an alternate screen
+buffer with a raw-mode TTY on Ctrl-C.
+
+**14b — `installWatchdog(opts)` silently ignores options if anything read watchdog state first.**
+`packages/robustness/src/watchdog.ts:416-425` — the lazy singleton is first-call-wins, and
+`readWatchdogState()` / `noteActivity()` / `onMemorySample()` all construct it with NO options.
+Proven (`docs/repros/robustness-b1.mjs`): `onDiagnostic honoured after install: false`.
+*Cross-package impact*: `tui-kit`'s `useDevStats` calls `readWatchdogState()` **during render**, so
+a consumer following tui-kit's own README gets `idleRestart: true` — an interactive TUI that
+self-kills after 24h idle — and no diagnostic, because `onDiagnostic` was dropped too.
+
+**Why not fixed in the same session**: the correct fix is `reconfigure()` on both controllers so
+state survives, which for the watchdog means re-arming live timers in a library whose job is
+killing the process. That deserves its own change with tests, not a tail-end patch. Note the naive
+fix (dispose + recreate) is exactly what causes 14a, and would break `onMemorySample` subscribers
+the same way.
+
+**Also fix while in there**: the singleton convenience API is entirely untested — which is why
+these survived. See #15.
+
+---
+
+## 15. Published-kit quality gaps found in the pre-adoption sweep (2026-08-09)
+
+**Status**: recorded, not actioned. Full findings in the session transcript; the load-bearing ones:
+
+- **Coverage gates are fiction.** `packages/vitest-config` declares 80/70/70/70 and `AGENTS.md`
+  advertises it, but `@vitest/coverage-v8` is not installed anywhere and no `test` script passes
+  `--coverage`. They have never run. Worse, `coverage.include`/`test.include` are `*.ts` only, so
+  every `.tsx` component is unmeasurable and `*.test.tsx` files cannot even be discovered.
+  `ink-testing-library` is a devDependency with zero references.
+- **Test-to-export coverage of the published surface**: cli-kit 4/16, tui-kit 6/25,
+  robustness 21/40. The untested robustness region is precisely the singleton API where #14 lives.
+  `runRepl` (85 lines, hand-rolled tokenizer) and `MemoryCache` and `useVimKeys` have no tests at all.
+- **API-shape items that are a major bump after adoption**: `commander` is a plain dependency of
+  cli-kit while its types cross the public boundary (should be a peer, as ink/react correctly are in
+  tui-kit); `FullScreenHandle` is not exported so the return type of `renderFullScreen` is
+  unnameable; tui-kit's `export *` barrels widen the public API with no review, and currently export
+  `MouseEvent` (shadows the DOM global), dead `FullScreenInkProps`, and `brighten` (ignores the
+  input colour's lightness).
+- **Module-load-time env reads** in `retry.ts`, `rate-limit.ts`, `logger.ts` defeat cli-kit's
+  `applyEnvFromFlags` contract — 9 documented knobs silently ignore their CLI flags.
+- **`_resetForTests()` is in the published `.d.ts`** for logger/shutdown/watchdog (no
+  `stripInternal`), and `installShutdownHandlers` installs a process-wide `unhandledRejection`
+  handler that suppresses Node's default throw behaviour for the whole consumer app.
+- Source maps ship but `src` does not, so every "go to definition" lands on a missing file.
+
+---
+
+## 16. EQStack migration is BLOCKED on upstream work in the kits
+
+**Status**: analysed 2026-08-09, nothing built. EQStack's `apps/imsg-mcp` is the only real
+consumer (`analysis` is a 13-line shell; `voice-mcp` overlaps only weakly).
+
+**Clean wins, ready now**: the whole 368-line `imsg-mcp/src/watchdog.ts` collapses into
+`createWatchdog({ envPrefix: "IMSG" })` — a verified 1:1 on all twelve env names and defaults.
+Same for `tui/themes/color.ts` and `tui/hooks/useMouse.ts` (both lifted verbatim originally), the
+shutdown controller, and the TTY/colour helpers. `withRetry`/`TokenBucket`/`withTimeout` are pure
+additions.
+
+**Blocking gaps — the kits must change first**:
+1. **Logger writes files unconditionally**; imsg gates disk logging behind `IMSG_DEV`/an explicit
+   call. Migrating turns on `$TMPDIR` NDJSON for every end user of a bin that reads their iMessage
+   database. Needs an opt-out knob upstream.
+2. **No stderr mirroring and no synchronous `writeStderrLine`** — imsg relies on a sync fd-2 write
+   so a crash *before* handler installation is still visible in the Claude/Cursor connection log.
+3. **Shutdown emits no diagnostics by default**, so migrating without wiring `onDiagnostic`
+   silently deletes the crash trail.
+4. **`cli-kit`'s `runRepl` uses the recursive `rl.question` pattern imsg explicitly abandoned**
+   (documented EOF race that truncated piped input) and has no `close`/EOF handling at all.
+5. **`useDevStats` lacks the `visible` parameter** whose absence caused two measured `rss_exceeded`
+   OOM kills in imsg (2026-07-12).
+6. **Theme model is structurally incompatible** — imsg's `Theme extends Palette` (flat, ~30 domain
+   keys, all derived from the accent hue) vs tui-kit's nested `{palette,glyphs,preset,accent}` with
+   hard-coded neutrals. ~19 components read `theme.<domainKey>` directly.
+7. `useVimKeys` registers its own `useInput` and would double-dispatch against imsg's mode-aware
+   handler; `StatusBar`/`HelpBar`/`DevStatsPanel` are same-name-different-component.
+8. **Peer ranges do not resolve against EQStack's lockfile today**: it has `ink@7.0.1` /
+   `react@19.2.5`, below tui-kit's `^7.1.1` / `^19.2.8` floors.
+
+**Worth upstreaming from EQStack** (ranked): `redactValue`/`redactString` from voice-mcp — the
+robustness logger has NO redaction and imsg logs failure payloads verbatim; log-level filtering;
+the sync stderr writer; a Prometheus metrics module; imsg's queue-based REPL loop (should replace
+`cli-kit/repl.ts` outright); `--yaml` output; grapheme-aware `visual-width.ts`; `detectNerdFont()`,
+which directly complements `GLYPH_PRESETS.powerline` (today it can silently render blanks).
+
+**Recommended order**: watchdog → shutdown (wire `onDiagnostic`, mind #14) → tty/colour →
+theme/color + useMouse → withTimeout. Everything else is blocked on the gaps above.
+
+---
+
 ## Out-of-scope (don't lift)
 
 These are imsg-mcp-specific items from `glowing-percolating-key.md`. They stay in imsg-mcp:
@@ -283,15 +401,21 @@ plan docs), or a **test fixture** (an arbitrary unmanaged-server name in
 
 ## Status snapshot at last update
 
-- Scaffolder tests: **76 passing**
-- Cloned-tool integration tests: **14 passing**
-- mcp-kit unit tests: **27 passing**
-- Stress cases: **11 / 11** (all required for HTTP-enabled builds)
-- Lint: **0 errors, 4 warnings** (all pre-existing suppressions-unused on intentional biome-ignore comments)
-- CI gates: lint, docs integrity, publishable-manifest shape, typecheck, test, test:no-native, usage(1) freshness, npm pack dry-run, scaffolder E2E smoke, example/ diff vs scaffolder output, stress
-- Workspaces: 14 (excludes `example/**`)
-- Template entries: 154 (`apps/scaffolder/src/generated/templates.ts`)
-- Published packages: `@george43g/robustness@0.1.1`, `@george43g/cli-kit@0.1.0`,
-  `@george43g/tui-kit@0.1.0`. `@george43g/mcpsync` remains bootstrap-pending.
+Measured 2026-08-09 (previous snapshot was ~3 months stale and disagreed with
+HANDOFF.md and PROJECT_STATE.md three different ways — see field-note 35).
 
-Last reviewed: 2026-05-26 (published-package line added 2026-08-08).
+- Published packages: `@george43g/robustness@0.2.0`, `@george43g/cli-kit@0.1.0`,
+  `@george43g/tui-kit@0.1.1`. `@george43g/mcpsync` bootstrap-pending.
+- Workspaces: 14 (excludes `example/**`)
+- Scaffolder: 12 phases, 26 migrations, 12 test files (131 tests)
+- Stress: 13 assertions
+- Test files by workspace: scaffolder 12, mcpsync 17, robustness 8, mcp-kit 5,
+  cli-kit 2, tui-kit 2, shared-types 2, env-loader 1, secrets 1,
+  example-repo-mcp 1; `apps/rust-accel` has no `test` script at all.
+- Coverage: thresholds declared but **never executed** — see item 15.
+- CI gates: lint, docs integrity, publishable-manifest shape, typecheck, test,
+  test:no-native, usage(1) freshness, npm pack dry-run, scaffolder E2E smoke,
+  example/ sync, stress.
+
+Counts that appear in HANDOFF.md / PROJECT_STATE.md / README.md are known to
+disagree with each other; trust this block or re-measure.
