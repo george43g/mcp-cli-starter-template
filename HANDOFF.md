@@ -105,7 +105,7 @@ Preserve the invariants in
 - Nine breaking majors remain intentionally deferred.
 - Canonical files, phase `lib/` mirrors, generated CLI artifacts, and tracked
   `example/` output were synchronized.
-- Structure at that commit: 12 phases, 25 migrations, 172 generated template entries,
+- Structure at that commit: 12 phases, 24 migrations, 169 generated template entries,
   128 scaffolder tests, 68 robustness tests, and 13 stress assertions.
 
 ## imsg evaluation

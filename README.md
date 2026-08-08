@@ -14,7 +14,7 @@ This repo is two things at once:
 
 1. **A static starter template** — clone, run a rename script, and you have a working MCP server with single-bin CLI/TUI/REPL surfaces, optional Rust acceleration, robustness harness (watchdog + logger + shutdown + retry), CI matrix, and Mintlify-ready docs.
 
-2. **A programmable scaffolder/migrator** (`apps/scaffolder/`, bin `mcp-scaffold`) — runs the same template assembly as 25 ordered migrations across 12 phases. Generates fresh starters into empty directories, OR retrofits subsets of the rules to existing MCP servers.
+2. **A programmable scaffolder/migrator** (`apps/scaffolder/`, bin `mcp-scaffold`) — runs the same template assembly as 24 ordered migrations across 12 phases. Generates fresh starters into empty directories, OR retrofits subsets of the rules to existing MCP servers.
 
 Both produce the same output. The scaffolder exists because copy-and-rename works once; selective retrofit against existing MCP servers (like `EQStack` or `Gmail-MCP-Server`) needs something programmable.
 
@@ -57,7 +57,7 @@ Twelve phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffo
 | 02-toolchain | mise, node version, git, .gitignore (with LFS anti-footgun), .gitattributes |
 | 03-configs | Shared tsconfig + biome + vitest packages + full turbo.json (30+ env vars) |
 | 04-robustness | env + NDJSON logger + watchdog (event-loop + memory + idle) + shutdown registry + withTimeout + health + retry + rate-limit |
-| 05-utility-pkgs | env-loader, secrets (env-JSON → 1Password → file), cli-kit, tui-kit |
+| 05-utility-pkgs | cli-kit, tui-kit |
 | 06-mcp-kit | tool-registry, dispatcher (6 invariants), stdio + Streamable HTTP transports, sanitize, prompt-injection guardrails |
 | 07-shared-types | Zod schemas + Rust drift-check |
 | 08-app | The user-facing tool — single bin, MCP/CLI/TUI/REPL surfaces, dev MCP proxy, 13-assertion stress harness, MCP Resources demo (`health://`, `logs://recent/{n}`), MCPB Desktop bundle |
@@ -134,7 +134,7 @@ apps/
   scaffolder/             the programmable scaffolder/migrator
     src/
       core/               Migration base + IoC config + phase runner + helpers
-      phases/             01-bootstrap … 12-ci-release (26 migrations, 172 generated template entries)
+      phases/             01-bootstrap … 12-ci-release (24 migrations, 169 generated template entries)
       ui/                 banner, recap, progress
     bin/cli.ts            commander dispatch
     scripts/              build-templates.mjs (codegen: lib/** → src/generated/templates.ts)
@@ -142,7 +142,7 @@ apps/
     mise.toml             docs/completions/manpage tasks
 
 packages/
-  robustness, mcp-kit, cli-kit, tui-kit, env-loader, secrets, shared-types,
+  robustness, mcp-kit, cli-kit, tui-kit, secret-store, shared-types,
   tsconfig, biome-config, vitest-config
 
 completions/scaffolder/   bash + zsh + fish completions for mcp-scaffold

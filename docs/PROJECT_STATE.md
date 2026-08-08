@@ -228,7 +228,7 @@ Final checks completed on 2026-07-27:
 - arbitrary-name fresh scaffold (`hyphen-tool`) — initial markdown docs,
   bash/zsh/fish completions, and manpage present; its own `pnpm check:usage`
   passed without a prior regeneration
-- generated `example/` regenerated with 172 template entries
+- generated `example/` regenerated with 169 template entries
 
 The root frozen install initially exposed a stale Turbo specifier in
 `pnpm-lock.yaml`; a normal install refreshed it, and the subsequent frozen
@@ -410,8 +410,9 @@ remediation:
 9. Publishing additional shared packages. DONE for the kits (2026-08-08):
    `@george43g/cli-kit@0.1.0` and `@george43g/tui-kit@0.1.0` are published, so
    `apps/mcpsync` can be relocated out of this repo (DEFERRED #10 step 1).
-   `mcp-kit` and `env-loader` remain generated source until their public
-   contracts and independent versioning value are proven. Note that publishing
+   `mcp-kit` remains generated source until its public contract and independent
+   versioning value are proven; `env-loader` was retired outright (DEFERRED
+   #11). Note that publishing
    the kits did NOT change what generated repos consume — they still get
    vendored source; extending `--runtime-source registry` past `robustness` is
    separate, deferred work.

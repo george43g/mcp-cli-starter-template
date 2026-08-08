@@ -1,6 +1,7 @@
 # ExecPlan: `secret-store`, package retirement, and kit hardening (#11 → #8 → #15 → #16)
 
-**Status**: in progress — package published; PR 2 wires the release job.
+**Status**: in progress — package published and on the release pipeline; PR 3 retires the
+two dead packages. Next: de-vendor the published kits (owner decision, see Decisions).
 
 This plan absorbs a design brief authored by a life-stack session (originally in that
 session's `/tmp` scratchpad, which does not survive). The design below is **settled** —
@@ -122,6 +123,19 @@ Recorded as stages land.
   call-site design), env resolution returns `{value,source:"env"}`, `loadEnv` is re-exported
   (so retiring `env-loader` loses nothing), and an absent secret returns `null` rather than
   throwing. The registry 404'd for 210s first — see field-note 40.
+- PR 2: workflow YAML parsed and asserted structurally — 4 push paths, chain
+  `robustness → cli-kit → tui-kit → secret-store → mcpsync`, all 8 steps present,
+  mcpsync's `workflow_dispatch` guard intact. Merged as `58d6cbc`; the release workflow
+  correctly did **not** fire, because the merge touched `.github/` and docs rather than
+  `packages/secret-store/**`.
+- PR 3: both packages, both migrations, both `lib/` mirrors and both `LIB_TO_CANONICAL`
+  entries removed in one commit. Counts recomputed from source rather than guessed —
+  **24 migrations** (was 26) and **169 template entries** (was 172); `README.md` had said
+  both 25 and 26 in different places, so both were wrong. Scaffolder 131 passed with golden
+  drift green. `pnpm verify` → 14/14 test tasks and 10/10 builds, down from 16/12 by exactly
+  the two deleted packages. `pnpm install --frozen-lockfile` accepts the regenerated
+  lockfile (-36 lines). `pnpm regen:example` proven **idempotent** — a second run leaves the
+  tree byte-identical — and `example/packages/` no longer contains either package.
 
 ## Recovery
 

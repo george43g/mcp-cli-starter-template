@@ -45,8 +45,6 @@ packages/
   mcp-kit/        # tool-registry + dispatch + stdio/http transports + sanitize + prompt-injection
   cli-kit/        # commander helpers + tty/color/output + env↔flag binder + interactive REPL
   tui-kit/        # ink theme system + hooks (useDevStats, useMouse, useVimKeys) + components
-  env-loader/     # Vite-style precedence loader for pre-subprocess env reads
-  secrets/        # env-json → 1Password → file chain (no keychain)
   shared-types/   # Zod schemas + Rust mirror + drift-check test
   tsconfig/       # shared base/node/react TS configs
   biome-config/   # single biome.json source
@@ -98,7 +96,7 @@ For any `--mode`, env files load in this order (each overrides the previous):
 - `.env.test` (committed): test-mode overrides used by Vitest's default `test` mode
 - `.env.example` (committed): exhaustive list of every recognized variable with sensible defaults
 
-Scripts in each app's `package.json` pass `--env-file-if-exists` flags so the precedence is honored without dotenv. The `@george43g/env-loader` package implements the same precedence for tools that need to read env before spawning a subprocess (e.g., the dev MCP proxy).
+Scripts in each app's `package.json` pass `--env-file-if-exists` flags so the precedence is honored without dotenv.
 
 **Rule**: every recognized env var is also accepted as a CLI flag (binder in `@george43g/cli-kit/env-flag-binder`). `MCP_HTTP_TOKEN` ↔ `--http-token`, `MCP_LOG_DIR` ↔ `--log-dir`, etc.
 

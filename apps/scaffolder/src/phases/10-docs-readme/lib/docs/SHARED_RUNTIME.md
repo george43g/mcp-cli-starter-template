@@ -35,8 +35,8 @@ product-specific changes:
 repo. That does **not** change what a generated tool receives: it still gets
 them as local source. `--runtime-source registry` covers `robustness` only.
 
-`mcp-kit` and `env-loader` remain local packages. They can become public later
-only after their consumer contracts are proven.
+`mcp-kit` remains a local package. It can become public later only after its
+consumer contract is proven.
 
 ## Choosing a runtime source
 
