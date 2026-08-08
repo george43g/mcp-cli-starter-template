@@ -14,9 +14,6 @@
 
 import { envNum } from "./env.js";
 
-const DEFAULT_RPS = envNum("MCP_RATE_LIMIT_RPS", 10);
-const DEFAULT_BURST = envNum("MCP_RATE_LIMIT_BURST", 30);
-
 export class TokenBucket {
   private tokens: number;
   private lastRefill: number;
@@ -77,14 +74,46 @@ export class TokenBucket {
   }
 }
 
-const defaultLimiter = new TokenBucket(DEFAULT_BURST, DEFAULT_RPS);
+/**
+ * Built on FIRST USE, not at import.
+ *
+ * This was `new TokenBucket(DEFAULT_BURST, DEFAULT_RPS)` at module scope, with
+ * both values read from env at module load. cli-kit's `applyEnvFromFlags`
+ * writes `process.env` during argv parsing, which happens after the first
+ * import — so `--rate-limit-rps` and `--rate-limit-burst` set an env var that
+ * the already-constructed bucket never read.
+ *
+ * Lazy construction also means a consumer that never rate-limits does not pay
+ * for the bucket at all.
+ */
+let defaultLimiter: TokenBucket | null = null;
+
+function limiter(): TokenBucket {
+  if (!defaultLimiter) {
+    defaultLimiter = new TokenBucket(
+      envNum("MCP_RATE_LIMIT_BURST", 30),
+      envNum("MCP_RATE_LIMIT_RPS", 10),
+    );
+  }
+  return defaultLimiter;
+}
 
 /** Acquire from the default process-wide bucket. */
 export async function acquire(n = 1): Promise<void> {
-  return defaultLimiter.acquire(n);
+  return limiter().acquire(n);
 }
 
 /** Inspect the default bucket — for health_check / tests. */
 export function defaultLimiterAvailable(): number {
-  return defaultLimiter.available();
+  return limiter().available();
+}
+
+/**
+ * Drop the default bucket so the next call rebuilds it from current env.
+ *
+ * @internal Test seam. Without it, one test setting MCP_RATE_LIMIT_RPS would
+ * pin the bucket for every later test in the same process.
+ */
+export function _resetDefaultLimiterForTests(): void {
+  defaultLimiter = null;
 }

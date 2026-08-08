@@ -11,7 +11,7 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  */
 export default withCoverageFloor(shared, {
   statements: 78,
-  branches: 81,
-  functions: 79,
+  branches: 82,
+  functions: 80,
   lines: 78,
 });

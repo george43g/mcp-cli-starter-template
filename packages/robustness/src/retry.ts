@@ -9,9 +9,20 @@
 import { envNum } from "./env.js";
 import { warn } from "./logger.js";
 
-const DEFAULT_MAX_ATTEMPTS = envNum("MCP_RETRY_MAX_ATTEMPTS", 3);
-const DEFAULT_BASE_MS = envNum("MCP_RETRY_BASE_MS", 500);
-const DEFAULT_CAP_MS = envNum("MCP_RETRY_CAP_MS", 8_000);
+/**
+ * Read at CALL time, not module load.
+ *
+ * These used to be module-level consts, which froze them at the first import
+ * of this file. cli-kit's `applyEnvFromFlags` writes `process.env` while
+ * parsing argv — by then the constant already existed, so `--retry-max-attempts`
+ * and its two siblings were silently ignored. The flag parsed, the env var was
+ * set, and nothing used either.
+ */
+const defaults = () => ({
+  maxAttempts: envNum("MCP_RETRY_MAX_ATTEMPTS", 3),
+  baseMs: envNum("MCP_RETRY_BASE_MS", 500),
+  capMs: envNum("MCP_RETRY_CAP_MS", 8_000),
+});
 
 export interface RetryOptions {
   /** Total attempt budget (default: MCP_RETRY_MAX_ATTEMPTS or 3). */
@@ -67,9 +78,10 @@ function schedule(timer: RetryOptions["timer"], ms: number): Promise<void> {
 }
 
 export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}): Promise<T> {
-  const maxAttempts = opts.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
-  const baseMs = opts.baseMs ?? DEFAULT_BASE_MS;
-  const capMs = opts.capMs ?? DEFAULT_CAP_MS;
+  const env = defaults();
+  const maxAttempts = opts.maxAttempts ?? env.maxAttempts;
+  const baseMs = opts.baseMs ?? env.baseMs;
+  const capMs = opts.capMs ?? env.capMs;
   const jitter = opts.jitter ?? true;
   const shouldRetry = opts.shouldRetry ?? isTransientError;
   const label = opts.label ?? "retry";
