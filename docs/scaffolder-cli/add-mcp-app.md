@@ -25,6 +25,10 @@ Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted.
 
 Skip the Ink/React TUI surface for the new app
 
+### `--no-install`
+
+Skip the package-manager install after dependencies change
+
 ### `--no-http`
 
 Skip the Streamable HTTP transport for the new app

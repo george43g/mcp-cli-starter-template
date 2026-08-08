@@ -30,6 +30,7 @@ cmd init help="Fresh scaffold into <target> (defaults to cwd)" {
         }
     }
     flag --no-tui help="Skip the Ink/React TUI surface"
+    flag --no-install help="Skip the package-manager install after dependencies change"
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
     flag --no-semantic-release help="Skip the semantic-release workflow"
@@ -67,6 +68,7 @@ cmd apply help="Apply migrations to an existing repo" {
         }
     }
     flag --no-tui help="Skip the Ink/React TUI surface"
+    flag --no-install help="Skip the package-manager install after dependencies change"
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
     flag --no-semantic-release help="Skip the semantic-release workflow"
@@ -106,6 +108,7 @@ cmd plan help="Dry-run preview of which migrations would apply" {
         }
     }
     flag --no-tui help="Skip the Ink/React TUI surface"
+    flag --no-install help="Skip the package-manager install after dependencies change"
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
     flag --no-semantic-release help="Skip the semantic-release workflow"
@@ -142,6 +145,7 @@ cmd migrate help="Run a single migration or one whole phase" {
         }
     }
     flag --no-tui help="Skip the Ink/React TUI surface"
+    flag --no-install help="Skip the package-manager install after dependencies change"
     flag --no-http help="Skip the Streamable HTTP transport"
     flag --no-rust-accel help="Skip the optional Rust acceleration crate"
     flag --no-semantic-release help="Skip the semantic-release workflow"
@@ -151,7 +155,7 @@ cmd migrate help="Run a single migration or one whole phase" {
     flag --cli-dir help="Repo-relative directory receiving the usage(1) artifacts pipeline (default: .)" {
         arg <dir>
     }
-    arg <id> help="e.g. 04-robustness/m1-robustness-pkg, or just 04-robustness"
+    arg <id> help="e.g. 06-mcp-kit/m1-mcp-kit, or just 06-mcp-kit"
 }
 cmd add-mcp-app help="Add a second MCP app to apps/<name>-mcp/ inside an existing scaffolded repo" {
     flag --target help="Path to the scaffolded repo" {
@@ -161,6 +165,7 @@ cmd add-mcp-app help="Add a second MCP app to apps/<name>-mcp/ inside an existin
         arg <scope>
     }
     flag --no-tui help="Skip the Ink/React TUI surface for the new app"
+    flag --no-install help="Skip the package-manager install after dependencies change"
     flag --no-http help="Skip the Streamable HTTP transport for the new app"
     flag --no-rust-accel help="Skip the rust-accel workspace dep for the new app"
     arg <name> help="Bare tool name for the new app (no -mcp suffix)"

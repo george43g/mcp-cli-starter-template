@@ -27,6 +27,7 @@ import { drawRecap } from "../ui/recap.js";
 import { Config } from "./config.js";
 import { makeFs } from "./fs.js";
 import { makeGit } from "./git.js";
+import { installDependencies } from "./install-deps.js";
 import { makeLogger } from "./logger.js";
 import type { ExistingStrategy } from "./migration.js";
 import { type ApplyMode, type MigrationContext } from "./migration.js";
@@ -46,6 +47,7 @@ function addCommonFlags(cmd: Command): Command {
       "pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)",
     )
     .option("--no-tui", "Skip the Ink/React TUI surface")
+    .option("--no-install", "Skip the package-manager install after dependencies change")
     .option("--no-http", "Skip the Streamable HTTP transport")
     .option("--no-rust-accel", "Skip the optional Rust acceleration crate")
     .option("--no-semantic-release", "Skip the semantic-release workflow")
@@ -130,7 +132,7 @@ export function buildProgram(): Command {
     program
       .command("migrate <id>")
       .description(
-        "Run a single migration (e.g. 04-robustness/m1-robustness-pkg) or a whole phase (e.g. 04-robustness)",
+        "Run a single migration (e.g. 06-mcp-kit/m1-mcp-kit) or a whole phase (e.g. 06-mcp-kit)",
       )
       .option("--target <dir>", "Path to target repo", process.cwd())
       .option("--mode <mode>", "'new' or 'existing' (default: existing)", "existing")
@@ -156,6 +158,7 @@ export function buildProgram(): Command {
       "Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted.",
     )
     .option("--no-tui", "Skip the Ink/React TUI surface for the new app")
+    .option("--no-install", "Skip the package-manager install after dependencies change")
     .option("--no-http", "Skip the Streamable HTTP transport for the new app")
     .option("--no-rust-accel", "Skip the rust-accel workspace dep for the new app")
     .action(async (name: string, opts) => {
@@ -326,6 +329,25 @@ async function runScaffolder(
     });
   }
 
+  // Generated repos depend on the published packages rather than vendoring
+  // them, so a run that writes a manifest and stops leaves a repo that cannot
+  // build. Runs last: it needs the final state of every manifest on disk.
+  const install = await installDependencies({
+    phases: phaseResults,
+    packageManager: ctx.config.global.packageManager.peek() ?? "pnpm",
+    shell: ctx.shell,
+    log: ctx.log,
+    cwd,
+    dryRun,
+    enabled: cmdOpts.install !== false,
+  });
+  if (install.status === "failed") {
+    ctx.log.warn(
+      `${install.packageManager} install failed: ${install.message}\n` +
+        `  The generated files are correct — re-run \`${install.packageManager} install\` in ${cwd}.`,
+    );
+  }
+
   drawRecap(phaseResults, { retrofitIntentCount: intentCount });
 }
 
@@ -338,8 +360,8 @@ function parseExistingStrategy(value: unknown): ExistingStrategy {
 /**
  * Narrow the phase list to a single migration (or a single phase). The filter
  * accepts either:
- *   - "04-robustness/m1-robustness-pkg" — exact migration id
- *   - "04-robustness"                    — whole phase
+ *   - "06-mcp-kit/m1-mcp-kit" — exact migration id
+ *   - "06-mcp-kit"              — whole phase
  */
 function filterPhases(
   phases: ReturnType<typeof loadPhases> extends Promise<infer T> ? T : never,

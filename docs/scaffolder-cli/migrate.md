@@ -9,7 +9,7 @@ Run a single migration or one whole phase
 
 ### `<id>`
 
-e.g. 04-robustness/m1-robustness-pkg, or just 04-robustness
+e.g. 06-mcp-kit/m1-mcp-kit, or just 06-mcp-kit
 
 ## Flags
 
@@ -59,6 +59,10 @@ pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)
 ### `--no-tui`
 
 Skip the Ink/React TUI surface
+
+### `--no-install`
+
+Skip the package-manager install after dependencies change
 
 ### `--no-http`
 

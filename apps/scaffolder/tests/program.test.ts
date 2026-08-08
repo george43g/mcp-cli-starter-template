@@ -26,9 +26,12 @@ describe("migrate command safety defaults", () => {
   it("defaults to existing-mode dry-run and writes nothing without --execute", async () => {
     const cwd = await target({ name: "flat-tool", packageManager: "npm@11" });
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-    await buildProgram().parseAsync(["--no-banner", "migrate", "11-agent-files", "--target", cwd], {
-      from: "user",
-    });
+    await buildProgram().parseAsync(
+      ["--no-banner", "migrate", "11-agent-files", "--target", cwd, "--no-install"],
+      {
+        from: "user",
+      },
+    );
     expect(existsSync(join(cwd, "AGENTS.md"))).toBe(false);
     expect(existsSync(join(cwd, "CLAUDE.md"))).toBe(false);
   });
@@ -37,7 +40,16 @@ describe("migrate command safety defaults", () => {
     const cwd = await target({ name: "fresh-tool" });
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     await buildProgram().parseAsync(
-      ["--no-banner", "migrate", "02-toolchain/m1-mise", "--target", cwd, "--mode", "new"],
+      [
+        "--no-banner",
+        "migrate",
+        "02-toolchain/m1-mise",
+        "--target",
+        cwd,
+        "--mode",
+        "new",
+        "--no-install",
+      ],
       { from: "user" },
     );
     expect(existsSync(join(cwd, "mise.toml"))).toBe(true);
@@ -50,7 +62,16 @@ describe("migrate command safety defaults", () => {
       vi.spyOn(process.stdout, "write").mockImplementation(() => true);
       await expect(
         buildProgram().parseAsync(
-          ["--no-banner", "init", cwd, "--name", "fresh-tool", "--package-manager", packageManager],
+          [
+            "--no-banner",
+            "init",
+            cwd,
+            "--name",
+            "fresh-tool",
+            "--package-manager",
+            packageManager,
+            "--no-install",
+          ],
           { from: "user" },
         ),
       ).rejects.toThrow(/Fresh scaffolds support pnpm only/);
@@ -62,9 +83,12 @@ describe("migrate command safety defaults", () => {
   it("never generates local source for a published package", async () => {
     const cwd = await target();
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-    await buildProgram().parseAsync(["--no-banner", "init", cwd, "--name", "fresh-tool"], {
-      from: "user",
-    });
+    await buildProgram().parseAsync(
+      ["--no-banner", "init", cwd, "--name", "fresh-tool", "--no-install"],
+      {
+        from: "user",
+      },
+    );
 
     expect(existsSync(join(cwd, "packages", "robustness"))).toBe(false);
     const pkg = JSON.parse(
@@ -83,9 +107,12 @@ describe("migrate command safety defaults", () => {
   it("ships a named CLI artifact baseline and portable workspace skills", async () => {
     const cwd = await target();
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-    await buildProgram().parseAsync(["--no-banner", "init", cwd, "--name", "fresh-tool"], {
-      from: "user",
-    });
+    await buildProgram().parseAsync(
+      ["--no-banner", "init", cwd, "--name", "fresh-tool", "--no-install"],
+      {
+        from: "user",
+      },
+    );
 
     const app = join(cwd, "apps", "fresh-tool-mcp");
     for (const path of [
@@ -121,7 +148,16 @@ describe("existing target strategies and reports", () => {
     const reportPath = join(cwd, "migration-report.json");
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     await buildProgram().parseAsync(
-      ["--no-banner", "apply", "--target", cwd, "--execute", "--report-json", reportPath],
+      [
+        "--no-banner",
+        "apply",
+        "--target",
+        cwd,
+        "--execute",
+        "--report-json",
+        reportPath,
+        "--no-install",
+      ],
       { from: "user" },
     );
 
@@ -152,9 +188,12 @@ describe("existing target strategies and reports", () => {
     await writeFile(join(cwd, "pnpm-workspace.yaml"), "packages: []\n");
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
-    await buildProgram().parseAsync(["--no-banner", "apply", "--target", cwd, "--execute"], {
-      from: "user",
-    });
+    await buildProgram().parseAsync(
+      ["--no-banner", "apply", "--target", cwd, "--execute", "--no-install"],
+      {
+        from: "user",
+      },
+    );
 
     expect(existsSync(join(cwd, "mise.toml"))).toBe(true);
     expect(existsSync(join(cwd, "packages", "mcp-kit", "package.json"))).toBe(true);
@@ -164,7 +203,16 @@ describe("existing target strategies and reports", () => {
     const cwd = await target({ name: "flat-tool", packageManager: "pnpm@10.29.3" });
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     await buildProgram().parseAsync(
-      ["--no-banner", "apply", "--target", cwd, "--execute", "--existing-strategy", "full"],
+      [
+        "--no-banner",
+        "apply",
+        "--target",
+        cwd,
+        "--execute",
+        "--existing-strategy",
+        "full",
+        "--no-install",
+      ],
       { from: "user" },
     );
     expect(existsSync(join(cwd, "packages", "mcp-kit", "package.json"))).toBe(true);
