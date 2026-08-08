@@ -91,8 +91,8 @@ Semantic-release in its default config publishes one root package. If you need t
 > section — it only applies to maintainers of the template repository itself.
 
 Published packages: `@george43g/robustness`, `@george43g/cli-kit`,
-`@george43g/tui-kit`, and `@george43g/mcpsync` (the last still
-`workflow_dispatch`-only, pending its bootstrap).
+`@george43g/tui-kit`, `@george43g/secret-store`, and `@george43g/mcpsync` (the
+last still `workflow_dispatch`-only, pending its bootstrap).
 
 They publish via `.github/workflows/release-packages.yml` on every push to
 `main` touching one of their directories (also `workflow_dispatch`-able for a
