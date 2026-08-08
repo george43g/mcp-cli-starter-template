@@ -12,7 +12,7 @@ verification matrix, dependency decisions, and deferred work.
 | --- | --- |
 | Repository | `/Users/george/repos/mcp-cli-starter-template` |
 | Branch | `main` |
-| `origin/main` | Last code-bearing merge: **PR #17** (secret-store wired to the HTTP bearer token); CI green on all four checks. A literal SHA is deliberately NOT recorded here — this file cannot name the merge commit of the PR that writes it, so the field was always one docs-merge stale. Run `git log --oneline -1 origin/main` for the real head. |
+| `origin/main` | Last code-bearing merge: **PR #17** (secret-store wired to the HTTP bearer token). Two things are deliberately NOT recorded here. (1) A literal SHA — this file cannot name the merge commit of the PR that writes it, so the field was always one docs-merge stale; use `git log --oneline -1 origin/main`. (2) A CI verdict — the first draft of this row asserted "CI green on all four checks" before CI had run, and `readme-check` then failed. A records file written pre-merge cannot testify to a post-merge event; check `gh pr checks` instead. |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Remote check | fetch + push succeeded on 2026-08-09 |
