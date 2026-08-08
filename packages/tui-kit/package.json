@@ -49,7 +49,7 @@
     "fullscreen-ink": "^0.1.0"
   },
   "peerDependencies": {
-    "@george43g/robustness": "^0.1.1 || ^0.2.0",
+    "@george43g/robustness": "^0.1.1 || ^0.2.0 || ^0.3.0 || ^0.4.0",
     "ink": "^7.1.1",
     "react": "^19.2.8"
   },
