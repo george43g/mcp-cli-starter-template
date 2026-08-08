@@ -44,6 +44,19 @@ pnpm --filter @george43g/foo-mcp doctor   # preflight
 node apps/foo-mcp/dist/cli.js mcp          # run the MCP server
 ```
 
+### Coverage gates
+
+`pnpm test` runs the suites; `pnpm test:coverage` runs the same suites and
+enforces each workspace's thresholds. `packages/*` target 80/70/70/70 and
+`apps/*` target 50/40/40/40, but a workspace that does not meet its target yet
+declares an explicit floor via `withCoverageFloor()` in its `vitest.config.ts`,
+pinned to what it actually measures.
+
+That is a ratchet rather than an aspiration: it fails the moment coverage
+regresses, and the gap up to the preset is visible debt instead of silent debt.
+Floors move up as tests land, never down. `pnpm verify` runs the coverage
+variant, so a green local verify means the gates passed.
+
 ## What the scaffolder produces
 
 Ten phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffold list` for the full ordered list, or `skills/mcp-starter-architect/SKILL.md` for the canonical AI-readable guide describing every rule + how to apply it manually.

@@ -559,3 +559,66 @@ HANDOFF.md and PROJECT_STATE.md three different ways — see field-note 35).
 
 Counts that appear in HANDOFF.md / PROJECT_STATE.md / README.md are known to
 disagree with each other; trust this block or re-measure.
+
+---
+
+## 18. Build identity — every build between two releases is indistinguishable
+
+**Status**: designed, not started. Full design: [`docs/plans/2026-08-build-identity.md`](docs/plans/2026-08-build-identity.md).
+
+Semver only moves on release, so there is no way to confirm that the artifact running is
+the one you just built. It bites hardest with long-lived processes — a rebuilt-but-not-
+reloaded bundle keeps reporting a perfectly plausible version. Downstream this happened
+twice in one session, once to an agent that had just written the code.
+
+Format `<semver>+<count>.<sha>[.dirty.<MMDDTHHmm>]`, e.g. `0.9.0+412.a1b2c3d`. Count comes
+from `git rev-list --count HEAD` so it is monotonic and derived from history rather than a
+committed counter — it survives clean checkouts and agrees between a laptop and CI.
+
+**The reader cannot live in a published package.** Vite's `define` is textual substitution
+over bundled modules only; anything `external` never passes through it. `@george43g/*` is
+in `apps/example-repo-mcp/vite.config.ts`'s `external` list, and since PR #15 generated
+repos install the kits from npm as real externals — so a `buildStamp()` exported from
+`robustness` would read a `__BUILD_STAMP__` that is never replaced, and degrade to a
+plausible-looking fallback rather than erroring. Build-time half goes in a new unpublished
+`@george43g/build-config`; the reader stays in `src/meta.ts` as template code.
+
+**Trigger to action**: any repo that ships a long-lived process alongside a separately
+deployed client. Also worth doing before the next downstream adoption, since the value is
+highest where two artifacts are built together and deployed apart.
+
+**Blocking sub-task, do it in the same PR**: `.github/workflows/ci.yml:23`,
+`cli-artifacts-drift.yml:35` and `screenshots.yml:26` check out at the default
+`fetch-depth: 1`. `git rev-list --count HEAD` returns `1` on a shallow clone, so the first
+CI build would ship a wrong-but-plausible count — precisely the failure this feature
+exists to prevent. `release-packages.yml`, `release.yml` and `readme-check.yml` already
+set `fetch-depth: 0`.
+
+**Cost**: ~half a day including the four-surface sync (canonical → `lib/` → `example/`)
+and a `03-configs` migration for the new package.
+
+---
+
+## 19. Revisit the generated release tooling: semantic-release vs release-please
+
+**Status**: open question, no decision. Raised 2026-08-09.
+
+The scaffold ships `semantic-release` scaffolding for generated repos (disabled by
+default; see [`docs/RELEASE.md`](docs/RELEASE.md)), which is npm-coupled through
+`@semantic-release/npm`. Downstream has since chosen **release-please** instead:
+conventional commits → a rolling Release PR → versions, changelog, tags and GitHub
+Releases, with publishing as a job you simply never add.
+
+**The distinction that matters, and that the question can easily blur:** this repo's own
+`release-packages.yml` publishes four real packages to npm over OIDC and is proven
+end-to-end — nothing here argues for changing that. The question is only about what the
+scaffolder *generates* for a cloned tool, where "I want releases and changelogs but I am
+not publishing to npm" is the common case and the current default carries an npm plugin
+it will never use.
+
+**Trigger to action**: pair it with DEFERRED #18 — both concern build/release identity,
+and a reader comparing them will want one answer, not two. Independent otherwise: semver
+answers "which release", the stamp answers "which build".
+
+**Cost**: ~2h to swap the generated workflow + docs, most of it in `12-ci-release` and its
+`lib/` mirror. Zero risk to this repo's own publishing.
