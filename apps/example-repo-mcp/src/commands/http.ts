@@ -18,6 +18,7 @@
 
 import { startHttpServer } from "@george43g/mcp-kit";
 import { envNum, envStr, registerCleanup } from "@george43g/robustness";
+import { resolveSecret } from "@george43g/secret-store";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { Command } from "commander";
 import { getCounters } from "../counters.js";
@@ -28,14 +29,36 @@ export interface RunHttpMcpOptions {
   bind?: string;
 }
 
+/**
+ * Resolve the bearer token through the secret chain: `MCP_HTTP_TOKEN` in the
+ * environment first, then a project `.env`, then the OS keychain, then an
+ * external secret manager if one is configured.
+ *
+ * `varName({ toolPrefix: "mcp", name: "http_token" })` is exactly
+ * `MCP_HTTP_TOKEN`, and env is the first link in the chain — so an exported
+ * env var behaves identically to before. The rest of the chain only adds
+ * places to find it when that var is absent.
+ *
+ * Returns null when nothing resolves; the transport owns the error message,
+ * so there is one place that explains how to fix it.
+ */
+async function resolveHttpToken(): Promise<string | null> {
+  const found = await resolveSecret({ toolPrefix: "mcp", name: "http_token" });
+  return found?.value ?? null;
+}
+
 /** Start the MCP server over Streamable HTTP. Returns once the server closes. */
 export async function runHttpMcp(opts: RunHttpMcpOptions): Promise<void> {
   const port = opts.port ?? envNum("MCP_HTTP_PORT", 8080);
   const bind = opts.bind ?? envStr("MCP_HTTP_BIND", "127.0.0.1");
+  const token = await resolveHttpToken();
   const handle = await startHttpServer({
     server: opts.server,
     port,
     bind,
+    // Conditional spread, not `token: token ?? undefined`: this repo runs
+    // exactOptionalPropertyTypes, so an explicit undefined is a type error.
+    ...(token === null ? {} : { token }),
     getCounters,
   });
   registerCleanup(() => handle.close());

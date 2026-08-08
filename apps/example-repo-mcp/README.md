@@ -29,9 +29,24 @@ pnpm stress          # 13-assertion robustness harness
 
 The dispatcher already wires `withTimeout`, `perf` spans, abort propagation, structured error wrapping, and structuredContent return — your handler just needs to be a pure `(input, signal) => output` async function.
 
+## Secrets
+
+`@george43g/secret-store` resolves a secret through one ordered chain, most explicit first: **env var → `.env` file → OS keychain → external command** (the last is opt-in via `SECRET_STORE_EXEC_BIN`/`_ARGS`). It contains no vault code and never will — pulling a secret *out of* 1Password/Vault/AWS SM is a secret manager's job, and keeping that boundary is what stops vault credentials reaching every tool's dependency tree.
+
+HTTP mode's bearer token is the worked example (`src/commands/http.ts`). `MCP_HTTP_TOKEN` is still checked first, so exporting it behaves exactly as before; the rest of the chain only adds places to look when it is unset. Reads degrade to `null`, so a container that only ever sees env vars pays nothing for the layers beneath.
+
+To use it for your own tool's secrets:
+
+```ts
+import { resolveSecret } from "@george43g/secret-store";
+
+const found = await resolveSecret({ toolPrefix: "example-repo", name: "api_key" });
+// → { value, source } | null — looks for EXAMPLE_REPO_API_KEY, then .env, then the keychain
+```
+
 ## Removing surfaces
 
-- **Drop HTTP support**: delete the `http` subcommand from `src/cli.ts`, the `--http` branch from `src/index.ts`, and case #9 from `scripts/stress-mcp.ts`. Remove `MCP_HTTP_TOKEN` from `.env.example`.
+- **Drop HTTP support**: delete the `http` subcommand from `src/cli.ts`, the `--http` branch from `src/index.ts`, and case #9 from `scripts/stress-mcp.ts`. Remove `MCP_HTTP_TOKEN` from `.env.example`. If nothing else in your tool resolves a secret, drop `@george43g/secret-store` from `package.json` too.
 - **Drop TUI support**: delete `src/tui/`, the `tui` subcommand from `src/cli.ts`, the `example-repo-tui` bin entry from `package.json`, and the TUI entry from `vite.config.ts` `lib.entry`.
 - **Drop Rust acceleration**: delete `apps/rust-accel/`, the `src/native-bridge.ts` file, and the `tryLoadNative()` call in `src/tools/noop.ts`.
 - **Drop `get_logs`**: delete `src/tools/get-logs.ts` and remove it from the registry.

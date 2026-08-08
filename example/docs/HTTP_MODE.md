@@ -15,6 +15,23 @@ pnpm --filter @george43g/example-mcp http
 pnpm --filter @george43g/example-mcp http -- --port 9090 --bind 0.0.0.0
 ```
 
+## Where the token comes from
+
+`MCP_HTTP_TOKEN` in the environment is checked first, so the quick start above
+is all most deployments need. If it is unset, `@george43g/secret-store` keeps
+looking, most explicit first:
+
+| Order | Source | Set it with |
+|-------|--------|-------------|
+| 1 | Environment variable | `export MCP_HTTP_TOKEN=…` |
+| 2 | `.env` / `.env.local` | `MCP_HTTP_TOKEN=…` in the file |
+| 3 | OS keychain (macOS) | `security add-generic-password -s mcp -a MCP_HTTP_TOKEN -w` |
+| 4 | External secret manager | `SECRET_STORE_EXEC_BIN` + `SECRET_STORE_EXEC_ARGS` (opt-in) |
+
+The server refuses to start when none of them produce a non-empty value. Note
+that a token found later in the chain is used exactly like one from the
+environment — the chain decides *where to look*, never *how much to trust*.
+
 ## Endpoints
 
 | Endpoint | Auth | Purpose |

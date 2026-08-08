@@ -53,6 +53,7 @@
     "@george43g/cli-kit": "workspace:*",
     "@george43g/mcp-kit": "workspace:*",
     "@george43g/robustness": "workspace:*",
+    "@george43g/secret-store": "workspace:*",
     "@george43g/shared-types": "workspace:*",
     "@george43g/tui-kit": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",

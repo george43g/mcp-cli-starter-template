@@ -1,8 +1,9 @@
 # ExecPlan: `secret-store`, package retirement, and kit hardening (#11 → #8 → #15 → #16)
 
-**Status**: core complete — landed as PRs #11–#15 on 2026-08-09, `main` at `fbe09e6`.
-Remaining from this plan: wire `secret-store` to a real call site (see Deferred below),
-then `DEFERRED.md` #15 and the #16 split, which are separate workstreams.
+**Status**: ✅ **complete** — landed as PRs #11–#16 (2026-08-09) plus the call-site wiring
+(PR #17). Everything this plan set out to do is done. `DEFERRED.md` #15 and the #16 split
+were always separate workstreams and remain open; two harness gaps found along the way are
+recorded under Deferred below.
 
 This plan absorbs a design brief authored by a life-stack session (originally in that
 session's `/tmp` scratchpad, which does not survive). The design below is **settled** —
@@ -161,15 +162,23 @@ versions, tags, or `CHANGELOG.md`; semantic-release owns all three.
 
 ## Deferred out of this plan
 
-1. **`secret-store` has no consumer yet.** It is published and retires two packages, but
-   nothing imports it — which is *precisely* the dead-weight verdict #11 reached about
-   `packages/secrets`. The honest call site already exists: the HTTP bearer token, read
-   straight from `process.env` at `packages/mcp-kit/src/transports/http.ts:82`. Add an
-   additive `token?: string` to `HttpServerOptions` (taking precedence over `tokenEnv`) and
-   resolve it in the app via `resolveSecret({ toolPrefix: "mcp", name: "http_token" })`.
-   `varName` yields `MCP_HTTP_TOKEN` and `envSource` is first in the chain, so behaviour is
-   **identical** when the env var is set — it only adds `.env`, keychain and exec beneath.
-   `secret-store` should join `docs/ARCHITECTURE.md`'s package list at that point, not before.
+1. ~~**`secret-store` has no consumer yet.**~~ **RESOLVED (PR #17).** For one day it was
+   published with nothing importing it — *precisely* the dead-weight verdict #11 reached
+   about `packages/secrets`. Closed by wiring the honest call site that already existed:
+   the HTTP bearer token, previously read straight from `process.env` at
+   `packages/mcp-kit/src/transports/http.ts:82`. `HttpServerOptions` gained an additive
+   `token?: string` taking precedence over `tokenEnv`; the app resolves it via
+   `resolveSecret({ toolPrefix: "mcp", name: "http_token" })`. `varName` yields exactly
+   `MCP_HTTP_TOKEN` and `envSource` is first in the chain, so an exported env var behaves
+   identically to before — the chain only adds `.env`, keychain and exec beneath it.
+   `secret-store` joined `docs/ARCHITECTURE.md`'s package list at that point, and its
+   "Secrets — nothing built in" section was rewritten, having become false.
+
+   Evidence: 6 new transport tests (2 of which fail if the `token` option is ignored —
+   checked by reverting the one line); 13/13 stress including the three HTTP auth
+   assertions; `mise run smoke` resolved `@george43g/secret-store@0.1.0` from the registry
+   into `/private/tmp/scaffold-smoke/node_modules/.pnpm/`, so scaffolded repos get a real
+   install, not a workspace symlink.
 2. **`regen:example` is defined twice.** `package.json`'s script writes into the repo;
    `.github/workflows/ci.yml`'s sync check re-implements it against a tempdir. Adding the
    install step to one and not the other broke CI on a repo that was genuinely in sync.

@@ -209,9 +209,11 @@ release wiring at the new home).
 ## 11. `packages/secrets` (and `packages/env-loader`) — retire or justify
 
 **Status**: ✅ **DONE 2026-08-09 — both retired (PR #13), superseded by `packages/secret-store`.**
-**Caveat that must not be lost**: `secret-store` is published but has NO importer yet, which is
-exactly the dead-weight verdict this item reached about `packages/secrets`. Wiring it to the
-HTTP bearer-token call site is deferred — see the plan below.
+**The caveat is now closed too**: for a day `secret-store` was published with no importer, which
+was exactly the dead-weight verdict this item reached about `packages/secrets`. It now has a real
+consumer — the HTTP bearer token resolves through it in `apps/example-repo-mcp/src/commands/http.ts`,
+and every scaffolded repo declares the dependency and installs it from the registry. The test this
+item set ("do generated tools actually import it?") passes for the replacement.
 Option (a) with a replacement rather than a hole. The new package is a **mechanism**, not a
 policy: `env → .env → OS keychain → external command (opt-in)`, with no vault/vendor code in it
 at all. It absorbs `env-loader`'s `loadEnv`/`parseEnvFile` verbatim and re-exports them, so

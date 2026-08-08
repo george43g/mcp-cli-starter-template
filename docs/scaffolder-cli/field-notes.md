@@ -502,3 +502,24 @@ are ideas, not commitments; none is scheduled unless promoted into
     shield now covers every published name, derived from the same generated list.
     Rule: anything that exists on the registry keeps the scope it is published
     under; only locally-generated packages take the target's.
+
+45. **A doc that asserts an absence expires without ever going stale-looking.**
+    `docs/ARCHITECTURE.md`'s "Secrets" section opened with "Nothing built in."
+    That was true when written and false the moment the app started resolving
+    its bearer token through `secret-store` — but nothing could catch it: the
+    link checker passes, no test reads prose, and the sentence contains no
+    version, path or symbol that drift tooling could anchor to. Claims of the
+    form "there is no X here" are uniquely fragile, because the change that
+    falsifies them is an *addition* elsewhere, and additions are exactly what
+    one-directional drift checks (lib/ → canonical) are blind to. When adding a
+    capability, grep the docs for the sentence that used to say you didn't have
+    it.
+
+46. **Prove a new test discriminates before trusting it.** The `token` option
+    shipped with six transport tests, all green — which says nothing on its own,
+    since a test that never exercises the new branch is also green. Reverting the
+    one changed line (`opts.token ?? process.env[tokenEnv]` → the original) made
+    exactly 2 of the 6 fail, and named which 2. Cheap, and it is the difference
+    between "the tests pass" and "the tests would have caught this". Same
+    discipline the coverage-gate work needs (DEFERRED #15): a gate that has never
+    failed has never been shown to run.

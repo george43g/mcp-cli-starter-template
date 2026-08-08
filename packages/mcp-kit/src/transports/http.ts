@@ -1,10 +1,11 @@
 /**
  * Streamable HTTP transport.
  *
- * Lifted from Gmail-MCP-Server/src/server/http.ts with the bearer-token env
- * var made caller-supplied (default: MCP_HTTP_TOKEN). Single-tenant by
- * design — one server process = one identity. Multi-tenant is a future
- * enhancement; out of scope for the template.
+ * Lifted from Gmail-MCP-Server/src/server/http.ts with the bearer token made
+ * caller-supplied: pass `token` directly, or let it read `tokenEnv`
+ * (default: MCP_HTTP_TOKEN). Single-tenant by design — one server process =
+ * one identity. Multi-tenant is a future enhancement; out of scope for the
+ * template.
  *
  * - POST /mcp   — MCP protocol (bearer-token required)
  * - GET  /health — health snapshot (no auth; for reverse-proxy probes;
@@ -25,6 +26,16 @@ export interface HttpServerOptions {
   server: McpServer;
   port: number;
   bind: string;
+  /**
+   * Bearer token, already resolved by the caller. Takes precedence over
+   * `tokenEnv`.
+   *
+   * This exists so the app can own *where* the secret comes from (env, .env,
+   * OS keychain, an external manager) without this transport growing an
+   * opinion — or a dependency — on secret storage. Omit it and the env-var
+   * lookup below is unchanged.
+   */
+  token?: string;
   /** Env var name containing the bearer token. Default: "MCP_HTTP_TOKEN". */
   tokenEnv?: string;
   getCounters: () => { toolCalls: number; recentErrors: number };
@@ -81,11 +92,11 @@ export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServ
   const log = opts.log ?? ((line: string) => process.stderr.write(`${line}\n`));
   const tokenEnv = opts.tokenEnv ?? "MCP_HTTP_TOKEN";
 
-  const expectedToken = process.env[tokenEnv];
+  const expectedToken = opts.token ?? process.env[tokenEnv];
   if (!expectedToken || expectedToken.trim().length === 0) {
     throw new Error(
-      `HTTP mode requires ${tokenEnv} to be set to a non-empty bearer token. ` +
-        `Generate one with: openssl rand -hex 32`,
+      `HTTP mode requires a non-empty bearer token: set ${tokenEnv}, or pass one ` +
+        `as \`token\`. Generate one with: openssl rand -hex 32`,
     );
   }
 
