@@ -45,7 +45,7 @@ jobs:
       - name: Docs integrity (links, agent-file symlinks, index coverage)
         run: pnpm check:docs
 
-      - name: Publish shape (repository metadata, no workspace: in published deps)
+      - name: Publish shape (repository metadata, shipped dep specifiers)
         run: pnpm check:publishable-manifests
 
       - name: Typecheck

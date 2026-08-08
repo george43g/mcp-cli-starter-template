@@ -212,6 +212,20 @@ links), but coordinate with published-package names and the git remote.
 
 ---
 
+## 13. Local validation for `.github/workflows/*.yml`
+
+**Status**: not started, deliberately. Nothing in the repo parses workflow YAML, so a
+malformed workflow is only discovered by pushing it — and it surfaces as an opaque 0-second
+run with no logs (field-note 28). A `scripts/check-workflows.mjs` wired into `pnpm verify`
+would catch it pre-push, but it needs a YAML parser dependency the repo does not carry, and
+CI already reports the failure within 15 seconds.
+
+**Trigger to action**: if this bites a second time, or if a YAML parser arrives in the
+dependency graph for another reason. Would also be a natural home for asserting release-job
+invariants (every publishable package has a job; jobs stay chained via `needs`).
+
+---
+
 ## Out-of-scope (don't lift)
 
 These are imsg-mcp-specific items from `glowing-percolating-key.md`. They stay in imsg-mcp:

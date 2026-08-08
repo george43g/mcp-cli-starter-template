@@ -290,3 +290,16 @@ are ideas, not commitments; none is scheduled unless promoted into
     prior tag and starts the next release at `1.0.0` (field-note 11).
     `publishConfig.access: "public"` makes `--access public` unnecessary and
     survives pnpm's pack.
+28. **A 0-second CI run with "This run likely failed because of a workflow file
+    issue" and `log not found` means the YAML did not parse** — no job ever
+    started, so there is nothing to read. `gh run view --log-failed` is useless
+    here; `gh run list` showing `failure … 0s` is the tell. The cause this time
+    was a step `name:` containing a colon-space:
+    `- name: Publish shape (repository metadata, no workspace: in published deps)`.
+    YAML reads `: ` inside an unquoted scalar as a nested mapping and rejects it
+    ("Nested mappings are not allowed in compact mappings"). Quote the value or
+    drop the colon. Nothing in-repo parses workflow YAML — `pnpm verify` cannot
+    catch this and neither can Biome — so a workflow edit is only validated by
+    pushing it. If this recurs, the fix is a `scripts/check-workflows.mjs`; it
+    needs a YAML parser dependency, which the repo does not currently carry, so
+    it was judged not yet worth it for a failure CI reports in 15 seconds.
