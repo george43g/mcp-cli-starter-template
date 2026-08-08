@@ -1,3 +1,11 @@
+# [@george43g/robustness-v0.2.1](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.2.0...robustness-v0.2.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **robustness:** preserve registered state when reconfiguring the singletons ([790bbd3](https://github.com/george43g/mcp-cli-starter-template/commit/790bbd3dea02eba42e9a3a4ab25acd89b2ead5df)), closes [#14](https://github.com/george43g/mcp-cli-starter-template/issues/14)
+* **robustness:** record the orphan-watchdog interval only once armed ([fea1a4b](https://github.com/george43g/mcp-cli-starter-template/commit/fea1a4b1799fb8220c38ac9d2c69235b4c9476f1))
+
 # [@george43g/robustness-v0.2.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.1.1...robustness-v0.2.0) (2026-08-08)
 
 
