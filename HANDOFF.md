@@ -11,13 +11,14 @@ verification matrix, dependency decisions, and deferred work.
 | Item | Current state |
 | --- | --- |
 | Repository | `/Users/george/repos/mcp-cli-starter-template` |
-| Branch | `main` |
-| `origin/main` | `4a322aa` — merge of PR #7 (pre-adoption sweep) atop the CI release bumps `c5777ff`; CI green |
-| Ahead/behind | in sync |
-| Local commits | none |
+| Branch | `fix/robustness-reconfigure` (off `main`) |
+| `origin/main` | `5ca5349` — merge of PR #8 (final ledger refresh) atop PR #7's merge `4a322aa`; CI green |
+| Ahead/behind | `main` in sync with origin; the branch carries the DEFERRED #14 fix |
+| Local commits | `fix(robustness):` singleton fix + a records commit, on the branch |
 | Remote check | fetch + push succeeded on 2026-08-09 |
-| Working tree | clean |
-| Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |
+| Working tree | clean on the branch |
+| Push state | `main` fully pushed and is the only long-lived branch on origin |
+| In flight | **DEFERRED #14 fixed** — both robustness singletons now `reconfigure()` in place instead of replacing the controller. Cuts `robustness@0.2.1` on merge (patch, inside `tui-kit`'s `^0.1.1 \|\| ^0.2.0` peer). Record: [docs/plans/2026-08-robustness-reconfigure.md](docs/plans/2026-08-robustness-reconfigure.md) |
 | mcpsync | `apps/mcpsync` landed (5 stages + audit + publish prep); npm publish DEFERRED — release job is `workflow_dispatch`-only; local global bin installed via `pnpm add -g`. Desktop write-guard merged (`95f6c03`, PR #2). Round 2026-08-05 merged (`9d90a2c`, PR #3): 3 life-stack findings resolved + `imsg-mcp`→`EQStack` doc rename. Home decision REVERSED same session → relocate mcpsync to life-stack after publishing the kits (DEFERRED #10; import-as-library retracted for an optional `npx` shell-out). (see [docs/plans/2026-08-mcpsync-overview.md](docs/plans/2026-08-mcpsync-overview.md)) |
 | Package state | Published: **`@george43g/robustness@0.2.0`**, **`@george43g/cli-kit@0.1.0`**, **`@george43g/tui-kit@0.1.1`**. The 0.1.0 kit bootstraps were user-run (2026-08-08); robustness 0.2.0 and tui-kit 0.1.1 were cut by CI over OIDC (2026-08-09) — the pipeline is proven for machine-driven releases. Trusted Publishers configured for all three. `@george43g/mcpsync` remains bootstrap-pending (its job is still `workflow_dispatch`-only). |
 | Release pipeline | `.github/workflows/release-packages.yml` PROVEN end-to-end: full verify matrix → npm OIDC trusted publishing (no `NPM_TOKEN`) → tag + CHANGELOG + GitHub release → `[skip ci]` bump commit (loop-safe, confirmed no re-trigger). Now four chained jobs (robustness → cli-kit → tui-kit → mcpsync), serialized because each pushes a bump commit. **Build provenance is deliberately OFF** — it requires a public source repo and this one is private; requesting it 422s the publish (field-note 23, which supersedes 19). |

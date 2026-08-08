@@ -37,6 +37,12 @@ installWatchdog();
 noteActivity();
 ```
 
+`installShutdownHandlers` and `installWatchdog` both accept options and apply
+them **in place**. Cleanups already registered, memory-sample subscribers, and
+accumulated watchdog state all survive, and repeated calls merge rather than
+replace — so configuring after mounting a TUI is safe, and call order does not
+change behaviour.
+
 The convenience API reads `MCP_*` environment variables. For a product-specific
 namespace or different TUI policy, create isolated controllers:
 

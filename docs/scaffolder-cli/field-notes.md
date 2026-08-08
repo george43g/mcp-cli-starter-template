@@ -396,3 +396,33 @@ are ideas, not commitments; none is scheduled unless promoted into
     know to look. After ANY manifest edit, run
     `pnpm install --lockfile-only && pnpm install --frozen-lockfile` before
     pushing — the second command is the one that actually mirrors CI.
+
+## 2026-08-09 — fixing the robustness singletons (DEFERRED #14)
+
+38. **A lazily-built singleton that takes options is a bug waiting to happen,
+    and "replace it" is the wrong fix.** Both P0s in `robustness@0.2.0` were the
+    same shape: `installShutdownHandlers(opts)` disposed and rebuilt its
+    controller (new empty cleanup registry), while `installWatchdog(opts)` let
+    whichever lazy caller ran first win and dropped later options. The tell in
+    the first case is that the trigger was `Object.keys(options).length > 0` —
+    *"did you pass an object"*, not *"did anything change"* — so passing the
+    semantic default was destructive. **`dispose()` was never the problem;
+    discarding the closure was.** The fix is `reconfigure()` that merges over the
+    live config, keeping the registry, subscriber set and accumulated state, and
+    reusing `dispose()` only for the one change that genuinely requires
+    detaching (relocating listeners onto a replacement host process). Two
+    corollaries worth stealing: validate the merged config *before* mutating
+    anything, so a bad option cannot leave a half-applied controller; and when
+    re-arming interval timers, reset any "elapsed since last tick" state — the
+    watchdog's sleep-skew guard would otherwise discard the first sample after
+    the interval shortened.
+
+39. **The bugs survived because the convenience layer had zero tests.** Every
+    existing robustness test exercised the `create*` factory, never the exported
+    singleton wrappers — and the singleton wrappers were where all the state
+    management lived. Test-to-export coverage said 21/40 and the missing 19 were
+    not random. When a package has both a factory API and a convenience API over
+    a module-level instance, the convenience API is the higher-risk surface, not
+    the lower one. Guard rule applied here: write the failing test first, and
+    confirm a targeted mutation (disabling the timer re-arm) fails exactly one
+    assertion — otherwise the test proves nothing.

@@ -69,6 +69,14 @@ export interface WatchdogOptions {
 export interface WatchdogController {
   install(): void;
   dispose(): void;
+  /**
+   * Apply new options to the live controller. Merges over the current options
+   * and re-reads the environment under the resolved prefix; accumulated state
+   * and memory-sample subscribers survive, and live timers are re-armed only
+   * when their interval actually changed. Throws without mutating anything if
+   * an option is invalid.
+   */
+  reconfigure(options: WatchdogOptions): void;
   reset(): void;
   noteActivity(): void;
   readState(): Readonly<WatchdogState>;
@@ -86,12 +94,19 @@ const defaultShutdownController: WatchdogOptions["shutdownController"] = {
   },
 };
 
-export function createWatchdog(options: WatchdogOptions = {}): WatchdogController {
+/**
+ * Resolve options + environment into concrete policy. Kept separate from the
+ * controller so `reconfigure` can rebuild (and re-read the environment under a
+ * new prefix) before mutating anything — `normalizeEnvPrefix` throws on a bad
+ * prefix, which must leave the live controller untouched.
+ */
+function buildConfig(options: WatchdogOptions) {
   const envPrefix = normalizeEnvPrefix(options.envPrefix ?? "MCP");
   const numberOption = (value: number | undefined, envSuffix: string, fallback: number): number =>
     value ?? readPositiveNumber(`${envPrefix}_${envSuffix}`, fallback);
 
-  const config = {
+  return {
+    envPrefix,
     eventLoopSampleMs: numberOption(options.eventLoopSampleMs, "EVENT_LOOP_SAMPLE_MS", 5_000),
     eventLoopWarnMs: numberOption(options.eventLoopWarnMs, "EVENT_LOOP_WARN_MS", 500),
     eventLoopKillMs: numberOption(options.eventLoopKillMs, "EVENT_LOOP_KILL_MS", 10_000),
@@ -124,8 +139,13 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     idleRestart: options.idleRestart ?? true,
     statePath: options.statePath ?? process.env[`${envPrefix}_WATCHDOG_STATE_PATH`] ?? "",
   };
-  const shutdownController = options.shutdownController ?? defaultShutdownController;
-  const exit = options.exit ?? ((code: number) => process.exit(code));
+}
+
+export function createWatchdog(options: WatchdogOptions = {}): WatchdogController {
+  let opts: WatchdogOptions = { ...options };
+  let config = buildConfig(opts);
+  let shutdownController = opts.shutdownController ?? defaultShutdownController;
+  let exit = opts.exit ?? ((code: number) => process.exit(code));
   const subscribers = new Set<MemorySampleCallback>();
   const state = initialState();
   let eventLoopHistogram: IntervalHistogram | null = null;
@@ -140,8 +160,8 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     event: string,
     data?: Record<string, unknown>,
   ): void => {
-    if (options.onDiagnostic) {
-      options.onDiagnostic({ level, event, ...(data ? { data } : {}) });
+    if (opts.onDiagnostic) {
+      opts.onDiagnostic({ level, event, ...(data ? { data } : {}) });
       return;
     }
     if (level === "error") error(event, data);
@@ -277,6 +297,24 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     }
   };
 
+  const rearmTimers = (): void => {
+    if (eventLoopTimer) clearInterval(eventLoopTimer);
+    if (memoryTimer) clearInterval(memoryTimer);
+    if (idleTimer) clearInterval(idleTimer);
+    idleTimer = null;
+    // A changed sample window must not read as a machine sleep to the next
+    // sample — see the skew guard in sampleEventLoop.
+    state.lastEventLoopSampleTs = Date.now();
+    eventLoopTimer = setInterval(sampleEventLoop, config.eventLoopSampleMs);
+    eventLoopTimer.unref();
+    memoryTimer = setInterval(sampleMemory, config.memorySampleMs);
+    memoryTimer.unref();
+    if (config.idleRestart) {
+      idleTimer = setInterval(checkIdle, config.idleCheckMs);
+      idleTimer.unref();
+    }
+  };
+
   const dispose = (): void => {
     if (eventLoopHistogram) eventLoopHistogram.disable();
     eventLoopHistogram = null;
@@ -295,20 +333,12 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
   const install = (): void => {
     if (installed) return;
     installed = true;
-    state.lastEventLoopSampleTs = Date.now();
     eventLoopHistogram = monitorEventLoopDelay({ resolution: 20 });
     eventLoopHistogram.enable();
-    eventLoopTimer = setInterval(sampleEventLoop, config.eventLoopSampleMs);
-    eventLoopTimer.unref();
-    memoryTimer = setInterval(sampleMemory, config.memorySampleMs);
-    memoryTimer.unref();
-    if (config.idleRestart) {
-      idleTimer = setInterval(checkIdle, config.idleCheckMs);
-      idleTimer.unref();
-    }
+    rearmTimers();
     shutdownController?.registerCleanup(dispose);
     diagnostic("info", "watchdog_installed", {
-      env_prefix: envPrefix,
+      env_prefix: config.envPrefix,
       event_loop_warn_ms: config.eventLoopWarnMs,
       event_loop_kill_ms: config.eventLoopKillMs,
       event_loop_sustained_ms: config.eventLoopSustainedMs,
@@ -318,6 +348,46 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
       memory_growth_min_mb: config.memoryGrowthMinMb,
       idle_restart: config.idleRestart,
       idle_restart_after_ms: config.idleRestartAfterMs,
+    });
+  };
+
+  const reconfigure = (next: WatchdogOptions): void => {
+    if (state.killReason) {
+      // A kill is already in flight; do not resurrect a dying process.
+      diagnostic("warn", "watchdog_reconfigure_ignored", { kill_reason: state.killReason });
+      return;
+    }
+
+    const merged: WatchdogOptions = { ...opts, ...next };
+    // Throws on an invalid envPrefix BEFORE anything is mutated.
+    const nextConfig = buildConfig(merged);
+    const nextShutdownController = merged.shutdownController ?? defaultShutdownController;
+
+    // Thresholds are read live by the samplers; only these four shape the
+    // timers themselves.
+    const timersNeedRearm =
+      installed &&
+      (nextConfig.eventLoopSampleMs !== config.eventLoopSampleMs ||
+        nextConfig.memorySampleMs !== config.memorySampleMs ||
+        nextConfig.idleCheckMs !== config.idleCheckMs ||
+        nextConfig.idleRestart !== config.idleRestart);
+    const shutdownControllerChanged = installed && nextShutdownController !== shutdownController;
+
+    if (shutdownControllerChanged) shutdownController?.unregisterCleanup(dispose);
+    opts = merged;
+    config = nextConfig;
+    shutdownController = nextShutdownController;
+    exit = merged.exit ?? ((code: number) => process.exit(code));
+    if (shutdownControllerChanged) shutdownController?.registerCleanup(dispose);
+    if (timersNeedRearm) rearmTimers();
+
+    // state and subscribers are deliberately untouched — they are exactly what
+    // a dispose-and-recreate "fix" would drop.
+    diagnostic("info", "watchdog_reconfigured", {
+      env_prefix: config.envPrefix,
+      idle_restart: config.idleRestart,
+      max_rss_mb: config.maxRssMb,
+      timers_rearmed: timersNeedRearm,
     });
   };
 
@@ -331,6 +401,7 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
   return {
     install,
     dispose,
+    reconfigure,
     reset,
     noteActivity: () => {
       state.lastActivityTs = Date.now();
@@ -415,13 +486,18 @@ export function isMonotonicallyGrowing(samples: readonly number[], minimumGrowth
 
 let defaultWatchdog: WatchdogController | undefined;
 
-function singleton(options?: WatchdogOptions): WatchdogController {
-  if (!defaultWatchdog) defaultWatchdog = createWatchdog(options);
+function singleton(): WatchdogController {
+  if (!defaultWatchdog) defaultWatchdog = createWatchdog();
   return defaultWatchdog;
 }
 
 export function installWatchdog(options: WatchdogOptions = {}): void {
-  singleton(options).install();
+  const controller = singleton();
+  // Reconfigure rather than construct-with-options: readWatchdogState(),
+  // noteActivity() and onMemorySample() all build the singleton lazily, so
+  // whichever ran first used to win and later options were silently dropped.
+  if (Object.keys(options).length > 0) controller.reconfigure(options);
+  controller.install();
 }
 
 export function noteActivity(): void {

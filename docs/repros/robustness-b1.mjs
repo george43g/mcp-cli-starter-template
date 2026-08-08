@@ -1,8 +1,13 @@
 /**
- * DEFERRED #14b — installWatchdog(options) silently ignores options if anything
- * read watchdog state first. Run from the repo root after `pnpm build`:
+ * DEFERRED #14b — installWatchdog(options) used to silently ignore options if
+ * anything read watchdog state first. Fixed 2026-08-09 by reconfiguring the
+ * singleton in place instead of letting the first lazy construction win.
+ *
+ * Run from the repo root after `pnpm build`:
  *   node docs/repros/robustness-b1.mjs
- * Expected today: "onDiagnostic honoured: false" (the bug).
+ * Expected: "onDiagnostic honoured: true", exit 0. Before the fix it printed
+ * false and exited 1. Retained as regression evidence; the CI guard is the
+ * singleton test in packages/robustness/src/watchdog.test.ts.
  */
 import { installWatchdog, readWatchdogState } from "../../packages/robustness/dist/index.js";
 

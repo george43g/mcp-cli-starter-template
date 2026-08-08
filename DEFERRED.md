@@ -257,6 +257,18 @@ invariants (every publishable package has a job; jobs stay chained via `needs`).
 
 ## 14. `@george43g/robustness` — two verified singleton bugs (P0, published)
 
+**Status**: ✅ FIXED 2026-08-09 on `fix/robustness-reconfigure`. Both controllers gained
+`reconfigure()`, and `installShutdownHandlers` / `installWatchdog` now apply options in place
+instead of replacing the controller. Registered cleanups, memory-sample subscribers, and
+accumulated watchdog state survive; options merge across repeated calls; both validate before
+mutating; the watchdog re-arms live timers only when a timer-shaping value changed and refuses to
+reconfigure once a kill is in flight. The singleton layer — previously untested, which is why
+these shipped — now has tests, and the three `docs/repros/` scripts pass. Ships as a patch
+(`0.2.1`, inside `tui-kit`'s `^0.1.1 || ^0.2.0` peer) cut by the release job on merge.
+Full record: [`docs/plans/2026-08-robustness-reconfigure.md`](docs/plans/2026-08-robustness-reconfigure.md).
+
+<details><summary>original note</summary>
+
 **Status**: VERIFIED, not fixed. Both are in `robustness@0.2.0`, live on npm. Found by audit
 2026-08-09, independently reproduced twice, and independently re-found by the EQStack parity
 audit (its D1/D5). Repro scripts are checked in at `docs/repros/`.
@@ -292,6 +304,8 @@ the same way.
 **Also fix while in there**: the singleton convenience API is entirely untested — which is why
 these survived. See #15.
 
+</details>
+
 ---
 
 ## 15. Published-kit quality gaps found in the pre-adoption sweep (2026-08-09)
@@ -304,7 +318,9 @@ these survived. See #15.
   every `.tsx` component is unmeasurable and `*.test.tsx` files cannot even be discovered.
   `ink-testing-library` is a devDependency with zero references.
 - **Test-to-export coverage of the published surface**: cli-kit 4/16, tui-kit 6/25,
-  robustness 21/40. The untested robustness region is precisely the singleton API where #14 lives.
+  robustness 21/40. The untested robustness region was precisely the singleton API where #14 lived
+  — `installShutdownHandlers` / `installWatchdog` and the `reconfigure()` paths are now covered
+  (2026-08-09), but the rest of the singleton surface still is not.
   `runRepl` (85 lines, hand-rolled tokenizer) and `MemoryCache` and `useVimKeys` have no tests at all.
 - **API-shape items that are a major bump after adoption**: `commander` is a plain dependency of
   cli-kit while its types cross the public boundary (should be a peer, as ink/react correctly are in

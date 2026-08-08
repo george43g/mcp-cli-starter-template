@@ -4,6 +4,10 @@
  * The factory form keeps process listeners and lifecycle policy isolated for
  * embedded consumers and tests. Convenience exports below preserve the simple
  * singleton API used by generated MCP servers.
+ *
+ * Configuration is applied in place (`reconfigure`) rather than by replacing the
+ * controller, so cleanups registered before a consumer configures the singleton
+ * still run. Replacing it silently dropped them.
  */
 
 export type CleanupFn = () => void | Promise<void>;
@@ -35,21 +39,34 @@ export interface ShutdownController {
   enableStdinEofDetection(): void;
   enableOrphanWatchdog(intervalMs?: number): void;
   isShuttingDown(): boolean;
+  /**
+   * Apply new options to the live controller. Merges over the current options;
+   * registered cleanups, installed handlers, and shutdown state all survive.
+   * Throws without mutating anything if an option is invalid.
+   */
+  reconfigure(options: ShutdownControllerOptions): void;
   /** Remove listeners/timers without exiting. Safe to call repeatedly. */
   dispose(): void;
   /** Test-only state reset. */
   reset(): void;
 }
 
-export function createShutdownController(
-  options: ShutdownControllerOptions = {},
-): ShutdownController {
-  const hostProcess = options.process ?? process;
-  const exit = options.exit ?? ((code: number) => hostProcess.exit(code));
-  const forceExitAfterMs = options.forceExitAfterMs ?? 3_000;
+function resolveForceExitAfterMs(value: number | undefined): number {
+  const forceExitAfterMs = value ?? 3_000;
   if (!Number.isFinite(forceExitAfterMs) || forceExitAfterMs <= 0) {
     throw new Error("forceExitAfterMs must be a positive finite number");
   }
+  return forceExitAfterMs;
+}
+
+export function createShutdownController(
+  options: ShutdownControllerOptions = {},
+): ShutdownController {
+  let config: ShutdownControllerOptions = { ...options };
+  let hostProcess = config.process ?? process;
+  let exit = config.exit ?? ((code: number) => hostProcess.exit(code));
+  let forceExitAfterMs = resolveForceExitAfterMs(config.forceExitAfterMs);
+  let orphanIntervalMs = 5_000;
   const registry = new Set<CleanupFn>();
   const listeners: Array<
     readonly [
@@ -68,7 +85,7 @@ export function createShutdownController(
     level: RuntimeDiagnostic["level"],
     event: string,
     data?: Record<string, unknown>,
-  ) => options.onDiagnostic?.({ level, event, ...(data ? { data } : {}) });
+  ) => config.onDiagnostic?.({ level, event, ...(data ? { data } : {}) });
 
   const registerCleanup = (fn: CleanupFn): void => {
     registry.add(fn);
@@ -157,7 +174,7 @@ export function createShutdownController(
         message: error.message,
         stack: error.stack,
       });
-      if (options.exitOnUncaughtException ?? true) void shutdown(70);
+      if (config.exitOnUncaughtException ?? true) void shutdown(70);
     }) as (...args: unknown[]) => void);
 
     addListener("exit", syncCleanup as (...args: unknown[]) => void);
@@ -174,6 +191,9 @@ export function createShutdownController(
 
   const enableOrphanWatchdog = (intervalMs = 5_000): void => {
     if (orphanTimer) return;
+    // Recorded only once armed, so a relocation re-arms with the interval that
+    // is actually in force rather than one a later no-op call requested.
+    orphanIntervalMs = intervalMs;
     const parentPid = hostProcess.ppid;
     orphanTimer = setInterval(() => {
       if (hostProcess.ppid === 1 || hostProcess.ppid !== parentPid) void shutdown(0);
@@ -195,6 +215,40 @@ export function createShutdownController(
     }
   };
 
+  const reconfigure = (next: ShutdownControllerOptions): void => {
+    const merged: ShutdownControllerOptions = { ...config, ...next };
+    // Validate first: an invalid option must leave the controller untouched
+    // rather than half-applied.
+    const nextForceExitAfterMs = resolveForceExitAfterMs(merged.forceExitAfterMs);
+    const nextHostProcess = merged.process ?? process;
+    const relocating = nextHostProcess !== hostProcess;
+
+    // dispose() detaches listeners and timers but deliberately leaves the
+    // cleanup registry alone; discarding the whole controller is what used to
+    // drop consumer state.
+    const hadHandlers = handlersInstalled;
+    const hadStdinDetection = Boolean(stdinListener);
+    const hadOrphanWatchdog = orphanTimer !== null;
+    if (relocating) dispose();
+
+    config = merged;
+    forceExitAfterMs = nextForceExitAfterMs;
+    hostProcess = nextHostProcess;
+    exit = merged.exit ?? ((code: number) => hostProcess.exit(code));
+
+    if (relocating) {
+      if (hadHandlers) installHandlers();
+      if (hadStdinDetection) enableStdinEofDetection();
+      if (hadOrphanWatchdog) enableOrphanWatchdog(orphanIntervalMs);
+    }
+
+    diagnostic("info", "shutdown_reconfigured", {
+      force_exit_after_ms: forceExitAfterMs,
+      exit_on_uncaught_exception: merged.exitOnUncaughtException ?? true,
+      host_process_replaced: relocating,
+    });
+  };
+
   const reset = (): void => {
     dispose();
     registry.clear();
@@ -210,6 +264,7 @@ export function createShutdownController(
     enableStdinEofDetection,
     enableOrphanWatchdog,
     isShuttingDown: () => shuttingDown,
+    reconfigure,
     dispose,
     reset,
   };
@@ -231,10 +286,7 @@ export async function shutdown(exitCode = 0): Promise<never> {
 }
 
 export function installShutdownHandlers(options: ShutdownControllerOptions = {}): void {
-  if (Object.keys(options).length > 0) {
-    defaultController.dispose();
-    defaultController = createShutdownController(options);
-  }
+  if (Object.keys(options).length > 0) defaultController.reconfigure(options);
   defaultController.installHandlers();
 }
 
