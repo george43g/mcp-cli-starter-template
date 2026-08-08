@@ -23,6 +23,7 @@ const EXCLUDED_DIR_PARTS = ["node_modules", "example", "lib", "dist", "man", ".t
 /** Markdown roots that must stay link-clean. */
 const SCAN_ROOTS = [
   "AGENTS.md",
+  "DEFERRED.md",
   "HANDOFF.md",
   "README.md",
   "llms-install.md",

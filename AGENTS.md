@@ -32,6 +32,7 @@ fails CI when canonical and `lib/` diverge.
 | [`apps/scaffolder/AGENTS.md`](apps/scaffolder/AGENTS.md) | Working on the scaffolder: architecture, adding migrations/phases, drift rules, troubleshooting |
 | [`docs/README.md`](docs/README.md) | Index of all docs — repo-facing vs golden-output, with read-when guidance |
 | [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) | Continuation state, verification evidence, deferred work |
+| [`DEFERRED.md`](DEFERRED.md) | The backlog: what was consciously not done, why, and the trigger to act. Read before proposing new work |
 | [`docs/plans/README.md`](docs/plans/README.md) | ExecPlan convention for multi-hour or risky work |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Golden-output architecture (the generated tool's four surfaces) |
 | [`docs/scaffolder-cli/retrofit-findings.md`](docs/scaffolder-cli/retrofit-findings.md) | Retrofit safety invariants — preserve these |

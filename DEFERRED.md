@@ -169,10 +169,16 @@ generated tool. `npx` works regardless of where the source lives; it only needs 
    kits via Vite (`apps/mcpsync/vite.config.ts` externals) and take them as real deps —
    optional, and it means moving `cli-table3`/`picocolors`/`ink`/`react` back out of its own
    `dependencies`.
-3. Remove mcpsync from this repo: its release job in `release-packages.yml` (now chained after
-   `tui-kit`), its entry in `PUBLISHABLE` in `scripts/check-publishable-manifests.mjs`, its
-   meta-suite tests, and the AGENTS.md `.mcp.json`/`opencode.json` sync note that points at the
-   local bin.
+3. Remove mcpsync from this repo. Full checklist (the earlier version of this list was
+   incomplete — whoever executes the move would have hit the gaps mid-flight):
+   - its release job in `release-packages.yml` (currently chained after `tui-kit` — re-chain
+     `tui-kit` to whatever follows, or it becomes the tail)
+   - its entry in `PUBLISHABLE` in `scripts/check-publishable-manifests.mjs`
+   - its meta-suite tests (it contributes 17 test files to `pnpm test`)
+   - the whole **"MCP servers (project scope)" section of `AGENTS.md`**, which instructs agents to
+     run the local `mcpsync` bin after editing `.mcp.json` — that workflow leaves with it
+   - `apps/mcpsync/vite.config.ts`'s bundling rationale (moot once relocated; see step 2)
+   - its `LICENSE` (added 2026-08-08 to satisfy the manifest guardrail)
 
 **Trigger to action**: unblocked — step 1 is done. Remaining cost is the move itself.
 
@@ -181,46 +187,57 @@ release wiring at the new home).
 
 ---
 
-## 11. `packages/secrets` — confirm it's a depended-upon resolution lib, or retire it
+## 11. `packages/secrets` (and `packages/env-loader`) — retire or justify
 
-**Status**: unverified. `packages/secrets` is the in-process `env-JSON → 1Password → file`
-*resolution chain* a generated tool imports to look up its own `${VAR}` secrets at runtime — a
-different layer from `opkeep` (life-stack's standalone secret-*provisioning* CLI). On their
-face they're complementary, not duplicative. But by the inclusion rule, `packages/secrets`
-only earns its place if generated tools actually import it and don't each customize secret
-handling (same category as `robustness`).
+**Status**: ✅ **VERIFIED 2026-08-09 — the answer is "retire", pending your call on how.**
+The stated test was "do generated tools actually import it?" A repo-wide grep for
+`@george43g/secrets` / `getSecret` / `resolveSecret` finds **zero importers** — not in
+`apps/example-repo-mcp`, not in the tracked `example/` output, nowhere but the package's own
+`src/index.ts` and prose. By the inclusion rule (a thing belongs here iff it is scaffolding
+machinery, or framework code generated tools depend on long-term) `packages/secrets` fails
+outright.
 
-**Preliminary signal (2026-08-05)**: a grep found NO `import` of `@george43g/secrets` in the
-example MCP app's source — only the package itself (mirrored into `example/`) and a convention
-mention in a skill doc. Also, mcpsync rolled its *own* 0600 vault
-(`~/.mcpsync/credentials.json`, ported from imsg-mcp) rather than using `packages/secrets` —
-weak evidence that secret handling gets customized per tool.
+**`packages/env-loader` has the identical profile** and was not previously part of this item:
+zero importers, including in `example/`. Only descriptive prose in `AGENTS.md`,
+`docs/ARCHITECTURE.md` and the example's mirrors. Both ship into every scaffolded repo as dead
+weight.
 
-**The test to settle it**: does the generated `example` tool (and any real consumer) actually
-`import` `@george43g/secrets`? If yes → framework code, it stays (mcpsync's own vault is then
-just provenance). If nothing consumes it → dead weight; make it a copied stub or move it out.
-Either way the boundary between "in-process resolution lib" and "opkeep the CLI" isn't written
-down anywhere — writing it down is the real deliverable.
+**Layer note (still true)**: `packages/secrets` is an in-process `env-JSON → 1Password → file`
+*resolution* chain, a different layer from `opkeep` (life-stack's standalone secret-*provisioning*
+CLI). They are complementary in principle. The problem is not overlap — it is that nothing
+consumes it.
 
-**Trigger to action**: alongside the mcpsync relocation, or whenever the secrets layer is next
-touched.
-
-**Cost**: ~1–2 hrs to trace consumers + document the layer boundary.
+**Options**: (a) delete both packages and their scaffolder phases; (b) keep them but wire the
+example app to actually use them, proving the contract; (c) keep as opt-in migrations the
+scaffolder does not run by default. Note DEFERRED #8 (Apple Keychain for `packages/secrets`) is
+moot under (a).
 
 ---
 
 ## 12. Repo / directory rename — it has outgrown "template + scaffolder"
 
-**Status**: idea. The repo is no longer just a static template or a scaffolder — it's a
-framework (published kits + `robustness`) + a schematics-style generator/migrator + a golden
-reference implementation, all in one monorepo. The name `mcp-cli-starter-template` undersells
-that.
+**Status**: idea, unblocked earlier than written. It was gated on #10 and #11 stabilising; both
+are now actionable, so this can move sooner.
 
-**Trigger to action**: once the inclusion-rule cleanup (mcpsync relocated, secrets settled)
-stabilizes what actually lives here, so the new name reflects what stays.
+**What this repo actually is** (recording the framing so it survives a compact — it previously
+lived only in a chat transcript, which this repo's own rules forbid): three things at once —
+a **framework/SDK** (the published kits + `robustness`), a **schematics-style generator and
+migrator** (`mcp-scaffold`: `init` / `apply` / `migrate` / `add-mcp-app`), and a **golden
+reference implementation** (`apps/example-repo-mcp` + the tracked `example/` output, which IS the
+thing being scaffolded). The jargon: "scaffolder/generator" and "schematics/migrations" are
+Angular/Nx vocabulary; "golden master / reference implementation" covers `example/`.
+Closest analogues: Nx, Angular CLI + Schematics + `ng update`, RedwoodJS/Blitz, Copier,
+`create-t3-turbo`.
 
-**Cost**: low mechanically (rename repo + dir + update the symlinked agent files + docs
-links), but coordinate with published-package names and the git remote.
+**Naming directions**: `create-mcp` if the generator leads (matches the `create-*` convention
+users already expect from `npm create`); `mcp-forge` or `mcp-stack` if the framework leads.
+The current name undersells it — "template" implies a static copy, which is the one thing it
+is not.
+
+**Cost**: the rename itself is cheap (repo + directory); the cost is every absolute reference —
+`repository.url` in four publishable manifests (which `check-publishable-manifests.mjs` pins
+case-exactly), the Trusted Publisher config on npmjs.com for three packages, and the golden
+`lib/` mirrors. Do it in one pass, not incrementally.
 
 ---
 
