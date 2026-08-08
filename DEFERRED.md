@@ -208,7 +208,10 @@ release wiring at the new home).
 
 ## 11. `packages/secrets` (and `packages/env-loader`) — retire or justify
 
-**Status**: ✅ **RESOLVED 2026-08-09 — retiring both, superseded by `packages/secret-store`.**
+**Status**: ✅ **DONE 2026-08-09 — both retired (PR #13), superseded by `packages/secret-store`.**
+**Caveat that must not be lost**: `secret-store` is published but has NO importer yet, which is
+exactly the dead-weight verdict this item reached about `packages/secrets`. Wiring it to the
+HTTP bearer-token call site is deferred — see the plan below.
 Option (a) with a replacement rather than a hole. The new package is a **mechanism**, not a
 policy: `env → .env → OS keychain → external command (opt-in)`, with no vault/vendor code in it
 at all. It absorbs `env-loader`'s `loadEnv`/`parseEnvFile` verbatim and re-exports them, so
@@ -422,6 +425,30 @@ theme/color + useMouse → withTimeout. Everything else is blocked on the gaps a
 
 ---
 
+## 17. `regen:example` is defined twice, and `verify` doesn't run the check that guards it
+
+**Status**: found 2026-08-09 while de-vendoring; re-synced by hand, root cause left in place.
+
+`package.json`'s `regen:example` writes into the repo. `.github/workflows/ci.yml`'s "Example/
+output stays in sync" step re-implements the same sequence against a tempdir, because the
+script cannot be reused as-is. Adding the scaffolder's install step to one and not the other
+made CI's tempdir grow a `pnpm-lock.yaml` the committed snapshot lacks — CI failed on a repo
+that was genuinely in sync, while `pnpm regen:example` locally showed zero drift.
+
+Compounding it: **`pnpm verify` does not include the `example/` sync check** — it is CI-only.
+That means a green local `verify` is not evidence for this class of failure, and it bit twice
+in one session.
+
+**Fix**: extract one parameterised script (`scripts/regen-example.mjs <target>`) that both the
+package script and the workflow call. Optionally add the comparison to `verify`; the reason it
+was not done unilaterally is that it costs a full scaffolder build on every local run, which is
+a real tax on the inner loop and the owner's call.
+
+**Trigger**: next time either definition changes, or the next time CI disagrees with a local
+`regen:example`.
+
+---
+
 ## Out-of-scope (don't lift)
 
 These are imsg-mcp-specific items from `glowing-percolating-key.md`. They stay in imsg-mcp:
@@ -483,7 +510,7 @@ HANDOFF.md and PROJECT_STATE.md three different ways — see field-note 35).
 - Published packages: `@george43g/robustness@0.2.1`, `@george43g/cli-kit@0.1.0`,
   `@george43g/tui-kit@0.1.1`. `@george43g/mcpsync` bootstrap-pending.
 - Workspaces: 14 (excludes `example/**`)
-- Scaffolder: 10 phases, 21 migrations, 12 test files (129 tests)
+- Scaffolder: 10 phases, 21 migrations, 13 test files (136 tests)
 - Stress: 13 assertions
 - Test files by workspace: scaffolder 12, mcpsync 17, robustness 8, mcp-kit 5,
   cli-kit 2, tui-kit 2, shared-types 2, env-loader 1, secrets 1,

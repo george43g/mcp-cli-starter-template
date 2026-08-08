@@ -1,7 +1,8 @@
 # ExecPlan: `secret-store`, package retirement, and kit hardening (#11 → #8 → #15 → #16)
 
-**Status**: in progress — package published and on the release pipeline; PR 3 retires the
-two dead packages. Next: de-vendor the published kits (owner decision, see Decisions).
+**Status**: core complete — landed as PRs #11–#15 on 2026-08-09, `main` at `fbe09e6`.
+Remaining from this plan: wire `secret-store` to a real call site (see Deferred below),
+then `DEFERRED.md` #15 and the #16 split, which are separate workstreams.
 
 This plan absorbs a design brief authored by a life-stack session (originally in that
 session's `/tmp` scratchpad, which does not survive). The design below is **settled** —
@@ -157,6 +158,27 @@ revert. After publish, npm unpublish is heavily restricted: `pack:check` before,
 If a release job misfires, the package is unaffected until the npm publish step itself
 succeeds — re-run from `main` (`ref: main` is already in every job). Never hand-edit
 versions, tags, or `CHANGELOG.md`; semantic-release owns all three.
+
+## Deferred out of this plan
+
+1. **`secret-store` has no consumer yet.** It is published and retires two packages, but
+   nothing imports it — which is *precisely* the dead-weight verdict #11 reached about
+   `packages/secrets`. The honest call site already exists: the HTTP bearer token, read
+   straight from `process.env` at `packages/mcp-kit/src/transports/http.ts:82`. Add an
+   additive `token?: string` to `HttpServerOptions` (taking precedence over `tokenEnv`) and
+   resolve it in the app via `resolveSecret({ toolPrefix: "mcp", name: "http_token" })`.
+   `varName` yields `MCP_HTTP_TOKEN` and `envSource` is first in the chain, so behaviour is
+   **identical** when the env var is set — it only adds `.env`, keychain and exec beneath.
+   `secret-store` should join `docs/ARCHITECTURE.md`'s package list at that point, not before.
+2. **`regen:example` is defined twice.** `package.json`'s script writes into the repo;
+   `.github/workflows/ci.yml`'s sync check re-implements it against a tempdir. Adding the
+   install step to one and not the other broke CI on a repo that was genuinely in sync.
+   Re-synced by hand and commented, but the duplication remains — one parameterised script
+   taking a target directory is the durable fix.
+3. **`pnpm verify` does not run the `example/` sync check.** It is CI-only, so a green local
+   verify is not evidence for that class of failure. It bit twice in one session. Adding it
+   costs a full scaffolder build on every local `verify`, which is why it was not done
+   unilaterally.
 
 ## Out of scope
 
