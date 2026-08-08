@@ -70,6 +70,12 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          # Tip of main, not the triggering SHA — same as every job below. On a
+          # normal push these are identical, but on a RE-RUN of an older run the
+          # triggering SHA is stale, and semantic-release then refuses with "The
+          # local branch main is behind the remote one, therefore a new version
+          # won't be published" — a green run that silently releases nothing.
+          ref: main
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
