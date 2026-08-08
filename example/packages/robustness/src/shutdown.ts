@@ -190,8 +190,10 @@ export function createShutdownController(
   };
 
   const enableOrphanWatchdog = (intervalMs = 5_000): void => {
-    orphanIntervalMs = intervalMs;
     if (orphanTimer) return;
+    // Recorded only once armed, so a relocation re-arms with the interval that
+    // is actually in force rather than one a later no-op call requested.
+    orphanIntervalMs = intervalMs;
     const parentPid = hostProcess.ppid;
     orphanTimer = setInterval(() => {
       if (hostProcess.ppid === 1 || hostProcess.ppid !== parentPid) void shutdown(0);
