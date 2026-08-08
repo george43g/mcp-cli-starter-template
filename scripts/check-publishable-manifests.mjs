@@ -41,6 +41,7 @@ const PUBLISHABLE = new Set([
   "packages/robustness",
   "packages/cli-kit",
   "packages/tui-kit",
+  "packages/secret-store",
   "apps/mcpsync",
 ]);
 

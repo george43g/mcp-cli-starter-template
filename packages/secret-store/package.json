@@ -1,0 +1,70 @@
+{
+  "name": "@george43g/secret-store",
+  "version": "0.1.0",
+  "description": "Vendor-neutral secret mechanism for local tools: resolve from process env, .env files, and the OS keychain, with an optional external-command fallback — plus keychain save/delete for setup flows. No vault-vendor logic.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/george43g/mcp-cli-starter-template.git",
+    "directory": "packages/secret-store"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "import": "./dist/env.js"
+    },
+    "./keychain": {
+      "types": "./dist/keychain.d.ts",
+      "import": "./dist/keychain.js"
+    },
+    "./exec": {
+      "types": "./dist/exec.d.ts",
+      "import": "./dist/exec.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "pack:check": "pnpm build && npm pack --dry-run --json",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist coverage"
+  },
+  "keywords": [
+    "secrets",
+    "keychain",
+    "dotenv",
+    "env",
+    "macos",
+    "mcp"
+  ],
+  "author": "George G",
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/npm": "^13.1.5",
+    "semantic-release": "^24.2.0",
+    "semantic-release-monorepo": "^8.0.2"
+  }
+}

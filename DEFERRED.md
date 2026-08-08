@@ -114,9 +114,28 @@ Recommended: A (just document it). The trust prompt IS the right UX for security
 
 ## 8. Apple Keychain integration for `packages/secrets/`
 
+**Status**: ✅ **SUPERSEDED 2026-08-09 — shipped, in a different package.** The OS keychain is a
+first-class source in `packages/secret-store` (read via `/usr/bin/security`, plus
+`saveSecret`/`deleteSecret` for setup flows).
+
+**Why the decline was reversed**: it rested on the premise that *the tool itself talks to
+1Password* — "the 1Password CLI handles that already with better cross-machine sync". Removing
+vault logic from tools inverts that premise. Once a tool no longer carries vault credentials or
+vendor code, the keychain becomes the **only** local store it can read without taking a vault
+dependency, so it stops being a macOS convenience and becomes the load-bearing local layer.
+
+**Why the original cross-platform objection no longer bites**: keychain is macOS-only and
+**degrades to `null`** everywhere else, so the chain simply falls through to `env` / `env-file`,
+which work on every platform. Reads degrade, writes throw `UnsupportedPlatformError` — a failed
+read has a fallback, a silently-dropped write is data loss. Cross-platform CI is unaffected.
+
+<details><summary>original note</summary>
+
 **Status**: declined per spec locked decision #5.
 
 **Why**: the secrets chain (`env-json → 1Password → file`) covers macOS, Linux, CI, and Docker uniformly. Keychain would only help macOS dev loops, and the 1Password CLI handles that already with better cross-machine sync.
+
+</details>
 
 ---
 
@@ -189,6 +208,26 @@ release wiring at the new home).
 
 ## 11. `packages/secrets` (and `packages/env-loader`) — retire or justify
 
+**Status**: ✅ **RESOLVED 2026-08-09 — retiring both, superseded by `packages/secret-store`.**
+Option (a) with a replacement rather than a hole. The new package is a **mechanism**, not a
+policy: `env → .env → OS keychain → external command (opt-in)`, with no vault/vendor code in it
+at all. It absorbs `env-loader`'s `loadEnv`/`parseEnvFile` verbatim and re-exports them, so
+nothing is lost by deleting that package.
+
+The reasoning behind the swap: pulling secrets *out of* a vault, caching them, and exporting them
+into the environment is a secret **manager's** job (mise/direnv/opkeep/systemd). A tool should
+only read env, read `.env`, and read the OS keychain if it knowingly put something there. That
+boundary is what keeps vault credentials out of every tool's dependency tree. The optional `exec`
+layer is the generic escape hatch to whatever manager the user runs — it names no tool; the user
+supplies `SECRET_STORE_EXEC_BIN` + `SECRET_STORE_EXEC_ARGS` with a `{VAR}` placeholder. That
+genericity is load-bearing: an earlier attempt hardcoded a personal CLI into a shared package and
+that was the recorded reason it was rejected.
+
+Reverses **#8** (Apple Keychain), which was declined on a premise this inverts.
+Full record: [`docs/plans/2026-08-secret-store-and-kit-hardening.md`](docs/plans/2026-08-secret-store-and-kit-hardening.md).
+
+<details><summary>original note</summary>
+
 **Status**: ✅ **VERIFIED 2026-08-09 — the answer is "retire", pending your call on how.**
 The stated test was "do generated tools actually import it?" A repo-wide grep for
 `@george43g/secrets` / `getSecret` / `resolveSecret` finds **zero importers** — not in
@@ -211,6 +250,8 @@ consumes it.
 example app to actually use them, proving the contract; (c) keep as opt-in migrations the
 scaffolder does not run by default. Note DEFERRED #8 (Apple Keychain for `packages/secrets`) is
 moot under (a).
+
+</details>
 
 ---
 
