@@ -20,10 +20,24 @@ The package includes:
 ## Install
 
 ```sh
-pnpm add @george43g/cli-kit
+pnpm add @george43g/cli-kit commander
 ```
 
 Node.js 24 or later and ESM are required.
+
+`commander` is a **peer dependency**, not a bundled one. `buildProgram()`
+returns a `Command` and `applyEnvFromFlags()` accepts one, so Commander's types
+cross the public API boundary — if the consumer resolved a second copy, those
+types would be structurally similar but nominally distinct, and `instanceof`
+checks against it would fail. Declaring it as a peer makes the single shared
+instance explicit. (`ink` and `react` are peers of `@george43g/tui-kit` for the
+same reason.)
+
+### Upgrading from 0.1.x
+
+`commander` moved from a regular dependency to a peer in 0.2.0. Add it to your
+own `package.json` if it is not already there — most consumers of this package
+already depend on Commander directly. Nothing else in the API changed.
 
 ## Basic usage
 
