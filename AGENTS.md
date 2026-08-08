@@ -93,6 +93,14 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
 - **No emojis in source code unless the user requests.** Comments stay terse and "why"-focused.
 - **Prefer canonical CLIs** (`pnpm init`, `pnpm pkg set`, `git init`) over file-copying for setup steps. Templates live in `lib/`; raw fs writes for small literals.
 - **Conventional Commits** drive semver via the (disabled-by-default) `release.yml` workflow.
+- **A commit's TYPE is read against every published package whose directory it
+  touches.** `semantic-release-monorepo` filters commits by path and ignores the
+  scope in the subject, so `feat(vitest-config): …` that edits
+  `packages/robustness/vitest.config.ts` is a `feat` for **robustness** — that
+  is how `robustness@0.3.0` was published by a coverage-config change. Use
+  `chore:`/`test:`/`docs:` for anything inside `packages/{robustness,cli-kit,tui-kit,secret-store}/`
+  that does not change the package's published behaviour. The workflow's `paths`
+  now exclude test and tooling files as a second line of defence.
 - **Shared-tool-config packages are NEVER published.** `tsconfig`, `vitest-config`,
   and `biome-config` are per-monorepo shared config, meant to be customised for
   the repo they live in — not real dependencies. They stay `private: true`. A

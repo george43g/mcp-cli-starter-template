@@ -591,3 +591,34 @@ are ideas, not commitments; none is scheduled unless promoted into
     with the reason. The rule generalises to "every duplicate is either
     mechanised away or asserted equal" — never left to memory, because memory
     is what produced the drift.
+
+52. **semantic-release-monorepo reads the commit TYPE against every package
+    directory the commit touches — the scope in the subject is decoration.**
+    A commit titled `feat(vitest-config): make the coverage gates actually run`
+    edited `vitest.config.ts` in three published packages plus one test file.
+    The path filter matched `packages/robustness/**`, the type was `feat`, and
+    `@george43g/robustness@0.3.0` was published. Nothing in the subject line
+    said robustness; nothing needed to.
+
+    Two consequences, both worth internalising. First, use `chore:`/`test:` for
+    anything inside a published package's directory that does not change what
+    ships — the scope token will not save you. Second, the release then broke
+    `main` for everyone: robustness moved to 0.3.0 while `apps/mcpsync` and
+    `packages/tui-kit` still declared `^0.1.1 || ^0.2.0`, so
+    `check-publishable-manifests` failed and the chained cli-kit job stopped
+    before publishing. That failure was the system working: the guardrail
+    caught a stranded range before two more packages shipped against it.
+
+53. **A "widen the range" fix must predict one bump ahead, because the release
+    jobs are chained.** Each job runs the full verify matrix, and an earlier job
+    in the same run has already bumped its package's manifest. So cli-kit's
+    verify sees robustness at its NEW version. Widening only to the version
+    visible when you write the PR leaves the next job failing on a version that
+    did not exist yet when CI approved the change.
+
+    Also: `satisfiesLoose` in `check-publishable-manifests.mjs` returns `true`
+    for any range it does not model (`>=`, `*`, `x`). So "fixing" this with
+    `>=0.1.1 <1` would make the check pass by opting out of it — silence, not
+    safety. Explicit `|| ^0.x` clauses keep it verifiable. Teaching the checker
+    to model comparator ranges would let first-party siblings use an honest
+    `>=0.1.1 <1` and still be checked; that is the real fix.

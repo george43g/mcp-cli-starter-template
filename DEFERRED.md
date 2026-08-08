@@ -647,3 +647,30 @@ answers "which release", the stamp answers "which build".
 
 **Cost**: ~2h to swap the generated workflow + docs, most of it in `12-ci-release` and its
 `lib/` mirror. Zero risk to this repo's own publishing.
+
+---
+
+## 20. `check-publishable-manifests` cannot model comparator ranges, so the honest fix silences it
+
+**Status**: open. Found 2026-08-09 while fixing the fallout from an accidental `robustness@0.3.0`.
+
+Every first-party sibling range is an explicit caret chain — `apps/mcpsync` and `packages/tui-kit`
+currently declare `^0.1.1 || ^0.2.0 || ^0.3.0 || ^0.4.0` for `@george43g/robustness`. That chain
+grows by one clause on every minor, forever, because a caret on a `0.x` pins the MINOR.
+
+The natural fix is `>=0.1.1 <1` — these packages are released in lockstep from one repo, so "any
+0.x" is the true contract. But `satisfiesLoose()` in `scripts/check-publishable-manifests.mjs`
+returns `true` for any range it does not model (`>=`, `*`, `x`, `-`), deliberately, so as not to
+guess. So switching would make the check *pass by opting out of itself* — it would stop verifying
+the one thing it exists to verify.
+
+**Fix**: teach `satisfiesLoose` to evaluate comparator ranges (`>=`, `>`, `<`, `<=`, and
+hyphen/space-joined pairs), then switch first-party siblings to `>=<min> <1`. Roughly 30 lines plus
+tests, or adopt a real semver dependency for that script — it is currently dependency-free by
+design, which is worth preserving if the hand-rolled version stays small.
+
+**Trigger to action**: the next time a robustness minor forces another manual `|| ^0.x` edit. That
+edit is itself a commit inside published package directories, so it also risks tripping the
+release trigger — see field notes 52 and 53.
+
+**Cost**: ~1h including tests. Low risk: the check is advisory-at-worst today for these ranges.
