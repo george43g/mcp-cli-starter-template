@@ -11,16 +11,16 @@ completed work, local-only work, and deliberately deferred work.
 
 | Item | Current state |
 | --- | --- |
-| Branch | `main` |
-| `origin/main` | `4a322aa` — merge of PR #7 (pre-adoption sweep) atop the CI release bumps `c5777ff`; CI green |
-| Ahead/behind | in sync |
-| Local commits | none |
+| Branch | `fix/robustness-reconfigure` (off `main`) |
+| `origin/main` | `5ca5349` — merge of PR #8 (final ledger refresh) atop PR #7's merge `4a322aa`; CI green |
+| Ahead/behind | branch ahead of `main` by the DEFERRED #14 fix; `main` in sync with origin |
+| Local commits | the `fix(robustness):` singleton fix + this records commit, on the branch |
 | Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |
 | Remote check | fetched successfully on 2026-08-09 |
-| Working tree | clean |
+| Working tree | clean on the branch |
 | Product boundary | fresh scaffolds are pnpm-only |
 | Runtime boundary | source is still the scaffolder default; flipping to registry remains a deliberate, separate decision (the runtime IS now published) |
-| Registry state | `@george43g/robustness@0.1.1` published 2026-07-31 via CI OIDC (0.1.0 was the 2026-07-29 user-run bootstrap); tags `robustness-v0.1.0`/`-v0.1.1`. **2026-08-08:** `@george43g/cli-kit@0.1.0` + `@george43g/tui-kit@0.1.0` PUBLISHED (user-run bootstrap), tagged `cli-kit-v0.1.0`/`tui-kit-v0.1.0` at `cb21bea`, Trusted Publishers configured for all three packages — CI can release them from here. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
+| Registry state | Published: **`@george43g/robustness@0.2.0`**, **`@george43g/cli-kit@0.1.0`**, **`@george43g/tui-kit@0.1.1`**. Trail: robustness 0.1.0 was the 2026-07-29 user-run bootstrap, 0.1.1 the first CI OIDC release (2026-07-31), 0.2.0 cut by CI 2026-08-09; the kits' 0.1.0 were user-run bootstraps (2026-08-08, tagged at `cb21bea`) and tui-kit 0.1.1 was cut by CI. Trusted Publishers configured for all three — CI releases from here with no `NPM_TOKEN`. `robustness@0.2.1` (DEFERRED #14) cuts on merge of `fix/robustness-reconfigure`. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
 | mcpsync | `apps/mcpsync` landed on `main` (all 5 stages + audit + publish prep); npm publish DEFERRED — `release-packages.yml` mcpsync job is `workflow_dispatch`-only; interim install is the local global bin (`pnpm add -g <abs path to apps/mcpsync>`, installed 2026-08-03); MIGRATION COMPLETE 2026-08-03: opencode joined project scope, `~/dotfiles/mcp/` scripts and imsg `hot-deploy-ext.mjs` deleted — mcpsync is the single MCP config/deploy tool. **Guard (2026-08-05):** Desktop write-guard merged (`95f6c03`, PR #2). **Follow-ups merged 2026-08-05 (`9d90a2c`, PR #3):** 3 life-stack findings resolved (opencode project-scope help, backup prune-to-5 + gitignore, `${VAR}`→`{env:VAR}` in opencode command/args), `imsg-mcp`→`EQStack` doc rename. **Home decision REVERSED same session** → relocate mcpsync to life-stack after publishing the kits (see DEFERRED.md #10; generated-tools-import retracted for an optional `npx` shell-out). See [plans/2026-08-mcpsync-overview.md](plans/2026-08-mcpsync-overview.md) |
 
 Always re-run `git status --short --branch` before relying on this snapshot.
@@ -148,6 +148,28 @@ The retained imsg evaluation report is at
 `/tmp/imsg-scaffold-eval-final-20260727`. The evaluator removed its temporary
 clone because `--keep` was not supplied, and no real imsg monorepo conversion
 was performed.
+
+### Robustness singleton fix (2026-08-09)
+
+`@george43g/robustness@0.2.0` shipped with two P0 bugs whose shared root cause was
+that the singleton convenience API **replaced** its controller instead of
+reconfiguring it, silently discarding consumer state — `installShutdownHandlers(opts)`
+dropped every previously registered cleanup, and `installWatchdog(opts)` was
+ignored outright if anything had lazily built the watchdog first (which
+`tui-kit`'s `useDevStats` does during render).
+
+Both controllers gained `reconfigure()`; the convenience wrappers merge options
+in place. The load-bearing detail is that `dispose()` was never the problem —
+discarding the closure was — so `reconfigure` reuses `dispose()` only to relocate
+listeners onto a replacement host process. Design decisions, discoveries, and the
+validation trail are in
+[plans/2026-08-robustness-reconfigure.md](plans/2026-08-robustness-reconfigure.md).
+
+Two facts worth carrying forward: the repo's own TUI entries were **ordering-lucky,
+not immune** (they configure before `renderFullScreen`, so the nuked registry
+happened to be empty), and the bugs survived release because every existing
+robustness test exercised the `create*` factories while all the state management
+lived in the untested singleton wrappers (field-notes 38-39).
 
 ## Verification evidence
 
