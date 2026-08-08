@@ -85,6 +85,14 @@ const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
   "10-docs-readme/lib/docs/plans/README.md",
   "10-docs-readme/lib/HANDOFF.md",
   "10-docs-readme/lib/scripts/check-docs-links.mjs",
+  // RELEASE.md's "Reusable package release" section is a runbook for THIS
+  // repository's four-package npm OIDC pipeline — trusted-publisher identity,
+  // the bootstrap sequence, why provenance is off for a private repo. A
+  // generated tool ships a single-package, disabled-by-default `release.yml`
+  // and no `release-packages.yml`, so that section is actively wrong guidance
+  // downstream; the lib copy ends at "Monorepo multi-package release". Same
+  // rationale as the docs/PROJECT_STATE.md exemption above.
+  "10-docs-readme/lib/docs/RELEASE.md",
   // AGENTS.md at the repo root describes the SCAFFOLDER (the meta-tool);
   // the lib copy is the CLONED-TOOL's agent guide with example-repo placeholders.
   // Different content by design.

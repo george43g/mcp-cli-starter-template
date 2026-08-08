@@ -30,11 +30,10 @@ product-specific changes:
 - Native acceleration and its cross-language contract.
 - Project skills, documentation, environment policy, and release decisions.
 
-`cli-kit` and `tui-kit` are published as of 2026-08-08
-(`@george43g/cli-kit@0.1.0`, `@george43g/tui-kit@0.1.0`) — their consumer
-contracts were proven by `apps/mcpsync`, and an out-of-repo consumer needed
-them on npm. Generated tools still receive them as **source**, not as a
-registry dependency: `--runtime-source registry` covers `robustness` only.
+`cli-kit` and `tui-kit` also exist as published packages
+(`@george43g/cli-kit`, `@george43g/tui-kit`), for consumers outside a generated
+repo. That does **not** change what a generated tool receives: it still gets
+them as local source. `--runtime-source registry` covers `robustness` only.
 
 `mcp-kit` and `env-loader` remain local packages. They can become public later
 only after their consumer contracts are proven.

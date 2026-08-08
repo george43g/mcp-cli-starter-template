@@ -303,3 +303,28 @@ are ideas, not commitments; none is scheduled unless promoted into
     pushing it. If this recurs, the fix is a `scripts/check-workflows.mjs`; it
     needs a YAML parser dependency, which the repo does not currently carry, so
     it was judged not yet worth it for a failure CI reports in 15 seconds.
+29. **The golden drift test was cacheable on inputs it doesn't actually read —
+    so `pnpm verify` could go green on a tree CI rejects.** turbo's `test` task
+    declared `inputs: ["src/**", "tests/**", "vitest.config.ts"]`, all
+    package-relative, but `tests/golden.test.ts` reads across the entire repo
+    (`docs/**`, `packages/*/src/**`, `apps/example-repo-mcp/**`, root
+    `AGENTS.md`, `.github/**`) — that is its whole job. Editing a canonical file
+    with a `lib/` mirror therefore did not invalidate the scaffolder's test
+    cache, and turbo replayed a stale PASS locally while CI (cold cache) failed
+    on real drift. Fixed with `apps/scaffolder/turbo.json` (`extends: ["//"]`)
+    declaring the canonical roots via `$TURBO_ROOT$`. Verified by touching
+    `docs/ARCHITECTURE.md` and watching the task flip from "cache hit, replaying
+    logs" to "cache miss, executing". General lesson: **a test that reads
+    outside its package must declare those paths as inputs, or caching makes it
+    a liar** — and the cross-surface consistency tests are exactly the ones that
+    do this.
+30. **`docs/RELEASE.md` and `docs/SHARED_RUNTIME.md` have `lib/` mirrors; most
+    of `docs/` does.** `LIB_TO_CANONICAL` maps the whole directory
+    (`10-docs-readme/lib/docs` → `docs`), so any canonical doc with a lib twin
+    must be synced in the same change. Package *manifests* are the opposite —
+    `packages/cli-kit/package.json` has no mirror (generated manifests are
+    inline `PKG_JSON` templates in `m3-cli-kit.ts`/`m4-tui-kit.ts`), so those
+    diverge freely. Checking "is this file mirrored?" is per-file, not
+    per-directory-intuition. `RELEASE.md` was exempted rather than synced: its
+    new content is a runbook for this repo's own npm pipeline and is wrong
+    guidance downstream.
