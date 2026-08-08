@@ -622,3 +622,19 @@ are ideas, not commitments; none is scheduled unless promoted into
     safety. Explicit `|| ^0.x` clauses keep it verifiable. Teaching the checker
     to model comparator ranges would let first-party siblings use an honest
     `>=0.1.1 <1` and still be checked; that is the real fix.
+
+54. **Editing a manifest by hand desynchronises the lockfile, and `pnpm verify`
+    will not tell you.** Two `dependencies` ranges were widened with a JSON
+    rewrite instead of `pnpm pkg set` / `pnpm add`. Everything local passed —
+    lint, typecheck, the whole coverage gate, the stress harness — because a
+    plain `pnpm install` reconciles silently. CI runs
+    `pnpm install --frozen-lockfile`, which does not, and it failed on the very
+    first step: *"specifiers in the lockfile don't match specifiers in
+    package.json"*.
+
+    The repo already prefers canonical CLIs over file rewrites for exactly this
+    reason; the rule is easy to keep for `scripts` and `files` (where it does
+    not matter) and easy to forget for dependency ranges (where it does). After
+    any manifest edit that touches a dependency field, run `pnpm install` and
+    commit the lockfile — then confirm with `pnpm install --frozen-lockfile`,
+    which is the assertion CI actually makes and `verify` never does.
