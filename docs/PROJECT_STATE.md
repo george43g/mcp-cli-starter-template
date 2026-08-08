@@ -12,7 +12,7 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| `origin/main` | `fbe09e6` — merge of PR #15 (scaffolder install step); CI green |
+| `origin/main` | Last code-bearing merge: **PR #17** (secret-store wired to the HTTP bearer token); CI green. No literal SHA — a records file cannot name its own merge commit, so that field was always one merge stale; use `git log --oneline -1 origin/main`. |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |

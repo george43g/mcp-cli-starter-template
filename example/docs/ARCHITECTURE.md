@@ -19,6 +19,8 @@ packages/
   tui-kit/        — Ink theme system, hooks (useDevStats / useMouse /
                     useVimKeys), components (DevStatsPanel, StatusBar,
                     HelpBar, FullScreenInk), memoryCache, boundIfNeeded.
+  secret-store/   — read a secret from env → .env → OS keychain → an
+                    external manager (opt-in). No vault vendor code.
   shared-types/   — Zod schemas + Rust mirror + drift-check test.
   tsconfig/       — base.json + node.json + react.json.
   biome-config/   — single biome.json source for the whole workspace.
@@ -103,10 +105,30 @@ Every recognized env var is also accepted as a CLI flag via `@george43g/cli-kit/
 
 ## Secrets
 
-Nothing built in. Read them from the environment, populated by whatever secret
-manager you run (mise, direnv, a systemd unit, a CI secret store). Getting a
-secret *out of* a vault is a manager's job, not a tool's — keeping that boundary
-is what stops vault credentials leaking into every tool's dependency tree.
+`@george43g/secret-store` resolves a secret through one ordered chain, most
+explicit first:
+
+```
+env var  →  .env file  →  OS keychain  →  external command (opt-in)
+```
+
+It is a **mechanism, not a policy**: there is no vault code in it and there
+never will be. Getting a secret *out of* 1Password/Vault/AWS SM is a secret
+*manager's* job (mise, direnv, a systemd unit, a CI secret store) — keeping
+that boundary is what stops vault credentials leaking into every tool's
+dependency tree. The optional last link shells out to whatever manager you
+actually run, configured generically via `SECRET_STORE_EXEC_BIN` /
+`SECRET_STORE_EXEC_ARGS`, so the package stays vendor-neutral.
+
+Reads degrade to `null` rather than throwing; writes throw on platforms with no
+keychain backend (it is macOS-only today) instead of silently dropping the
+value. The keychain and exec links are skippable, so a container that only ever
+sees env vars pays nothing for them.
+
+The HTTP transport's bearer token is the worked example — see
+`apps/example-mcp/src/commands/http.ts`. `MCP_HTTP_TOKEN` in the
+environment still wins, so deployments that export it behave exactly as before;
+the rest of the chain only adds places to look when it is absent.
 
 ## Removing surfaces
 

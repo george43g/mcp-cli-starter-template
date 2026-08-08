@@ -50,6 +50,9 @@ importers:
       '@george43g/robustness':
         specifier: workspace:*
         version: link:../../packages/robustness
+      '@george43g/secret-store':
+        specifier: workspace:*
+        version: link:../../packages/secret-store
       '@george43g/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
