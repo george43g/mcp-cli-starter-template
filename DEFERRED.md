@@ -263,8 +263,10 @@ instead of replacing the controller. Registered cleanups, memory-sample subscrib
 accumulated watchdog state survive; options merge across repeated calls; both validate before
 mutating; the watchdog re-arms live timers only when a timer-shaping value changed and refuses to
 reconfigure once a kill is in flight. The singleton layer — previously untested, which is why
-these shipped — now has tests, and the three `docs/repros/` scripts pass. Ships as a patch
-(`0.2.1`, inside `tui-kit`'s `^0.1.1 || ^0.2.0` peer) cut by the release job on merge.
+these shipped — now has tests, and the three `docs/repros/` scripts pass. Released as
+**`@george43g/robustness@0.2.1`** (tag `robustness-v0.2.1`, cut by CI over OIDC from PR #9) and
+verified from a scratch project outside the workspace; `tui-kit@0.1.1` installs against it with no
+peer warnings, which is what the patch-not-minor decision was for.
 Full record: [`docs/plans/2026-08-robustness-reconfigure.md`](docs/plans/2026-08-robustness-reconfigure.md).
 
 <details><summary>original note</summary>
@@ -437,7 +439,7 @@ plan docs), or a **test fixture** (an arbitrary unmanaged-server name in
 Measured 2026-08-09 (previous snapshot was ~3 months stale and disagreed with
 HANDOFF.md and PROJECT_STATE.md three different ways — see field-note 35).
 
-- Published packages: `@george43g/robustness@0.2.0`, `@george43g/cli-kit@0.1.0`,
+- Published packages: `@george43g/robustness@0.2.1`, `@george43g/cli-kit@0.1.0`,
   `@george43g/tui-kit@0.1.1`. `@george43g/mcpsync` bootstrap-pending.
 - Workspaces: 14 (excludes `example/**`)
 - Scaffolder: 12 phases, 26 migrations, 12 test files (131 tests)

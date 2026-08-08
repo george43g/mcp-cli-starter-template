@@ -87,9 +87,20 @@ Observed, in order:
   after mirroring the four files into `04-robustness/lib/src/`.
 - `pnpm regen:example` → diff confined to the same four files under
   `example/packages/robustness/src/`, no unrelated churn.
-- `pnpm verify`, `pnpm test:no-native`, `pnpm stress`,
-  `pnpm check:robustness-package` — see the ledger in
-  [PROJECT_STATE.md](../PROJECT_STATE.md).
+- `pnpm verify` (15/15 test tasks, 11/11 build), `pnpm test:no-native` (7/7),
+  `pnpm stress` (13 passed, 0 failed), `pnpm check:robustness-package` — all green.
+- CI on PR #9 green on the real head SHA `fea1a4b`, both matrix legs plus drift
+  and readme-check. Note `gh pr checks --watch` returned **exit 0 having seen
+  only 2 of 4 checks** because the matrix jobs had not registered yet — the same
+  "green means nothing ran" shape as field-notes 29/37. Verified against the run
+  ID instead.
+- Post-merge: release job green, `@george43g/robustness@0.2.1` on npm, tag
+  `robustness-v0.2.1`, bump commit `f09767c` with `[skip ci]`. `cli-kit` and
+  `tui-kit` correctly unchanged (no commits touched them).
+- End-to-end from a scratch project outside the workspace: installed
+  `robustness@0.2.1` from the registry and both bugs stay fixed against the
+  published tarball. `tui-kit@0.1.1` then installs alongside it with **no peer
+  warnings** — the concrete payoff of choosing `fix:` over `feat:`.
 
 ## Recovery
 
