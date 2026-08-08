@@ -37,3 +37,35 @@ describe("packages/tsconfig/base.json — strict flags must stay enabled", () =>
     });
   }
 });
+
+/**
+ * The scaffolder ships its own copy of base.json as an inline string literal
+ * in m1-tsconfig-pkg.ts, because the template carries `{{scope}}` placeholders
+ * and so cannot be a byte-identical `lib/` mirror the way vitest-config's
+ * presets can. That makes it a hand-synced duplicate — and hand-synced
+ * duplicates drift. Adding `stripInternal` to the canonical file and not the
+ * template is exactly how it drifted once already.
+ *
+ * This compares the two after normalising the placeholder, so the golden rule
+ * is enforced for this file mechanically rather than by memory.
+ */
+describe("packages/tsconfig/base.json — the scaffolder's inline copy must match", () => {
+  it("emits the same compilerOptions a fresh scaffold would get", async () => {
+    const canonical = JSON.parse(readFileSync(BASE_TSCONFIG, "utf8")) as {
+      compilerOptions: Record<string, unknown>;
+    };
+
+    const source = readFileSync(
+      join(REPO_ROOT, "apps/scaffolder/src/phases/03-configs/m1-tsconfig-pkg.ts"),
+      "utf8",
+    );
+    const match = source.match(/const BASE_JSON = `([\s\S]*?)`;/);
+    expect(match, "BASE_JSON literal not found — did the migration get restructured?").toBeTruthy();
+
+    const templated = JSON.parse((match?.[1] ?? "").replace(/\{\{scope\}\}/g, "@george43g")) as {
+      compilerOptions: Record<string, unknown>;
+    };
+
+    expect(templated.compilerOptions).toEqual(canonical.compilerOptions);
+  });
+});
