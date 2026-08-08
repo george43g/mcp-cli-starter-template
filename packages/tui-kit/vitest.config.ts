@@ -13,12 +13,23 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * changes its double-dispatch behaviour, so tests written against today's
  * semantics would encode the bug.
  *
- * Raised 19 → 31 when MemoryCache gained tests (12 of them, taking that file
- * to 93%). This is what moving a floor is supposed to look like.
+ * Raised 19 → 31 → 32 as MemoryCache and palette gained tests.
+ *
+ * FUNCTIONS MOVED DOWN, 81 → 77, and that is not a regression. The v8 provider
+ * reports a file it never loaded as 0% statements but **100% functions** —
+ * `useMouse.ts`, `useVimKeys.ts` and `glyphs.ts` all show exactly that pattern
+ * in the per-file table. So an untested package carries an inflated function
+ * score, and the number FALLS toward the truth as files get tested: covering
+ * `palette.ts` replaced its optimistic 100% with its real 33%.
+ *
+ * Consequence worth knowing before trusting these: on a package with large
+ * untouched regions, the statements and lines figures are honest, while
+ * branches and functions are inflated and will drop before they rise. Recorded
+ * in DEFERRED #15.
  */
 export default withCoverageFloor(shared, {
-  statements: 31,
+  statements: 32,
   branches: 86,
-  functions: 81,
-  lines: 31,
+  functions: 77,
+  lines: 32,
 });

@@ -17,14 +17,22 @@
 import { useStdin } from "ink";
 import { useEffect } from "react";
 
-export interface MouseEvent {
+/**
+ * A parsed terminal mouse event.
+ *
+ * Named `TuiMouseEvent`, not `MouseEvent`: the DOM lib declares a global of
+ * that name, so exporting ours from the package barrel shadowed it for any
+ * consumer compiling with `lib: ["dom"]`. Their `MouseEvent` silently became
+ * this four-field terminal type.
+ */
+export interface TuiMouseEvent {
   type: "click" | "scroll-up" | "scroll-down";
   x: number;
   y: number;
   button: number;
 }
 
-export function useMouse(onEvent: (event: MouseEvent) => void) {
+export function useMouse(onEvent: (event: TuiMouseEvent) => void) {
   const { stdin, setRawMode } = useStdin();
 
   useEffect(() => {

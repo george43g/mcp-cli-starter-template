@@ -1,5 +1,5 @@
 export { type DevStats, useDevStats } from "./useDevStats.js";
-export { type MouseEvent, useMouse } from "./useMouse.js";
+export { type TuiMouseEvent, useMouse } from "./useMouse.js";
 export {
   type KeyState,
   type UseVimKeysOptions,

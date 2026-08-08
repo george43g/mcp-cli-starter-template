@@ -8,13 +8,14 @@ The package includes:
 
 - `renderFullScreen()` — mounts an Ink tree fullscreen and registers its
   unmount with `@george43g/robustness`'s shutdown registry, so the screen tears
-  down cleanly on SIGINT/SIGTERM. `fullscreen-ink` is lazy-imported.
+  down cleanly on SIGINT/SIGTERM. `fullscreen-ink` is lazy-imported. Returns a
+  `FullScreenHandle`, which is exported so you can name it.
 - `ThemeProvider` / `useTheme` / `makeTheme` / `derivePalette` — a whole
   palette derived from one accent color, plus `safe`/rich glyph presets and
   contrast helpers (`contrastRatio`, `relativeLuminance`, `tint`, `rotateHue`).
 - `useVimKeys` — j/k/gg/G/half-page navigation with a numeric count buffer,
   forwarding anything it doesn't handle to `onUnhandled`.
-- `useMouse` — opt-in mouse reporting.
+- `useMouse` — opt-in mouse reporting, with `TuiMouseEvent` for the payload.
 - `useDevStats` — reads watchdog state for a live diagnostics panel.
 - `StatusBar`, `HelpBar`, `DevStatsPanel` — presentational chrome.
 - `boundIfNeeded()` and `MemoryCache` — bounded-list eviction and a
@@ -76,3 +77,19 @@ the public surface; patch versions will not.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Upgrading from 0.1.x
+
+Three renames and one behaviour fix in 0.2.0:
+
+| Before | After | Why |
+|---|---|---|
+| `MouseEvent` | `TuiMouseEvent` | The DOM lib declares a global `MouseEvent`. Exporting ours from the barrel shadowed it for any consumer compiling with `lib: ["dom"]`, silently turning their `MouseEvent` into this four-field terminal type. |
+| `FullScreenInkProps` | *(removed)* | Nothing used it — `renderFullScreen` takes a `ReactNode` directly. |
+| *(not exported)* | `FullScreenHandle` | It is the return type of `renderFullScreen`, so consumers could not write the type of a value they already held. |
+
+`brighten(hex, stops)` now raises lightness **relative to the input colour**.
+It previously set an absolute lightness derived from `stops` alone, discarding
+the input entirely — so every colour in a palette brightened to the same value,
+and anything lighter than L=0.55 came back *darker*. If you compensated for
+that, remove the workaround.
