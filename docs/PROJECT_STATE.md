@@ -12,15 +12,15 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| `origin/main` | `f09767c` — the `chore(release): robustness 0.2.1 [skip ci]` bump atop `ada3094`, merge of PR #9 (DEFERRED #14); CI green |
+| `origin/main` | `fbe09e6` — merge of PR #15 (scaffolder install step); CI green |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |
 | Remote check | fetched successfully on 2026-08-09 |
 | Working tree | clean |
 | Product boundary | fresh scaffolds are pnpm-only |
-| Runtime boundary | source is still the scaffolder default; flipping to registry remains a deliberate, separate decision (the runtime IS now published) |
-| Registry state | Published: **`@george43g/robustness@0.2.1`**, **`@george43g/cli-kit@0.1.0`**, **`@george43g/tui-kit@0.1.1`**. Trail: robustness 0.1.0 was the 2026-07-29 user-run bootstrap, 0.1.1 the first CI OIDC release (2026-07-31), 0.2.0 cut by CI 2026-08-09, 0.2.1 (DEFERRED #14) cut by CI the same day; the kits' 0.1.0 were user-run bootstraps (2026-08-08, tagged at `cb21bea`) and tui-kit 0.1.1 was cut by CI. Trusted Publishers configured for all three — CI releases from here with no `NPM_TOKEN`. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
+| Runtime boundary | **Registry only, decided 2026-08-09.** `--runtime-source` removed; no source-vendoring mode exists. Generated repos depend on the four published packages with ranges derived from the real manifests at build time. |
+| Registry state | Published: **`@george43g/robustness@0.2.1`**, **`@george43g/cli-kit@0.1.0`**, **`@george43g/tui-kit@0.1.1`**, **`@george43g/secret-store@0.1.0`**. Trail: robustness 0.1.0 was the 2026-07-29 user-run bootstrap, 0.1.1 the first CI OIDC release (2026-07-31), 0.2.0 cut by CI 2026-08-09, 0.2.1 (DEFERRED #14) cut by CI the same day; the kits' 0.1.0 were user-run bootstraps (2026-08-08, tagged at `cb21bea`) and tui-kit 0.1.1 was cut by CI. Trusted Publishers configured for all three — CI releases from here with no `NPM_TOKEN`. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
 | mcpsync | `apps/mcpsync` landed on `main` (all 5 stages + audit + publish prep); npm publish DEFERRED — `release-packages.yml` mcpsync job is `workflow_dispatch`-only; interim install is the local global bin (`pnpm add -g <abs path to apps/mcpsync>`, installed 2026-08-03); MIGRATION COMPLETE 2026-08-03: opencode joined project scope, `~/dotfiles/mcp/` scripts and imsg `hot-deploy-ext.mjs` deleted — mcpsync is the single MCP config/deploy tool. **Guard (2026-08-05):** Desktop write-guard merged (`95f6c03`, PR #2). **Follow-ups merged 2026-08-05 (`9d90a2c`, PR #3):** 3 life-stack findings resolved (opencode project-scope help, backup prune-to-5 + gitignore, `${VAR}`→`{env:VAR}` in opencode command/args), `imsg-mcp`→`EQStack` doc rename. **Home decision REVERSED same session** → relocate mcpsync to life-stack after publishing the kits (see DEFERRED.md #10; generated-tools-import retracted for an optional `npx` shell-out). See [plans/2026-08-mcpsync-overview.md](plans/2026-08-mcpsync-overview.md) |
 
 Always re-run `git status --short --branch` before relying on this snapshot.

@@ -463,3 +463,42 @@ are ideas, not commitments; none is scheduled unless promoted into
     permission was caught (the runbook only mentioned publish). `--dry-run`
     prints the full config without writing it. `docs/RELEASE.md`'s "add the
     Trusted Publisher on npmjs.com" step is now a CLI call, not a browser trip.
+
+## 2026-08-09 — de-vendoring the published packages
+
+42. **A generator defined in two places will drift, and the second definition is
+    usually in CI.** `regen:example` exists as a `package.json` script (writes
+    into the repo) and, separately, as inline shell in `ci.yml`'s sync check
+    (writes into a tempdir). Adding the scaffolder's install step to the script
+    and not to the workflow made CI's tempdir grow a `pnpm-lock.yaml` the
+    committed snapshot does not have — so the check failed on a repo that was
+    genuinely in sync, and `pnpm regen:example` locally showed zero drift. The
+    workflow comment even said "the same way `pnpm regen:example` does locally",
+    which is the tell: a comment asserting two things match is a comment
+    admitting nothing enforces it.
+
+    Related and worth stating on its own: **`pnpm verify` does not run the
+    `example/` sync check** — it is CI-only. Twice in one session a change
+    passed a full local `verify` and failed CI on exactly this. When touching
+    the scaffolder, run the workflow's own steps (scaffold to a tempdir,
+    regenerate artifacts, prune, compare) rather than trusting `verify`.
+
+43. **Hand-written version ranges rot silently; derive them.** `runtime-source.ts`
+    pinned `PUBLIC_ROBUSTNESS_RANGE = "^0.1.0"` while robustness shipped 0.2.1.
+    A caret on a `0.x` pins the MINOR, so every repo scaffolded in registry mode
+    would have installed 0.1.x and missed the singleton fixes entirely — with no
+    error anywhere, because `^0.1.0` is a perfectly valid range that resolves.
+    The fix is not "remember to bump it": `build-templates.mjs` now reads the
+    real version from each `packages/*/package.json` carrying
+    `publishConfig.access: "public"` and emits `published-versions.ts`. Tests
+    assert against `rangeFor()` rather than a literal, so a hardcoded expectation
+    cannot re-introduce the drift it is supposed to catch.
+
+44. **Scope substitution must not rewrite published package names.** The
+    templating layer rewrote `@george43g` to the target's scope, with a sentinel
+    protecting `@george43g/robustness`. The sentinel covered exactly one name, so
+    a repo scaffolded under `@acme` would emit `"@acme/cli-kit"` — which resolves
+    to nothing on npm. A test actively asserted that rewrite as correct. The
+    shield now covers every published name, derived from the same generated list.
+    Rule: anything that exists on the registry keeps the scope it is published
+    under; only locally-generated packages take the target's.
