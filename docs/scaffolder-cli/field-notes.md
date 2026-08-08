@@ -386,3 +386,13 @@ are ideas, not commitments; none is scheduled unless promoted into
     must admit that package's current version. Note it compares against the
     LOCAL manifest version, so it only fires once CI's release bump commits are
     pulled — a stale checkout reports a false pass.
+37. **`pnpm verify` passing locally does NOT mean CI will install.** CI runs
+    `pnpm install --frozen-lockfile`; a local `pnpm install` is not frozen and
+    will happily reconcile a drifted lockfile in place. So editing any
+    dependency specifier and then running the full local verify reports green
+    while CI dies in ~20s with `ERR_PNPM_OUTDATED_LOCKFILE`. This is the same
+    shape as field-note 29 (turbo replaying a stale cached pass): the local
+    signal is weaker than the CI signal in a way that is invisible unless you
+    know to look. After ANY manifest edit, run
+    `pnpm install --lockfile-only && pnpm install --frozen-lockfile` before
+    pushing — the second command is the one that actually mirrors CI.

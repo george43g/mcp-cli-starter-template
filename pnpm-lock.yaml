@@ -106,7 +106,7 @@ importers:
   apps/mcpsync:
     dependencies:
       '@george43g/robustness':
-        specifier: ^0.1.1
+        specifier: ^0.1.1 || ^0.2.0
         version: 0.1.1
       cli-table3:
         specifier: ^0.6.5
