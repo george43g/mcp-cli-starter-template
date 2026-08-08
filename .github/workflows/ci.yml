@@ -45,6 +45,9 @@ jobs:
       - name: Docs integrity (links, agent-file symlinks, index coverage)
         run: pnpm check:docs
 
+      - name: Publish shape (repository metadata, no workspace: in published deps)
+        run: pnpm check:publishable-manifests
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -72,7 +75,9 @@ jobs:
         run: pnpm check:usage
 
       - name: Verify npm tarball is publishable
-        run: pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run
+        run: |
+          pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run
+          pnpm --filter @george43g/cli-kit --filter @george43g/tui-kit exec npm pack --dry-run
 
       - name: Scaffolder E2E smoke (init → install → test)
         # Asserts the scaffolder's actual OUTPUT is buildable + testable,

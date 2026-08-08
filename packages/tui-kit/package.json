@@ -1,10 +1,20 @@
 {
   "name": "@george43g/tui-kit",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Reusable Ink/React TUI building blocks: accent-driven theme system, useDevStats / useMouse / useVimKeys hooks, FullScreenInk wrapper integrated with the shutdown registry, DevStatsPanel, bounded-list eviction helper, and TTL+memory-pressure cache.",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/george43g/mcp-cli-starter-template.git",
+    "directory": "packages/tui-kit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -18,27 +28,49 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:watch": "vitest",
+    "pack:check": "pnpm build && npm pack --dry-run --json",
     "clean": "rm -rf dist coverage"
   },
   "dependencies": {
-    "@george43g/robustness": "workspace:*",
-    "fullscreen-ink": "^0.1.0",
+    "fullscreen-ink": "^0.1.0"
+  },
+  "peerDependencies": {
+    "@george43g/robustness": "^0.1.1",
     "ink": "^7.1.1",
     "react": "^19.2.8"
   },
   "devDependencies": {
-    "@george43g/tsconfig": "workspace:*",
-    "@george43g/vitest-config": "workspace:*",
+    "@george43g/robustness": "workspace:*",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/npm": "^13.1.5",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",
+    "ink": "^7.1.1",
     "ink-testing-library": "^4.0.0",
+    "react": "^19.2.8",
+    "semantic-release": "^24.2.0",
+    "semantic-release-monorepo": "^8.0.2",
     "typescript": "^5.7.0",
     "vitest": "^3.2.7"
-  }
+  },
+  "keywords": [
+    "tui",
+    "ink",
+    "react",
+    "terminal",
+    "theme",
+    "mcp"
+  ],
+  "author": "George G"
 }

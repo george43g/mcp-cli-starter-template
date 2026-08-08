@@ -86,18 +86,54 @@ Semantic-release in its default config publishes one root package. If you need t
 
 ## Reusable package release
 
-> This section describes the meta-repository's own upstream release process
-> for `@george43g/robustness`. A freshly generated tool has no
-> `release-packages.yml` and does not need this section — it only applies to
-> maintainers of the template repository itself.
+> This section describes the meta-repository's own upstream release process.
+> A freshly generated tool has no `release-packages.yml` and does not need this
+> section — it only applies to maintainers of the template repository itself.
 
-`@george43g/robustness` publishes via `.github/workflows/release-packages.yml`
-on every push to `main` that touches `packages/robustness/**` (also
-`workflow_dispatch`-able for a manual rerun). It runs the full verification
-matrix — `pnpm verify`, `pnpm test:no-native`, `pnpm check:robustness-package`
-(packs the tarball, installs it into a standalone Node 24 project, exercises
-the public exports), and `pnpm stress` — before semantic-release touches the
-registry. A red step blocks the release.
+Published packages: `@george43g/robustness`, `@george43g/cli-kit`,
+`@george43g/tui-kit`, and `@george43g/mcpsync` (the last still
+`workflow_dispatch`-only, pending its bootstrap).
+
+They publish via `.github/workflows/release-packages.yml` on every push to
+`main` touching one of their directories (also `workflow_dispatch`-able for a
+manual rerun). Each package gets its own job, and the jobs are **chained with
+`needs` rather than parallel**: every semantic-release run pushes a version-bump
+commit to `main`, and concurrent pushes race. Each job runs the verification
+matrix — `pnpm verify` (which includes `pnpm check:publishable-manifests`),
+plus `pnpm test:no-native`, `pnpm check:robustness-package`, and `pnpm stress`
+for robustness, or a `pack:check` for the others — before semantic-release
+touches the registry. A red step blocks the release.
+
+### Adding a package to the pipeline
+
+The order is forced by npm: a Trusted Publisher can only be configured for a
+package that already exists.
+
+1. Make the manifest publish-shaped — `version`, `publishConfig.access`,
+   `engines.node`, `repository` (`url` **case-exact**, plus `directory`),
+   `files` including `README.md` and `LICENSE`. `pnpm check:publishable-manifests`
+   enforces all of it; register the new directory in that script's `PUBLISHABLE`
+   set.
+2. Add a `.releaserc.json` with `extends: "semantic-release-monorepo"` and a
+   package-specific `tagFormat`, plus the semantic-release devDependencies.
+3. Bootstrap manually: `pnpm --filter <pkg> publish` (use `pnpm`, not `npm` —
+   only pnpm rewrites the `workspace:` protocol), then **tag the published
+   version** or semantic-release will start the next release at `1.0.0`.
+4. Add the Trusted Publisher on npmjs.com (user `george43g`, repo
+   `mcp-cli-starter-template`, workflow `release-packages.yml`, no environment).
+5. Add a job to `release-packages.yml` chained onto the previous one, and add
+   the package directory to the workflow's push `paths:`.
+
+### No build provenance
+
+Provenance is deliberately not requested. npm dropped it for **private** source
+repositories in 2023 and this repo is private; the registry also validates
+`repository.url` against the signing certificate case-sensitively. Requesting
+provenance in either situation returns `422` and fails the publish rather than
+degrading gracefully. Packages still carry npm's registry signature. If the
+repo ever goes public, re-enable by adding `NPM_CONFIG_PROVENANCE: "true"` to
+each release step's `env` — never to `publishConfig`, which would also break
+local publishes.
 
 Publishing uses npm OIDC trusted publishing — there is **no `NPM_TOKEN`
 secret**. The workflow requests `id-token: write` and npm exchanges that for

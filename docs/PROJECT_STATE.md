@@ -1,6 +1,6 @@
 # Project State and Continuation Handoff
 
-Last refreshed: 2026-08-05
+Last refreshed: 2026-08-08
 
 This document is the durable continuation record for
 `mcp-cli-starter-template`. It exists so a context compact, a restarted agent, or
@@ -12,7 +12,7 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| `origin/main` | `9d90a2c` — merge of PR #3 (mcpsync deferred-items) atop PR #2 `95f6c03`; CI green |
+| `origin/main` | `331fe27` — merge of PR #4 (mcpsync home reversal) atop PR #3 `9d90a2c`; CI green |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Push state | everything pushed; both feature branches deleted after merge |
@@ -20,7 +20,7 @@ completed work, local-only work, and deliberately deferred work.
 | Working tree | clean |
 | Product boundary | fresh scaffolds are pnpm-only |
 | Runtime boundary | source is the pre-publication default; registry mode is staged |
-| Registry state | `@george43g/robustness@0.1.1` published 2026-07-31 via CI OIDC (0.1.0 was the 2026-07-29 user-run bootstrap); tags `robustness-v0.1.0`/`-v0.1.1` |
+| Registry state | `@george43g/robustness@0.1.1` published 2026-07-31 via CI OIDC (0.1.0 was the 2026-07-29 user-run bootstrap); tags `robustness-v0.1.0`/`-v0.1.1`. **2026-08-08:** `cli-kit` + `tui-kit` prepared at `0.1.0` (manifests, READMEs, LICENSEs, `.releaserc.json`, chained release jobs, `check:publishable-manifests` guardrail) — the bootstrap `pnpm publish` + Trusted Publisher config are the user's manual steps, see HANDOFF.md item 0. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
 | mcpsync | `apps/mcpsync` landed on `main` (all 5 stages + audit + publish prep); npm publish DEFERRED — `release-packages.yml` mcpsync job is `workflow_dispatch`-only; interim install is the local global bin (`pnpm add -g <abs path to apps/mcpsync>`, installed 2026-08-03); MIGRATION COMPLETE 2026-08-03: opencode joined project scope, `~/dotfiles/mcp/` scripts and imsg `hot-deploy-ext.mjs` deleted — mcpsync is the single MCP config/deploy tool. **Guard (2026-08-05):** Desktop write-guard merged (`95f6c03`, PR #2). **Follow-ups merged 2026-08-05 (`9d90a2c`, PR #3):** 3 life-stack findings resolved (opencode project-scope help, backup prune-to-5 + gitignore, `${VAR}`→`{env:VAR}` in opencode command/args), `imsg-mcp`→`EQStack` doc rename. **Home decision REVERSED same session** → relocate mcpsync to life-stack after publishing the kits (see DEFERRED.md #10; generated-tools-import retracted for an optional `npx` shell-out). See [plans/2026-08-mcpsync-overview.md](plans/2026-08-mcpsync-overview.md) |
 
 Always re-run `git status --short --branch` before relying on this snapshot.
@@ -384,9 +384,14 @@ remediation:
 8. Flipping the default runtime source to `registry`. Do this only after
    `@george43g/robustness@0.1.0` is published and a clean consumer installs it
    from the public registry.
-9. Publishing additional shared packages. `mcp-kit`, `tui-kit`, `cli-kit`, and
-   `env-loader` remain generated source until their public contracts and
-   independent versioning value are proven.
+9. Publishing additional shared packages. DONE for the kits (2026-08-08):
+   `@george43g/cli-kit@0.1.0` and `@george43g/tui-kit@0.1.0` are published, so
+   `apps/mcpsync` can be relocated out of this repo (DEFERRED #10 step 1).
+   `mcp-kit` and `env-loader` remain generated source until their public
+   contracts and independent versioning value are proven. Note that publishing
+   the kits did NOT change what generated repos consume — they still get
+   vendored source; extending `--runtime-source registry` past `robustness` is
+   separate, deferred work.
 10. DONE (2026-08-01): the harness-engineering self-correcting layer now ships
     into generated repos. Added under `10-docs-readme/lib/` (auto-emitted by
     portPackage): docs index (`docs/README.md` + coverage gate), ExecPlan

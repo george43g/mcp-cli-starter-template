@@ -242,15 +242,24 @@ importers:
         specifier: ^1.1.0
         version: 1.1.1
     devDependencies:
-      '@george43g/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      '@george43g/vitest-config':
-        specifier: workspace:*
-        version: link:../vitest-config
+      '@semantic-release/changelog':
+        specifier: ^6.0.3
+        version: 6.0.3(semantic-release@24.2.9(typescript@5.9.3))
+      '@semantic-release/git':
+        specifier: ^10.0.1
+        version: 10.0.1(semantic-release@24.2.9(typescript@5.9.3))
+      '@semantic-release/npm':
+        specifier: ^13.1.5
+        version: 13.1.5(semantic-release@24.2.9(typescript@5.9.3))
       '@types/node':
         specifier: ^24.13.3
         version: 24.13.3
+      semantic-release:
+        specifier: ^24.2.0
+        version: 24.2.9(typescript@5.9.3)
+      semantic-release-monorepo:
+        specifier: ^8.0.2
+        version: 8.0.2(semantic-release@24.2.9(typescript@5.9.3))
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -372,34 +381,43 @@ importers:
 
   packages/tui-kit:
     dependencies:
-      '@george43g/robustness':
-        specifier: workspace:*
-        version: link:../robustness
       fullscreen-ink:
         specifier: ^0.1.0
         version: 0.1.0(@types/react@19.2.17)
-      ink:
-        specifier: ^7.1.1
-        version: 7.1.1(@types/react@19.2.17)(react@19.2.8)
-      react:
-        specifier: ^19.2.8
-        version: 19.2.8
     devDependencies:
-      '@george43g/tsconfig':
+      '@george43g/robustness':
         specifier: workspace:*
-        version: link:../tsconfig
-      '@george43g/vitest-config':
-        specifier: workspace:*
-        version: link:../vitest-config
+        version: link:../robustness
+      '@semantic-release/changelog':
+        specifier: ^6.0.3
+        version: 6.0.3(semantic-release@24.2.9(typescript@5.9.3))
+      '@semantic-release/git':
+        specifier: ^10.0.1
+        version: 10.0.1(semantic-release@24.2.9(typescript@5.9.3))
+      '@semantic-release/npm':
+        specifier: ^13.1.5
+        version: 13.1.5(semantic-release@24.2.9(typescript@5.9.3))
       '@types/node':
         specifier: ^24.13.3
         version: 24.13.3
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
+      ink:
+        specifier: ^7.1.1
+        version: 7.1.1(@types/react@19.2.17)(react@19.2.8)
       ink-testing-library:
         specifier: ^4.0.0
         version: 4.0.0(@types/react@19.2.17)
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+      semantic-release:
+        specifier: ^24.2.0
+        version: 24.2.9(typescript@5.9.3)
+      semantic-release-monorepo:
+        specifier: ^8.0.2
+        version: 8.0.2(semantic-release@24.2.9(typescript@5.9.3))
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

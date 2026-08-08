@@ -191,6 +191,11 @@ are ideas, not commitments; none is scheduled unless promoted into
     identical version isn't possible, and a churn bump purely to attach
     provenance wasn't warranted).
 
+    **SUPERSEDED 2026-08-08 — this "fix" was a latent release-breaker.** See
+    field-note 23: provenance is unavailable from a private source repo, and
+    requesting it fails the publish outright instead of degrading. The setting
+    was removed before it ever ran.
+
 ## 2026-08-01 — propagating the harness layer into generated repos
 
 20. **Shipping new files into a generated repo is nearly free; the golden test
@@ -231,3 +236,57 @@ are ideas, not commitments; none is scheduled unless promoted into
     and doesn't create the script, so referencing it there would be broken
     guidance (existing-repo retrofits that run phase 10 do get the harness but
     keep their own pre-existing `verify` — a separate, deferred retrofit gap).
+
+## 2026-08-08 — publishing the kits (cli-kit + tui-kit)
+
+23. **npm provenance needs a PUBLIC source repo, and it fails loudly.** Two
+    independent gates, both enforced registry-side as
+    `422 Unprocessable Entity` — not a silent skip, so the publish dies:
+    (a) GitHub dropped provenance from private source repositories in 2023, and
+    `mcp-cli-starter-template` is private; (b) the registry compares
+    `package.json`'s `repository.url` against the signing certificate's Source
+    Repository URI **case-sensitively** — a missing field or a casing mismatch
+    (`frontenddev-org` vs `FrontEndDev-org`, npm/cli#8036) is the single most
+    common failure. `repository.directory` is *not* part of that validation; it
+    is monorepo hygiene only. So field-note 19's `NPM_CONFIG_PROVENANCE=true`
+    would have broken the next robustness release on both counts. It was
+    removed; packages keep npm's registry signature. Re-enable only if the repo
+    goes public. Trusted publishing (OIDC) itself is unaffected by repo
+    visibility — `0.1.1` published fine from this private repo.
+24. **`npm publish` does not rewrite the `workspace:` protocol — only pnpm
+    does.** `pnpm pack`/`pnpm publish` run `createExportableManifest()`, which
+    substitutes real versions; plain `npm publish` ships the literal string and
+    consumers get `EUNSUPPORTEDPROTOCOL`. This matters because
+    `@semantic-release/npm` shells out to `npm publish`, so the CI path is the
+    unsafe one while the local bootstrap path is safe. Rule enforced by
+    `scripts/check-publishable-manifests.mjs`: no `workspace:` in a publishable
+    package's `dependencies`/`peerDependencies`. `devDependencies` are exempt —
+    consumers never install them. The rewrite table also bites: `workspace:*`
+    becomes an **exact pin**, `workspace:^` a caret range.
+25. **`link-workspace-packages` is off, so a published range and a `workspace:*`
+    range are DIFFERENT INSTANCES of the same package.** Verified in the tree:
+    `apps/mcpsync`'s `"@george43g/robustness": "^0.1.1"` resolves into
+    `node_modules/.pnpm/@george43g+robustness@0.1.1/`, while every `workspace:*`
+    dep symlinks to `packages/`. That is fine across processes and fatal within
+    one: had `tui-kit` taken a literal range, `apps/example-repo-mcp` would hold
+    two robustness copies and `FullScreenInk`'s `registerCleanup` would register
+    into a shutdown registry nobody drains — silently. The fix generalizes:
+    **a shared-singleton runtime belongs in `peerDependencies`** (range for
+    consumers) **plus a `workspace:*` devDependency** (one instance locally).
+    Same reasoning moved `react`/`ink` out of `tui-kit`'s `dependencies`.
+26. **pnpm 10.29.3's `publish` delegates to the host `npm`.** It packs to a temp
+    dir then spawns `npm publish <tarball>` with the environment intact, so OIDC
+    and `NPM_CONFIG_*` pass straight through and the host npm must be >= 11.5.1
+    (Node 24 bundles it). That makes `pnpm publish` a valid release path if the
+    workspace-protocol rewrite is ever needed in CI — wire it as
+    `@semantic-release/npm` with `npmPublish: false` plus `@semantic-release/exec`
+    running `pnpm publish --no-git-checks`. pnpm 11 replaces the delegation with
+    native `libnpmpublish`, so re-verify OIDC before upgrading.
+27. **A new scoped package still needs a manual bootstrap publish.** Trusted
+    publishing can only be configured for a package that already exists
+    (npm/cli#8544 is open), so each new package is: `pnpm publish` locally →
+    add the Trusted Publisher on npmjs.com → CI takes over. Then **tag the
+    bootstrapped version** (`cli-kit-v0.1.0`), or semantic-release finds no
+    prior tag and starts the next release at `1.0.0` (field-note 11).
+    `publishConfig.access: "public"` makes `--access public` unnecessary and
+    survives pnpm's pack.
