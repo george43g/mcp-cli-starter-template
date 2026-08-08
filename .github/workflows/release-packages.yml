@@ -2,6 +2,8 @@
 #   @george43g/robustness  (packages/robustness)
 #   @george43g/cli-kit     (packages/cli-kit)
 #   @george43g/tui-kit     (packages/tui-kit)
+#   @george43g/secret-store (packages/secret-store — env → .env → OS keychain →
+#                           exec. No vault vendor code; see DEFERRED.md #11)
 #   @george43g/mcpsync     (apps/mcpsync — bin `mcpsync`; still bundles the
 #                           kits into its dist, see DEFERRED.md #10)
 #
@@ -50,6 +52,7 @@ on:
       - "packages/robustness/**"
       - "packages/cli-kit/**"
       - "packages/tui-kit/**"
+      - "packages/secret-store/**"
   workflow_dispatch:
 
 permissions:
@@ -207,12 +210,50 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  secret-store:
+    runs-on: ubuntu-latest
+    needs: tui-kit
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.29.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Show npm version (OIDC trusted publishing needs >= 11.5.1)
+        run: npm --version
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify (lint + docs + manifests + typecheck + tests + build)
+        run: pnpm verify
+
+      - name: Pack sanity (dist + src + types + README/LICENSE in the tarball)
+        run: pnpm --filter @george43g/secret-store pack:check
+
+      - name: Release (semantic-release → npm via OIDC + GitHub release)
+        run: pnpm --filter @george43g/secret-store exec semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   mcpsync:
     # Publish deferred — manual dispatch only until the 0.1.0 bootstrap +
     # trusted-publisher config exist (see header).
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    needs: tui-kit
+    needs: secret-store
     steps:
       - name: Checkout
         uses: actions/checkout@v6

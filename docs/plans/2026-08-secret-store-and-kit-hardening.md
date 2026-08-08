@@ -1,6 +1,6 @@
 # ExecPlan: `secret-store`, package retirement, and kit hardening (#11 → #8 → #15 → #16)
 
-**Status**: in progress — PR 1 (`feat/secret-store`) landing the package.
+**Status**: in progress — package published; PR 2 wires the release job.
 
 This plan absorbs a design brief authored by a life-stack session (originally in that
 session's `/tmp` scratchpad, which does not survive). The design below is **settled** —
@@ -107,6 +107,21 @@ Recorded as stages land.
   `node scripts/check-publishable-manifests.mjs` → passed, 5 publishable packages.
   `npm pack --dry-run` → 28 files: `dist/**` + maps, all five `src/*.ts`, README, LICENSE;
   `src/index.test.ts` correctly excluded by the `!src/**/*.test.ts` negation.
+- PR 1 CI **failed first** on the `example/` sync check — `docs/ARCHITECTURE.md` is
+  byte-mirrored into the cloned tool's copy, so the edit changed generated output.
+  Reverted rather than regenerated: the annotation pointed at *this* repo's `DEFERRED.md`
+  and listed a package scaffolded repos do not yet receive. Note `pnpm verify` does **not**
+  run the `example/` sync check — it is CI-only, so a green local verify is not evidence
+  for this class of failure. Merged as `0c6ad8c` with all three checks green on `fd8d937`.
+- Bootstrap publish (owner-run): `@george43g/secret-store@0.1.0` live, tag
+  `secret-store-v0.1.0` on `0c6ad8c`. Trusted Publisher configured via
+  `npm trust github` (id `a31916ca-276a-476f-90d2-5364547fef2e`, permissions
+  publish + stage publish) — matching `robustness`'s existing config exactly.
+- Verified against the **published** package in a scratch project outside the workspace:
+  `varName({toolPrefix:"mcp",name:"http_token"})` → `MCP_HTTP_TOKEN` (confirms the PR 4
+  call-site design), env resolution returns `{value,source:"env"}`, `loadEnv` is re-exported
+  (so retiring `env-loader` loses nothing), and an absent secret returns `null` rather than
+  throwing. The registry 404'd for 210s first — see field-note 40.
 
 ## Recovery
 

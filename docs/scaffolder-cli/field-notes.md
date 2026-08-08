@@ -426,3 +426,40 @@ are ideas, not commitments; none is scheduled unless promoted into
     the lower one. Guard rule applied here: write the failing test first, and
     confirm a targeted mutation (disabling the timer re-arm) fails exactly one
     assertion — otherwise the test proves nothing.
+
+## 2026-08-09 — bootstrapping a fifth published package (secret-store)
+
+40. **A brand-new npm package 404s for ~3–5 minutes after a successful publish,
+    and the usual "is it live?" probes lie in both directions.** After
+    `pnpm publish` printed `+ @george43g/secret-store@0.1.0`, the packument
+    (`GET /@scope%2fname`) returned 404 for 210 seconds — so `npm view`,
+    `npm owner ls`, and `npm install` all failed, in a clean scratch dir, with a
+    hard 404. The cause is in the response headers: npm sits behind Cloudflare
+    with `cache-control: public, max-age=300`, so the *negative* response
+    produced by the first probe after publishing is edge-cached for five
+    minutes. Appending a cache-buster query returns 200 immediately.
+
+    What misleads: `npm access get status <pkg>` returned `public` and
+    `npm trust list <pkg>` resolved the package the whole time — those hit
+    different services that were never negative-cached. So "the access API sees
+    it" is NOT evidence the package is installable. Neither is a 200 on the
+    tarball URL (`/-/name-version.tgz`), which is served from a different path
+    and was live from the start; the tarball downloaded and unpacked correctly
+    while `npm install` of the same version still 404'd.
+
+    The only probe that means anything is `npm install <pkg>@<version>` in a
+    directory outside the workspace. Run it, and if it 404s within ~5 minutes of
+    the publish, wait rather than diagnose — re-publishing the same version is
+    forbidden anyway, and burning a version number on a caching artefact is the
+    expensive mistake here. Same shape as field-notes 29/34/37: a green signal
+    from something that never observed the thing it appears to certify.
+
+41. **`npm trust` replaces the manual npmjs.com Trusted Publisher step.**
+    `npm trust github <pkg> --file release-packages.yml --repo <owner>/<repo>
+    --allow-publish --allow-stage-publish` configures it from the CLI, and
+    `npm trust list <pkg>` verifies the result. Confirm against an already-
+    working package first — `npm trust list @george43g/robustness` prints the
+    exact shape to replicate, which is how the `--allow-stage-publish`
+    permission was caught (the runbook only mentioned publish). `--dry-run`
+    prints the full config without writing it. `docs/RELEASE.md`'s "add the
+    Trusted Publisher on npmjs.com" step is now a CLI call, not a browser trip.
