@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.3.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.2.1...robustness-v0.3.0) (2026-08-08)
+
+
+### Features
+
+* **vitest-config:** make the coverage gates actually run ([7b54070](https://github.com/george43g/mcp-cli-starter-template/commit/7b54070086699c2e8870fe67f97426f6ce41a271)), closes [#16a](https://github.com/george43g/mcp-cli-starter-template/issues/16a)
+
 # [@george43g/robustness-v0.2.1](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.2.0...robustness-v0.2.1) (2026-08-08)
 
 
