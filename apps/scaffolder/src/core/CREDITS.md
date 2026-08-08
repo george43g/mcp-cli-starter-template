@@ -64,7 +64,7 @@ plugin-ready (single interface).
 
 ### Topic-separator command naming (`foo:bar`)
 oclif uses `:` to encode topic hierarchies. Our migrate command uses `/`:
-`mcp-scaffold migrate 04-robustness/m1-robustness-pkg`. The `/` matches the
+`mcp-scaffold migrate 06-mcp-kit/m1-mcp-kit`. The `/` matches the
 phase + migration filesystem layout exactly — semantically clearer than
 `:` would be.
 

@@ -41,6 +41,7 @@ Feature opt-outs (init/apply/plan/migrate):
 --no-http                skip Streamable HTTP transport
 --no-rust-accel          skip napi-rs crate
 --no-semantic-release    skip semantic-release workflow
+--no-install             skip the package-manager install
 ```
 
 Runtime distribution:
@@ -51,6 +52,21 @@ Runtime distribution:
   they cannot drift behind what is actually published.
 - `tsconfig`, `vitest-config` and `biome-config` are still generated: they are
   per-monorepo config, deliberately never published.
+
+## Installing dependencies
+
+Because the runtime comes from the registry, a run that writes a manifest and
+stops would leave a repo that cannot build. So the last thing a run does is
+install — with the package manager it detected, once, in the target directory.
+
+It only runs when the run actually changed a dependency declaration
+(`package.json` or `pnpm-workspace.yaml`), and never during a dry run. Pass
+`--no-install` to skip it — useful for offline work, or when generating a
+reference tree you do not intend to build (this repo's own `regen:example` does
+exactly that).
+
+A failed install is a warning, not a failure. The generated files are already
+correct on disk; the warning tells you which command to re-run and where.
 
 Existing-target policy:
 

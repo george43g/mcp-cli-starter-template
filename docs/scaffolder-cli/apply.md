@@ -54,6 +54,10 @@ pnpm | npm | bun (fresh scaffolds require pnpm; existing repos auto-detect)
 
 Skip the Ink/React TUI surface
 
+### `--no-install`
+
+Skip the package-manager install after dependencies change
+
 ### `--no-http`
 
 Skip the Streamable HTTP transport
