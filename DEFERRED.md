@@ -405,18 +405,43 @@ these survived. See #15.
   `MemoryCache` now has 12 (2026-08-09), taking that file to 93%; the uncovered remainder is the
   `pressureMb` branch, which needs `installWatchdog()` and therefore a `_resetForTests()` the
   robustness barrel does not export.
-- **API-shape items that are a major bump after adoption**: `commander` is a plain dependency of
-  cli-kit while its types cross the public boundary (should be a peer, as ink/react correctly are in
-  tui-kit); `FullScreenHandle` is not exported so the return type of `renderFullScreen` is
-  unnameable; tui-kit's `export *` barrels widen the public API with no review, and currently export
-  `MouseEvent` (shadows the DOM global), dead `FullScreenInkProps`, and `brighten` (ignores the
-  input colour's lightness).
+- ~~**API-shape items that are a major bump after adoption**~~ **RESOLVED 2026-08-09** (cli-kit
+  0.2.0, tui-kit 0.2.0 — `feat:` minor, because a caret on a `0.x` pins the MINOR, so nobody on
+  `^0.1.0` auto-upgrades). `commander` is a peerDependency of cli-kit; `FullScreenHandle` is
+  exported; `MouseEvent` is renamed `TuiMouseEvent` (it shadowed the DOM global for any consumer
+  compiling with `lib: ["dom"]`); dead `FullScreenInkProps` is gone; `brighten` is fixed.
+
+  **Correction to the original finding**: it said tui-kit's `export *` barrels "widen the public
+  API with no review". Only `src/index.ts` uses `export *`, and it re-exports three *curated*
+  sub-barrels that are all explicit named exports — so nothing is ever auto-exported from a source
+  file. The hazard is narrower than recorded: adding to a sub-barrel widens the surface silently.
+
+  **`brighten` was a behaviour bug, not a shape nit.** It computed
+  `withL(hex, 0.5 + stops * 0.05)` — an absolute lightness from `stops` alone, discarding the
+  input colour. Every hover state in a palette came back the same lightness, and anything above
+  L=0.55 got *darker* from a function called "brighten". Now relative. Six tests pin it; three of
+  them fail against the old implementation.
 - **Module-load-time env reads** in `retry.ts`, `rate-limit.ts`, `logger.ts` defeat cli-kit's
   `applyEnvFromFlags` contract — 9 documented knobs silently ignore their CLI flags.
-- **`_resetForTests()` is in the published `.d.ts`** for logger/shutdown/watchdog (no
-  `stripInternal`), and `installShutdownHandlers` installs a process-wide `unhandledRejection`
-  handler that suppresses Node's default throw behaviour for the whole consumer app.
-- Source maps ship but `src` does not, so every "go to definition" lands on a missing file.
+- ~~**`_resetForTests()` is in the published `.d.ts`**~~ **RESOLVED** — `stripInternal: true` in
+  `packages/tsconfig/base.json`. All three already carried `@internal`, so nothing else was needed;
+  the runtime export remains, only the declaration is gone. **Still open**:
+  `installShutdownHandlers` installs a process-wide `unhandledRejection` handler that suppresses
+  Node's default throw behaviour for the whole consumer app.
+- ~~Source maps ship but `src` does not~~ **RESOLVED** — all four published packages now list
+  `src` in `files` with test files excluded. Verified via `npm pack --dry-run`: robustness 48
+  files / 9 src, cli-kit 38 / 7, tui-kit 88 / 17, secret-store 28 / 5, zero test files leaked.
+- **Module-load-time env reads** — ~~9 knobs silently ignore their CLI flags~~ **RESOLVED**. See
+  the entry above; `retry.ts`, `rate-limit.ts` and `logger.ts` now read on use.
+- **NEW, found while building the gate: v8 inflates function/branch coverage for files it never
+  loads.** An untouched file reports 0% statements but **100% functions** — visible in tui-kit's
+  per-file table for `useMouse.ts`, `useVimKeys.ts` and `glyphs.ts`. So on a package with large
+  untouched regions the statements and lines figures are honest while branches and functions are
+  optimistic, and they FALL toward the truth as files get tested: covering `palette.ts` replaced
+  its notional 100% functions with its real 33%, dropping the package total from 81.57% to 77.5%
+  *while coverage genuinely improved*. Consequence: a function/branch floor on a sparsely-tested
+  package will fight the very changes that improve it. Worth evaluating the istanbul provider,
+  which instruments ahead of time and does not have this blind spot.
 
 ---
 

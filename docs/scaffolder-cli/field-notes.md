@@ -561,3 +561,33 @@ are ideas, not commitments; none is scheduled unless promoted into
     pushed the scaffolder from 50.45% to 49.92%, and the temptation was to drop
     the floor by one point. The real cause turned out to be the denominator bug
     above, and finding it was worth more than the point.
+
+50. **v8 coverage scores a file it never loaded as 100% functions.** Untouched
+    files report 0% statements and 0% lines — but 100% branches and 100%
+    functions. tui-kit's per-file table showed it plainly for `useMouse.ts`,
+    `useVimKeys.ts` and `glyphs.ts`. The consequence is backwards: writing the
+    first test for a file *lowers* the package's reported function coverage,
+    because a notional 100% is replaced by the real number. Covering
+    `palette.ts` took tui-kit from 81.57% functions to 77.5% while coverage
+    genuinely improved.
+
+    So on a sparsely-tested package, statements and lines are trustworthy and
+    branches and functions are inflated. Ratchet the first two; treat the other
+    two as advisory until the package is broadly covered, or the gate will
+    reject exactly the changes that improve it. (`@vitest/coverage-istanbul`
+    instruments ahead of time and does not have this blind spot — untested for
+    this repo.)
+
+51. **A duplicate that CAN'T be mechanised still needs a test.** Field note 42
+    said a generator defined twice will drift; the fix there was to delete the
+    duplicate by turning it into a `lib/` mirror. That option does not always
+    exist: `packages/tsconfig/base.json` has a second copy inline in
+    `m1-tsconfig-pkg.ts` carrying `{{scope}}` placeholders, so it can never be
+    byte-identical to the canonical file and cannot be mirrored. It drifted
+    immediately — `stripInternal` went into the canonical and not the template.
+
+    When you cannot remove a duplicate, compare it in a test: parse both,
+    normalise the placeholder, assert deep equality. Nine lines, and it fails
+    with the reason. The rule generalises to "every duplicate is either
+    mechanised away or asserted equal" — never left to memory, because memory
+    is what produced the drift.
