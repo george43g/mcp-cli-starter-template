@@ -32,7 +32,7 @@ pnpm install
 pnpm --filter @george43g/mcp-scaffold build
 node apps/scaffolder/dist/cli.js init /path/to/new-tool --name foo
 
-# After @george43g/robustness@0.1.0 is published
+# Consume the published runtime instead of generating its source
 node apps/scaffolder/dist/cli.js init /path/to/new-tool --name foo --runtime-source registry
 ```
 

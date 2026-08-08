@@ -1,6 +1,6 @@
 # Project State and Continuation Handoff
 
-Last refreshed: 2026-08-08
+Last refreshed: 2026-08-09
 
 This document is the durable continuation record for
 `mcp-cli-starter-template`. It exists so a context compact, a restarted agent, or
@@ -12,14 +12,14 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| `origin/main` | `331fe27` — merge of PR #4 (mcpsync home reversal) atop PR #3 `9d90a2c`; CI green |
+| `origin/main` | `c5777ff` — CI release bumps (robustness 0.2.0, tui-kit 0.1.1) atop PR #6 `f054fd2`; CI green |
 | Ahead/behind | in sync |
 | Local commits | none |
-| Push state | everything pushed; both feature branches deleted after merge |
-| Remote check | fetched successfully on 2026-08-03 |
+| Push state | everything pushed; 4 merged branches remain on origin, safe to delete |
+| Remote check | fetched successfully on 2026-08-09 |
 | Working tree | clean |
 | Product boundary | fresh scaffolds are pnpm-only |
-| Runtime boundary | source is the pre-publication default; registry mode is staged |
+| Runtime boundary | source is still the scaffolder default; flipping to registry remains a deliberate, separate decision (the runtime IS now published) |
 | Registry state | `@george43g/robustness@0.1.1` published 2026-07-31 via CI OIDC (0.1.0 was the 2026-07-29 user-run bootstrap); tags `robustness-v0.1.0`/`-v0.1.1`. **2026-08-08:** `@george43g/cli-kit@0.1.0` + `@george43g/tui-kit@0.1.0` PUBLISHED (user-run bootstrap), tagged `cli-kit-v0.1.0`/`tui-kit-v0.1.0` at `cb21bea`, Trusted Publishers configured for all three packages — CI can release them from here. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
 | mcpsync | `apps/mcpsync` landed on `main` (all 5 stages + audit + publish prep); npm publish DEFERRED — `release-packages.yml` mcpsync job is `workflow_dispatch`-only; interim install is the local global bin (`pnpm add -g <abs path to apps/mcpsync>`, installed 2026-08-03); MIGRATION COMPLETE 2026-08-03: opencode joined project scope, `~/dotfiles/mcp/` scripts and imsg `hot-deploy-ext.mjs` deleted — mcpsync is the single MCP config/deploy tool. **Guard (2026-08-05):** Desktop write-guard merged (`95f6c03`, PR #2). **Follow-ups merged 2026-08-05 (`9d90a2c`, PR #3):** 3 life-stack findings resolved (opencode project-scope help, backup prune-to-5 + gitignore, `${VAR}`→`{env:VAR}` in opencode command/args), `imsg-mcp`→`EQStack` doc rename. **Home decision REVERSED same session** → relocate mcpsync to life-stack after publishing the kits (see DEFERRED.md #10; generated-tools-import retracted for an optional `npx` shell-out). See [plans/2026-08-mcpsync-overview.md](plans/2026-08-mcpsync-overview.md) |
 
@@ -93,7 +93,8 @@ The 2026-07-27 implementation pass built on `8e6fce9` and was committed on
 - `@george43g/robustness` is prepared as a public `0.1.0` package with a
   standalone packed-consumer smoke and a manual release workflow.
 - Fresh generation supports `--runtime-source source|registry`. Source remains
-  the default because `0.1.0` has not been published. Registry mode is tested by
+  the default (a deliberate choice, not a blocker — the runtime IS published as
+  of 2026-07-31). Registry mode is tested by
   packing the local package and installing it into an isolated generated
   consumer.
 - Turbo was advanced from 2.10.5 to the compatible 2.10.7 patch.

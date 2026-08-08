@@ -32,6 +32,7 @@ fails CI when canonical and `lib/` diverge.
 | [`apps/scaffolder/AGENTS.md`](apps/scaffolder/AGENTS.md) | Working on the scaffolder: architecture, adding migrations/phases, drift rules, troubleshooting |
 | [`docs/README.md`](docs/README.md) | Index of all docs — repo-facing vs golden-output, with read-when guidance |
 | [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) | Continuation state, verification evidence, deferred work |
+| [`DEFERRED.md`](DEFERRED.md) | The backlog: what was consciously not done, why, and the trigger to act. Read before proposing new work |
 | [`docs/plans/README.md`](docs/plans/README.md) | ExecPlan convention for multi-hour or risky work |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Golden-output architecture (the generated tool's four surfaces) |
 | [`docs/scaffolder-cli/retrofit-findings.md`](docs/scaffolder-cli/retrofit-findings.md) | Retrofit safety invariants — preserve these |
@@ -91,6 +92,13 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
 - **No emojis in source code unless the user requests.** Comments stay terse and "why"-focused.
 - **Prefer canonical CLIs** (`pnpm init`, `pnpm pkg set`, `git init`) over file-copying for setup steps. Templates live in `lib/`; raw fs writes for small literals.
 - **Conventional Commits** drive semver via the (disabled-by-default) `release.yml` workflow.
+- **Shared-tool-config packages are NEVER published.** `tsconfig`, `vitest-config`,
+  and `biome-config` are per-monorepo shared config, meant to be customised for
+  the repo they live in — not real dependencies. They stay `private: true`. A
+  package that moves to another monorepo depends on *that* repo's equivalent
+  (creating one if absent), it does not carry these along. Publishable packages
+  are listed in `scripts/check-publishable-manifests.mjs`, which fails the build
+  if anything else declares `publishConfig.access: "public"`.
 
 ## Validation & CI
 

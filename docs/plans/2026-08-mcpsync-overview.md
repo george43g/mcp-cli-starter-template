@@ -280,11 +280,18 @@ next stage doc and resumes.
   list in the [Stage 5 doc](2026-08-mcpsync-5-secrets-and-project-scope.md) log.
 
 - 2026-08-03: **Publish prep (user-authorized).** Decisions: mcpsync publishes as
-  `@george43g/mcpsync` from this repo; the unpublished kits (cli-kit/tui-kit) are
+  `@george43g/mcpsync` from this repo; the then-unpublished kits (cli-kit/tui-kit) are
   BUNDLED into its dist (moved to devDependencies — consumers never install them;
-  PROJECT_STATE #9 "kits stay unpublished" holds); `@george43g/robustness` becomes a
-  real `^0.1.1` npm dep; the kits' runtime deps (cli-table3, picocolors) become
-  direct deps. Version 0.1.0 for the one-time manual bootstrap publish (trusted
+  PROJECT_STATE #9 "kits stay unpublished" held **at the time**);
+  `@george43g/robustness` becomes a real `^0.1.1` npm dep; the kits' runtime deps
+  (cli-table3, picocolors) become direct deps.
+
+  > **SUPERSEDED 2026-08-09.** Both premises above have flipped.
+  > `@george43g/cli-kit@0.1.0` and `@george43g/tui-kit@0.1.1` are published, and
+  > PROJECT_STATE #9 now records that explicitly. The Vite bundling is therefore
+  > legacy rather than necessary — un-bundling is DEFERRED #10 step 2, to be done
+  > with the relocation. The robustness range was also widened to
+  > `^0.1.1 || ^0.2.0` (a caret on a 0.x pins the minor; see field-note 34). Version 0.1.0 for the one-time manual bootstrap publish (trusted
   publishing needs the package to exist — robustness-0.1.0 pattern), then
   `release-packages.yml` (new `mcpsync` job, serialized `needs: robustness`, checks
   out `main` tip to avoid bump-commit races) takes over via OIDC. Types via

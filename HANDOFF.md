@@ -1,6 +1,6 @@
 # Current Handoff
 
-Last refreshed: 2026-08-08 (Australia/Melbourne)
+Last refreshed: 2026-08-09 (Australia/Melbourne)
 
 This is the front door for a fresh agent. Read
 [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) for the exhaustive history,
@@ -12,14 +12,14 @@ verification matrix, dependency decisions, and deferred work.
 | --- | --- |
 | Repository | `/Users/george/repos/mcp-cli-starter-template` |
 | Branch | `main` |
-| `origin/main` | `331fe27` — merge of PR #4 (mcpsync home reversal) atop PR #3 `9d90a2c`; CI green |
+| `origin/main` | `c5777ff` — CI release bumps (robustness 0.2.0, tui-kit 0.1.1) atop PR #6 `f054fd2`; CI green |
 | Ahead/behind | in sync |
 | Local commits | none |
-| Remote check | fetch + push succeeded on 2026-08-03 |
+| Remote check | fetch + push succeeded on 2026-08-09 |
 | Working tree | clean |
-| Push state | everything pushed; `feat/mcpsync-tool` + `feat/scaffold-harness-layer` deleted after merge |
+| Push state | everything pushed. NOTE: 4 merged branches still exist on origin (`docs/mcpsync-home-reversal`, `feat/publish-kits`, `fix/mcpsync-deferred-items`, `fix/robustness-peer-range`) — safe to delete |
 | mcpsync | `apps/mcpsync` landed (5 stages + audit + publish prep); npm publish DEFERRED — release job is `workflow_dispatch`-only; local global bin installed via `pnpm add -g`. Desktop write-guard merged (`95f6c03`, PR #2). Round 2026-08-05 merged (`9d90a2c`, PR #3): 3 life-stack findings resolved + `imsg-mcp`→`EQStack` doc rename. Home decision REVERSED same session → relocate mcpsync to life-stack after publishing the kits (DEFERRED #10; import-as-library retracted for an optional `npx` shell-out). (see [docs/plans/2026-08-mcpsync-overview.md](docs/plans/2026-08-mcpsync-overview.md)) |
-| Package state | Published: `@george43g/robustness@0.1.1` (2026-07-31, CI OIDC; 0.1.0 was the earlier user-run bootstrap), **`@george43g/cli-kit@0.1.0` + `@george43g/tui-kit@0.1.0` (2026-08-08, user-run bootstrap)**. Tags: `robustness-v0.1.0`/`-v0.1.1`, `cli-kit-v0.1.0`, `tui-kit-v0.1.0`. Trusted Publishers configured for all three. `@george43g/mcpsync` remains bootstrap-pending (its job is still `workflow_dispatch`-only). |
+| Package state | Published: **`@george43g/robustness@0.2.0`**, **`@george43g/cli-kit@0.1.0`**, **`@george43g/tui-kit@0.1.1`**. The 0.1.0 kit bootstraps were user-run (2026-08-08); robustness 0.2.0 and tui-kit 0.1.1 were cut by CI over OIDC (2026-08-09) — the pipeline is proven for machine-driven releases. Trusted Publishers configured for all three. `@george43g/mcpsync` remains bootstrap-pending (its job is still `workflow_dispatch`-only). |
 | Release pipeline | `.github/workflows/release-packages.yml` PROVEN end-to-end: full verify matrix → npm OIDC trusted publishing (no `NPM_TOKEN`) → tag + CHANGELOG + GitHub release → `[skip ci]` bump commit (loop-safe, confirmed no re-trigger). Now four chained jobs (robustness → cli-kit → tui-kit → mcpsync), serialized because each pushes a bump commit. **Build provenance is deliberately OFF** — it requires a public source repo and this one is private; requesting it 422s the publish (field-note 23, which supersedes 19). |
 | Runtime default | `source`; registry mode is staged but not the default |
 
@@ -69,19 +69,18 @@ Preserve the invariants in
 
 ### Shared robustness runtime
 
-- `packages/robustness` is prepared as public
-  `@george43g/robustness@0.1.0`.
 - It exposes configurable `createWatchdog()` and
   `createShutdownController()` factories while preserving convenience APIs.
 - A packed standalone-consumer smoke and registry-mode generated-consumer smoke
   both pass.
-- `.github/workflows/release-packages.yml` is manual and defaults to
-  `publish=false`.
 - Fresh generation supports `--runtime-source source|registry`.
 
-Do not publish or flip the default to registry as part of an unrelated Git
-operation. Publication, clean public-registry verification, and the default
-flip are three separate decisions.
+> SUPERSEDED 2026-08-09. This section described the pre-publication world.
+> `@george43g/robustness` is at **0.2.0**, `cli-kit` at **0.1.0**, `tui-kit` at
+> **0.1.1**, all on npm; `release-packages.yml` has a live `push` trigger and is
+> NOT manual (only the mcpsync job is dispatch-gated) and has no `publish`
+> input. Flipping the scaffolder's default runtime source to `registry` is still
+> a separate, deliberate decision — that part stands.
 
 ### CLI artifacts and native scaffolders
 
@@ -117,13 +116,9 @@ The safe profile changed no tracked files, generated only `RETROFIT.md` and
 `skills/imsg/SKILL.md`, and passed install, lint, typecheck, test, and build.
 Legacy preserve/force runs demonstrated why target-profile gating was needed.
 
-The retained report bundle still exists at:
-
-```text
-/tmp/imsg-scaffold-eval-final-20260727
-```
-
-It contains `evaluation.json`, logs, and an empty safe-profile patch. The
+The retained report bundle was at `/tmp/imsg-scaffold-eval-final-20260727`.
+**It no longer exists** (verified 2026-08-09) — `/tmp` was cleared. This is also
+why `AGENTS.md` mandates checked-in ExecPlans rather than external files. The
 temporary clone was deleted because `--keep` was not used. No imsg-specific
 monorepo conversion exists; use the tracked `example/` directory as the full
 fresh-scaffold reference.

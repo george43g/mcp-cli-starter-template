@@ -14,6 +14,12 @@ Items intentionally not done in the current shipping series. Each has a "trigger
 
 ## 1. Scaffolder's own usage(1) freshness gate in CI
 
+**Status**: ✅ DONE (confirmed 2026-08-09). `apps/scaffolder/scripts/check-usage-freshness.mjs`
+exists, root `package.json` chains `check:usage`, `ci.yml` runs it, and
+`.github/workflows/cli-artifacts-drift.yml` is a second gate. Item closed.
+
+<details><summary>original note</summary>
+
 **Status**: missing — only the SCAFFOLDED output has a gate.
 
 **Why deferred**: the scaffolded output's freshness gate (`apps/example-repo-mcp/scripts/check-usage-freshness.mjs` + the CI step that runs it) is the user-facing value. The scaffolder repo itself uses `usage` via `mise run completions` from `apps/scaffolder/mise.toml` but ships its checked-in artifacts at `completions/scaffolder/` + `docs/scaffolder-cli/` + `man/mcp-scaffold.1` without a CI gate.
@@ -21,6 +27,10 @@ Items intentionally not done in the current shipping series. Each has a "trigger
 **Trigger to action**: if drift between `apps/scaffolder/.usage.kdl` and the checked-in scaffolder completions lands on `main` (would mean someone edited the spec without regen — visible in PR review for now).
 
 **Cost**: ~30 minutes. Copy the cloned-tool's `check-usage-freshness.mjs` pattern into `apps/scaffolder/scripts/`, point it at `apps/scaffolder/.usage.kdl`, wire into `.github/workflows/ci.yml` before the lint step.
+
+---
+
+</details>
 
 ---
 
@@ -145,22 +155,30 @@ generated tool. `npx` works regardless of where the source lives; it only needs 
 
 **Sequenced work**:
 1. ✅ **DONE 2026-08-08** — `@george43g/cli-kit@0.1.0` and `@george43g/tui-kit@0.1.0` are
-   published, so mcpsync's `workspace:*` devDeps can resolve from npm.
-   `@george43g/robustness@^0.1.1` was already there.
-   **Still undecided**: `@george43g/tsconfig` + `@george43g/vitest-config` (publish, or vendor
-   at the new home). They stayed private here — cli-kit/tui-kit simply dropped the devDeps and
-   resolve both via the root workspace hoist, the way `packages/robustness` always has. That
-   trick does NOT survive the move: life-stack has no such hoist, so this is a real decision at
-   relocation time.
+   published, so mcpsync's `workspace:*` devDeps resolve from npm.
+   `@george43g/robustness` is on npm too (now `0.2.0`).
+   **The tsconfig/vitest-config question is CLOSED, and the answer is "neither".** Shared-tool
+   config packages are never published (see the rule in `AGENTS.md`) — a relocated package
+   depends on the destination monorepo's own equivalent. Verified: life-stack already ships
+   `packages/{tsconfig,vitest-config,biome-config}` under the **same** `@george43g/*` names and
+   all private, so mcpsync's `"@george43g/tsconfig": "workspace:*"` devDeps resolve there with
+   **zero manifest changes**. (EQStack uses `@eqstack/*` for its own — same pattern, its own
+   scope.) No work required for this sub-step.
 2. Move `apps/mcpsync` to life-stack (sibling of `opkeep`); rewrite `workspace:*` → the
    published versions; publish `@george43g/mcpsync` from there. It can also stop bundling the
    kits via Vite (`apps/mcpsync/vite.config.ts` externals) and take them as real deps —
    optional, and it means moving `cli-table3`/`picocolors`/`ink`/`react` back out of its own
    `dependencies`.
-3. Remove mcpsync from this repo: its release job in `release-packages.yml` (now chained after
-   `tui-kit`), its entry in `PUBLISHABLE` in `scripts/check-publishable-manifests.mjs`, its
-   meta-suite tests, and the AGENTS.md `.mcp.json`/`opencode.json` sync note that points at the
-   local bin.
+3. Remove mcpsync from this repo. Full checklist (the earlier version of this list was
+   incomplete — whoever executes the move would have hit the gaps mid-flight):
+   - its release job in `release-packages.yml` (currently chained after `tui-kit` — re-chain
+     `tui-kit` to whatever follows, or it becomes the tail)
+   - its entry in `PUBLISHABLE` in `scripts/check-publishable-manifests.mjs`
+   - its meta-suite tests (it contributes 17 test files to `pnpm test`)
+   - the whole **"MCP servers (project scope)" section of `AGENTS.md`**, which instructs agents to
+     run the local `mcpsync` bin after editing `.mcp.json` — that workflow leaves with it
+   - `apps/mcpsync/vite.config.ts`'s bundling rationale (moot once relocated; see step 2)
+   - its `LICENSE` (added 2026-08-08 to satisfy the manifest guardrail)
 
 **Trigger to action**: unblocked — step 1 is done. Remaining cost is the move itself.
 
@@ -169,46 +187,57 @@ release wiring at the new home).
 
 ---
 
-## 11. `packages/secrets` — confirm it's a depended-upon resolution lib, or retire it
+## 11. `packages/secrets` (and `packages/env-loader`) — retire or justify
 
-**Status**: unverified. `packages/secrets` is the in-process `env-JSON → 1Password → file`
-*resolution chain* a generated tool imports to look up its own `${VAR}` secrets at runtime — a
-different layer from `opkeep` (life-stack's standalone secret-*provisioning* CLI). On their
-face they're complementary, not duplicative. But by the inclusion rule, `packages/secrets`
-only earns its place if generated tools actually import it and don't each customize secret
-handling (same category as `robustness`).
+**Status**: ✅ **VERIFIED 2026-08-09 — the answer is "retire", pending your call on how.**
+The stated test was "do generated tools actually import it?" A repo-wide grep for
+`@george43g/secrets` / `getSecret` / `resolveSecret` finds **zero importers** — not in
+`apps/example-repo-mcp`, not in the tracked `example/` output, nowhere but the package's own
+`src/index.ts` and prose. By the inclusion rule (a thing belongs here iff it is scaffolding
+machinery, or framework code generated tools depend on long-term) `packages/secrets` fails
+outright.
 
-**Preliminary signal (2026-08-05)**: a grep found NO `import` of `@george43g/secrets` in the
-example MCP app's source — only the package itself (mirrored into `example/`) and a convention
-mention in a skill doc. Also, mcpsync rolled its *own* 0600 vault
-(`~/.mcpsync/credentials.json`, ported from imsg-mcp) rather than using `packages/secrets` —
-weak evidence that secret handling gets customized per tool.
+**`packages/env-loader` has the identical profile** and was not previously part of this item:
+zero importers, including in `example/`. Only descriptive prose in `AGENTS.md`,
+`docs/ARCHITECTURE.md` and the example's mirrors. Both ship into every scaffolded repo as dead
+weight.
 
-**The test to settle it**: does the generated `example` tool (and any real consumer) actually
-`import` `@george43g/secrets`? If yes → framework code, it stays (mcpsync's own vault is then
-just provenance). If nothing consumes it → dead weight; make it a copied stub or move it out.
-Either way the boundary between "in-process resolution lib" and "opkeep the CLI" isn't written
-down anywhere — writing it down is the real deliverable.
+**Layer note (still true)**: `packages/secrets` is an in-process `env-JSON → 1Password → file`
+*resolution* chain, a different layer from `opkeep` (life-stack's standalone secret-*provisioning*
+CLI). They are complementary in principle. The problem is not overlap — it is that nothing
+consumes it.
 
-**Trigger to action**: alongside the mcpsync relocation, or whenever the secrets layer is next
-touched.
-
-**Cost**: ~1–2 hrs to trace consumers + document the layer boundary.
+**Options**: (a) delete both packages and their scaffolder phases; (b) keep them but wire the
+example app to actually use them, proving the contract; (c) keep as opt-in migrations the
+scaffolder does not run by default. Note DEFERRED #8 (Apple Keychain for `packages/secrets`) is
+moot under (a).
 
 ---
 
 ## 12. Repo / directory rename — it has outgrown "template + scaffolder"
 
-**Status**: idea. The repo is no longer just a static template or a scaffolder — it's a
-framework (published kits + `robustness`) + a schematics-style generator/migrator + a golden
-reference implementation, all in one monorepo. The name `mcp-cli-starter-template` undersells
-that.
+**Status**: idea, unblocked earlier than written. It was gated on #10 and #11 stabilising; both
+are now actionable, so this can move sooner.
 
-**Trigger to action**: once the inclusion-rule cleanup (mcpsync relocated, secrets settled)
-stabilizes what actually lives here, so the new name reflects what stays.
+**What this repo actually is** (recording the framing so it survives a compact — it previously
+lived only in a chat transcript, which this repo's own rules forbid): three things at once —
+a **framework/SDK** (the published kits + `robustness`), a **schematics-style generator and
+migrator** (`mcp-scaffold`: `init` / `apply` / `migrate` / `add-mcp-app`), and a **golden
+reference implementation** (`apps/example-repo-mcp` + the tracked `example/` output, which IS the
+thing being scaffolded). The jargon: "scaffolder/generator" and "schematics/migrations" are
+Angular/Nx vocabulary; "golden master / reference implementation" covers `example/`.
+Closest analogues: Nx, Angular CLI + Schematics + `ng update`, RedwoodJS/Blitz, Copier,
+`create-t3-turbo`.
 
-**Cost**: low mechanically (rename repo + dir + update the symlinked agent files + docs
-links), but coordinate with published-package names and the git remote.
+**Naming directions**: `create-mcp` if the generator leads (matches the `create-*` convention
+users already expect from `npm create`); `mcp-forge` or `mcp-stack` if the framework leads.
+The current name undersells it — "template" implies a static copy, which is the one thing it
+is not.
+
+**Cost**: the rename itself is cheap (repo + directory); the cost is every absolute reference —
+`repository.url` in four publishable manifests (which `check-publishable-manifests.mjs` pins
+case-exactly), the Trusted Publisher config on npmjs.com for three packages, and the golden
+`lib/` mirrors. Do it in one pass, not incrementally.
 
 ---
 
@@ -223,6 +252,114 @@ CI already reports the failure within 15 seconds.
 **Trigger to action**: if this bites a second time, or if a YAML parser arrives in the
 dependency graph for another reason. Would also be a natural home for asserting release-job
 invariants (every publishable package has a job; jobs stay chained via `needs`).
+
+---
+
+## 14. `@george43g/robustness` — two verified singleton bugs (P0, published)
+
+**Status**: VERIFIED, not fixed. Both are in `robustness@0.2.0`, live on npm. Found by audit
+2026-08-09, independently reproduced twice, and independently re-found by the EQStack parity
+audit (its D1/D5). Repro scripts are checked in at `docs/repros/`.
+
+**Shared root cause: replace-instead-of-reconfigure.** Both APIs throw away consumer-registered
+state when handed options, silently.
+
+**14a — `installShutdownHandlers(opts)` discards every already-registered cleanup.**
+`packages/robustness/src/shutdown.ts:233-239` calls `dispose()` and builds a NEW controller,
+whose `registry` Set starts empty. Proven with a control pair (`docs/repros/robustness-b2-*.mjs`):
+identical scripts, the only difference being whether one option is passed —
+`cleanup-ran=1` without options, `cleanup-ran=0` with. The trigger is "did you pass an object",
+not "did anything change", so `installShutdownHandlers({ forceExitAfterMs: 3000 })` (semantically
+the default) nukes the registry.
+*Cross-package impact*: `tui-kit`'s `renderFullScreen` calls `registerCleanup` — so a consumer who
+mounts the TUI then configures shutdown loses terminal restore and is left in an alternate screen
+buffer with a raw-mode TTY on Ctrl-C.
+
+**14b — `installWatchdog(opts)` silently ignores options if anything read watchdog state first.**
+`packages/robustness/src/watchdog.ts:416-425` — the lazy singleton is first-call-wins, and
+`readWatchdogState()` / `noteActivity()` / `onMemorySample()` all construct it with NO options.
+Proven (`docs/repros/robustness-b1.mjs`): `onDiagnostic honoured after install: false`.
+*Cross-package impact*: `tui-kit`'s `useDevStats` calls `readWatchdogState()` **during render**, so
+a consumer following tui-kit's own README gets `idleRestart: true` — an interactive TUI that
+self-kills after 24h idle — and no diagnostic, because `onDiagnostic` was dropped too.
+
+**Why not fixed in the same session**: the correct fix is `reconfigure()` on both controllers so
+state survives, which for the watchdog means re-arming live timers in a library whose job is
+killing the process. That deserves its own change with tests, not a tail-end patch. Note the naive
+fix (dispose + recreate) is exactly what causes 14a, and would break `onMemorySample` subscribers
+the same way.
+
+**Also fix while in there**: the singleton convenience API is entirely untested — which is why
+these survived. See #15.
+
+---
+
+## 15. Published-kit quality gaps found in the pre-adoption sweep (2026-08-09)
+
+**Status**: recorded, not actioned. Full findings in the session transcript; the load-bearing ones:
+
+- **Coverage gates are fiction.** `packages/vitest-config` declares 80/70/70/70 and `AGENTS.md`
+  advertises it, but `@vitest/coverage-v8` is not installed anywhere and no `test` script passes
+  `--coverage`. They have never run. Worse, `coverage.include`/`test.include` are `*.ts` only, so
+  every `.tsx` component is unmeasurable and `*.test.tsx` files cannot even be discovered.
+  `ink-testing-library` is a devDependency with zero references.
+- **Test-to-export coverage of the published surface**: cli-kit 4/16, tui-kit 6/25,
+  robustness 21/40. The untested robustness region is precisely the singleton API where #14 lives.
+  `runRepl` (85 lines, hand-rolled tokenizer) and `MemoryCache` and `useVimKeys` have no tests at all.
+- **API-shape items that are a major bump after adoption**: `commander` is a plain dependency of
+  cli-kit while its types cross the public boundary (should be a peer, as ink/react correctly are in
+  tui-kit); `FullScreenHandle` is not exported so the return type of `renderFullScreen` is
+  unnameable; tui-kit's `export *` barrels widen the public API with no review, and currently export
+  `MouseEvent` (shadows the DOM global), dead `FullScreenInkProps`, and `brighten` (ignores the
+  input colour's lightness).
+- **Module-load-time env reads** in `retry.ts`, `rate-limit.ts`, `logger.ts` defeat cli-kit's
+  `applyEnvFromFlags` contract — 9 documented knobs silently ignore their CLI flags.
+- **`_resetForTests()` is in the published `.d.ts`** for logger/shutdown/watchdog (no
+  `stripInternal`), and `installShutdownHandlers` installs a process-wide `unhandledRejection`
+  handler that suppresses Node's default throw behaviour for the whole consumer app.
+- Source maps ship but `src` does not, so every "go to definition" lands on a missing file.
+
+---
+
+## 16. EQStack migration is BLOCKED on upstream work in the kits
+
+**Status**: analysed 2026-08-09, nothing built. EQStack's `apps/imsg-mcp` is the only real
+consumer (`analysis` is a 13-line shell; `voice-mcp` overlaps only weakly).
+
+**Clean wins, ready now**: the whole 368-line `imsg-mcp/src/watchdog.ts` collapses into
+`createWatchdog({ envPrefix: "IMSG" })` — a verified 1:1 on all twelve env names and defaults.
+Same for `tui/themes/color.ts` and `tui/hooks/useMouse.ts` (both lifted verbatim originally), the
+shutdown controller, and the TTY/colour helpers. `withRetry`/`TokenBucket`/`withTimeout` are pure
+additions.
+
+**Blocking gaps — the kits must change first**:
+1. **Logger writes files unconditionally**; imsg gates disk logging behind `IMSG_DEV`/an explicit
+   call. Migrating turns on `$TMPDIR` NDJSON for every end user of a bin that reads their iMessage
+   database. Needs an opt-out knob upstream.
+2. **No stderr mirroring and no synchronous `writeStderrLine`** — imsg relies on a sync fd-2 write
+   so a crash *before* handler installation is still visible in the Claude/Cursor connection log.
+3. **Shutdown emits no diagnostics by default**, so migrating without wiring `onDiagnostic`
+   silently deletes the crash trail.
+4. **`cli-kit`'s `runRepl` uses the recursive `rl.question` pattern imsg explicitly abandoned**
+   (documented EOF race that truncated piped input) and has no `close`/EOF handling at all.
+5. **`useDevStats` lacks the `visible` parameter** whose absence caused two measured `rss_exceeded`
+   OOM kills in imsg (2026-07-12).
+6. **Theme model is structurally incompatible** — imsg's `Theme extends Palette` (flat, ~30 domain
+   keys, all derived from the accent hue) vs tui-kit's nested `{palette,glyphs,preset,accent}` with
+   hard-coded neutrals. ~19 components read `theme.<domainKey>` directly.
+7. `useVimKeys` registers its own `useInput` and would double-dispatch against imsg's mode-aware
+   handler; `StatusBar`/`HelpBar`/`DevStatsPanel` are same-name-different-component.
+8. **Peer ranges do not resolve against EQStack's lockfile today**: it has `ink@7.0.1` /
+   `react@19.2.5`, below tui-kit's `^7.1.1` / `^19.2.8` floors.
+
+**Worth upstreaming from EQStack** (ranked): `redactValue`/`redactString` from voice-mcp — the
+robustness logger has NO redaction and imsg logs failure payloads verbatim; log-level filtering;
+the sync stderr writer; a Prometheus metrics module; imsg's queue-based REPL loop (should replace
+`cli-kit/repl.ts` outright); `--yaml` output; grapheme-aware `visual-width.ts`; `detectNerdFont()`,
+which directly complements `GLYPH_PRESETS.powerline` (today it can silently render blanks).
+
+**Recommended order**: watchdog → shutdown (wire `onDiagnostic`, mind #14) → tty/colour →
+theme/color + useMouse → withTimeout. Everything else is blocked on the gaps above.
 
 ---
 
@@ -281,15 +418,21 @@ plan docs), or a **test fixture** (an arbitrary unmanaged-server name in
 
 ## Status snapshot at last update
 
-- Scaffolder tests: **76 passing**
-- Cloned-tool integration tests: **14 passing**
-- mcp-kit unit tests: **27 passing**
-- Stress cases: **11 / 11** (all required for HTTP-enabled builds)
-- Lint: **0 errors, 4 warnings** (all pre-existing suppressions-unused on intentional biome-ignore comments)
-- CI gates: lint, docs integrity, publishable-manifest shape, typecheck, test, test:no-native, usage(1) freshness, npm pack dry-run, scaffolder E2E smoke, example/ diff vs scaffolder output, stress
-- Workspaces: 14 (excludes `example/**`)
-- Template entries: 154 (`apps/scaffolder/src/generated/templates.ts`)
-- Published packages: `@george43g/robustness@0.1.1`, `@george43g/cli-kit@0.1.0`,
-  `@george43g/tui-kit@0.1.0`. `@george43g/mcpsync` remains bootstrap-pending.
+Measured 2026-08-09 (previous snapshot was ~3 months stale and disagreed with
+HANDOFF.md and PROJECT_STATE.md three different ways — see field-note 35).
 
-Last reviewed: 2026-05-26 (published-package line added 2026-08-08).
+- Published packages: `@george43g/robustness@0.2.0`, `@george43g/cli-kit@0.1.0`,
+  `@george43g/tui-kit@0.1.1`. `@george43g/mcpsync` bootstrap-pending.
+- Workspaces: 14 (excludes `example/**`)
+- Scaffolder: 12 phases, 26 migrations, 12 test files (131 tests)
+- Stress: 13 assertions
+- Test files by workspace: scaffolder 12, mcpsync 17, robustness 8, mcp-kit 5,
+  cli-kit 2, tui-kit 2, shared-types 2, env-loader 1, secrets 1,
+  example-repo-mcp 1; `apps/rust-accel` has no `test` script at all.
+- Coverage: thresholds declared but **never executed** — see item 15.
+- CI gates: lint, docs integrity, publishable-manifest shape, typecheck, test,
+  test:no-native, usage(1) freshness, npm pack dry-run, scaffolder E2E smoke,
+  example/ sync, stress.
+
+Counts that appear in HANDOFF.md / PROJECT_STATE.md / README.md are known to
+disagree with each other; trust this block or re-measure.
