@@ -57,6 +57,32 @@ shallow container still builds.
    (`apps/example-repo-mcp/src/cli.ts:44`); the REPL banner (`:115`); the TUI header; and
    health/status output.
 
+## Confirmation from the downstream author (2026-08-09, second brief)
+
+The consumer that motivated this (`browser-tab-mcp`) has since shipped the
+design and confirmed the central constraint from the other side, with a detail
+this plan did not have:
+
+> browser-tab only gets away with a compile-time reader today because its
+> `@george43g/*` packages are **deliberately not external** — they bundle
+> inline so `dist/cli.js` is self-contained. Once they become real external npm
+> deps, Vite never sees their code, `__BUILD_STAMP__` is never substituted, and
+> the reader falls through to `+dev` **forever, with no error**.
+
+That is the same conclusion this plan reached, arrived at independently, and it
+lands harder here: our `apps/example-repo-mcp/vite.config.ts` already lists
+`/^@george43g\//` as external, and since PR #15 generated repos install the
+kits from npm. So the broken arrangement is our default, not a future risk.
+
+**Prescribed API shape if a kit-level helper is ever wanted**: inject, never
+read. Expose `formatBuildStamp(stamp)` / `setBuildStamp(s)` and let the app —
+which owns the Vite config — do the reading. `build-stamp.mjs` stays template
+*source* that gets copied, not a package export.
+
+**Sequencing**: the downstream migration onto published kits is exactly what
+turns `@george43g/*` into external deps. If both land, get the reader placement
+right first or the migration silently disables stamping.
+
 ## Corrections to the brief
 
 1. **`fetch-depth` is unset in this repo's `ci.yml` — the gotcha is live here.**
@@ -76,11 +102,16 @@ shallow container still builds.
    existing runtime read of *version* is acceptable, but the *stamp* must not be recomputed
    in built output, because it would then describe the checkout the process happens to be
    sitting in rather than the build. That is a different and misleading fact.
-4. **Four surfaces, not two.** Anything landing in `apps/example-repo-mcp/` or `packages/`
+4. **The reference `build-stamp.mjs` has no `--print` flag.** The proposed
+   turbo fix — `BUILD_STAMP=$(node scripts/build-stamp.mjs --print)` plus
+   `"env": ["BUILD_STAMP"]` on the build task — assumes a CLI entry point that
+   does not exist; the file is import-only, with no argv handling. Adding it is
+   trivial but it is a prerequisite, not a given.
+5. **Four surfaces, not two.** Anything landing in `apps/example-repo-mcp/` or `packages/`
    must also be mirrored into `apps/scaffolder/src/phases/*/lib/` and regenerated into
    `example/`. A new `packages/build-config` needs a `03-configs` migration and a
    `LIB_TO_CANONICAL` entry, exactly as `vitest-config` got in PR #18.
-5. **`APP_VERSION` has six call sites** across `cli.ts` and `index.ts`. Deciding which
+6. **`APP_VERSION` has six call sites** across `cli.ts` and `index.ts`. Deciding which
    report the stamp and which keep bare semver is part of the work — the MCP handshake
    (`index.ts:46`) advertises `version` to clients and is the one place bare semver is
    probably correct, since it is a protocol field rather than a diagnostic.

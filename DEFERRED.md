@@ -674,3 +674,66 @@ edit is itself a commit inside published package directories, so it also risks t
 release trigger — see field notes 52 and 53.
 
 **Cost**: ~1h including tests. Low risk: the check is advisory-at-worst today for these ranges.
+
+---
+
+## 21. Downstream kit defects reported by `browser-tab-mcp` (2026-08-09)
+
+**Status**: Class A ✅ **DONE** (cli-kit + tui-kit, shipping in the same release as #15's API-shape
+work). Class B partly done, partly open — see below.
+
+A consumer scaffolded from this template dogfooded the published kits and reported six items. All
+were re-verified against this repo's source before acting; three needed correcting.
+
+**Class A — published packages, was blocking the consumer**
+
+1. ✅ `cli-kit` `parseConsoleInput` consumed every quote character as shell quoting, so
+   `raw {"name":"x"}` reached `JSON.parse` as `{name:x}`. No backslash handling either, so there
+   was no escape hatch. Fixed by separating the two jobs the function was conflating: it now
+   returns `{ cmd, rest, args }`, where `rest` is the remainder verbatim (read JSON from it) and
+   `args` is the shell-style split (for positional shortcuts).
+2. ✅ `runRepl` never implemented the `<tool> <json>` dispatch its own docblock promised, while
+   `help` listed every tool under "Available MCP tools:". Rather than trim the advertisement, the
+   dispatch is now real, so `raw` is a fallback instead of the only route.
+3. ✅ `tui-kit` had no terminal-size hook, so every consumer slicing a scroll window hardcoded a
+   height. Added `useTerminalSize()` plus a pure `viewport.ts` (`viewportRows`, `visibleWindow`).
+
+   **Corrections to the report**: (a) the unknown-command throw is at `repl.ts:169`, not 173;
+   (b) a *third* bug nobody had spotted — the parser lowercased the command word, so any tool with
+   an uppercase letter was permanently unreachable; (c) the "18 advertised vs 3 callable" figure is
+   the consumer's own tool count — in this repo it was 3 listed / 2 callable, with `get_logs`
+   unreachable. Also fixed while in there: `runRepl` never resolved on EOF, so piped input hung the
+   process — which is also what made it untestable.
+
+   The tests are written against the **contract**, not the readline loop, precisely because
+   DEFERRED #16a plans to replace that loop. A replacement must still satisfy them. That supersedes
+   #15's note that repl tests were deliberately skipped pending the rewrite: a blocked consumer
+   outranks a rewrite with no date.
+
+**Class B — template source**
+
+4. Build identity — see [`docs/plans/2026-08-build-identity.md`](docs/plans/2026-08-build-identity.md)
+   and **#18**. The consumer independently confirmed the "never put the reader in a published
+   package" constraint and supplied the injection-shaped alternative
+   (`formatBuildStamp` / `setBuildStamp`).
+5. **OPEN — `turbo.json` can replay a stale build stamp.** Verified accurate but currently *latent*:
+   no git stamp exists in this repo yet, so there is nothing to go stale. Two independent holes.
+   (a) `tasks.build.inputs` has no git state, so a docs-only commit replays a cached `dist/`.
+   (b) `globalDependencies` is `[".env.example", "tsconfig.json", "biome.json"]` — no `scripts/**`,
+   so editing a root generator invalidates nothing. Note the two `scripts` entries already in
+   `turbo.json` are *package-relative* (`tasks.lint.inputs`, `tasks.stress.inputs`), not the root
+   directory. **Fix (b) unconditionally; fix (a) in the same PR as #18**, or the first stamped CI
+   build ships a wrong-but-plausible sha. Options for (a), cheapest first: export
+   `BUILD_STAMP=$(node scripts/build-stamp.mjs --print)` and list `"env": ["BUILD_STAMP"]` on the
+   build task (every commit busts the build cache — that is the point, but it is not free);
+   key on sha only and accept two dirty builds sharing an entry; or `"cache": false` on `build`,
+   which throws the speed win away. The reference `build-stamp.mjs` has **no `--print` flag yet** —
+   the first option needs one added.
+6. ✅ **Already fixed before the report arrived.** `vitest.shared.ts` was said to read
+   `include: [..., "tests/**/*.test.ts"]`, dropping `tests/**/*.test.tsx`. PR #18 had already
+   changed it to `tests/**/*.test.{ts,tsx}`, which covers both. No action.
+
+**Explicitly NOT wanted**: `cli-kit`'s `output.ts` and `env-flag-binder.ts` were reviewed and
+declared correct — the consumer simply never called them. No API change there.
+
+**Trigger for the rest**: #18 lands → do turbo (a) with it. (b) can go any time.
