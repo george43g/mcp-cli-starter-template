@@ -1,3 +1,62 @@
+# [@george43g/cli-kit-v1.0.0](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v0.3.1...cli-kit-v1.0.0) (2026-08-09)
+
+
+* feat(cli-kit)!: model non-text content blocks and render them ([#38](https://github.com/george43g/mcp-cli-starter-template/issues/38)) ([c1a7171](https://github.com/george43g/mcp-cli-starter-template/commit/c1a7171ed794f57c3d090c1685aadc0df83d7feb))
+
+
+### BREAKING CHANGES
+
+* `ToolCallResult.content` is now `ContentBlock[]`, a closed
+discriminated union, so reading `.text` off a block without narrowing no
+longer typechecks.
+
+  content?: Array<{ type: string; text: string }>   // before
+  content?: ContentBlock[] | undefined              // after
+
+The old shape could not describe any MCP server with an image tool: every
+block was required to carry `text`. Two consumers reported it under-modelled
+within a day, which is what moved it from a usage problem to a wrong type.
+
+Shape (B) as browser-tab chose it — no catch-all member. A `{ type: string }`
+fallback overlaps `type: "text"`, so narrowing would need a cast at every
+render site, and it would silently accept blocks nothing can render. The
+compile error is wanted, and it lands where a decision is needed.
+
+The renderer ships WITH the type. That was their condition, and it is the
+right one: a type without a renderer just relocates their 20-line adapter
+into every consumer's compile-error fixup. Non-text blocks now render one
+line each, in dispatcher order, sized in DECODED bytes:
+
+  [image image/jpeg, 61.4 KB]
+  {"saved": true}
+  · 12ms · engine=ts
+
+Order is a dispatcher contract, not a presentation choice — a dispatcher that
+appends its text block last means a screenshot arrives as [image, text].
+Sizes are decoded because "84210 base64 chars" is both a meaningless unit and
+inflated 4/3 against what the reader sees on disk.
+
+Corrects the brief on one point, found by reading this tree rather than
+trusting the reference: it said to mirror "mcp-kit's own ContentBlock at
+tool-registry.ts:16-24", but that describes browser-tab's evolved fork. Here
+those lines are ToolDefinition, there is no ContentBlock, and our dispatcher
+emits exactly one text block. So the union went into cli-kit — which is
+dispatcher-agnostic by design — and mcp-kit was left alone. Its text-only
+ToolResult stays assignable, so nothing in this repo needed migrating.
+
+The type is closed but the RENDERER is not: a real server can send `resource`
+or `audio`, and it prints a placeholder rather than taking the REPL down.
+`resource` is not modelled because no known caller emits one, and guessing
+its shape from the spec is how the text-only version got written.
+
+Also non-breaking: optionals are declared `?: T | undefined` so
+exactOptionalPropertyTypes consumers can pass results through verbatim.
+
+Four of the new tests were observed failing against the old renderer, and a
+type probe confirms TS2339 on unguarded `content[0].text`. Coverage floor
+ratcheted 91/87/83/91 -> 91/88/85/91 by covering the new helpers to their
+edges rather than letting them pull the branch floor down.
+
 # [@george43g/cli-kit-v0.3.1](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v0.3.0...cli-kit-v0.3.1) (2026-08-09)
 
 
