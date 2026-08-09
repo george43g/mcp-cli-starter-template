@@ -1,7 +1,7 @@
 {
   "name": "@george43g/cli-kit",
   "version": "0.1.0",
-  "description": "Commander helpers + TTY/color/output utilities + env↔flag binder + interactive REPL. Building blocks for the `example-repo-cli` bin in any tool cloned from the starter.",
+  "description": "Commander helpers + TTY/color/output utilities + env\u2194flag binder + interactive REPL. Building blocks for the `example-repo-cli` bin in any tool cloned from the starter.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -25,6 +25,8 @@
   },
   "files": [
     "dist",
+    "src",
+    "!src/**/*.test.ts",
     "README.md",
     "LICENSE"
   ],
@@ -40,7 +42,6 @@
   },
   "dependencies": {
     "cli-table3": "^0.6.5",
-    "commander": "^14.0.0",
     "picocolors": "^1.1.0"
   },
   "devDependencies": {
@@ -49,6 +50,7 @@
     "@semantic-release/npm": "^13.1.5",
     "@types/node": "^24.13.3",
     "@vitest/coverage-v8": "^3.2.7",
+    "commander": "^14.0.0",
     "semantic-release": "^24.2.0",
     "semantic-release-monorepo": "^8.0.2",
     "typescript": "^5.7.0",
@@ -62,5 +64,8 @@
     "terminal",
     "mcp"
   ],
-  "author": "George G"
+  "author": "George G",
+  "peerDependencies": {
+    "commander": "^14.0.0"
+  }
 }

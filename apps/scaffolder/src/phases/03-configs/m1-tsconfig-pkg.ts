@@ -54,7 +54,8 @@ const BASE_JSON = `{
     "esModuleInterop": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "stripInternal": true
   },
   "exclude": ["node_modules", "dist", "build", "coverage"]
 }

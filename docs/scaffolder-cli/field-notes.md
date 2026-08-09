@@ -561,3 +561,80 @@ are ideas, not commitments; none is scheduled unless promoted into
     pushed the scaffolder from 50.45% to 49.92%, and the temptation was to drop
     the floor by one point. The real cause turned out to be the denominator bug
     above, and finding it was worth more than the point.
+
+50. **v8 coverage scores a file it never loaded as 100% functions.** Untouched
+    files report 0% statements and 0% lines — but 100% branches and 100%
+    functions. tui-kit's per-file table showed it plainly for `useMouse.ts`,
+    `useVimKeys.ts` and `glyphs.ts`. The consequence is backwards: writing the
+    first test for a file *lowers* the package's reported function coverage,
+    because a notional 100% is replaced by the real number. Covering
+    `palette.ts` took tui-kit from 81.57% functions to 77.5% while coverage
+    genuinely improved.
+
+    So on a sparsely-tested package, statements and lines are trustworthy and
+    branches and functions are inflated. Ratchet the first two; treat the other
+    two as advisory until the package is broadly covered, or the gate will
+    reject exactly the changes that improve it. (`@vitest/coverage-istanbul`
+    instruments ahead of time and does not have this blind spot — untested for
+    this repo.)
+
+51. **A duplicate that CAN'T be mechanised still needs a test.** Field note 42
+    said a generator defined twice will drift; the fix there was to delete the
+    duplicate by turning it into a `lib/` mirror. That option does not always
+    exist: `packages/tsconfig/base.json` has a second copy inline in
+    `m1-tsconfig-pkg.ts` carrying `{{scope}}` placeholders, so it can never be
+    byte-identical to the canonical file and cannot be mirrored. It drifted
+    immediately — `stripInternal` went into the canonical and not the template.
+
+    When you cannot remove a duplicate, compare it in a test: parse both,
+    normalise the placeholder, assert deep equality. Nine lines, and it fails
+    with the reason. The rule generalises to "every duplicate is either
+    mechanised away or asserted equal" — never left to memory, because memory
+    is what produced the drift.
+
+52. **semantic-release-monorepo reads the commit TYPE against every package
+    directory the commit touches — the scope in the subject is decoration.**
+    A commit titled `feat(vitest-config): make the coverage gates actually run`
+    edited `vitest.config.ts` in three published packages plus one test file.
+    The path filter matched `packages/robustness/**`, the type was `feat`, and
+    `@george43g/robustness@0.3.0` was published. Nothing in the subject line
+    said robustness; nothing needed to.
+
+    Two consequences, both worth internalising. First, use `chore:`/`test:` for
+    anything inside a published package's directory that does not change what
+    ships — the scope token will not save you. Second, the release then broke
+    `main` for everyone: robustness moved to 0.3.0 while `apps/mcpsync` and
+    `packages/tui-kit` still declared `^0.1.1 || ^0.2.0`, so
+    `check-publishable-manifests` failed and the chained cli-kit job stopped
+    before publishing. That failure was the system working: the guardrail
+    caught a stranded range before two more packages shipped against it.
+
+53. **A "widen the range" fix must predict one bump ahead, because the release
+    jobs are chained.** Each job runs the full verify matrix, and an earlier job
+    in the same run has already bumped its package's manifest. So cli-kit's
+    verify sees robustness at its NEW version. Widening only to the version
+    visible when you write the PR leaves the next job failing on a version that
+    did not exist yet when CI approved the change.
+
+    Also: `satisfiesLoose` in `check-publishable-manifests.mjs` returns `true`
+    for any range it does not model (`>=`, `*`, `x`). So "fixing" this with
+    `>=0.1.1 <1` would make the check pass by opting out of it — silence, not
+    safety. Explicit `|| ^0.x` clauses keep it verifiable. Teaching the checker
+    to model comparator ranges would let first-party siblings use an honest
+    `>=0.1.1 <1` and still be checked; that is the real fix.
+
+54. **Editing a manifest by hand desynchronises the lockfile, and `pnpm verify`
+    will not tell you.** Two `dependencies` ranges were widened with a JSON
+    rewrite instead of `pnpm pkg set` / `pnpm add`. Everything local passed —
+    lint, typecheck, the whole coverage gate, the stress harness — because a
+    plain `pnpm install` reconciles silently. CI runs
+    `pnpm install --frozen-lockfile`, which does not, and it failed on the very
+    first step: *"specifiers in the lockfile don't match specifiers in
+    package.json"*.
+
+    The repo already prefers canonical CLIs over file rewrites for exactly this
+    reason; the rule is easy to keep for `scripts` and `files` (where it does
+    not matter) and easy to forget for dependency ranges (where it does). After
+    any manifest edit that touches a dependency field, run `pnpm install` and
+    commit the lockfile — then confirm with `pnpm install --frozen-lockfile`,
+    which is the assertion CI actually makes and `verify` never does.

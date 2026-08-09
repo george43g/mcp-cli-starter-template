@@ -11,10 +11,6 @@
 import { registerCleanup, unregisterCleanup } from "@george43g/robustness";
 import type { ReactNode } from "react";
 
-export interface FullScreenInkProps {
-  children: ReactNode;
-}
-
 export interface FullScreenHandle {
   /** Manually unmount the screen and stop tracking it for shutdown cleanup. */
   unmount: () => void;

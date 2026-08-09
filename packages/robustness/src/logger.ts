@@ -38,10 +38,19 @@ export interface PerfSpan {
 
 // ── Config ─────────────────────────────────────────────────────────────
 
-const MAX_LOG_LINES = envNum("MCP_LOG_RING_SIZE", 500);
-const MAX_FILE_BYTES = envNum("MCP_LOG_MAX_BYTES", 10 * 1024 * 1024);
-const HEAP_WARN_MB = envNum("MCP_HEAP_WARN_MB", 150);
-const HEAP_CHECK_INTERVAL_MS = envNum("MCP_HEAP_CHECK_MS", 60_000);
+/**
+ * Read on use, not at module load.
+ *
+ * These were module-level consts, frozen at the first import of this file.
+ * cli-kit's `applyEnvFromFlags` sets `process.env` while parsing argv, which
+ * is always later — so `--log-ring-size`, `--log-max-bytes`, `--heap-warn-mb`
+ * and `--heap-check-ms` parsed successfully, set their env var, and changed
+ * nothing. Function calls are the cheapest fix that keeps the contract.
+ */
+const maxLogLines = () => envNum("MCP_LOG_RING_SIZE", 500);
+const maxFileBytes = () => envNum("MCP_LOG_MAX_BYTES", 10 * 1024 * 1024);
+const heapWarnMb = () => envNum("MCP_HEAP_WARN_MB", 150);
+const heapCheckIntervalMs = () => envNum("MCP_HEAP_CHECK_MS", 60_000);
 
 /** Caller may override the log-file prefix (e.g. "example-repo-mcp"). */
 let logFilePrefix = envStr("MCP_LOG_PREFIX", "mcp");
@@ -64,7 +73,7 @@ function getLogDir(): string {
 }
 
 function ensureLogFile(): string | null {
-  if (logFilePath && logFileBytes < MAX_FILE_BYTES) return logFilePath;
+  if (logFilePath && logFileBytes < maxFileBytes()) return logFilePath;
 
   try {
     const dir = getLogDir();
@@ -107,8 +116,9 @@ function formatMemoryLine(entry: LogEntry): string {
 function emit(entry: LogEntry): void {
   const line = formatMemoryLine(entry);
   memoryLines.push(line);
-  if (memoryLines.length > MAX_LOG_LINES) {
-    memoryLines.splice(0, memoryLines.length - MAX_LOG_LINES);
+  const cap = maxLogLines();
+  if (memoryLines.length > cap) {
+    memoryLines.splice(0, memoryLines.length - cap);
   }
   writeToFile(JSON.stringify(entry));
 }
@@ -239,11 +249,12 @@ export function startHeapMonitor(): void {
     const heap = heapMB();
     const { rss } = process.memoryUsage();
     const rssMb = Math.round((rss / 1024 / 1024) * 10) / 10;
-    if (heap > HEAP_WARN_MB) {
+    const warnMb = heapWarnMb();
+    if (heap > warnMb) {
       warn("heap exceeds threshold", {
         heap_mb: heap,
         rss_mb: rssMb,
-        threshold_mb: HEAP_WARN_MB,
+        threshold_mb: warnMb,
       });
     }
     emit({
@@ -253,7 +264,7 @@ export function startHeapMonitor(): void {
       mem_mb: heap,
       data: { rss_mb: rssMb, uptime_s: Math.round(process.uptime()) },
     });
-  }, HEAP_CHECK_INTERVAL_MS);
+  }, heapCheckIntervalMs());
   heapMonitorTimer.unref();
 }
 

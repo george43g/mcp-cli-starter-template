@@ -9,7 +9,7 @@
  * across all accents.
  */
 
-import { contrastRatio, hslToHex, tint, withL } from "./color.js";
+import { contrastRatio, hexToHsl, hslToHex, tint, withL } from "./color.js";
 
 export interface Palette {
   // Backgrounds
@@ -75,7 +75,21 @@ export function derivePalette(accent: string): Palette {
 
 export const DEFAULT_ACCENT = "#1982FC";
 
-/** Brighten a hex by N "stops" (HSL lightness +N*0.05). Used by hover states. */
+/**
+ * Brighten a hex by N "stops" of HSL lightness (+0.05 each). Used by hover
+ * states.
+ *
+ * This previously computed `withL(hex, 0.5 + stops * 0.05)` — an ABSOLUTE
+ * lightness derived from `stops` alone, discarding the input colour entirely.
+ * A near-black and a near-white both came back at L=0.55 for one stop, so
+ * "brighten" darkened anything above mid-lightness and the effect was
+ * identical for every colour in a palette. Now it is relative, which is what
+ * the name and every call site assume.
+ *
+ * Clamped to 0.95 so repeated stops approach white without reaching a flat,
+ * hue-less #ffffff.
+ */
 export function brighten(hex: string, stops = 1): string {
-  return withL(hex, Math.min(0.95, 0.5 + stops * 0.05));
+  const { l } = hexToHsl(hex);
+  return withL(hex, Math.min(0.95, l + stops * 0.05));
 }

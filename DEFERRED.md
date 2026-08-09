@@ -405,18 +405,43 @@ these survived. See #15.
   `MemoryCache` now has 12 (2026-08-09), taking that file to 93%; the uncovered remainder is the
   `pressureMb` branch, which needs `installWatchdog()` and therefore a `_resetForTests()` the
   robustness barrel does not export.
-- **API-shape items that are a major bump after adoption**: `commander` is a plain dependency of
-  cli-kit while its types cross the public boundary (should be a peer, as ink/react correctly are in
-  tui-kit); `FullScreenHandle` is not exported so the return type of `renderFullScreen` is
-  unnameable; tui-kit's `export *` barrels widen the public API with no review, and currently export
-  `MouseEvent` (shadows the DOM global), dead `FullScreenInkProps`, and `brighten` (ignores the
-  input colour's lightness).
+- ~~**API-shape items that are a major bump after adoption**~~ **RESOLVED 2026-08-09** (cli-kit
+  0.2.0, tui-kit 0.2.0 — `feat:` minor, because a caret on a `0.x` pins the MINOR, so nobody on
+  `^0.1.0` auto-upgrades). `commander` is a peerDependency of cli-kit; `FullScreenHandle` is
+  exported; `MouseEvent` is renamed `TuiMouseEvent` (it shadowed the DOM global for any consumer
+  compiling with `lib: ["dom"]`); dead `FullScreenInkProps` is gone; `brighten` is fixed.
+
+  **Correction to the original finding**: it said tui-kit's `export *` barrels "widen the public
+  API with no review". Only `src/index.ts` uses `export *`, and it re-exports three *curated*
+  sub-barrels that are all explicit named exports — so nothing is ever auto-exported from a source
+  file. The hazard is narrower than recorded: adding to a sub-barrel widens the surface silently.
+
+  **`brighten` was a behaviour bug, not a shape nit.** It computed
+  `withL(hex, 0.5 + stops * 0.05)` — an absolute lightness from `stops` alone, discarding the
+  input colour. Every hover state in a palette came back the same lightness, and anything above
+  L=0.55 got *darker* from a function called "brighten". Now relative. Six tests pin it; three of
+  them fail against the old implementation.
 - **Module-load-time env reads** in `retry.ts`, `rate-limit.ts`, `logger.ts` defeat cli-kit's
   `applyEnvFromFlags` contract — 9 documented knobs silently ignore their CLI flags.
-- **`_resetForTests()` is in the published `.d.ts`** for logger/shutdown/watchdog (no
-  `stripInternal`), and `installShutdownHandlers` installs a process-wide `unhandledRejection`
-  handler that suppresses Node's default throw behaviour for the whole consumer app.
-- Source maps ship but `src` does not, so every "go to definition" lands on a missing file.
+- ~~**`_resetForTests()` is in the published `.d.ts`**~~ **RESOLVED** — `stripInternal: true` in
+  `packages/tsconfig/base.json`. All three already carried `@internal`, so nothing else was needed;
+  the runtime export remains, only the declaration is gone. **Still open**:
+  `installShutdownHandlers` installs a process-wide `unhandledRejection` handler that suppresses
+  Node's default throw behaviour for the whole consumer app.
+- ~~Source maps ship but `src` does not~~ **RESOLVED** — all four published packages now list
+  `src` in `files` with test files excluded. Verified via `npm pack --dry-run`: robustness 48
+  files / 9 src, cli-kit 38 / 7, tui-kit 88 / 17, secret-store 28 / 5, zero test files leaked.
+- **Module-load-time env reads** — ~~9 knobs silently ignore their CLI flags~~ **RESOLVED**. See
+  the entry above; `retry.ts`, `rate-limit.ts` and `logger.ts` now read on use.
+- **NEW, found while building the gate: v8 inflates function/branch coverage for files it never
+  loads.** An untouched file reports 0% statements but **100% functions** — visible in tui-kit's
+  per-file table for `useMouse.ts`, `useVimKeys.ts` and `glyphs.ts`. So on a package with large
+  untouched regions the statements and lines figures are honest while branches and functions are
+  optimistic, and they FALL toward the truth as files get tested: covering `palette.ts` replaced
+  its notional 100% functions with its real 33%, dropping the package total from 81.57% to 77.5%
+  *while coverage genuinely improved*. Consequence: a function/branch floor on a sparsely-tested
+  package will fight the very changes that improve it. Worth evaluating the istanbul provider,
+  which instruments ahead of time and does not have this blind spot.
 
 ---
 
@@ -622,3 +647,93 @@ answers "which release", the stamp answers "which build".
 
 **Cost**: ~2h to swap the generated workflow + docs, most of it in `12-ci-release` and its
 `lib/` mirror. Zero risk to this repo's own publishing.
+
+---
+
+## 20. `check-publishable-manifests` cannot model comparator ranges, so the honest fix silences it
+
+**Status**: open. Found 2026-08-09 while fixing the fallout from an accidental `robustness@0.3.0`.
+
+Every first-party sibling range is an explicit caret chain — `apps/mcpsync` and `packages/tui-kit`
+currently declare `^0.1.1 || ^0.2.0 || ^0.3.0 || ^0.4.0` for `@george43g/robustness`. That chain
+grows by one clause on every minor, forever, because a caret on a `0.x` pins the MINOR.
+
+The natural fix is `>=0.1.1 <1` — these packages are released in lockstep from one repo, so "any
+0.x" is the true contract. But `satisfiesLoose()` in `scripts/check-publishable-manifests.mjs`
+returns `true` for any range it does not model (`>=`, `*`, `x`, `-`), deliberately, so as not to
+guess. So switching would make the check *pass by opting out of itself* — it would stop verifying
+the one thing it exists to verify.
+
+**Fix**: teach `satisfiesLoose` to evaluate comparator ranges (`>=`, `>`, `<`, `<=`, and
+hyphen/space-joined pairs), then switch first-party siblings to `>=<min> <1`. Roughly 30 lines plus
+tests, or adopt a real semver dependency for that script — it is currently dependency-free by
+design, which is worth preserving if the hand-rolled version stays small.
+
+**Trigger to action**: the next time a robustness minor forces another manual `|| ^0.x` edit. That
+edit is itself a commit inside published package directories, so it also risks tripping the
+release trigger — see field notes 52 and 53.
+
+**Cost**: ~1h including tests. Low risk: the check is advisory-at-worst today for these ranges.
+
+---
+
+## 21. Downstream kit defects reported by `browser-tab-mcp` (2026-08-09)
+
+**Status**: Class A ✅ **DONE** (cli-kit + tui-kit, shipping in the same release as #15's API-shape
+work). Class B partly done, partly open — see below.
+
+A consumer scaffolded from this template dogfooded the published kits and reported six items. All
+were re-verified against this repo's source before acting; three needed correcting.
+
+**Class A — published packages, was blocking the consumer**
+
+1. ✅ `cli-kit` `parseConsoleInput` consumed every quote character as shell quoting, so
+   `raw {"name":"x"}` reached `JSON.parse` as `{name:x}`. No backslash handling either, so there
+   was no escape hatch. Fixed by separating the two jobs the function was conflating: it now
+   returns `{ cmd, rest, args }`, where `rest` is the remainder verbatim (read JSON from it) and
+   `args` is the shell-style split (for positional shortcuts).
+2. ✅ `runRepl` never implemented the `<tool> <json>` dispatch its own docblock promised, while
+   `help` listed every tool under "Available MCP tools:". Rather than trim the advertisement, the
+   dispatch is now real, so `raw` is a fallback instead of the only route.
+3. ✅ `tui-kit` had no terminal-size hook, so every consumer slicing a scroll window hardcoded a
+   height. Added `useTerminalSize()` plus a pure `viewport.ts` (`viewportRows`, `visibleWindow`).
+
+   **Corrections to the report**: (a) the unknown-command throw is at `repl.ts:169`, not 173;
+   (b) a *third* bug nobody had spotted — the parser lowercased the command word, so any tool with
+   an uppercase letter was permanently unreachable; (c) the "18 advertised vs 3 callable" figure is
+   the consumer's own tool count — in this repo it was 3 listed / 2 callable, with `get_logs`
+   unreachable. Also fixed while in there: `runRepl` never resolved on EOF, so piped input hung the
+   process — which is also what made it untestable.
+
+   The tests are written against the **contract**, not the readline loop, precisely because
+   DEFERRED #16a plans to replace that loop. A replacement must still satisfy them. That supersedes
+   #15's note that repl tests were deliberately skipped pending the rewrite: a blocked consumer
+   outranks a rewrite with no date.
+
+**Class B — template source**
+
+4. Build identity — see [`docs/plans/2026-08-build-identity.md`](docs/plans/2026-08-build-identity.md)
+   and **#18**. The consumer independently confirmed the "never put the reader in a published
+   package" constraint and supplied the injection-shaped alternative
+   (`formatBuildStamp` / `setBuildStamp`).
+5. **OPEN — `turbo.json` can replay a stale build stamp.** Verified accurate but currently *latent*:
+   no git stamp exists in this repo yet, so there is nothing to go stale. Two independent holes.
+   (a) `tasks.build.inputs` has no git state, so a docs-only commit replays a cached `dist/`.
+   (b) `globalDependencies` is `[".env.example", "tsconfig.json", "biome.json"]` — no `scripts/**`,
+   so editing a root generator invalidates nothing. Note the two `scripts` entries already in
+   `turbo.json` are *package-relative* (`tasks.lint.inputs`, `tasks.stress.inputs`), not the root
+   directory. **Fix (b) unconditionally; fix (a) in the same PR as #18**, or the first stamped CI
+   build ships a wrong-but-plausible sha. Options for (a), cheapest first: export
+   `BUILD_STAMP=$(node scripts/build-stamp.mjs --print)` and list `"env": ["BUILD_STAMP"]` on the
+   build task (every commit busts the build cache — that is the point, but it is not free);
+   key on sha only and accept two dirty builds sharing an entry; or `"cache": false` on `build`,
+   which throws the speed win away. The reference `build-stamp.mjs` has **no `--print` flag yet** —
+   the first option needs one added.
+6. ✅ **Already fixed before the report arrived.** `vitest.shared.ts` was said to read
+   `include: [..., "tests/**/*.test.ts"]`, dropping `tests/**/*.test.tsx`. PR #18 had already
+   changed it to `tests/**/*.test.{ts,tsx}`, which covers both. No action.
+
+**Explicitly NOT wanted**: `cli-kit`'s `output.ts` and `env-flag-binder.ts` were reviewed and
+declared correct — the consumer simply never called them. No API change there.
+
+**Trigger for the rest**: #18 lands → do turbo (a) with it. (b) can go any time.
