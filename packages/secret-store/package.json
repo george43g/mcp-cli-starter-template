@@ -1,6 +1,6 @@
 {
   "name": "@george43g/secret-store",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Vendor-neutral secret mechanism for local tools: resolve from process env, .env files, and the OS keychain, with an optional external-command fallback — plus keychain save/delete for setup flows. No vault-vendor logic.",
   "type": "module",
   "license": "MIT",

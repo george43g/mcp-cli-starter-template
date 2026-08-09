@@ -1,3 +1,10 @@
+# [@george43g/secret-store-v0.2.2](https://github.com/george43g/mcp-cli-starter-template/compare/secret-store-v0.2.1...secret-store-v0.2.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **exports:** add the "./package.json" subpath to every package ([30137bd](https://github.com/george43g/mcp-cli-starter-template/commit/30137bd3710dbb8837afc86b6504bc78e122e14e))
+
 # [@george43g/secret-store-v0.2.1](https://github.com/george43g/mcp-cli-starter-template/compare/secret-store-v0.2.0...secret-store-v0.2.1) (2026-08-09)
 
 
