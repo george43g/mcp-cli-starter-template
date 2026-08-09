@@ -23,6 +23,8 @@ import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
+import { rangeAdmits, UnmodelledRangeError } from "./lib/semver-range.mjs";
+
 const root = resolve(import.meta.dirname, "..");
 const REPO_URL = "git+https://github.com/george43g/mcp-cli-starter-template.git";
 
@@ -163,34 +165,40 @@ function checkSiblingRanges(dir, pkg, versions) {
     for (const [name, range] of Object.entries(pkg[field] ?? {})) {
       const current = versions.get(name);
       if (!current || typeof range !== "string") continue;
-      if (range.startsWith("workspace:")) continue; // reported separately
-      if (!satisfiesLoose(range, current)) {
+      // Non-semver specifiers. `workspace:` is reported separately; the rest
+      // resolve outside the registry, so a version range says nothing about them.
+      if (NON_SEMVER_SPECIFIER.test(range)) continue;
+
+      let admits;
+      try {
+        admits = rangeAdmits(range, current);
+      } catch (error) {
+        if (!(error instanceof UnmodelledRangeError)) throw error;
+        // Never fall back to "admitted" — that silent pass is what this replaced.
+        failures.push(
+          `${dir}: ${field}.${name} is "${range}", which is not a valid semver range\n` +
+            `    Fix: rewrite it as semver, or add its protocol to NON_SEMVER_SPECIFIER ` +
+            `in this script if it is deliberately not registry-resolved.`,
+        );
+        continue;
+      }
+
+      if (!admits) {
+        const nextMajor = Number(current.split(".")[0]) + 1;
         failures.push(
           `${dir}: ${field}.${name} is "${range}" but that package is now at ${current}\n` +
-            `    Fix: widen to admit it (e.g. "${range} || ^${current}"). A caret on a 0.x ` +
-            `pins the minor, so a sibling bump strands this consumer with ERESOLVE.`,
+            `    Fix: widen it. A caret on a 0.x pins the MINOR, so a sibling bump ` +
+            `strands this consumer with ERESOLVE. Prefer a comparator range that ` +
+            `survives future bumps — ">=${current} <${nextMajor}" — over appending ` +
+            `another "|| ^${current}" clause, which has to be re-edited every release.`,
         );
       }
     }
   }
 }
 
-/** Minimal range check: does any `^X.Y`/`~X.Y`/exact clause cover `version`? */
-function satisfiesLoose(range, version) {
-  const [vMajor, vMinor] = version.split(".");
-  return range.split("||").some((clause) => {
-    const c = clause.trim();
-    const m = c.match(/^([\^~]?)(\d+)\.(\d+)/);
-    if (!m) return true; // ranges we don't model (*, >=, x) — don't guess
-    const [, op, major, minor] = m;
-    if (op === "^") {
-      // ^0.x pins the minor; ^X.y (X>0) pins the major.
-      return major === "0" ? major === vMajor && minor === vMinor : major === vMajor;
-    }
-    if (op === "~") return major === vMajor && minor === vMinor;
-    return c === version;
-  });
-}
+/** Specifiers that are not registry semver, so a version range cannot judge them. */
+const NON_SEMVER_SPECIFIER = /^(workspace|catalog|link|file|npm|git|github|portal):/;
 
 const seen = new Set();
 
