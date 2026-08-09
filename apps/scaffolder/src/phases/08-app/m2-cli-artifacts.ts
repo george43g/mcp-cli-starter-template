@@ -166,7 +166,10 @@ export default class CliArtifactsMigration extends Migration {
       filesDivergent,
       followUps: [
         `Describe ${bin}'s real command tree in ${at(".usage.kdl")} (spec docs: https://usage.jdx.dev/spec).`,
-        `cd ${dir} && mise install && mise run artifacts — generates completions/, man/, docs/cli/.`,
+        // `mise trust` first: mise refuses to load a mise.toml it has not seen,
+        // so without it `mise install` fails on a freshly scaffolded repo and
+        // the error reads like a broken scaffold rather than a security prompt.
+        `cd ${dir} && mise trust . && mise install && mise run artifacts — generates completions/, man/, docs/cli/.`,
         `mise run check:usage must pass, then commit .usage.kdl + generated artifacts together.`,
       ],
     };
