@@ -1100,12 +1100,23 @@ drove the whole 2026-08-09 batch.
 `example/` resync is automated now (#22), so there is no human-authored post-release PR to
 piggyback a deferred call site onto. Anything parked here needs its own follow-up PR.
 
-| Waiting on | Call site to wire |
-|---|---|
-| `cli-kit` minor (REPL serial queue) | Mirror `apps/example-repo-mcp/tests/repl-pipe.test.ts` into `08-app/lib/tests/`, rebuild templates, `pnpm regen:example`. Held back deliberately: the scaffolder E2E smoke installs cli-kit **from npm**, so shipping the test to generated repos before the release would fail the smoke against the published (broken) loop — which is #23 exactly. |
-| `robustness` minor (logger level gate) | Add `MCP_LOG_LEVEL` to `apps/example-repo-mcp/.env.example` and its `08-app/lib/` mirror. Inert either way, but it documents a knob the published package does not have yet. |
+| Waiting on | Call site to wire | Status |
+|---|---|---|
+| `cli-kit` (REPL serial queue) | Mirror `apps/example-repo-mcp/tests/repl-pipe.test.ts` into `08-app/lib/tests/`, rebuild templates, `pnpm regen:example`. Held back deliberately: the scaffolder E2E smoke installs cli-kit **from npm**, so shipping the test to generated repos before the release would fail the smoke against the published (broken) loop — #23 exactly. | ✅ cleared once `cli-kit@0.3.1` published |
+| `robustness` minor (logger level gate) | Add `MCP_LOG_LEVEL` to `apps/example-repo-mcp/.env.example` and its `08-app/lib/` mirror. | ✅ cleared once `robustness@0.6.0` published |
+
+**The table works — keep using it.** Both rows cleared within an hour of their release, which is
+the point: the alternative was remembering two reverted call sites across four PRs and two release
+runs.
 
 **Rule for adding a row**: record it the moment the call site is reverted, not later. The one time
 this was left to memory it survived only because CI failed loudly.
+
+**Related lesson from the same batch, recorded in `AGENTS.md`**: `cli-kit@0.3.1` shipped four new
+public APIs under a `fix:` commit, because the headline was the REPL bug and semantic-release reads
+the commit TYPE rather than the diff. Additive, so nothing broke — but the version under-signals
+and there is no honest correction after the fact. The existing convention note covered
+under-*scoping* (a `feat(vitest-config)` publishing robustness); this is the opposite direction and
+now has its own bullet.
 
 **Trigger**: each row clears when its package publishes. Check this table after every release.

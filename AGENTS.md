@@ -107,6 +107,14 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
   `chore:`/`test:`/`docs:` for anything inside `packages/{robustness,cli-kit,tui-kit,secret-store}/`
   that does not change the package's published behaviour. The workflow's `paths`
   now exclude test and tooling files as a second line of defence.
+- **A commit's type is read against its whole DIFF, not its headline.** The rule
+  above catches under-scoping; this is the other direction. A commit that fixes a
+  bug *and* adds public API is a `feat:` — `fix(cli-kit): drain piped REPL input`
+  also added `formatResult`, `showMeta`, and the `json`/`last-error` built-ins,
+  and shipped them in `cli-kit@0.3.1` as a patch. Nothing broke (the additions
+  are optional) but the version under-signalled, and there is no honest way to
+  correct it afterwards short of an empty `feat` commit. **Before writing the
+  type, check whether the diff adds anything to a package's public surface.**
 - **Shared-tool-config packages are NEVER published.** `tsconfig`, `vitest-config`,
   and `biome-config` are per-monorepo shared config, meant to be customised for
   the repo they live in — not real dependencies. They stay `private: true`. A
