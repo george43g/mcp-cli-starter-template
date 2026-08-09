@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.6.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.5.3...robustness-v0.6.0) (2026-08-09)
+
+
+### Features
+
+* **robustness:** give the logger an env prefix, a level gate, and PID-aware log reads ([0fb77ee](https://github.com/george43g/mcp-cli-starter-template/commit/0fb77ee5c014d2cec1c8c2922e534a5e7ddffc83))
+
 # [@george43g/robustness-v0.5.3](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.5.2...robustness-v0.5.3) (2026-08-09)
 
 
