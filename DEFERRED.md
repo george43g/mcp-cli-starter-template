@@ -874,9 +874,11 @@ patch. `env-flag-binder.ts` itself was reviewed and needs no change.
 
 ---
 
-## 22. Every release makes `example/` stale, and nothing catches it until the next push
+## 22. RESOLVED — every release made `example/` stale, and nothing caught it until the next push
 
-**Status**: open, recurring. Observed 2026-08-09 immediately after releasing four packages.
+**Status**: fixed 2026-08-09 (PR #29). The release workflow now regenerates and commits `example/`
+itself; proven on its first two real runs. The resolution detail is at the end of this entry — the
+analysis above it is kept because it is why the chosen option was chosen.
 
 Generated dependency ranges are DERIVED from `packages/*/package.json` at build time (that was the
 fix for field-note 43 — hand-written ranges rot silently). So the moment semantic-release bumps a
