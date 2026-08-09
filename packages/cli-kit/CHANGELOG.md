@@ -1,3 +1,11 @@
+# [@george43g/cli-kit-v0.3.1](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v0.3.0...cli-kit-v0.3.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **cli-kit:** drain piped REPL input through a serial queue ([41ad58c](https://github.com/george43g/mcp-cli-starter-template/commit/41ad58c420859357b851ff7ac2d88ae5649e4693)), closes [#16a](https://github.com/george43g/mcp-cli-starter-template/issues/16a) [#24](https://github.com/george43g/mcp-cli-starter-template/issues/24)
+* **exports:** add the "./package.json" subpath to every package ([30137bd](https://github.com/george43g/mcp-cli-starter-template/commit/30137bd3710dbb8837afc86b6504bc78e122e14e))
+
 # [@george43g/cli-kit-v0.3.0](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v0.2.1...cli-kit-v0.3.0) (2026-08-09)
 
 
