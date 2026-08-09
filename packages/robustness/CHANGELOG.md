@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.5.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.4.0...robustness-v0.5.0) (2026-08-09)
+
+
+### Features
+
+* **robustness,tui-kit:** 16a kit hardening — redaction, logger knobs, shutdown trail, useDevStats(visible) ([9af30ec](https://github.com/george43g/mcp-cli-starter-template/commit/9af30eccecef63a9b4ad694fa4dafa6bf167d5b1)), closes [#16](https://github.com/george43g/mcp-cli-starter-template/issues/16) [#19](https://github.com/george43g/mcp-cli-starter-template/issues/19)
+
 # [@george43g/robustness-v0.4.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.3.0...robustness-v0.4.0) (2026-08-09)
 
 
