@@ -11,10 +11,15 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * Ratcheted again 81/84/83/81 → 84/85/86/84 by the logger env-prefix + level
  * gate + `getFileLogLines` PID preference, and by the sleep-skew test taken
  * from a downstream consumer — that guard had shipped with no test at all.
+ *
+ * Ratcheted 84/85/86/84 → 85/85/88/85 by rate-limit.ts reaching 100% on all
+ * four: `tryAcquire`, plus the module-level `acquire`/`defaultLimiterAvailable`
+ * and the real unref sleep path, none of which had ever been executed.
+ * Branches stay at 85 — the new code has no partly-covered branches to lift it.
  */
 export default withCoverageFloor(shared, {
-  statements: 84,
+  statements: 85,
   branches: 85,
-  functions: 86,
-  lines: 84,
+  functions: 88,
+  lines: 85,
 });

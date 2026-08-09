@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { TokenBucket } from "./rate-limit.js";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  _resetDefaultLimiterForTests,
+  acquire,
+  defaultLimiterAvailable,
+  TokenBucket,
+} from "./rate-limit.js";
 
 describe("TokenBucket", () => {
   it("starts at full capacity", () => {
@@ -55,5 +60,160 @@ describe("TokenBucket", () => {
   it("rejects negative capacity / rps", () => {
     expect(() => new TokenBucket(-1, 1)).toThrow();
     expect(() => new TokenBucket(1, -1)).toThrow();
+  });
+
+  it("acquire(n > capacity) throws instead of spinning forever", async () => {
+    let now = 0;
+    let sleeps = 0;
+    // Bounded so a regression fails the suite instead of hanging it.
+    const sleep = (ms: number) => {
+      sleeps += 1;
+      now += ms;
+      if (sleeps > 50) throw new Error("SPUN: acquire looped without making progress");
+      return Promise.resolve();
+    };
+    const b = new TokenBucket(5, 10, () => now, sleep);
+    await expect(b.acquire(6)).rejects.toThrow(/exceeds the bucket capacity/);
+    expect(sleeps).toBe(0);
+  });
+});
+
+describe("TokenBucket.tryAcquire", () => {
+  it("succeeds and deducts while tokens remain", () => {
+    const b = new TokenBucket(2, 2, () => 0);
+    expect(b.tryAcquire()).toEqual({ ok: true, retryMs: 0 });
+    expect(b.tryAcquire()).toEqual({ ok: true, retryMs: 0 });
+    expect(b.available()).toBe(0);
+  });
+
+  it("denies with a positive retry hint once drained", () => {
+    const b = new TokenBucket(2, 2, () => 0);
+    b.tryAcquire();
+    b.tryAcquire();
+    const denied = b.tryAcquire();
+    expect(denied.ok).toBe(false);
+    expect(denied.retryMs).toBeGreaterThan(0);
+  });
+
+  /**
+   * The contract that matters, and the one the consumer's suite pins: waiting
+   * exactly as long as the hint said must be ENOUGH. A hint that is merely
+   * positive would satisfy the test above while still starving a caller that
+   * believes it.
+   */
+  it("retryMs is sufficient — waiting exactly that long makes the next call succeed", () => {
+    let now = 0;
+    const b = new TokenBucket(2, 2, () => now);
+    expect(b.tryAcquire().ok).toBe(true);
+    expect(b.tryAcquire().ok).toBe(true);
+    const denied = b.tryAcquire();
+    expect(denied.ok).toBe(false);
+    now += denied.retryMs; // wait exactly as long as the hint said
+    expect(b.tryAcquire().ok).toBe(true);
+  });
+
+  it("retryMs is sufficient across a range of bucket shapes and demands", () => {
+    for (const [capacity, rps, n] of [
+      [1, 1, 1],
+      [2, 2, 1],
+      [10, 5, 3],
+      [10, 5, 10],
+      [3, 0.5, 2],
+      [100, 1000, 7],
+    ] as const) {
+      let now = 0;
+      const b = new TokenBucket(capacity, rps, () => now);
+      expect(b.tryAcquire(capacity).ok).toBe(true); // drain
+      const denied = b.tryAcquire(n);
+      expect(denied.ok, `capacity=${capacity} rps=${rps} n=${n}`).toBe(false);
+      now += denied.retryMs;
+      expect(
+        b.tryAcquire(n).ok,
+        `capacity=${capacity} rps=${rps} n=${n} after ${denied.retryMs}ms`,
+      ).toBe(true);
+    }
+  });
+
+  it("never blocks — it is the same bucket as acquire, just non-blocking", () => {
+    let now = 0;
+    const b = new TokenBucket(1, 1, () => now);
+    expect(b.tryAcquire().ok).toBe(true);
+    expect(b.tryAcquire().ok).toBe(false);
+    now += 1000;
+    expect(b.tryAcquire().ok).toBe(true);
+  });
+
+  it("tryAcquire(0) is a no-op that succeeds", () => {
+    const b = new TokenBucket(5, 1, () => 0);
+    expect(b.tryAcquire(0)).toEqual({ ok: true, retryMs: 0 });
+    expect(b.available()).toBe(5);
+  });
+
+  it("rps=0 spends a fixed budget, then denies with retryMs 0", () => {
+    // Deliberately NOT the same as acquire(), which treats rps=0 as "limiter
+    // off" and returns without deducting. retryMs 0 means "never" here: the
+    // bucket cannot refill, so the caller decides rather than being told to
+    // wait for something that will not happen.
+    const b = new TokenBucket(2, 0, () => 0);
+    expect(b.tryAcquire().ok).toBe(true);
+    expect(b.tryAcquire().ok).toBe(true);
+    expect(b.tryAcquire()).toEqual({ ok: false, retryMs: 0 });
+  });
+
+  it("throws when n exceeds capacity, rather than hinting at a retry that can never work", () => {
+    const b = new TokenBucket(5, 10, () => 0);
+    expect(() => b.tryAcquire(6)).toThrow(/exceeds the bucket capacity/);
+  });
+
+  it("shares state with acquire", async () => {
+    const now = 0;
+    const b = new TokenBucket(2, 1, () => now);
+    await b.acquire(2);
+    expect(b.tryAcquire().ok).toBe(false);
+  });
+});
+
+describe("the default limiter", () => {
+  afterEach(() => {
+    // `delete`, not `= undefined`: assigning to process.env stringifies, so the
+    // latter would leave the literal "undefined" for envNum to parse.
+    _resetDefaultLimiterForTests();
+    delete process.env.MCP_RATE_LIMIT_RPS;
+    delete process.env.MCP_RATE_LIMIT_BURST;
+  });
+
+  it("defaults to burst 30", () => {
+    expect(defaultLimiterAvailable()).toBe(30);
+  });
+
+  it("is built on first use, so env set after import still applies", () => {
+    process.env.MCP_RATE_LIMIT_BURST = "7";
+    expect(defaultLimiterAvailable()).toBe(7);
+  });
+
+  it("acquire() deducts from the shared bucket", async () => {
+    process.env.MCP_RATE_LIMIT_BURST = "5";
+    process.env.MCP_RATE_LIMIT_RPS = "1000";
+    await acquire(2);
+    expect(defaultLimiterAvailable()).toBeCloseTo(3, 0);
+  });
+
+  it("_resetDefaultLimiterForTests rebuilds from current env", () => {
+    process.env.MCP_RATE_LIMIT_BURST = "4";
+    expect(defaultLimiterAvailable()).toBe(4);
+    process.env.MCP_RATE_LIMIT_BURST = "9";
+    expect(defaultLimiterAvailable()).toBe(4); // still the cached bucket
+    _resetDefaultLimiterForTests();
+    expect(defaultLimiterAvailable()).toBe(9);
+  });
+
+  it("the real default sleep resolves (covers the unref timer path)", async () => {
+    // Every other test injects a fake sleep, so the shipped one — the branch
+    // that calls unref() so a pending limiter cannot hold the process open —
+    // was never executed.
+    const b = new TokenBucket(1, 1000);
+    await b.acquire(1);
+    await b.acquire(1); // must actually wait on the real timer
+    expect(b.available()).toBeLessThanOrEqual(1);
   });
 });

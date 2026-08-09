@@ -1240,7 +1240,37 @@ actually exercised rather than merely avoided.
 
 ---
 
-## 30. `TokenBucket` has no non-blocking acquire
+## 30. RESOLVED — `TokenBucket` has no non-blocking acquire
+
+**Status**: ✅ **RESOLVED 2026-08-10**, shipping in the next robustness minor. `tryAcquire(n = 1):
+RateLimitDecision` matches the requested shape exactly; browser-tab's two tests were used as the
+acceptance oracle and their semantics are reproduced against our own bucket.
+
+Three things beyond the requested shape:
+
+- **The real contract is that `retryMs` is SUFFICIENT, not merely positive.** Their
+  refill-then-retry test pins it — advance the clock by exactly `retryMs` and the next call must
+  succeed. A hint that is only positive passes a "deny with a hint" test while still starving a
+  caller that believes it. Covered here across six bucket shapes, not just the one.
+- **`n > capacity` now throws, on both methods.** Refill caps at `capacity`, so such a request can
+  never be granted: `acquire` spun on it forever (confirmed — the new test's guard tripped at 50
+  iterations against the old code) and the reference `tryAcquire` returns a retry hint that can
+  never come true. Only reachable while the limiter is active, so a deliberately-disabled
+  `new TokenBucket(0, 0)` still never throws. **This is a deviation from browser-tab's reference
+  implementation** — flagged to them, since it is an edge case their callers never hit (`n` is
+  always 1).
+- **rps=0 means different things to the two methods**, which is surprising enough to be documented
+  rather than smoothed over: `acquire` treats it as "limiter off" and returns without deducting,
+  while `tryAcquire` treats it as a fixed budget. Following the reference here was deliberate —
+  browser-tab already runs that semantic in production, and deviating would break their migration.
+
+`rate-limit.ts` went from partly-covered to 100% on all four metrics: the module-level `acquire`,
+`defaultLimiterAvailable`, and the shipped unref sleep path had never been executed by any test.
+Package floor ratcheted 84/85/86/84 → 85/85/88/85.
+
+**Original entry follows.**
+
+## 30 (original). `TokenBucket` has no non-blocking acquire
 
 **Status**: open, requested 2026-08-09 by the browser-tab-mcp agent over cross-session messaging;
 verified. `packages/robustness/src/rate-limit.ts:59` exposes only
@@ -1308,7 +1338,16 @@ actually breaks callers.
 
 ---
 
-## 32. Announce that `_resetForTests` now resets the logger's prefixes
+## 32. RESOLVED — Announce that `_resetForTests` now resets the logger's prefixes
+
+**Status**: ✅ **RESOLVED 2026-08-10.** Documented in the robustness README's logging section, under
+its own heading rather than as a bullet, with EQStack's `configureKitLogger()` shape as the
+recommended fix and the reason it matters stated plainly: call it in `beforeEach` and your logger
+configuration is gone from that point on. Ships with the same robustness minor as #30.
+
+**Original entry follows.**
+
+## 32 (original). Announce that `_resetForTests` now resets the logger's prefixes
 
 **Status**: open, raised 2026-08-09 by the EQStack agent after adopting `robustness@0.6.0`.
 

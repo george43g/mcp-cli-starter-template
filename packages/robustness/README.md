@@ -121,6 +121,54 @@ parsed into `process.env` after import still take effect. That claim was not
 quite true before 0.6.0: `MCP_LOG_PREFIX` was read once at module load, so the
 `--log-prefix` flag set the variable and changed nothing.
 
+### `_resetForTests()` also resets the prefixes (changed in 0.6.0)
+
+`_resetForTests()` now clears `logFilePrefixOverride`, `envPrefix` and
+`logLevelOverride` alongside the buffers. That fixed a real isolation leak — one
+test's `setLogEnvPrefix` used to pin the prefix for every later test in the same
+process — but it shipped without being called out, so it is worth stating
+plainly: **if you call it in `beforeEach`, your logger configuration is gone from
+that point on** and the logger falls back to `MCP_`.
+
+Reconfigure after resetting rather than only at suite start:
+
+```ts
+function configureKitLogger() {
+  setLogEnvPrefix("MYAPP");
+  setFileLogging(false);
+}
+
+beforeEach(() => {
+  _resetForTests();
+  configureKitLogger(); // without this the prefix silently reverts to MCP_
+});
+```
+
+## Rate limiting
+
+`TokenBucket` offers a blocking and a non-blocking take:
+
+```ts
+await bucket.acquire();                     // waits until tokens are free
+const { ok, retryMs } = bucket.tryAcquire(); // answers now
+if (!ok) throw new Error(`rate limit hit. Retry in ${retryMs}ms`);
+```
+
+`tryAcquire` exists for call sites that must answer immediately — an MCP tool
+that should fail fast with a retry hint rather than silently stalling the client
+for seconds.
+
+- **`retryMs` is sufficient, not merely positive.** Waiting exactly that long
+  makes the next call for the same `n` succeed.
+- **rps=0 differs between the two.** `acquire` treats it as "limiter off" and
+  returns without deducting. `tryAcquire` treats it as a fixed budget: the
+  initial `capacity` tokens are spendable and never refill, and once drained it
+  returns `{ ok: false, retryMs: 0 }` — 0 meaning *never*, so the caller decides
+  rather than being handed a wait that cannot help.
+- **Asking for more than `capacity` throws** on both, while the limiter is
+  active. Refill caps at `capacity`, so such a request can never be granted;
+  before 0.7.0 `acquire` spun on it forever.
+
 ## Environment variables
 
 With the default `envPrefix: "MCP"`:
