@@ -34,7 +34,25 @@ exists, root `package.json` chains `check:usage`, `ci.yml` runs it, and
 
 ---
 
-## 2. `mise trust` friction on first-run
+## 2. RESOLVED — `mise trust` friction on first-run
+
+**Status**: ✅ **RESOLVED 2026-08-10** with option A, documented in both places a new user actually
+looks:
+
+- The generated README gains a "Working on this repo" block leading with `mise trust .`, and says
+  WHY — mise refuses to load an unseen `mise.toml`, so skipping it makes `mise install` fail in a
+  way that reads like a broken checkout rather than a security prompt.
+- `mcp-scaffold init`'s "Action required" recap already told the user to run
+  `mise install && mise run artifacts`; that line was missing the trust step, so following it
+  verbatim failed. It now reads `mise trust . && mise install && mise run artifacts`.
+
+Option B (auto-trusting at scaffold time) was NOT taken: the prompt is mise's supply-chain guard,
+and a scaffolder that silently trusts config on the user's behalf defeats it. Documenting the
+answer is the fix; bypassing it is not.
+
+**Original entry follows.**
+
+## 2 (original). `mise trust` friction on first-run
 
 **Status**: known UX rough edge.
 
@@ -53,7 +71,53 @@ Recommended: A (just document it). The trust prompt IS the right UX for security
 
 ---
 
-## 3. MCPB bundle size optimization
+## 3. REFRAMED — MCPB bundle is BROKEN, not merely large
+
+**Status**: open, and materially worse than this entry claimed. Investigated 2026-08-10; no fix
+shipped, deliberately.
+
+**The bundle does not run.** Extracted from a clean build and executed:
+
+```
+$ node dist/cli.js health
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from
+  node_modules/@george43g/mcp-kit/node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
+```
+
+So the headline was wrong twice over: the size is **36.4 MB**, not ~52 MB, and size is not the
+defect. Like the screenshots pipeline (#29), this is a surface that has been shipping without ever
+producing a working artifact.
+
+**Root cause, and it explains both symptoms at once.** `zip -r` FOLLOWS symlinks. The app's
+`node_modules` in a pnpm workspace is a symlink farm into `.pnpm`, so the zip walks each link and
+writes real files at the link's location — pulling the whole monorepo graph in once per workspace
+kit (22.5 MB of `typescript/lib`, plus vite and vitest, measured from the archive listing) while
+FLATTENING the nested layout that pnpm relies on for resolution. Packages arrive without their own
+dependencies.
+
+**Two fixes attempted, both rejected on evidence:**
+
+| Attempt | Result |
+|---|---|
+| `pnpm deploy --prod` into the stage | **46.6 MB — larger.** pnpm's output is itself a symlink farm into its own `.pnpm`, so zip followed those instead. |
+| `pnpm deploy --prod` + `cp --dereference` + filter `.pnpm/node_modules` | **26.26 MB and still broken** — `Cannot find package 'picocolors'`. Dereferencing flattens exactly what pnpm needs. |
+
+**What a correct fix must satisfy**: the extracted bundle runs `node dist/cli.js health`. Size is
+secondary and should not be reported without that check — a 30% reduction that breaks resolution is
+strictly worse than the status quo.
+
+**Option B from the original entry now looks strongest**: have Vite bundle dependencies inline
+(drop them from `external` for the mcpb build only), producing a self-contained `dist/` with no
+`node_modules` in the archive at all. That sidesteps the symlink interaction entirely rather than
+negotiating with it. The original entry's objection — harder to debug — is much weaker than
+"the artifact has never worked".
+
+**Cost**: revised from ~1-2h to ~half a day, and it needs the runs-after-extraction assertion wired
+into CI, or this recurs silently.
+
+**Original entry follows.**
+
+## 3 (original). MCPB bundle size optimization
 
 **Status**: works, but produces ~52 MB artifacts.
 
@@ -762,7 +826,39 @@ and a `03-configs` migration for the new package.
 
 ---
 
-## 19. Revisit the generated release tooling: semantic-release vs release-please
+## 19. DECIDED — Revisit the generated release tooling: semantic-release vs release-please
+
+**Status**: ✅ **DECIDED 2026-08-10 — switch the GENERATED default to release-please.** Implementation
+ticketed as #36. This repo's own `release-packages.yml` stays on `semantic-release` and is out of
+scope, exactly as the original entry insisted.
+
+Its stated trigger was "pair it with #18", and #18 landed today.
+
+**Two reasons, one of which is new evidence rather than preference:**
+
+1. **The generated default carries a plugin most cloned tools never use.** `@semantic-release/npm`
+   is in the shipped chain, while the common generated case is "I want releases and changelogs but
+   I am not publishing to npm". release-please treats publishing as a job you simply never add.
+
+2. **release-please makes the computed version visible BEFORE it is cut, and that is not a
+   theoretical benefit here.** semantic-release publishes on merge, deriving the bump from commit
+   text with no reviewable intermediate. That mechanism produced two unplanned majors in this repo
+   on 2026-08-10 — `cli-kit@1.0.0` (a `!` whose 0.x consequence was unchecked, #34) and
+   `cli-kit@2.0.0` (a `docs:` commit whose PROSE spelled the footer token, #35). A rolling Release
+   PR shows "this will publish 2.0.0" as a diff someone can look at. Both incidents would have been
+   caught by reading it.
+
+   #35's guard now blocks the specific token, and #34 is a documented rule. But those are patches
+   over a shape where the version is only observable after it is immutable, and a generated repo
+   inherits that shape without inheriting the guards' history.
+
+**Not changed**: this repo publishes four real packages over npm OIDC and is proven end-to-end.
+Nothing here argues for touching it, and the `@anolilab/multi-semantic-release` `tagFormat` trap
+recorded below remains the reason not to migrate it casually.
+
+**Original entry follows.**
+
+## 19 (original). Revisit the generated release tooling: semantic-release vs release-please
 
 **Status**: open question, no decision. Raised 2026-08-09.
 
@@ -1629,3 +1725,31 @@ cli-kit release will simply be 2.x.
 **What generalises**: this repo already had a rule against writing skip-CI markers in commit prose.
 The same hazard class covers every token a CI or release tool greps for out of a commit message.
 Treat commit messages as machine input, not only as prose.
+
+---
+
+## 36. Implement the release-please switch for generated repos (from #19)
+
+**Status**: open, decided in #19 on 2026-08-10 but deliberately not implemented in the same change.
+
+Swap what the scaffolder GENERATES from `semantic-release` to `release-please`. This repo's own
+`release-packages.yml` is untouched.
+
+**Scope**, all in `12-ci-release` plus its `lib/` mirror and `example/`:
+
+- Replace the generated `.github/workflows/release.yml` with a release-please workflow, still
+  shipping disabled by default (the `on:` trigger commented), matching current behaviour.
+- Drop the generated `.releaserc.json` and its `@semantic-release/*` devDependencies.
+- Add a `release-please-config.json` + `.release-please-manifest.json`.
+- Update `docs/RELEASE.md` — the generated copy, not this repo's.
+- Keep the changelog format (Keep a Changelog) so existing generated repos are not disrupted.
+
+**Two things not to lose in the swap:**
+
+- The **npm-publish path must remain documented but opt-in**, for the minority of generated repos
+  that do publish. release-please makes this a job you add rather than a plugin you remove.
+- The `release-tokens` CI guard (#35) stays regardless. release-please reads conventional commits
+  too, so prose spelling the footer token is still hazardous — the Release PR makes it *visible*,
+  not impossible.
+
+**Cost**: ~2h, most of it in the lib mirror and regen. Zero risk to this repo's own publishing.

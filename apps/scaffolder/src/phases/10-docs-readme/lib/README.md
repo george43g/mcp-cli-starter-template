@@ -44,6 +44,23 @@ example-repo health           # one-shot health snapshot
 example-repo noop --input hi  # call any tool directly from the CLI
 ```
 
+### Working on this repo
+
+```bash
+mise trust .    # ← do this first
+mise install
+pnpm install
+```
+
+`mise trust .` is not optional and not a formality. mise refuses to load a
+`mise.toml` it has not seen before, so skipping it makes `mise install` — and
+anything downstream of it, like `pnpm artifacts` or `pnpm completions` — fail in
+a way that reads like a broken checkout rather than a security prompt. It is
+mise's supply-chain guard: a config file can declare tools and tasks, so it
+wants you to have looked at it once.
+
+This repo has two: one at the root and one per app.
+
 ## One-click install
 
 Paste these into your MCP host's config. The bin name is `example-repo` once installed via npm; the `npx` form works without a local install.
