@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.5.2](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.5.1...robustness-v0.5.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **robustness:** keep the watchdog force-exit net armed through a kill ([fa9976a](https://github.com/george43g/mcp-cli-starter-template/commit/fa9976a346823d62efb9da331ec5fa585bbdffad))
+
 # [@george43g/robustness-v0.5.1](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.5.0...robustness-v0.5.1) (2026-08-09)
 
 
