@@ -244,6 +244,14 @@ jobs:
           node-version: "24"
           cache: pnpm
 
+      # Only this job needs mise: the example/ resync below runs the usage(1)
+      # tasks (docs, completions, manpage) inside the scaffolded output.
+      - name: Setup mise (usage(1) for the example/ resync)
+        uses: jdx/mise-action@v4
+        with:
+          install: true
+          cache: true
+
       - name: Show npm version (OIDC trusted publishing needs >= 11.5.1)
         run: npm --version
 
@@ -260,6 +268,45 @@ jobs:
         run: pnpm --filter @george43g/secret-store exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── example/ resync (DEFERRED #22) ──────────────────────────────────
+      #
+      # Every release rewrites the dependency ranges the scaffolder writes into
+      # generated repos, which makes the committed example/ stale — and nothing
+      # caught it until the NEXT pull request failed CI's sync check on a diff
+      # its author did not create. It was paid by hand four times in one
+      # session.
+      #
+      # This runs at the end of the SECRET-STORE job deliberately. It is the
+      # last job to execute on a push (mcpsync is workflow_dispatch-only), so
+      # by this point the tree holds every bump from the run. A new job hung
+      # off mcpsync would be skipped on push, exactly when it is needed.
+      - name: Resync example/ against the freshly bumped versions
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          # --build is required, not an optimisation: `pnpm verify` above built
+          # the scaffolder BEFORE semantic-release bumped anything, so that
+          # dist still embeds the old dependency ranges.
+          node scripts/regen-example.mjs example --build
+
+      - name: Commit the resync
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -z $(git status --porcelain example/) ]]; then
+            echo "example/ already in sync — nothing to commit."
+            exit 0
+          fi
+          git add example/
+          git commit -m "chore(example): resync generated output after release [skip ci]"
+          # semantic-release pushed its own bump commits to main during this
+          # job, and main is unprotected, so a human merge can land between
+          # this job's checkout and this push. Rebase rather than fail the run.
+          git pull --rebase origin main
+          git push
 
   mcpsync:
     # Publish deferred — manual dispatch only until the 0.1.0 bootstrap +

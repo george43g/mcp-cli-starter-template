@@ -117,52 +117,26 @@ jobs:
         run: pnpm --filter "@george43g/*-mcp" stress
 
       - name: Example/ output stays in sync with scaffolder
-        # Re-run the scaffolder with --name example, generate the usage(1)
-        # artifacts the same way `pnpm regen:example` does locally, and
-        # diff against the committed example/ directory. Catches scaffolder
-        # changes (or .usage.kdl changes) that weren't accompanied by
-        # `pnpm regen:example`.
+        # Regenerate into a tempdir and diff against the committed example/.
+        # Catches scaffolder changes (or .usage.kdl changes) that weren't
+        # accompanied by `pnpm regen:example`.
         # Fix locally: `pnpm regen:example && git add example/ && git commit`.
+        #
+        # This step used to re-implement `regen:example` inline, and its own
+        # comment admitted the two hand-synced copies were how it drifted
+        # (DEFERRED #17). Both now call scripts/regen-example.mjs, which is
+        # also what the release workflow uses to refresh example/ after a
+        # version bump.
+        #
+        # No --build: the matrix already built the scaffolder in an earlier
+        # step, and its dist is current for this commit.
         run: |
           set -euo pipefail
           EXAMPLE_TMP="$(mktemp -d)"
-          # --no-install must match package.json's `regen:example`. example/ is
-          # a committed snapshot, not a working repo: installing here would
-          # produce a pnpm-lock.yaml the committed copy does not have, and this
-          # check would fail on a repo that is perfectly in sync.
-          #
-          # NOTE: this step re-implements `regen:example` rather than calling
-          # it (that script writes into the repo; this needs a tempdir). The two
-          # definitions have to be kept in step by hand — that is exactly how
-          # this drifted.
-          node apps/scaffolder/dist/cli.js init "$EXAMPLE_TMP" --name example --no-banner --no-install
-          # example/biome.json is intentionally stripped from the committed
-          # reference (would be picked up by the parent biome as a competing
-          # root config). Mirror that strip on the tempdir side.
-          rm -f "$EXAMPLE_TMP/biome.json"
-          # Regenerate completions / markdown docs / manpage inside the
-          # tempdir so it matches what `pnpm regen:example` produces locally.
-          # usage(1) is on PATH via the mise install step earlier in the job.
-          # MISE_TRUSTED_CONFIG_PATHS is required because the tempdir lives
-          # outside the repo's trusted workspace, so mise refuses to read
-          # the freshly-scaffolded mise.toml without explicit consent.
-          export MISE_TRUSTED_CONFIG_PATHS="$EXAMPLE_TMP"
-          mise run --cd "$EXAMPLE_TMP/apps/example-mcp" docs
-          mise run --cd "$EXAMPLE_TMP/apps/example-mcp" completions
-          mise run --cd "$EXAMPLE_TMP/apps/example-mcp" manpage
-          # Strip transient artifacts + the .git directory (only the tempdir
-          # gets one — m3-git-init runs `git init` in fresh dirs but skips
-          # inside the parent repo where example/ lives).
-          for d in "$EXAMPLE_TMP" example; do
-            find "$d" \( \
-              -name .git -o \
-              -name node_modules -o \
-              -name dist -o \
-              -name .turbo -o \
-              -name coverage -o \
-              -name '*.tsbuildinfo' \
-            \) -prune -exec rm -rf {} + 2>/dev/null || true
-          done
+          node scripts/regen-example.mjs "$EXAMPLE_TMP"
+          # The committed side is not regenerated, so strip its transient
+          # artifacts too before comparing content.
+          node scripts/regen-example.mjs --prune example
           if ! diff -r --no-dereference "$EXAMPLE_TMP" example; then
             echo "::error::example/ is stale vs scaffolder output. Run \`pnpm regen:example\` and commit."
             exit 1
