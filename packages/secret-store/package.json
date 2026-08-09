@@ -37,7 +37,8 @@
       "types": "./dist/exec.d.ts",
       "import": "./dist/exec.js",
       "default": "./dist/exec.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",

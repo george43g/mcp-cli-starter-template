@@ -110,6 +110,22 @@ function checkFilesEntry(dir, pkg, name) {
  * here is inherited by every scaffolded tool.
  */
 function checkExportsResolvable(dir, pkg) {
+  // `./package.json` must stay reachable: `exports` replaces `main`, so an map
+  // that omits it makes `require.resolve("<pkg>/package.json")` throw
+  // ERR_PACKAGE_PATH_NOT_EXPORTED — the standard way to locate an installed
+  // package's root, used by build tooling, version probes and test harnesses.
+  // Reported against tui-kit (2026-08-09) by a consumer whose regression test
+  // reads the published `src/`. This is the second exports-map defect in two
+  // days, hence a check rather than six one-line edits.
+  if (pkg.exports && !("./package.json" in pkg.exports)) {
+    failures.push(
+      `${dir}: exports has no "./package.json" entry\n` +
+        `    Fix: add "./package.json": "./package.json". Without it ` +
+        `require.resolve("${pkg.name}/package.json") throws ` +
+        `ERR_PACKAGE_PATH_NOT_EXPORTED, because exports replaces main entirely.`,
+    );
+  }
+
   for (const [subpath, conditions] of Object.entries(pkg.exports ?? {})) {
     if (typeof conditions !== "object" || conditions === null) continue;
     const keys = Object.keys(conditions);

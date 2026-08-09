@@ -22,7 +22,8 @@
       "types": "./dist/transports/stdio.d.ts",
       "import": "./dist/transports/stdio.js",
       "default": "./dist/transports/stdio.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist"

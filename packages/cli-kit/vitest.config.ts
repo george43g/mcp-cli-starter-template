@@ -17,12 +17,16 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * its three uncovered printers. Testing the printers too is what turned a
  * ratchet-down into a ratchet-up.
  *
+ * Ratcheted 86/84/80/86 → 91/87/83/91 by the REPL work: the serial line queue
+ * (piped multi-command input) plus the four observability features, each with
+ * tests. `repl.ts` is now 97/86/100/97.
+ *
  * The remaining gap is `program.ts` at 0% — a thin wrapper over commander,
  * exercised end-to-end by the generated app rather than by unit tests here.
  */
 export default withCoverageFloor(shared, {
-  statements: 86,
-  branches: 84,
-  functions: 80,
-  lines: 86,
+  statements: 91,
+  branches: 87,
+  functions: 83,
+  lines: 91,
 });

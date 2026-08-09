@@ -42,7 +42,8 @@
       "types": "./dist/shutdown.d.ts",
       "import": "./dist/shutdown.js",
       "default": "./dist/shutdown.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",

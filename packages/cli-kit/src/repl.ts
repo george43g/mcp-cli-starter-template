@@ -8,10 +8,14 @@
  *   - `help` / `?`    show help
  *   - `<tool> <json>` call any listed tool with JSON args
  *   - `raw <json>`    send raw {name, arguments} payload
+ *   - `json`          toggle raw `structuredContent` output
+ *   - `last-error`    reprint the last error
  *   - `quit` / `exit` exit (EOF also exits)
  *
  * No domain knowledge — a tool may additionally register a shortcut that takes
- * positional arguments instead of JSON.
+ * positional arguments instead of JSON. `formatResult` and `showMeta` give a
+ * host a prettier view and a per-call timing/engine footer without this file
+ * learning anything about the host's domain.
  *
  * The `<tool> <json>` line above was in this docblock for a long time before
  * anything implemented it: every tool name fell through to "Unknown command"
@@ -25,7 +29,11 @@ import { color } from "./color.js";
 
 export interface ToolCallResult {
   content?: Array<{ type: string; text: string }>;
+  /** Machine-readable result, if the tool produced one. Shown by `json`. */
+  structuredContent?: unknown;
   isError?: boolean;
+  /** Perf footer from the dispatcher: `{ duration_ms, engine, ... }`. */
+  _meta?: Record<string, unknown>;
 }
 
 export interface ToolDescriptor {
@@ -59,6 +67,16 @@ export interface RunReplOptions {
   input?: NodeJS.ReadableStream;
   /** Stream to write output to — defaults to process.stdout. */
   output?: NodeJS.WritableStream;
+  /**
+   * Pretty-printer for a successful result. Receives the whole result so it can
+   * inspect `structuredContent`. Defaults to printing `content[0].text`.
+   *
+   * Not consulted in `json` mode — the point of that toggle is to see what the
+   * tool actually returned, unformatted.
+   */
+  formatResult?(result: ToolCallResult): string;
+  /** Print a dim `· 12ms · engine=ts` footer after each call. */
+  showMeta?: boolean;
 }
 
 export interface ParsedInput {
@@ -163,15 +181,78 @@ function parseJsonArg(text: string, usage: string): unknown {
   }
 }
 
-async function printToolResult(out: NodeJS.WritableStream, result: ToolCallResult): Promise<void> {
-  const text = result.content?.[0]?.text ?? JSON.stringify(result, null, 2);
-  if (result.isError) {
-    out.write(`${color.red(text)}\n`);
-    return;
-  }
-  out.write(`${text}\n`);
+/** Everything `printToolResult` needs that is not the result itself. */
+interface PrintContext {
+  out: NodeJS.WritableStream;
+  formatResult?(result: ToolCallResult): string;
+  showMeta?: boolean;
+  /** Toggled by the `json` built-in. */
+  rawMode: boolean;
+  setLastError(text: string | null): void;
 }
 
+/**
+ * Render the dispatcher's perf footer.
+ *
+ * Both `duration_ms` and `dur_ms` are accepted deliberately. `mcp-kit`'s
+ * dispatcher emits `duration_ms` (`dispatch.ts`), but `dur_ms` is the name that
+ * appears in downstream footers — a fork of this file read only `dur_ms` while
+ * its own dispatcher wrote `duration_ms`, so in production its footer silently
+ * rendered `engine=…` and never a timing. Its unit test passed because the fake
+ * hand-wrote `dur_ms`. Accepting both costs one line and removes the trap.
+ */
+function metaFooter(meta: Record<string, unknown> | undefined): string | null {
+  if (!meta) return null;
+  const parts: string[] = [];
+  const dur = meta.duration_ms ?? meta.dur_ms;
+  if (dur !== undefined) parts.push(`${String(dur)}ms`);
+  if (meta.engine !== undefined) parts.push(`engine=${String(meta.engine)}`);
+  return parts.length > 0 ? `· ${parts.join(" · ")}` : null;
+}
+
+function printToolResult(ctx: PrintContext, result: ToolCallResult): void {
+  if (result.isError) {
+    const text = result.content?.[0]?.text ?? JSON.stringify(result, null, 2);
+    ctx.setLastError(text);
+    ctx.out.write(`${color.red(text)}\n`);
+    return;
+  }
+
+  let body: string;
+  if (ctx.rawMode && result.structuredContent !== undefined) {
+    body = JSON.stringify(result.structuredContent, null, 2);
+  } else if (ctx.formatResult) {
+    body = ctx.formatResult(result);
+  } else {
+    body = result.content?.[0]?.text ?? JSON.stringify(result, null, 2);
+  }
+  ctx.out.write(`${body}\n`);
+
+  if (ctx.showMeta) {
+    const footer = metaFooter(result._meta);
+    if (footer) ctx.out.write(`${color.dim(footer)}\n`);
+  }
+}
+
+/**
+ * Run the REPL until `quit`/`exit` or end of input.
+ *
+ * Input is consumed through a serial QUEUE, not a recursive `rl.question`.
+ * That distinction is the whole reason this function looks the way it does, so
+ * do not "simplify" it back:
+ *
+ * `rl.question()` arms a ONE-SHOT listener. While an async command is being
+ * awaited there is no listener armed at all, so any line readline has already
+ * buffered — which, for a pipe, is usually all of them — is emitted into
+ * nothing and lost forever. `printf 'help\ntools\nquit\n' | mytool console` ran
+ * only `help`, and then EOF closed the stream cleanly, so the loss was silent.
+ *
+ * Two independent downstream consumers reported this before the test suite
+ * could express it: every scripted test fed exactly one line, and the test
+ * dispatcher resolved on the microtask queue, so every `await` settled before
+ * readline could have emitted a second line. See `repl.test.ts` and its
+ * `slowDispatcher`, which is deliberately hostile for that reason.
+ */
 export async function runRepl(opts: RunReplOptions): Promise<void> {
   const out = opts.output ?? process.stdout;
   const inp = opts.input ?? process.stdin;
@@ -180,123 +261,213 @@ export async function runRepl(opts: RunReplOptions): Promise<void> {
     shortcuts.set(s.command, s);
   }
 
+  let lastError: string | null = null;
+  const ctx: PrintContext = {
+    out,
+    // Spread rather than assign: `exactOptionalPropertyTypes` rejects an
+    // explicit `undefined` for an optional property.
+    ...(opts.formatResult ? { formatResult: opts.formatResult } : {}),
+    ...(opts.showMeta ? { showMeta: opts.showMeta } : {}),
+    rawMode: false,
+    setLastError: (t) => {
+      lastError = t;
+    },
+  };
+
   if (opts.banner) {
     out.write(`${opts.banner}\n`);
   }
 
+  // No `terminal: false` here. Writing the prompt by hand would work, but it
+  // costs history, arrow keys and readline's SIGINT handling for anyone using
+  // this interactively — which is the primary use.
   const rl: Interface = createInterface({ input: inp, output: out });
+  const promptStr = color.cyan(`${opts.prompt}> `);
 
   return new Promise<void>((resolveRepl) => {
-    // Resolve on EOF as well as on `quit`. Without this a piped or redirected
-    // stdin runs out of input and the returned promise never settles — the
-    // process just hangs after the last line. It also makes the REPL testable
-    // at all: a test feeding a fixed script has no way to send `quit` after
-    // asserting on output.
-    let done = false;
+    const queue: string[] = [];
+    let processing = false;
+    let closed = false;
+    let finished = false;
+
     const finish = () => {
-      if (done) return;
-      done = true;
+      if (finished) return;
+      finished = true;
       resolveRepl();
     };
-    rl.on("close", finish);
 
-    const prompt = () => {
-      if (done) return;
-      rl.question(color.cyan(`${opts.prompt}> `), async (line) => {
-        const trimmed = line.trim();
-        if (!trimmed) {
-          prompt();
-          return;
+    /**
+     * Settle only once the stream is done AND the queue has fully drained.
+     *
+     * Resolving straight from `"close"` is the subtler half of the same bug:
+     * readline emits `"close"` at EOF while the pump may still be awaiting a
+     * command with more lines queued behind it, so an unconditional resolve
+     * truncates the tail of a real pipe even with the queue in place.
+     */
+    const maybeFinish = () => {
+      if (closed && !processing && queue.length === 0) finish();
+    };
+
+    /** Handle one line. Returns `false` when the REPL should exit. */
+    async function handleLine(line: string): Promise<boolean> {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+
+      const { cmd: rawCmd, rest, args } = parseConsoleInput(trimmed);
+      // Built-ins stay case-insensitive (`HELP` has always worked), but the
+      // command word itself keeps its case so a tool named `getLogs` can be
+      // matched. The old parser lowercased everything, which made any tool
+      // with an uppercase letter permanently unreachable.
+      const cmd = rawCmd.toLowerCase();
+
+      try {
+        if (cmd === "quit" || cmd === "exit") return false;
+
+        if (cmd === "help" || cmd === "?") {
+          const tools = await opts.dispatcher.listTools();
+          out.write(color.bold("Commands:\n"));
+          out.write("  help, ?          Show this help\n");
+          out.write("  tools            List MCP tools\n");
+          out.write("  <tool> <json>    Call a tool with JSON arguments\n");
+          out.write("  raw <json>       Send raw {name,arguments} payload\n");
+          // Reflects the LIVE toggle state, not a static string — the whole
+          // value of the command is knowing which mode you are in.
+          out.write(
+            `  json             Toggle raw structuredContent output (now ${ctx.rawMode ? "on" : "off"})\n`,
+          );
+          out.write("  last-error       Reprint the last error\n");
+          out.write("  quit, exit       Exit the REPL\n");
+          for (const s of shortcuts.values()) {
+            out.write(`  ${s.command}${s.help ? ` — ${s.help}` : ` (calls ${s.tool})`}\n`);
+          }
+          out.write(color.bold("\nAvailable MCP tools:\n"));
+          for (const tool of tools) {
+            out.write(`  ${tool.name}${tool.description ? ` — ${tool.description}` : ""}\n`);
+          }
+          return true;
         }
-        const { cmd: rawCmd, rest, args } = parseConsoleInput(trimmed);
-        // Built-ins stay case-insensitive (`HELP` has always worked), but the
-        // command word itself keeps its case so a tool named `getLogs` can be
-        // matched. The old parser lowercased everything, which made any tool
-        // with an uppercase letter permanently unreachable.
-        const cmd = rawCmd.toLowerCase();
 
-        try {
-          if (cmd === "quit" || cmd === "exit") {
+        if (cmd === "tools") {
+          for (const tool of await opts.dispatcher.listTools()) {
+            out.write(`${tool.name}${tool.description ? ` — ${tool.description}` : ""}\n`);
+          }
+          return true;
+        }
+
+        if (cmd === "json") {
+          ctx.rawMode = !ctx.rawMode;
+          out.write(color.dim(`raw JSON output ${ctx.rawMode ? "on" : "off"}\n`));
+          return true;
+        }
+
+        if (cmd === "last-error") {
+          out.write(lastError ? `${color.red(lastError)}\n` : color.dim("no errors yet\n"));
+          return true;
+        }
+
+        if (cmd === "raw") {
+          // `rest`, not `args.join(" ")` — the payload must reach JSON.parse
+          // exactly as typed, quotes and all.
+          if (!rest) throw new Error("Usage: raw '<json>'");
+          const parsed = parseJsonArg(rest, 'raw \'{"name":"tool","arguments":{}}\'') as {
+            name?: string;
+            arguments?: Record<string, unknown>;
+          };
+          if (!parsed.name) throw new Error('Expected: raw \'{"name":"tool","arguments":{}}\'');
+          const r = await opts.dispatcher.callTool(parsed.name, parsed.arguments ?? {});
+          printToolResult(ctx, r);
+          return true;
+        }
+
+        // Shortcuts take positional args. Exact match first so a shortcut
+        // can be capitalised; lowercase fallback preserves prior behaviour.
+        const shortcut = shortcuts.get(rawCmd) ?? shortcuts.get(cmd);
+        if (shortcut) {
+          const r = await opts.dispatcher.callTool(shortcut.tool, shortcut.buildArgs(args));
+          printToolResult(ctx, r);
+          return true;
+        }
+
+        // Generic `<tool> <json>` dispatch. The docblock promised this and
+        // `help` listed every registered tool under "Available MCP tools:",
+        // but nothing implemented it — so most of what help advertised threw
+        // "Unknown command". Rather than trim the advertisement, make it
+        // true: any tool the dispatcher lists is now callable by name, and
+        // `raw` goes back to being a fallback instead of the only route.
+        const tool = (await opts.dispatcher.listTools()).find(
+          (t) => t.name === rawCmd || t.name.toLowerCase() === cmd,
+        );
+        if (tool) {
+          const toolArgs = rest
+            ? (parseJsonArg(rest, `${tool.name} '{"key":"value"}'`) as Record<string, unknown>)
+            : {};
+          const r = await opts.dispatcher.callTool(tool.name, toolArgs);
+          printToolResult(ctx, r);
+          return true;
+        }
+
+        throw new Error(`Unknown command: ${rawCmd}. Type 'help' for available commands.`);
+      } catch (err) {
+        // Thrown errors count for `last-error` too, not just `isError` results
+        // — an unparseable payload or an unknown command is exactly what you
+        // want to re-read after the screen has scrolled.
+        const message = (err as Error).message;
+        ctx.setLastError(message);
+        out.write(`${color.red(message)}\n`);
+        return true;
+      }
+    }
+
+    /** Drain the queue serially. Single-flight on `processing`. */
+    async function pump(): Promise<void> {
+      if (processing || finished) return;
+      processing = true;
+      try {
+        // Re-check `queue.length` every iteration rather than snapshotting it:
+        // lines pushed while an `await` was in flight belong to this drain.
+        while (queue.length > 0 && !finished) {
+          const line = queue.shift() as string;
+          let keepGoing = true;
+          try {
+            keepGoing = await handleLine(line);
+          } catch (err) {
+            // `handleLine` catches its own command errors, so reaching here
+            // means the loop itself faulted. Report and keep draining — an
+            // escaping rejection would leave `processing` stuck true (queue
+            // stalled forever) and surface as an unhandled rejection.
+            out.write(`${color.red((err as Error).message)}\n`);
+          }
+          if (!keepGoing) {
+            queue.length = 0;
             rl.close();
             finish();
             return;
           }
-          if (cmd === "help" || cmd === "?") {
-            const tools = await opts.dispatcher.listTools();
-            out.write(color.bold("Commands:\n"));
-            out.write("  help, ?          Show this help\n");
-            out.write("  tools            List MCP tools\n");
-            out.write("  <tool> <json>    Call a tool with JSON arguments\n");
-            out.write("  raw <json>       Send raw {name,arguments} payload\n");
-            out.write("  quit, exit       Exit the REPL\n");
-            for (const s of shortcuts.values()) {
-              out.write(`  ${s.command}${s.help ? ` — ${s.help}` : ` (calls ${s.tool})`}\n`);
-            }
-            out.write(color.bold("\nAvailable MCP tools:\n"));
-            for (const tool of tools) {
-              out.write(`  ${tool.name}${tool.description ? ` — ${tool.description}` : ""}\n`);
-            }
-            prompt();
-            return;
-          }
-          if (cmd === "tools") {
-            for (const tool of await opts.dispatcher.listTools()) {
-              out.write(`${tool.name}${tool.description ? ` — ${tool.description}` : ""}\n`);
-            }
-            prompt();
-            return;
-          }
-          if (cmd === "raw") {
-            // `rest`, not `args.join(" ")` — the payload must reach JSON.parse
-            // exactly as typed, quotes and all.
-            if (!rest) throw new Error("Usage: raw '<json>'");
-            const parsed = parseJsonArg(rest, 'raw \'{"name":"tool","arguments":{}}\'') as {
-              name?: string;
-              arguments?: Record<string, unknown>;
-            };
-            if (!parsed.name) throw new Error('Expected: raw \'{"name":"tool","arguments":{}}\'');
-            const r = await opts.dispatcher.callTool(parsed.name, parsed.arguments ?? {});
-            await printToolResult(out, r);
-            prompt();
-            return;
-          }
-
-          // Shortcuts take positional args. Exact match first so a shortcut
-          // can be capitalised; lowercase fallback preserves prior behaviour.
-          const shortcut = shortcuts.get(rawCmd) ?? shortcuts.get(cmd);
-          if (shortcut) {
-            const r = await opts.dispatcher.callTool(shortcut.tool, shortcut.buildArgs(args));
-            await printToolResult(out, r);
-            prompt();
-            return;
-          }
-
-          // Generic `<tool> <json>` dispatch. The docblock promised this and
-          // `help` listed every registered tool under "Available MCP tools:",
-          // but nothing implemented it — so most of what help advertised threw
-          // "Unknown command". Rather than trim the advertisement, make it
-          // true: any tool the dispatcher lists is now callable by name, and
-          // `raw` goes back to being a fallback instead of the only route.
-          const tool = (await opts.dispatcher.listTools()).find(
-            (t) => t.name === rawCmd || t.name.toLowerCase() === cmd,
-          );
-          if (tool) {
-            const toolArgs = rest
-              ? (parseJsonArg(rest, `${tool.name} '{"key":"value"}'`) as Record<string, unknown>)
-              : {};
-            const r = await opts.dispatcher.callTool(tool.name, toolArgs);
-            await printToolResult(out, r);
-            prompt();
-            return;
-          }
-
-          throw new Error(`Unknown command: ${rawCmd}. Type 'help' for available commands.`);
-        } catch (err) {
-          out.write(`${color.red((err as Error).message)}\n`);
-          prompt();
         }
-      });
-    };
-    prompt();
+      } finally {
+        processing = false;
+      }
+      if (!finished && !closed) {
+        rl.setPrompt(promptStr);
+        rl.prompt();
+      }
+      maybeFinish();
+    }
+
+    rl.on("line", (line) => {
+      // A late `"line"` after the promise settled would run a command nobody
+      // is waiting for.
+      if (finished) return;
+      queue.push(line);
+      void pump();
+    });
+
+    rl.on("close", () => {
+      closed = true;
+      maybeFinish();
+    });
+
+    rl.setPrompt(promptStr);
+    rl.prompt();
   });
 }
