@@ -762,7 +762,31 @@ answers "which release", the stamp answers "which build".
 
 ---
 
-## 20. `check-publishable-manifests` cannot model comparator ranges, so the honest fix silences it
+## 20. RESOLVED — `check-publishable-manifests` cannot model comparator ranges, so the honest fix silences it
+
+**Status**: ✅ **RESOLVED 2026-08-10.** `satisfiesLoose` is gone; the check now delegates to
+`semver` via `scripts/lib/semver-range.mjs`, and both manifests carry `>=0.1.1 <1`.
+
+Three things worth keeping from the fix:
+
+- **The escape hatch hid a second defect nobody had noticed.** `if (!m) return true` was known to
+  wave comparator ranges through. It also hid that the caret branch ignored the range's LOWER
+  bound — `^1.2.0` compared only the major, so it admitted `1.1.9`. Found by the new test, not
+  predicted by this entry.
+- **The dependency call went the other way than this entry guessed.** "Roughly 30 lines" was
+  wrong: a correct desugar (carets, tildes, comparators, hyphen ranges, partials, wildcards) is
+  ~120 lines of exactly the logic that develops quiet bugs, in a checker whose failure mode is a
+  silent false-pass. `semver` is now a root devDependency. Nothing ships in a tarball, so the
+  no-dependency rule for published packages is untouched.
+- **An unparseable range is now a failure, not an admission.** That is the actual repair — the old
+  behaviour reported success without checking.
+
+The script had no test at all, which is why the gap survived. `scripts/check-publishable-manifests.test.mjs`
+is the first; all 33 cases were observed failing against the old implementation first (8 did). It
+runs via node's built-in runner as `pnpm test:scripts`, wired into `pnpm verify` and CI ahead of
+the check that depends on it.
+
+**Original entry follows.**
 
 **Status**: open. Found 2026-08-09 while fixing the fallout from an accidental `robustness@0.3.0`.
 
