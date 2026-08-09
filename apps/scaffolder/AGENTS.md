@@ -115,6 +115,12 @@ entry with a justifying comment. The tracked `example/` output is a third
 surface: regenerate it with `pnpm regen:example` from the repo root when
 generated output changes.
 
+`regen:example`, CI's sync check and the release workflow's post-bump resync
+all call one script — `scripts/regen-example.mjs`. Change the regen sequence
+there, never in a workflow step: two hand-synced copies is how it drifted
+before (DEFERRED #17). You do **not** need to run it after a release any more;
+the release commits the resync itself (#22).
+
 ## Troubleshooting
 
 - **Golden test fails**: someone edited canonical or `lib/` without syncing.

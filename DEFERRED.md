@@ -559,9 +559,20 @@ color.ts + useMouse → withTimeout/withRetry/TokenBucket → logger. Stop befor
 
 ---
 
-## 17. `regen:example` is defined twice, and `verify` doesn't run the check that guards it
+## 17. RESOLVED — `regen:example` was defined twice
 
-**Status**: found 2026-08-09 while de-vendoring; re-synced by hand, root cause left in place.
+**Status**: fixed 2026-08-09. One definition now lives in `scripts/regen-example.mjs`, called by
+`package.json`'s `regen:example`, by `ci.yml`'s sync check, and by the release workflow's resync
+(#22). Verified the extraction is behaviour-preserving: `pnpm regen:example` against the new
+script produced a byte-identical `example/` (zero diff).
+
+The residual half is still open and deliberately so: **`pnpm verify` does not run the `example/`
+sync check**, so a green local `verify` is still not evidence for this class of failure. Adding it
+costs a full scaffolder build on every local run, which is a real tax on the inner loop. #22's
+automation removes most of the need — the release now resyncs itself, so the common trigger for
+local drift is gone.
+
+**Original finding:**
 
 `package.json`'s `regen:example` writes into the repo. `.github/workflows/ci.yml`'s "Example/
 output stays in sync" step re-implements the same sequence against a tempdir, because the
@@ -869,6 +880,24 @@ generated churn. That makes this the highest-frequency manual step in the repo. 
 fixed unilaterally because the first option edits the release pipeline, and a broken release
 workflow blocks publishing — the owner's call. But nothing about the analysis is open any more.
 
+**RESOLVED 2026-08-09.** The `secret-store` release job now regenerates `example/` and commits it
+(`chore(example): resync generated output after release`). Notes for whoever reads the workflow:
+
+- It hangs off **secret-store**, the last job to run on a push (`mcpsync` is
+  `workflow_dispatch`-only), so by then the tree holds every bump from the run. A new job depending
+  on `mcpsync` would be *skipped* on push — exactly when it is needed.
+- The regen passes `--build`. `pnpm verify` builds the scaffolder BEFORE semantic-release bumps
+  anything, so that dist embeds the old ranges; skipping the rebuild would commit stale output and
+  look like it worked.
+- It uses `git pull --rebase origin main` before pushing, which the `screenshots.yml` pattern it is
+  otherwise modelled on lacks. `main` is unprotected and a human merge can land between checkout
+  and push.
+- A `git status --porcelain` guard means a no-op run commits nothing.
+- No loop: `example/**` is absent from the workflow's `paths:` filter, and `GITHUB_TOKEN` pushes do
+  not re-trigger workflows.
+- `example/` is NOT added to `@semantic-release/git`'s assets — those are package-relative and
+  would break monorepo path scoping. It has to be a separate commit step.
+
 ---
 
 ## 23. Generated-app source cannot use a kit API in the same PR that adds it
@@ -886,8 +915,13 @@ with `TS2305: Module '@george43g/robustness' has no exported member 'setStderrMi
 which installs from the registry, sees the real dependency graph a generated repo gets.
 
 **The rule**: a new kit API and its generated-app call site are **two PRs**, in that order —
-publish first, wire second. Landing the call site in the post-release `example/` resync PR
-(see #22) is free, since that PR has to happen anyway.
+publish first, wire second.
+
+**Updated 2026-08-09**: this used to add "landing the call site in the post-release `example/`
+resync PR (see #22) is free, since that PR has to happen anyway." **That is no longer true.** #22
+is automated, so there is no longer a human-authored resync PR to piggyback on — the release
+commits `example/` itself. A deferred call site now needs its own follow-up PR, which means it
+needs to be *recorded* rather than remembered.
 
 **Deferred call site**: `setStderrMirror(true)` in the stdio branch of
 `apps/example-repo-mcp/src/index.ts` (mirror `08-app/lib/src/index.ts`, then `regen:example`).
@@ -932,3 +966,21 @@ handoff brief paid for itself before anyone read it.
 (`shutdownController`), in-repo tests that all inject the friendly implementation cannot see the
 defect. Test guards against a hostile injection — here, a controller that runs its cleanups and
 then never resolves.
+
+---
+
+## 28. Deferred generated-app call sites waiting on a published kit release
+
+**Status**: open, populated 2026-08-09. This list exists because #23's escape hatch closed: the
+`example/` resync is automated now (#22), so there is no human-authored post-release PR to
+piggyback a deferred call site onto. Anything parked here needs its own follow-up PR.
+
+| Waiting on | Call site to wire |
+|---|---|
+| `cli-kit` minor (REPL serial queue) | Mirror `apps/example-repo-mcp/tests/repl-pipe.test.ts` into `08-app/lib/tests/`, rebuild templates, `pnpm regen:example`. Held back deliberately: the scaffolder E2E smoke installs cli-kit **from npm**, so shipping the test to generated repos before the release would fail the smoke against the published (broken) loop — which is #23 exactly. |
+| `robustness` minor (logger level gate) | Add `MCP_LOG_LEVEL` to `apps/example-repo-mcp/.env.example` and its `08-app/lib/` mirror. Inert either way, but it documents a knob the published package does not have yet. |
+
+**Rule for adding a row**: record it the moment the call site is reverted, not later. The one time
+this was left to memory it survived only because CI failed loudly.
+
+**Trigger**: each row clears when its package publishes. Check this table after every release.
