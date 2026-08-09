@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.5.1](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.5.0...robustness-v0.5.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **exports:** add a default condition so CJS consumers can require() the packages ([eb9632b](https://github.com/george43g/mcp-cli-starter-template/commit/eb9632be11b7a0c2a497814ce9caf58ba8bfa7c1))
+
 # [@george43g/robustness-v0.5.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.4.0...robustness-v0.5.0) (2026-08-09)
 
 
