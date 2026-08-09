@@ -255,7 +255,7 @@ Manual retrofit: AGENTS.md + symlinks is the cheapest agent-friendly upgrade. Re
 - `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`. Steps: pnpm install → lint → typecheck → test → test:no-native → build → install usage(1) via `jdx/mise-action` → `pnpm check:usage` (completions/manpage/docs freshness gate) → npm pack --dry-run → 13-assertion stress harness. The HTTP case uses a generated bearer token (`openssl rand -hex 32`) bound to a random high port.
 - `.github/workflows/release.yml` — semantic-release pipeline with the Keep-a-Changelog plugin chain (`@semantic-release/{commit-analyzer,release-notes-generator,changelog,npm,github,git}`). **Ships disabled** (the `on:` trigger is commented). Enable: uncomment + add `NPM_TOKEN` secret.
 - `.github/workflows/readme-check.yml` — fails CI if `src/**` changed without a `README.md` update. Bypass with `[skip-readme]` in commit/PR title.
-- `.github/workflows/screenshots.yml` — installs vhs + ttyd, regenerates all `*.tape` files, commits `docs/screenshots/*.{png,gif}` back with `[skip ci]`.
+- `.github/workflows/screenshots.yml` — installs vhs + ttyd, regenerates all `*.tape` files, commits `docs/screenshots/*.gif` back with `[skip ci]`. Only GIFs are committed; `docs/screenshots/*.png` is gitignored.
 - `.releaserc.json` — semantic-release config (Keep-a-Changelog markdown header, npm publish + tarball + GitHub release + git commit).
 - `.npmignore` — root-level (apps/packages each have their own).
 
@@ -293,7 +293,14 @@ Free for OSS. `docs/docs.json` + MDX. `mintlify dev` for local preview. No self-
 
 ### VHS — screenshots in CI
 
-`.tape` files in `apps/example-repo-mcp/scripts/screenshots/`. The `.github/workflows/screenshots.yml` workflow runs them and commits regenerated PNGs/GIFs back. Reference in README via `![alt](docs/screenshots/foo.gif)`.
+`.tape` files in `apps/example-repo-mcp/scripts/screenshots/`. The `.github/workflows/screenshots.yml` workflow runs them and commits regenerated GIFs back. Reference in README via `![alt](docs/screenshots/foo.gif)`.
+
+Two things a tape must do, because `vhs` exits 0 almost regardless of what happened:
+
+- **Assert with `Wait+Screen@<timeout> /regex/`** on a string from the command's *output*, never one echoed in the command line. Without it a tape that runs a nonexistent command, or renders a blank TUI, still "passes".
+- **Declare output paths relative to the tape's own directory, and run it from there.** vhs resolves `Output` against the process cwd, not the tape's location, and it creates missing parent directories — so a wrong prefix writes somewhere unexpected and reports success.
+
+Launching an Ink TUI from a tape additionally needs `CI=false CONTINUOUS_INTEGRATION=false` on the command: ink refuses to mount an interactive tree when `is-in-ci` reports true, which every CI runner does.
 
 ### mise — toolchain pin + tasks
 
