@@ -508,24 +508,54 @@ hits the theme model.
 
 ### 16b — EQStack adoption (THEIRS)
 
-Belongs on EQStack's backlog, in EQStack's repo. Recorded here only so the handoff is complete.
+Belongs on EQStack's backlog, in EQStack's repo. **The handoff brief now exists**:
+[`docs/agent-handoff/EQSTACK-16B-BRIEF.md`](docs/agent-handoff/EQSTACK-16B-BRIEF.md) plus the
+paste-able [`EQSTACK-16B-MESSAGE.md`](docs/agent-handoff/EQSTACK-16B-MESSAGE.md), mirroring the
+convention `browser-tab-mcp` used to reach us. Recording 16b only in this file was a gap: an
+EQStack agent never reads our backlog.
 
-**Clean wins, ready now** (verified 1:1 on 2026-08-09): the whole 368-line
-`imsg-mcp/src/watchdog.ts` collapses into `createWatchdog({ envPrefix: "IMSG" })` — all twelve
-env names and defaults match. Same for `tui/themes/color.ts` and `tui/hooks/useMouse.ts` (both
-lifted verbatim originally), the shutdown controller, and the TTY/colour helpers.
-`withRetry`/`TokenBucket`/`withTimeout` are pure additions.
+**Re-verified against EQStack's tree 2026-08-09, and FIVE earlier claims here were wrong.** The
+corrections matter because acting on the old numbers wastes their time:
+
+1. **Version floors** — said "bump `ink@7.0.1`/`react@19.2.5` to our `^7.1.1`/`^19.2.8`". Their
+   *declared* carets already admit our floors; only the resolved lockfile violates them. It is
+   `pnpm up ink react -r`, not a manifest edit.
+2. **Theme model** — said "~19 components". It is **21 files and 391 `theme.<key>` read sites**,
+   with 26 flat keys (many nested objects) vs our 18. Also missed: three keys collide with
+   DIFFERENT types (`info`, `pending`), and both `ThemeProvider` and `GlyphSet` are incompatible.
+3. **`DevStatsPanel` collides** — it does not exist in EQStack at all. Theirs is `DevStats`, a
+   presentational component taking `stats` as a prop; ours calls the hook itself. Unnoticed
+   before: `useDevStats` DOES collide, and our `DevStats` *interface* collides with their
+   `DevStats` *component*.
+4. **"imsg logs failure payloads verbatim" / imsg's `redact.ts`** — `apps/imsg-mcp` has **no
+   redaction at all** (zero matches). The `redact.ts` we lifted is voice-mcp's, and ours is now a
+   strict superset (cycle guard). Adopting ours loses them nothing.
+5. **Log-level filtering** — attributed to imsg; it is voice-mcp's only.
+
+**Watchdog parity CONFIRMED**: all 12 env names and all 12 defaults match, parsing helper
+behaviourally identical, and no imsg capability the kit lacks. `IMSG_HEAP_GROWTH_MIN_MB` is a new
+env surface over their hardcoded 25 (same effective default).
+
+**A kit bug their code found** — see #24. Our `dispose()` cleared the watchdog's force-exit timer,
+and `dispose` IS the registered shutdown cleanup, so a kill disarmed its own last-resort net.
+Fixed in robustness 0.5.2; on 0.5.1 the trap is live.
 
 **Blockers removed by 16a**: file logging is now opt-out (`setFileLogging(false)` replaces the
 `IMSG_DEV` gate); `writeStderrLine`/`setStderrMirror` replace imsg's local writer; shutdown keeps
 a crash trail without wiring `onDiagnostic`; redaction ships in the kit.
 
-**Their-side fixes**: bump `ink@7.0.1`/`react@19.2.5` to tui-kit's `^7.1.1`/`^19.2.8` floors
-(old gap 8 — cheapest fixed in their lockfile, not by lowering our floors).
+**Two migration traps to flag, both in the brief**: the kit's watchdog logs through OUR logger
+(`MCP_LOG_*`), so `watchdog_kill` and the RSS forensics vanish from their ring buffer unless
+`onDiagnostic` is wired in the same commit; and their `tests/watchdog-sleep-skew.test.ts` is a
+source-TEXT test (`readFileSync` + regex on our literal) that cannot survive a re-export.
 
-**Recommended order**: watchdog → shutdown (accept the new default sink or wire `onDiagnostic`;
-mind #14; note `exitOnUnhandledRejection: false` for the TUI) → tty/colour → theme/color +
-useMouse → withTimeout.
+**Recommended order**: lockfile → watchdog (wire `onDiagnostic`) → shutdown (`exitOnUnhandledRejection: false`
++ `exitOnUncaughtException: false` for the TUI; decide which module owns the force-exit net) →
+color.ts + useMouse → withTimeout/withRetry/TokenBucket → logger. Stop before theme/`useVimKeys`.
+
+**Wanted FROM them** (verified present there, absent here): grapheme-aware `visual-width.ts`,
+`detectNerdFont()` (complements `GLYPH_PRESETS.powerline`, which can silently render blanks),
+`--yaml` output, voice-mcp's Prometheus metrics, voice-mcp's log-level filtering.
 
 ---
 
@@ -871,3 +901,34 @@ It was written, reverted from PR #21, and is waiting on robustness `0.5.0` reach
   above is accurate but does not say "you are calling an unpublished API; split the PR."
 
 **Trigger**: the next time a kit API is added with a generated-app consumer in mind. It will recur.
+
+---
+
+## 24. RESOLVED — the watchdog's force-exit net disarmed itself during a kill
+
+**Status**: fixed 2026-08-09 in `@george43g/robustness@0.5.2`. Recorded because the *way* it was
+found is the reusable part.
+
+`triggerKill` arms a 5s `setTimeout` → `exit(137)` as the last-resort net for a shutdown that
+wedges, then calls `shutdownController.shutdown(1)`. But `dispose()` cleared that timer, and
+`dispose` is itself the cleanup registered with the shutdown controller. So the sequence was:
+kill → shutdown → run cleanups → `dispose` → **clear the force-exit timer**, disarming the guard
+during the exact hang it exists to escape. With our own controller the 3s `forceExitAfterMs` net
+still caught it, which is why no test noticed. With a consumer-supplied controller that has no net
+— EQStack's `shutdown.ts` runs cleanups in an unbounded `for … await` and only arms its own timer
+on a second, concurrent call — a wedged cleanup would hang forever with nothing to kill it.
+
+Fixed by having `dispose()` leave the timer armed whenever `state.killReason` is set, while
+`reset()` tears it down unconditionally so a test cannot leak one. Three regression tests; the
+kill-path one fails against the old behaviour.
+
+**How it was found, which is the point**: not by a test and not by a bug report, but by diffing
+our implementation against EQStack's equivalent while writing an adoption brief *for them*. Their
+`watchdog.ts` deliberately never cancels its force-exit timer, with a comment explaining why.
+Reading someone else's solution to the same problem is what made our divergence visible — the
+handoff brief paid for itself before anyone read it.
+
+**Generalisable**: when a safety net's correctness depends on an INJECTED dependency
+(`shutdownController`), in-repo tests that all inject the friendly implementation cannot see the
+defect. Test guards against a hostile injection — here, a controller that runs its cleanups and
+then never resolves.

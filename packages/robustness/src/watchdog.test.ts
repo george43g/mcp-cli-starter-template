@@ -208,3 +208,78 @@ describe("createWatchdog.reconfigure", () => {
     controller.dispose();
   });
 });
+
+describe("force-exit net when a kill triggers shutdown", () => {
+  /**
+   * A shutdown controller that runs its cleanups (as a real one does) and then
+   * hangs — the wedged-cleanup case the 5s force exit exists to escape.
+   */
+  function hangingShutdown(store: Set<() => void>): WatchdogOptions["shutdownController"] {
+    let shuttingDown = false;
+    return {
+      registerCleanup: (fn) => store.add(fn as () => void),
+      unregisterCleanup: (fn) => store.delete(fn as () => void),
+      isShuttingDown: () => shuttingDown,
+      shutdown: async () => {
+        shuttingDown = true;
+        for (const fn of [...store]) fn();
+        return new Promise<void>(() => {}); // never resolves
+      },
+    };
+  }
+
+  it("still fires after cleanup disposes the watchdog", () => {
+    vi.useFakeTimers();
+    const exits: number[] = [];
+    const diagnostics: string[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      maxRssMb: 0.000_001, // any real RSS trips this on the first sample
+      memorySampleMs: 1_000,
+      exit: (code) => exits.push(code),
+      onDiagnostic: ({ event }) => diagnostics.push(event),
+      shutdownController: hangingShutdown(new Set()),
+    });
+    controller.install();
+
+    vi.advanceTimersByTime(1_000);
+    expect(diagnostics.some((e) => e.startsWith("watchdog_kill"))).toBe(true);
+
+    // dispose() has already run as a shutdown cleanup. The net must survive it:
+    // clearing it there left a wedged cleanup with nothing to kill the process.
+    vi.advanceTimersByTime(5_000);
+    expect(diagnostics).toContain("watchdog_force_exit");
+    expect(exits).toEqual([137]);
+
+    controller.reset();
+  });
+
+  it("voluntary dispose with no kill in flight still clears the timer", () => {
+    vi.useFakeTimers();
+    const exits: number[] = [];
+    const controller = createWatchdog({ ...INERT, exit: (code) => exits.push(code) });
+    controller.install();
+    controller.dispose();
+
+    vi.advanceTimersByTime(60_000);
+    expect(exits).toEqual([]);
+  });
+
+  it("reset() disarms the net even mid-kill, so tests cannot leak one", () => {
+    vi.useFakeTimers();
+    const exits: number[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      maxRssMb: 0.000_001,
+      memorySampleMs: 1_000,
+      exit: (code) => exits.push(code),
+      shutdownController: hangingShutdown(new Set()),
+    });
+    controller.install();
+    vi.advanceTimersByTime(1_000);
+
+    controller.reset();
+    vi.advanceTimersByTime(60_000);
+    expect(exits).toEqual([]);
+  });
+});

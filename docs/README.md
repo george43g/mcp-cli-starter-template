@@ -18,6 +18,8 @@ solely for this repo and can be edited freely.
 | [scaffolder-cli/index.md](scaffolder-cli/index.md) | Generated CLI reference for `mcp-scaffold` (via `mise run docs`) |
 | [scaffolder-cli/retrofit-findings.md](scaffolder-cli/retrofit-findings.md) | Retrofit safety invariants and their resolution history — preserve these |
 | [scaffolder-cli/evaluations/imsg-mcp-2026-07.md](scaffolder-cli/evaluations/imsg-mcp-2026-07.md) | Evidence from the real-repository retrofit probe |
+| [agent-handoff/EQSTACK-16B-MESSAGE.md](agent-handoff/EQSTACK-16B-MESSAGE.md) | Handing the kit adoption to EQStack's agent: paste this into it |
+| [agent-handoff/EQSTACK-16B-BRIEF.md](agent-handoff/EQSTACK-16B-BRIEF.md) | The detail behind that message — verified parity, blockers, migration order |
 
 ## Golden-output (shipped into generated repos; lib-mirrored)
 
