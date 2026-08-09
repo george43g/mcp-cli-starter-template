@@ -77,6 +77,50 @@ That was our bug, found by reading your code against ours. It is fixed:
 `reset()` tears it down unconditionally. Three regression tests cover it.
 **Adopt `^0.5.2` or later** — on `0.5.1` this trap is live.
 
+Don't take that on trust; the difference is observable in about ten seconds.
+Install `@george43g/robustness` at each version and run this against both — it
+reproduces your exact shape, a controller that runs its cleanups and then never
+resolves:
+
+```js
+import { createWatchdog } from "@george43g/robustness";
+
+const store = new Set();
+let shuttingDown = false;
+const hanging = {
+  registerCleanup: (fn) => store.add(fn),
+  unregisterCleanup: (fn) => store.delete(fn),
+  isShuttingDown: () => shuttingDown,
+  shutdown: async () => {
+    shuttingDown = true;
+    for (const fn of [...store]) fn();
+    return new Promise(() => {}); // wedged, like a stuck SQL handle
+  },
+};
+
+const events = [], exits = [];
+const wd = createWatchdog({
+  idleRestart: false, eventLoopSampleMs: 60_000, memorySampleMs: 50,
+  maxRssMb: 0.000001,                 // trips on the first real sample
+  exit: (c) => exits.push(c),
+  onDiagnostic: ({ event }) => events.push(event),
+  shutdownController: hanging,
+});
+wd.install();
+
+setTimeout(() => {
+  console.log("kill fired:      ", events.some((e) => e.startsWith("watchdog_kill")));
+  console.log("force_exit fired:", events.includes("watchdog_force_exit"));
+  console.log("exit codes:      ", JSON.stringify(exits));
+  wd.reset();
+  process.exit(0);
+}, 5400);
+```
+
+On **0.5.1**: `kill fired: true`, `force_exit fired: false`, `exit codes: []` —
+the kill happened and then nothing killed the process. On **0.5.2**:
+`force_exit fired: true`, `exit codes: [137]`.
+
 ### Things that will change visibly
 
 None of these are blockers; they are the diff you should expect in logs.
