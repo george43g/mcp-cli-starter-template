@@ -96,7 +96,18 @@ Four additions to `runRepl`, all opt-in and all backwards compatible:
 `_meta?: Record<string, unknown>` to carry what those read. Both are optional,
 so existing dispatchers still typecheck.
 
-### Upgrading from 0.3.x
+### Upgrading from 0.3.x to 1.0.0
+
+> **Why 1.0.0 and not 0.4.0.** This release was intended as `0.4.0`. It carries
+> a single breaking change, and `semantic-release`'s default commit analyzer
+> maps any breaking change to a **major** bump without clamping `0.x` — so the
+> `!` marker took it to 1.0.0. The content below is the release that was
+> planned; only the number is different.
+>
+> **What the number now means for you**, and it is not cosmetic: on `0.x`, a
+> caret range locks the MINOR (`^0.3.1` is `>=0.3.1 <0.4.0`), so every minor was
+> an explicit opt-in. On `^1.0.0`, minors and patches arrive automatically. From
+> here a breaking change must be a major.
 
 **One breaking change: `ToolCallResult.content` is now a discriminated union.**
 
@@ -119,7 +130,7 @@ moved it from "usage problem" to "the type is wrong".
 **What breaks:** reading `.text` off a block without narrowing.
 
 ```ts
-const text = result.content?.[0]?.text;          // TS2339 from 0.4.0
+const text = result.content?.[0]?.text;          // TS2339 from 1.0.0
 const first = result.content?.[0];               // narrow instead
 const text = first?.type === "text" ? first.text : undefined;
 ```
@@ -151,7 +162,7 @@ and guessing their shape from the spec rather than from a real producer is how
 the text-only version got written. If one arrives at runtime the renderer prints
 a `[resource]` placeholder rather than crashing.
 
-**Also in 0.4.0, non-breaking:** the optional fields are declared
+**Also in 1.0.0, non-breaking:** the optional fields are declared
 `?: T | undefined` rather than `?: T`, so a consumer compiling with
 `exactOptionalPropertyTypes` can pass a result through verbatim instead of
 rebuilding it with conditional spreads to avoid `isError: undefined`.
@@ -200,8 +211,13 @@ explicit requests resolve to `json`, on the grounds that something asking for
 
 ## Stability
 
-This package is pre-1.0. Minor version bumps may contain breaking changes to
-the public surface; patch versions will not.
+From 1.0.0 this package follows semver strictly: **breaking changes require a
+major bump.** Minors are additive, patches are fixes.
+
+That is a stronger promise than the pre-1.0 one it replaces, and it changes how
+upgrades reach you. Under `0.x` a caret range locked the minor, so every minor
+was an explicit opt-in; under `^1.x` minors and patches arrive on a plain
+`pnpm update`. Pin exactly if you need the old behaviour.
 
 ## License
 

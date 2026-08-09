@@ -1335,8 +1335,8 @@ criteria for the swap, so the shape has an existing oracle rather than needing o
 
 ## 31. RESOLVED — `ToolCallResult.content` is text-only, but MCP results carry image/audio/resource blocks
 
-**Status**: ✅ **RESOLVED 2026-08-10**, shipping as **cli-kit 0.4.0 — the only breaking change in
-this batch.** Shape (B) as browser-tab chose it: a closed union, no catch-all, `data` raw base64.
+**Status**: ✅ **RESOLVED 2026-08-10**, shipped as **cli-kit 1.0.0** — planned as 0.4.0; see #34 for
+why the number differs. The only breaking change in this batch. Shape (B) as browser-tab chose it: a closed union, no catch-all, `data` raw base64.
 The renderer ships WITH the type, which was their condition — type-without-renderer "just relocates
 my 20-line adapter into every consumer's compile-error fixup".
 
@@ -1459,3 +1459,38 @@ golden byte-equality, so it is a mirror-and-regen change rather than a one-line 
 `12-ci-release/lib` work rather than spending a three-surface sync on it alone.
 
 **Cost**: ~20 min including the regen.
+
+---
+
+## 34. A breaking marker on a 0.x package publishes 1.0.0 — decide whether that is wanted
+
+**Status**: open, and it already fired once. Recorded 2026-08-10.
+
+`packages/cli-kit/.releaserc.json` lists `@semantic-release/commit-analyzer` with no
+`releaseRules` override, so the default `conventionalcommits` mapping applies: any breaking change
+is a **major**, with no clamp for `0.x`. `feat(cli-kit)!:` carrying a `BREAKING CHANGE:` footer was
+planned as `0.4.0` and published as **`cli-kit@1.0.0`**. npm publishes are immutable; that number
+stands.
+
+**This is live for the other three.** `robustness` (0.7.0), `tui-kit` (0.3.4) and `secret-store`
+(0.2.2) all use the same stock analyzer config and will each jump straight to 1.0.0 on their first
+breaking commit.
+
+**Why the number is not cosmetic.** On `0.x` a caret range locks the MINOR — `^0.3.1` resolves as
+`>=0.3.1 <0.4.0` — so every minor is an explicit opt-in and a breaking minor cannot reach a
+consumer accidentally. On `^1.x` minors and patches arrive on a plain `pnpm update`. Crossing 1.0.0
+therefore changes the upgrade contract for every consumer, and from then on a breaking change
+*must* be a major.
+
+**The decision, which is the user's, not an implementation detail:**
+
+| Option | Effect |
+|---|---|
+| **A. Accept 1.0.0 for cli-kit, leave the config alone** | The other three each cut their own 1.0.0 whenever they first break. Simple, honest, but the 1.0 timing for each package is decided by accident of "what broke first" rather than by readiness. |
+| **B. Add `releaseRules` mapping breaking → `minor`** | Keeps 0.x packages in 0.x, so breaking minors stay opt-in. Deviates from strict semver, which is exactly what 0.x licenses. Needs the rule in each `.releaserc.json`. |
+| **C. B, plus a deliberate 1.0.0 per package when it is ready** | Most control, most bookkeeping. |
+
+**Trigger to action**: before the next breaking change to any 0.x package here. Whichever way it
+goes, the analyzer config should stop being an accident.
+
+**Cost**: ~20 min for the config change (B), plus whatever the 1.0 conversation costs.
