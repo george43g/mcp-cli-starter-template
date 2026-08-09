@@ -24,9 +24,16 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * The remaining gap is `program.ts` at 0% — a thin wrapper over commander,
  * exercised end-to-end by the generated app rather than by unit tests here.
  */
+/**
+ * Ratcheted 91/87/83/91 → 91/88/85/91 by the 0.4.0 ContentBlock renderer. Its
+ * helpers (base64 size, unit scaling, the unmodelled-block fallback) are all
+ * branch-heavy, so they were covered to their edges rather than allowed to pull
+ * the branch floor down — every size unit, both padding lengths, an empty
+ * payload, and a block whose `type` is not a string.
+ */
 export default withCoverageFloor(shared, {
   statements: 91,
-  branches: 87,
-  functions: 83,
+  branches: 88,
+  functions: 85,
   lines: 91,
 });

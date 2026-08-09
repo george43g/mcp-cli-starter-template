@@ -27,13 +27,38 @@
 import { createInterface, type Interface } from "node:readline";
 import { color } from "./color.js";
 
+/**
+ * One block of an MCP tool result.
+ *
+ * A discriminated union with NO catch-all member, which is deliberate. A
+ * `{ type: string; … }` fallback overlaps `type: "text"`, so narrowing needs a
+ * cast at every render site — and it would silently accept a block shape this
+ * cannot render. Adding a member later is a compile error exactly where a
+ * decision is needed, which is the point.
+ *
+ * `resource` and `audio` blocks are not modelled: no known caller emits them,
+ * and guessing their shape from the spec rather than from a real producer is
+ * how the text-only version of this type got written in the first place. The
+ * renderer degrades gracefully if one arrives at runtime.
+ */
+export type ContentBlock =
+  | { type: "text"; text: string }
+  /** `data` is RAW base64 — no `data:` URI prefix, and not a path. */
+  | { type: "image"; data: string; mimeType: string };
+
+/**
+ * Optionals are declared `?: T | undefined` rather than `?: T` so that a
+ * consumer compiling with `exactOptionalPropertyTypes` can pass a result
+ * through verbatim. Without it, `{ isError: undefined }` is rejected and every
+ * such caller ends up writing conditional spreads to rebuild the object.
+ */
 export interface ToolCallResult {
-  content?: Array<{ type: string; text: string }>;
+  content?: ContentBlock[] | undefined;
   /** Machine-readable result, if the tool produced one. Shown by `json`. */
   structuredContent?: unknown;
-  isError?: boolean;
+  isError?: boolean | undefined;
   /** Perf footer from the dispatcher: `{ duration_ms, engine, ... }`. */
-  _meta?: Record<string, unknown>;
+  _meta?: Record<string, unknown> | undefined;
 }
 
 export interface ToolDescriptor {
@@ -210,9 +235,57 @@ function metaFooter(meta: Record<string, unknown> | undefined): string | null {
   return parts.length > 0 ? `· ${parts.join(" · ")}` : null;
 }
 
+/** Decoded byte count of a base64 payload, accounting for `=` padding. */
+function decodedBase64Bytes(data: string): number {
+  if (data.length === 0) return 0;
+  const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((data.length * 3) / 4) - padding);
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+/**
+ * A one-line stand-in for a block that is not printable text.
+ *
+ * The size is DECODED bytes, not base64 characters. A downstream adapter
+ * printed "84210 base64 chars", which is both a meaningless unit to a reader
+ * and inflated by 4/3 against the number they would see on disk.
+ */
+function describeBlock(block: ContentBlock): string {
+  if (block.type === "image") {
+    return `[image ${block.mimeType}, ${formatBytes(decodedBase64Bytes(block.data))}]`;
+  }
+  // Unreachable through the type, but a real MCP server can send `resource` or
+  // `audio` blocks. Render a placeholder rather than crashing the REPL on a
+  // block shape this version does not model.
+  const type = (block as { type?: unknown }).type;
+  return `[${typeof type === "string" ? type : "unknown"}]`;
+}
+
+/**
+ * Render blocks IN ORDER, one line per non-text block.
+ *
+ * Order is a dispatcher contract, not a presentation choice: a dispatcher that
+ * appends its text block last (`[...extra, textBlock]`) means a screenshot
+ * arrives as `[image, text]`, and reordering here would misreport what the
+ * tool returned. Returns null when there is nothing to render, so the caller
+ * can fall back to dumping the whole result.
+ */
+function renderContent(content: ContentBlock[] | undefined): string | null {
+  if (!content || content.length === 0) return null;
+  return content
+    .map((block) => (block.type === "text" ? block.text : describeBlock(block)))
+    .join("\n");
+}
+
 function printToolResult(ctx: PrintContext, result: ToolCallResult): void {
   if (result.isError) {
-    const text = result.content?.[0]?.text ?? JSON.stringify(result, null, 2);
+    const text = renderContent(result.content) ?? JSON.stringify(result, null, 2);
     ctx.setLastError(text);
     ctx.out.write(`${color.red(text)}\n`);
     return;
@@ -224,7 +297,7 @@ function printToolResult(ctx: PrintContext, result: ToolCallResult): void {
   } else if (ctx.formatResult) {
     body = ctx.formatResult(result);
   } else {
-    body = result.content?.[0]?.text ?? JSON.stringify(result, null, 2);
+    body = renderContent(result.content) ?? JSON.stringify(result, null, 2);
   }
   ctx.out.write(`${body}\n`);
 

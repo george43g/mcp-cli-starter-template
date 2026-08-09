@@ -96,6 +96,66 @@ Four additions to `runRepl`, all opt-in and all backwards compatible:
 `_meta?: Record<string, unknown>` to carry what those read. Both are optional,
 so existing dispatchers still typecheck.
 
+### Upgrading from 0.3.x
+
+**One breaking change: `ToolCallResult.content` is now a discriminated union.**
+
+```ts
+// before
+content?: Array<{ type: string; text: string }>
+// after
+content?: ContentBlock[] | undefined
+
+export type ContentBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; data: string; mimeType: string };
+```
+
+The old shape could not describe any MCP server with an image tool: every block
+was required to carry `text`, so a screenshot had to be cast or faked. Two
+consumers reported it under-modelled within a day of each other, which is what
+moved it from "usage problem" to "the type is wrong".
+
+**What breaks:** reading `.text` off a block without narrowing.
+
+```ts
+const text = result.content?.[0]?.text;          // TS2339 from 0.4.0
+const first = result.content?.[0];               // narrow instead
+const text = first?.type === "text" ? first.text : undefined;
+```
+
+That error is the point, and it lands exactly where a decision is needed: at the
+render site, which now has to say what it does with a non-text block. The union
+is deliberately **closed** — no `{ type: string; … }` catch-all. A catch-all
+overlaps `type: "text"`, so narrowing would need a cast everywhere, and it would
+silently accept block shapes nothing can render.
+
+**What you probably do not need to change:** if you let the REPL render results,
+nothing. `runRepl` now prints non-text blocks itself, one line each, in the order
+the dispatcher returned them:
+
+```
+[image image/jpeg, 61.4 KB]
+{"saved": true}
+· 12ms · engine=ts
+```
+
+Sizes are **decoded bytes**, not base64 characters — the raw string length
+overstates the real size by 4/3 and is not a unit anyone can act on. Block order
+is preserved because it is a dispatcher contract: a dispatcher that appends its
+text block last means a screenshot arrives as `[image, text]`, and reordering
+would misreport what the tool returned. The meta footer always comes last.
+
+`resource` and `audio` blocks are not modelled yet — no known caller emits them,
+and guessing their shape from the spec rather than from a real producer is how
+the text-only version got written. If one arrives at runtime the renderer prints
+a `[resource]` placeholder rather than crashing.
+
+**Also in 0.4.0, non-breaking:** the optional fields are declared
+`?: T | undefined` rather than `?: T`, so a consumer compiling with
+`exactOptionalPropertyTypes` can pass a result through verbatim instead of
+rebuilding it with conditional spreads to avoid `isError: undefined`.
+
 ## Basic usage
 
 ```ts
