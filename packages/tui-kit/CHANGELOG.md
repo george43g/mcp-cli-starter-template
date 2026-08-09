@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.3.0](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.2.0...tui-kit-v0.3.0) (2026-08-09)
+
+
+### Features
+
+* **robustness,tui-kit:** 16a kit hardening — redaction, logger knobs, shutdown trail, useDevStats(visible) ([9af30ec](https://github.com/george43g/mcp-cli-starter-template/commit/9af30eccecef63a9b4ad694fa4dafa6bf167d5b1)), closes [#16](https://github.com/george43g/mcp-cli-starter-template/issues/16) [#19](https://github.com/george43g/mcp-cli-starter-template/issues/19)
+
 # [@george43g/tui-kit-v0.2.0](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.1.1...tui-kit-v0.2.0) (2026-08-09)
 
 
