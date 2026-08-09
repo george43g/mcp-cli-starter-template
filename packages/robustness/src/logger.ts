@@ -30,12 +30,19 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { envBool, envNum, envStr } from "./env.js";
+import { envBool, envNum, envStr, normalizeEnvPrefix } from "./env.js";
 import { redactString, redactValue } from "./redact.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-export type LogLevel = "info" | "warn" | "error" | "perf";
+export type LogLevel = "debug" | "info" | "warn" | "error" | "perf";
+
+/**
+ * The threshold a caller can set. `perf` is deliberately absent: spans are not
+ * a severity, they are a separate kind of record, and gating them behind
+ * `error` would silently delete every timing.
+ */
+export type LogThreshold = "debug" | "info" | "warn" | "error" | "silent";
 
 export interface LogEntry {
   ts: string;
@@ -54,25 +61,63 @@ export interface PerfSpan {
 // ── Config ─────────────────────────────────────────────────────────────
 
 /**
+ * Fragment spliced into env-var NAMES: `"MCP"` → `MCP_LOG_DIR`.
+ *
+ * NOT the same thing as `logFilePrefix` below, and the two must not be merged
+ * into one `setLogPrefix`. This one only ever appears in variable names; that
+ * one is a slug that lands in the log directory, the file name and the stderr
+ * tag. A service reading `IMSG_LOG_DIR` may still want files called `mcp-*`,
+ * and vice versa.
+ */
+let envPrefix = "MCP";
+
+/**
+ * Point the logger's env knobs at a different prefix, mirroring
+ * `createWatchdog({ envPrefix })`.
+ *
+ * `setLogEnvPrefix("IMSG")` makes every knob below read `IMSG_LOG_DIR`,
+ * `IMSG_LOG_TO_FILE`, `IMSG_LOG_LEVEL` and so on. The motivating case is a
+ * non-MCP service configured by systemd `Environment=` lines, which should not
+ * have to write `MCP_` in its unit file. Call before the first log line;
+ * the knobs are read at call time, so a later call re-points them.
+ */
+export function setLogEnvPrefix(prefix: string): void {
+  envPrefix = normalizeEnvPrefix(prefix, "logger");
+}
+
+/** `"LOG_DIR"` → `"MCP_LOG_DIR"`, or `"IMSG_LOG_DIR"` after `setLogEnvPrefix`. */
+const key = (suffix: string): string => `${envPrefix}_${suffix}`;
+
+/**
  * Read on use, not at module load.
  *
  * These were module-level consts, frozen at the first import of this file.
  * cli-kit's `applyEnvFromFlags` sets `process.env` while parsing argv, which
  * is always later — so `--log-ring-size`, `--log-max-bytes`, `--heap-warn-mb`
  * and `--heap-check-ms` parsed successfully, set their env var, and changed
- * nothing. Function calls are the cheapest fix that keeps the contract.
+ * nothing. Function calls are the cheapest fix that keeps the contract, and
+ * they are also what makes `setLogEnvPrefix` possible at all.
  */
-const maxLogLines = () => envNum("MCP_LOG_RING_SIZE", 500);
-const maxFileBytes = () => envNum("MCP_LOG_MAX_BYTES", 10 * 1024 * 1024);
-const heapWarnMb = () => envNum("MCP_HEAP_WARN_MB", 150);
-const heapCheckIntervalMs = () => envNum("MCP_HEAP_CHECK_MS", 60_000);
+const maxLogLines = () => envNum(key("LOG_RING_SIZE"), 500);
+const maxFileBytes = () => envNum(key("LOG_MAX_BYTES"), 10 * 1024 * 1024);
+const heapWarnMb = () => envNum(key("HEAP_WARN_MB"), 150);
+const heapCheckIntervalMs = () => envNum(key("HEAP_CHECK_MS"), 60_000);
 
-/** Caller may override the log-file prefix (e.g. "example-repo-mcp"). */
-let logFilePrefix = envStr("MCP_LOG_PREFIX", "mcp");
+/**
+ * Caller may override the log-file prefix (e.g. "example-repo-mcp").
+ *
+ * Was `let logFilePrefix = envStr("MCP_LOG_PREFIX", "mcp")` — the one eager
+ * env read left in this file, and therefore the one knob `applyEnvFromFlags`
+ * could not reach, despite the README promising all of them are read at call
+ * time. Same `null`-means-"env decides" shape as the overrides below.
+ */
+let logFilePrefixOverride: string | null = null;
 
 export function setLogFilePrefix(prefix: string): void {
-  logFilePrefix = prefix;
+  logFilePrefixOverride = prefix;
 }
+
+const logFilePrefix = (): string => logFilePrefixOverride ?? envStr(key("LOG_PREFIX"), "mcp");
 
 /**
  * Programmatic overrides beat the env knobs; `null` means "env decides".
@@ -88,14 +133,60 @@ export function setFileLogging(enabled: boolean): void {
   fileLoggingOverride = enabled;
 }
 
-const fileLoggingEnabled = () => fileLoggingOverride ?? envBool("MCP_LOG_TO_FILE", true);
+const fileLoggingEnabled = () => fileLoggingOverride ?? envBool(key("LOG_TO_FILE"), true);
 
 /** Enable/disable redaction of msg/data. Overrides MCP_LOG_REDACT (default on). */
 export function setLogRedaction(enabled: boolean): void {
   redactionOverride = enabled;
 }
 
-const redactionEnabled = () => redactionOverride ?? envBool("MCP_LOG_REDACT", true);
+const redactionEnabled = () => redactionOverride ?? envBool(key("LOG_REDACT"), true);
+
+/**
+ * Severity ranks for the threshold gate.
+ *
+ * `perf` sits with `info` rather than getting its own tier: a span is not a
+ * severity, and the useful question is "am I still interested in routine
+ * detail?". So `warn` and above drop spans, `info` and below keep them.
+ */
+const LEVEL_RANK: Record<LogLevel, number> = {
+  debug: 10,
+  info: 20,
+  perf: 20,
+  warn: 30,
+  error: 40,
+};
+
+const THRESHOLD_RANK: Record<LogThreshold, number> = {
+  debug: 10,
+  info: 20,
+  warn: 30,
+  error: 40,
+  silent: Number.POSITIVE_INFINITY,
+};
+
+let logLevelOverride: LogThreshold | null = null;
+
+/**
+ * Set the minimum level that reaches any sink. Overrides `<PREFIX>_LOG_LEVEL`.
+ *
+ * Defaults to `debug`, i.e. emit everything — which is exactly what this
+ * logger did before the gate existed, so no existing consumer changes
+ * behaviour by upgrading. `silent` drops everything including `error`.
+ *
+ * Adapted from voice-mcp's `log.ts` (MIT, same author), which contributed the
+ * rank-threshold shape.
+ */
+export function setLogLevel(level: LogThreshold): void {
+  logLevelOverride = level;
+}
+
+function minLevelRank(): number {
+  if (logLevelOverride !== null) return THRESHOLD_RANK[logLevelOverride];
+  const raw = envStr(key("LOG_LEVEL"), "debug").trim().toLowerCase();
+  // An unrecognised value must not silence the logs — fall back to permissive.
+  return THRESHOLD_RANK[raw as LogThreshold] ?? THRESHOLD_RANK.debug;
+}
 
 /**
  * Mirror info/warn/error lines to stderr (perf spans excluded — too chatty).
@@ -131,7 +222,7 @@ let heapMonitorTimer: ReturnType<typeof setInterval> | null = null;
 // ── File output ────────────────────────────────────────────────────────
 
 function getLogDir(): string {
-  return envStr("MCP_LOG_DIR", join(tmpdir(), logFilePrefix));
+  return envStr(key("LOG_DIR"), join(tmpdir(), logFilePrefix()));
 }
 
 function ensureLogFile(): string | null {
@@ -142,7 +233,7 @@ function ensureLogFile(): string | null {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
     const date = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    logFilePath = join(dir, `${logFilePrefix}-${process.pid}-${date}.ndjson`);
+    logFilePath = join(dir, `${logFilePrefix()}-${process.pid}-${date}.ndjson`);
     logFileBytes = 0;
     return logFilePath;
   } catch {
@@ -189,6 +280,10 @@ function formatMemoryLine(entry: LogEntry): string {
 }
 
 function emit(entry: LogEntry): void {
+  // Gate before doing any work: below the threshold nothing is redacted,
+  // stringified, buffered or written.
+  if (LEVEL_RANK[entry.level] < minLevelRank()) return;
+
   // Redact before ANY sink — ring buffer, file, and mirror must agree.
   const safe: LogEntry = redactionEnabled()
     ? {
@@ -208,7 +303,7 @@ function emit(entry: LogEntry): void {
   }
   writeToFile(safeStringify(safe));
   if (stderrMirrorEnabled && safe.level !== "perf") {
-    writeStderrLine(`[${logFilePrefix}] ${line}`);
+    writeStderrLine(`[${logFilePrefix()}] ${line}`);
   }
 }
 
@@ -223,6 +318,17 @@ function buildEntry(level: LogLevel, msg: string, data?: Record<string, unknown>
   };
   if (data !== undefined) entry.data = data;
   return entry;
+}
+
+/**
+ * Verbose detail, dropped by default thresholds above `debug`.
+ *
+ * New in this version. Nothing in the kit emits at this level yet — it exists
+ * so a consumer has somewhere to put chatter that should not survive
+ * `<PREFIX>_LOG_LEVEL=info`.
+ */
+export function debug(msg: string, data?: Record<string, unknown>): void {
+  emit(buildEntry("debug", msg, data));
 }
 
 export function info(msg: string, data?: Record<string, unknown>): void {
@@ -303,19 +409,39 @@ export function logShutdown(reason: string): void {
   });
 }
 
+export interface FileLogOptions {
+  /**
+   * Prefer the log file belonging to this PID over the newest one. Defaults to
+   * `process.pid`; pass `0` to restore pure newest-first.
+   */
+  preferPid?: number;
+}
+
 /**
- * Read the latest NDJSON log file from disk. Returns the last N lines.
+ * Read an NDJSON log file from disk. Returns the last N lines.
  * Used by the dev-only `get_logs` MCP tool.
+ *
+ * Prefers the CURRENT process's file, falling back to newest-by-name. It used
+ * to take the newest unconditionally, which is wrong whenever two instances
+ * share a machine — an MCP server plus a TUI, or a host that respawned the
+ * server — because `get_logs` then answers with the *other* process's log.
+ * Reported by a downstream consumer who had to keep a local implementation for
+ * exactly this reason.
  */
-export function getFileLogLines(tail = 50): string[] {
+export function getFileLogLines(tail = 50, options: FileLogOptions = {}): string[] {
   try {
     const dir = getLogDir();
+    // Names embed an ISO timestamp after the pid, so a reverse lexical sort is
+    // newest-first without stat()ing every file.
     const files = readdirSync(dir)
       .filter((f) => f.endsWith(".ndjson"))
       .sort()
       .reverse();
     if (files.length === 0) return [];
-    const head = files[0];
+
+    const preferPid = options.preferPid ?? process.pid;
+    const mine = preferPid > 0 ? files.find((f) => f.includes(`-${preferPid}-`)) : undefined;
+    const head = mine ?? files[0];
     if (head === undefined) return [];
 
     const content = readFileSync(join(dir, head), "utf8");
@@ -366,6 +492,11 @@ export function stopHeapMonitor(): void {
 
 /**
  * Test-only: reset the in-memory state (lines, file pointer, heap timer).
+ *
+ * `logFilePrefixOverride` and `envPrefix` are reset here too. The file prefix
+ * was previously omitted, so one test calling `setLogFilePrefix` leaked into
+ * every later test in the same file — a pre-existing isolation hole that the
+ * env prefix would have widened.
  * @internal
  */
 export function _resetForTests(): void {
@@ -374,6 +505,9 @@ export function _resetForTests(): void {
   logFileBytes = 0;
   fileLoggingOverride = null;
   redactionOverride = null;
+  logFilePrefixOverride = null;
+  logLevelOverride = null;
+  envPrefix = "MCP";
   stderrMirrorEnabled = false;
   if (heapMonitorTimer) {
     clearInterval(heapMonitorTimer);

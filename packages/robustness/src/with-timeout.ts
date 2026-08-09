@@ -18,6 +18,12 @@ import { envNum } from "./env.js";
 
 export class ToolTimeoutError extends Error {
   constructor(
+    /**
+     * Kept as `toolName`, NOT renamed to `label` alongside the parameter below.
+     * This field is public API of a published package: any consumer on ^0.5.x
+     * reading `err.toolName` would break, and `mcp-kit`'s dispatch layer models
+     * exactly that `instanceof` + field-read pattern.
+     */
     public readonly toolName: string,
     public readonly timeoutMs: number,
   ) {
@@ -26,8 +32,17 @@ export class ToolTimeoutError extends Error {
   }
 }
 
+/**
+ * Race `fn()` against a timeout.
+ *
+ * The first parameter is `label`, matching `RetryOptions.label`. It used to be
+ * `toolName`, which is MCP vocabulary in a utility that is otherwise generic —
+ * a downstream consumer wrapping non-tool work asked for the rename. It is safe
+ * to change: TypeScript ignores parameter names for call compatibility, and
+ * every call site passes it positionally.
+ */
 export async function withTimeout<T>(
-  toolName: string,
+  label: string,
   fn: () => Promise<T>,
   timeoutMs: number,
 ): Promise<T> {
@@ -38,7 +53,9 @@ export async function withTimeout<T>(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
-      reject(new ToolTimeoutError(toolName, effective));
+      // `label` in, `toolName` out — the two names are deliberately different.
+      // See the comment on the field; do not "tidy" this into one word.
+      reject(new ToolTimeoutError(label, effective));
     }, effective);
     timer.unref();
   });

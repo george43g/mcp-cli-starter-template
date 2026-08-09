@@ -107,9 +107,19 @@ analysis.
 - **`writeStderrLine(line)`** writes to fd 2 synchronously and never throws:
   the line survives even if the process dies microseconds later, which is what
   makes startup crashes visible in a host's log.
+- **Level threshold**: `setLogLevel(level)` or `MCP_LOG_LEVEL` gates
+  `debug | info | warn | error | silent`. The default is `debug` — everything
+  emits, which is what this logger did before the gate existed, so upgrading
+  changes nothing. `perf` spans rank with `info`: `warn` and above drop them.
+- **`getFileLogLines(tail, { preferPid })`** prefers the current process's log
+  file, falling back to newest. "Newest file" returns the *other* process's log
+  whenever two instances share a machine — an MCP server plus a TUI, or a
+  respawned host.
 
 Programmatic setters beat their env knobs; all are read at call time, so flags
-parsed into `process.env` after import still take effect.
+parsed into `process.env` after import still take effect. That claim was not
+quite true before 0.6.0: `MCP_LOG_PREFIX` was read once at module load, so the
+`--log-prefix` flag set the variable and changed nothing.
 
 ## Environment variables
 
@@ -131,13 +141,28 @@ With the default `envPrefix: "MCP"`:
 
 Changing `envPrefix` changes the prefix for all of these variables.
 
-The logger reads its own knobs (always `MCP_`-prefixed; the logger has no
-`envPrefix` option):
+The logger reads its own knobs, and takes its own prefix via
+`setLogEnvPrefix(prefix)` — the logger's and the watchdog's prefixes are set
+independently:
 
 - `MCP_LOG_DIR`, `MCP_LOG_PREFIX`
+- `MCP_LOG_LEVEL`
 - `MCP_LOG_TO_FILE`, `MCP_LOG_REDACT`
 - `MCP_LOG_RING_SIZE`, `MCP_LOG_MAX_BYTES`
 - `MCP_HEAP_WARN_MB`, `MCP_HEAP_CHECK_MS`
+
+```ts
+setLogEnvPrefix("IMSG"); // now reads IMSG_LOG_DIR, IMSG_LOG_LEVEL, ...
+```
+
+An earlier version of this README stated "the logger has no `envPrefix`
+option" as the contract. It has one as of 0.6.0, requested by a consumer
+running this package in a non-MCP systemd service that had no business
+writing `MCP_` in its unit file.
+
+Note that `setLogEnvPrefix` and `setLogFilePrefix` are different things and
+neither replaces the other: the first names environment **variables**, the
+second is the slug used for the log **directory, file name and stderr tag**.
 
 ## Stability
 
