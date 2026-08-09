@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.5.3](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.5.2...robustness-v0.5.3) (2026-08-09)
+
+
+### Bug Fixes
+
+* **exports:** add the "./package.json" subpath to every package ([30137bd](https://github.com/george43g/mcp-cli-starter-template/commit/30137bd3710dbb8837afc86b6504bc78e122e14e))
+
 # [@george43g/robustness-v0.5.2](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.5.1...robustness-v0.5.2) (2026-08-09)
 
 
