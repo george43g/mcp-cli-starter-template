@@ -1,3 +1,15 @@
+# [@george43g/robustness-v0.4.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.3.0...robustness-v0.4.0) (2026-08-09)
+
+
+### Bug Fixes
+
+* **robustness:** read env knobs on use, not at module load ([445f074](https://github.com/george43g/mcp-cli-starter-template/commit/445f074f0c01df0413f4363170b3d6422b39528c))
+
+
+### Features
+
+* **robustness:** ship src alongside the source maps ([bd9da70](https://github.com/george43g/mcp-cli-starter-template/commit/bd9da700884f5abf6076c381a5e69e2bd28e3582))
+
 # [@george43g/robustness-v0.3.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.2.1...robustness-v0.3.0) (2026-08-08)
 
 
