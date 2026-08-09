@@ -1363,3 +1363,27 @@ saying so.
 
 **Fix**: a line in the robustness README's logging section and in the 0.6.0 changelog entry. Cheap,
 and it is the kind of thing only a real adopter finds.
+
+---
+
+## 33. `readme-check` counts test files as source, so test-only PRs need a bypass
+
+**Status**: open, hit 2026-08-10 on a PR that changed only `rate-limit.test.ts`.
+
+`.github/workflows/readme-check.yml:52` selects changed source with
+`grep -E '^(apps|packages)/[^/]+/src/' | grep -cv '/lib/'`. Test files live under `src/`, so a
+test-only change trips the check and has to carry `[skip-readme]` — which is the mechanism working
+as written, but the tag then means "no README needed" for two quite different reasons, and a real
+missing-docs case is one habituated tag away from slipping through.
+
+The workflow already excludes `lib/` for exactly this reason: its header explains that counting the
+byte-mirror "produces false positives". Test files are the same class.
+
+**Fix**: add `| grep -cv '\.test\.'` alongside the existing `lib/` exclusion. One line, but
+`readme-check.yml` exists on THREE surfaces (`.github/`, `12-ci-release/lib/`, `example/`) under
+golden byte-equality, so it is a mirror-and-regen change rather than a one-line edit.
+
+**Trigger to action**: the next test-only PR that needs the tag. Bundle it with any other
+`12-ci-release/lib` work rather than spending a three-surface sync on it alone.
+
+**Cost**: ~20 min including the regen.
