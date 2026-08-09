@@ -9,10 +9,22 @@
  *   await acquire();              // 1 token, default bucket
  *   await acquire(2);             // 2 tokens
  *   const b = new TokenBucket(...);
- *   await b.acquire();
+ *   await b.acquire();            // waits for capacity
+ *   const { ok, retryMs } = b.tryAcquire();   // never waits
  */
 
 import { envNum } from "./env.js";
+
+/**
+ * Outcome of a non-blocking `tryAcquire`.
+ *
+ * `retryMs` is only meaningful when `ok` is false, and 0 then means "never" —
+ * the bucket cannot refill, so no amount of waiting helps.
+ */
+export interface RateLimitDecision {
+  ok: boolean;
+  retryMs: number;
+}
 
 export class TokenBucket {
   private tokens: number;
@@ -51,14 +63,37 @@ export class TokenBucket {
   }
 
   /**
-   * Block until `n` tokens are available, then deduct them. With rps=0
-   * tokens never refill, so once exhausted further calls hang — call sites
-   * should treat rps=0 as "limiter off" and skip calling acquire. The
-   * default singleton's `acquire()` handles that for you.
+   * Refill caps tokens at `capacity`, so a demand above it can never be met.
+   * Left unchecked `acquire` spins on that forever and `tryAcquire` hands back
+   * a retry hint that will never come true, which is worse than an error.
+   *
+   * Only reachable while the limiter is active: with `rps <= 0` both callers
+   * answer before reaching here, so a deliberately-disabled bucket (commonly
+   * `new TokenBucket(0, 0)`) never throws.
+   */
+  private assertSatisfiable(n: number): void {
+    if (n > this.capacity) {
+      throw new Error(
+        `rate limit: requested ${n} tokens, which exceeds the bucket capacity of ` +
+          `${this.capacity}. Refill caps at capacity, so this can never be granted — ` +
+          `raise the burst or request fewer tokens.`,
+      );
+    }
+  }
+
+  /**
+   * Block until `n` tokens are available, then deduct them.
+   *
+   * With rps=0 this returns immediately WITHOUT deducting: rps=0 means "limiter
+   * off". Note that `tryAcquire` reads rps=0 differently — see its docblock.
+   *
+   * @throws if `n` exceeds `capacity` while the limiter is active. That used to
+   * hang the caller forever.
    */
   async acquire(n = 1): Promise<void> {
     if (n <= 0) return;
     if (this.rps <= 0) return; // disabled — never wait
+    this.assertSatisfiable(n);
     // Loop instead of recursion so a stampede can't blow the stack.
     for (;;) {
       const now = this.clock();
@@ -71,6 +106,39 @@ export class TokenBucket {
       const waitMs = Math.max(1, Math.ceil((needed / this.rps) * 1000));
       await this.sleep(waitMs);
     }
+  }
+
+  /**
+   * Non-blocking `acquire`: take `n` tokens if they are there, otherwise report
+   * how long until they would be. Never waits.
+   *
+   * For call sites that must answer NOW — an MCP tool that should fail fast
+   * with "retry in 500ms" rather than silently stalling the client.
+   *
+   *   const { ok, retryMs } = bucket.tryAcquire();
+   *   if (!ok) throw new Error(`rate limit hit. Retry in ${retryMs}ms`);
+   *
+   * `retryMs` is guaranteed SUFFICIENT, not merely positive: waiting exactly
+   * that long makes the next call for the same `n` succeed.
+   *
+   * Unlike `acquire`, rps=0 is treated as a FIXED BUDGET rather than "off" —
+   * the initial `capacity` tokens are spendable and never refill. Once drained
+   * it returns `{ ok: false, retryMs: 0 }`, where 0 means "never": the caller
+   * decides what to do instead of being handed a wait that will not help.
+   *
+   * @throws if `n` exceeds `capacity` while the limiter is active.
+   */
+  tryAcquire(n = 1): RateLimitDecision {
+    if (n <= 0) return { ok: true, retryMs: 0 };
+    this.refill(this.clock());
+    if (this.tokens >= n) {
+      this.tokens -= n;
+      return { ok: true, retryMs: 0 };
+    }
+    if (this.rps <= 0) return { ok: false, retryMs: 0 };
+    this.assertSatisfiable(n);
+    const needed = n - this.tokens;
+    return { ok: false, retryMs: Math.max(1, Math.ceil((needed / this.rps) * 1000)) };
   }
 }
 

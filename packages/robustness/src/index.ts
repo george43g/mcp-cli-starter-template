@@ -29,6 +29,7 @@ export {
   warn,
   writeStderrLine,
 } from "./logger.js";
+export type { RateLimitDecision } from "./rate-limit.js";
 export {
   acquire as rateLimitAcquire,
   defaultLimiterAvailable,
