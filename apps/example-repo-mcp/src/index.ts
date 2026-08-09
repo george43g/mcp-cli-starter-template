@@ -17,7 +17,7 @@
  */
 
 import { buildResourcesHandler, startStdio } from "@george43g/mcp-kit";
-import { envBool, setLogFilePrefix, setStderrMirror } from "@george43g/robustness";
+import { envBool, setLogFilePrefix } from "@george43g/robustness";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
@@ -70,9 +70,6 @@ export async function runMcpServer(opts: { transport?: "stdio" | "http" } = {}):
   if (transport === "http") {
     await runHttpMcp({ server });
   } else {
-    // Mirror logs to stderr so the MCP host's connection log surfaces them.
-    // stdio only: stdout is JSON-RPC, and no TUI renders in this process.
-    setStderrMirror(true);
     await startStdio({ server, entrypoint: APP_NAME });
   }
 }

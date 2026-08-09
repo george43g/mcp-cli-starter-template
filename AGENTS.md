@@ -90,6 +90,12 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
 ## Conventions
 
 - **Single source of truth**: canonical files at the repo root + `apps/example-repo-mcp/` + `packages/*`. The scaffolder's `lib/` directories are byte-identical copies, drift-checked.
+- **A new kit API and its generated-app call site are TWO PRs, publish first.**
+  `apps/example-repo-mcp/src/` becomes the generated app's source, and generated
+  repos resolve `@george43g/*` from **npm** — so calling an API that only exists
+  in the workspace typechecks locally and fails the E2E smoke with `TS2305: …has
+  no exported member`. `pnpm verify` cannot catch it (workspace resolution). Wire
+  the call site in the post-release resync PR. See `DEFERRED.md` #23.
 - **No emojis in source code unless the user requests.** Comments stay terse and "why"-focused.
 - **Prefer canonical CLIs** (`pnpm init`, `pnpm pkg set`, `git init`) over file-copying for setup steps. Templates live in `lib/`; raw fs writes for small literals.
 - **Conventional Commits** drive semver via the (disabled-by-default) `release.yml` workflow.

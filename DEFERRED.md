@@ -810,3 +810,36 @@ Worked around by hand each time (`pnpm regen:example` + a resync PR). Real fixes
 **Trigger to action**: the next release. This will recur every single time until fixed.
 
 **Cost**: ~1h for the first option, which is the one that actually removes the manual step.
+
+---
+
+## 23. Generated-app source cannot use a kit API in the same PR that adds it
+
+**Status**: discovered 2026-08-09 by CI failing PR #21 (the 16a kit hardening) on both matrix legs.
+
+The registry-only runtime boundary (decided 2026-08-09) means the scaffolder E2E smoke installs
+`@george43g/robustness` **from npm**, not from the workspace. So `apps/example-repo-mcp/src/` —
+which is mirrored into `08-app/lib/` and becomes the generated app's source — may only call kit
+APIs that are **already published**. Adding `setStderrMirror` to robustness and calling it from
+the example app in the same PR typechecks locally (workspace resolution) and fails in the smoke
+with `TS2305: Module '@george43g/robustness' has no exported member 'setStderrMirror'`.
+
+`pnpm verify` cannot catch this: it resolves everything through the workspace. Only the E2E smoke,
+which installs from the registry, sees the real dependency graph a generated repo gets.
+
+**The rule**: a new kit API and its generated-app call site are **two PRs**, in that order —
+publish first, wire second. Landing the call site in the post-release `example/` resync PR
+(see #22) is free, since that PR has to happen anyway.
+
+**Deferred call site**: `setStderrMirror(true)` in the stdio branch of
+`apps/example-repo-mcp/src/index.ts` (mirror `08-app/lib/src/index.ts`, then `regen:example`).
+It was written, reverted from PR #21, and is waiting on robustness `0.5.0` reaching npm.
+
+**Fix options** (the rule works, but it is currently only enforced by a slow remote check):
+- Add a fast local check that typechecks the app's imports against the *published* `.d.ts` of each
+  kit rather than the workspace copy. Cheap version: grep the app's `@george43g/*` named imports
+  and assert each appears in the published package's type exports.
+- Or accept the smoke as the enforcement point and make its failure self-explaining — the message
+  above is accurate but does not say "you are calling an unpublished API; split the PR."
+
+**Trigger**: the next time a kit API is added with a generated-app consumer in mind. It will recur.
