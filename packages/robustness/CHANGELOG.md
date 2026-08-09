@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.7.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.6.0...robustness-v0.7.0) (2026-08-09)
+
+
+### Features
+
+* **robustness:** add TokenBucket.tryAcquire, a non-blocking take ([#36](https://github.com/george43g/mcp-cli-starter-template/issues/36)) ([547ff71](https://github.com/george43g/mcp-cli-starter-template/commit/547ff71a761fd10517bcfed0086c14456b22ca15)), closes [#30](https://github.com/george43g/mcp-cli-starter-template/issues/30)
+
 # [@george43g/robustness-v0.6.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.5.3...robustness-v0.6.0) (2026-08-09)
 
 
