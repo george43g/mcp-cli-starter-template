@@ -358,7 +358,10 @@ these survived. See #15.
 
 ## 15. Published-kit quality gaps found in the pre-adoption sweep (2026-08-09)
 
-**Status**: coverage infrastructure ✅ **DONE 2026-08-09**; API-shape items still open (see below).
+**Status**: ✅ **DONE 2026-08-09** — coverage infrastructure (PR #18) and the API-shape items
+(PR #19; released as robustness 0.4.0 / cli-kit 0.2.0 / tui-kit 0.2.0). Two residuals live
+elsewhere: `installShutdownHandlers`'s process-wide `unhandledRejection` suppression (16a
+territory), and the v8 function/branch inflation note below (provider swap is an open option).
 
 - ~~**Coverage gates are fiction.**~~ **RESOLVED.** `@vitest/coverage-v8` is installed in all nine
   test-running workspaces, `test:coverage` exists everywhere, `pnpm verify` runs it instead of
@@ -737,3 +740,33 @@ were re-verified against this repo's source before acting; three needed correcti
 declared correct — the consumer simply never called them. No API change there.
 
 **Trigger for the rest**: #18 lands → do turbo (a) with it. (b) can go any time.
+
+---
+
+## 22. Every release makes `example/` stale, and nothing catches it until the next push
+
+**Status**: open, recurring. Observed 2026-08-09 immediately after releasing four packages.
+
+Generated dependency ranges are DERIVED from `packages/*/package.json` at build time (that was the
+fix for field-note 43 — hand-written ranges rot silently). So the moment semantic-release bumps a
+package, `apps/scaffolder/src/generated/published-versions.ts` yields a new range and the committed
+`example/` snapshot — which pins the OLD one — no longer matches what the scaffolder emits.
+
+The gap is a timing one. Release jobs push their version bump with `[skip ci]`, deliberately, to
+avoid a release loop. That also means CI never runs on the bump commit, so the stale `example/` is
+not detected then. It surfaces on the *next* unrelated PR, as an `example/ is stale` failure with
+nothing in that PR to explain it — a confusing signal pointing at innocent work.
+
+Worked around by hand each time (`pnpm regen:example` + a resync PR). Real fixes, cheapest first:
+
+- Have the last release job run `pnpm regen:example` and include `example/` in its `[skip ci]`
+  commit. Keeps one source of truth; adds a scaffolder build to every release.
+- Stop pinning derived ranges in `example/` at all — emit `workspace:*` there and let the sync
+  check ignore the range line. Loses fidelity: `example/` is supposed to be byte-identical to real
+  output.
+- Accept it and make the failure self-explaining: have the sync check detect that the only diff is
+  a derived range and print "a release bumped a package — run `pnpm regen:example`".
+
+**Trigger to action**: the next release. This will recur every single time until fixed.
+
+**Cost**: ~1h for the first option, which is the one that actually removes the manual step.
