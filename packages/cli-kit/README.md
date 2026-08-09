@@ -61,7 +61,13 @@ The REPL also changed, all of it fixes:
   is the remainder of the line verbatim — read JSON from it; `args` is the
   shell-style split, for positional shortcuts.
 
-### Upgrading from 0.3.x
+### What arrived in 0.3.1
+
+Everything in this section shipped in **0.3.1**, which is a patch version
+carrying four additive API changes — the release was mis-typed as a fix because
+the headline was the bug below, and semantic-release reads the commit type, not
+the diff. Nothing here is breaking, so `^0.3.0` consumers are unaffected; the
+version simply under-signals what it contains.
 
 **Piped multi-command input works.** Up to and including 0.3.0, `runRepl` read
 lines with a recursive `rl.question()`. That arms a *one-shot* listener, so
