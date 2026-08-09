@@ -1,3 +1,10 @@
+# [@george43g/cli-kit-v0.2.1](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v0.2.0...cli-kit-v0.2.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **exports:** add a default condition so CJS consumers can require() the packages ([eb9632b](https://github.com/george43g/mcp-cli-starter-template/commit/eb9632be11b7a0c2a497814ce9caf58ba8bfa7c1))
+
 # [@george43g/cli-kit-v0.2.0](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v0.1.0...cli-kit-v0.2.0) (2026-08-09)
 
 
