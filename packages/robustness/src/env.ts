@@ -34,3 +34,23 @@ export function envStr(name: string, fallback: string): string {
   if (raw === undefined || raw === "") return fallback;
   return raw;
 }
+
+/**
+ * Normalise a caller-supplied env-var prefix into the fragment that gets
+ * spliced into variable NAMES — `"imsg_"` → `"IMSG"`, so the watchdog reads
+ * `IMSG_MAX_RSS_MB` and the logger reads `IMSG_LOG_DIR`.
+ *
+ * Validated rather than sanitised: a prefix that is not a legal identifier
+ * fragment produces variable names nobody can set from a shell, so failing at
+ * configuration time beats silently reading `MY-APP_LOG_DIR` forever.
+ *
+ * `subject` names the caller in the error message. The watchdog's wording is
+ * pinned by its own tests, so pass `"watchdog"` there.
+ */
+export function normalizeEnvPrefix(prefix: string, subject: string): string {
+  const normalized = prefix.replace(/_+$/, "").toUpperCase();
+  if (!/^[A-Z][A-Z0-9_]*$/.test(normalized)) {
+    throw new Error(`Invalid ${subject} envPrefix "${prefix}"`);
+  }
+  return normalized;
+}

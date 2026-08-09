@@ -15,7 +15,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearLogs, getLogs, info } from "./logger.js";
+import { _resetForTests, clearLogs, getLogDirectory, getLogs, info } from "./logger.js";
 import { _resetDefaultLimiterForTests, defaultLimiterAvailable } from "./rate-limit.js";
 import { withRetry } from "./retry.js";
 
@@ -25,6 +25,9 @@ const TOUCHED = [
   "MCP_RATE_LIMIT_BURST",
   "MCP_RATE_LIMIT_RPS",
   "MCP_LOG_RING_SIZE",
+  "MCP_LOG_PREFIX",
+  "MCP_LOG_LEVEL",
+  "MCP_LOG_DIR",
 ] as const;
 
 let saved: Record<string, string | undefined> = {};
@@ -40,7 +43,7 @@ afterEach(() => {
     else process.env[k] = v;
   }
   _resetDefaultLimiterForTests();
-  clearLogs();
+  _resetForTests();
   vi.restoreAllMocks();
 });
 
@@ -108,5 +111,21 @@ describe("logger defaults", () => {
     expect(lines.length).toBeLessThanOrEqual(3);
     // The ring keeps the newest, so the last write must survive.
     expect(lines.at(-1)).toContain("line 9");
+  });
+
+  it("honours MCP_LOG_PREFIX set after import", () => {
+    // This case was missing, which is exactly why the eager read survived:
+    // `logFilePrefix` was the last module-load `envStr` in logger.ts, so the
+    // documented `--log-prefix` flag set its variable and changed nothing.
+    // Restore that eager read and this assertion fails.
+    process.env.MCP_LOG_PREFIX = "set-after-import";
+    expect(getLogDirectory()).toContain("set-after-import");
+  });
+
+  it("honours MCP_LOG_LEVEL set after import", () => {
+    process.env.MCP_LOG_LEVEL = "error";
+    clearLogs();
+    info("dropped");
+    expect(getLogs()).toEqual([]);
   });
 });

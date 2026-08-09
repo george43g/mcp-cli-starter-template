@@ -2,12 +2,13 @@
 // Mirrors Gmail-MCP-Server's robustness/index.ts shape so call sites can be
 // lifted into other tools without diff churn.
 
-export { envBool, envNum, envStr } from "./env.js";
+export { envBool, envNum, envStr, normalizeEnvPrefix } from "./env.js";
 export type { HealthCounters, HealthSnapshot, HealthStatus } from "./health.js";
 export { formatHealthText, snapshotHealth } from "./health.js";
-export type { LogEntry, LogLevel, PerfSpan } from "./logger.js";
+export type { FileLogOptions, LogEntry, LogLevel, LogThreshold, PerfSpan } from "./logger.js";
 export {
   clearLogs,
+  debug,
   error,
   getFileLogLines,
   getLogDirectory,
@@ -18,7 +19,9 @@ export {
   logStartup,
   perf,
   setFileLogging,
+  setLogEnvPrefix,
   setLogFilePrefix,
+  setLogLevel,
   setLogRedaction,
   setStderrMirror,
   startHeapMonitor,

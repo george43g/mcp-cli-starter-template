@@ -8,6 +8,7 @@
 import { writeFileSync } from "node:fs";
 import { type IntervalHistogram, monitorEventLoopDelay } from "node:perf_hooks";
 import { getHeapSpaceStatistics, getHeapStatistics } from "node:v8";
+import { normalizeEnvPrefix } from "./env.js";
 import { error, info, warn } from "./logger.js";
 import {
   isShuttingDown,
@@ -101,7 +102,8 @@ const defaultShutdownController: WatchdogOptions["shutdownController"] = {
  * prefix, which must leave the live controller untouched.
  */
 function buildConfig(options: WatchdogOptions) {
-  const envPrefix = normalizeEnvPrefix(options.envPrefix ?? "MCP");
+  // "watchdog" is load-bearing: two tests pin the exact error string.
+  const envPrefix = normalizeEnvPrefix(options.envPrefix ?? "MCP", "watchdog");
   const numberOption = (value: number | undefined, envSuffix: string, fallback: number): number =>
     value ?? readPositiveNumber(`${envPrefix}_${envSuffix}`, fallback);
 
@@ -442,14 +444,6 @@ function initialState(): WatchdogState {
     lastActivityTs: now,
     killReason: null,
   };
-}
-
-function normalizeEnvPrefix(prefix: string): string {
-  const normalized = prefix.replace(/_+$/, "").toUpperCase();
-  if (!/^[A-Z][A-Z0-9_]*$/.test(normalized)) {
-    throw new Error(`Invalid watchdog envPrefix "${prefix}"`);
-  }
-  return normalized;
 }
 
 function readPositiveNumber(name: string, fallback: number): number {

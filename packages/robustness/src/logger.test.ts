@@ -1,15 +1,22 @@
-import { existsSync, mkdtempSync, writeSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearLogs,
+  debug,
+  error,
+  getFileLogLines,
+  getLogDirectory,
   getLogFilePath,
   getLogs,
   info,
   perf,
   _resetForTests as resetLogger,
   setFileLogging,
+  setLogEnvPrefix,
+  setLogFilePrefix,
+  setLogLevel,
   setLogRedaction,
   setStderrMirror,
   warn,
@@ -190,5 +197,153 @@ describe("stderr mirror", () => {
       throw new Error("EBADF");
     });
     expect(() => writeStderrLine("after_close")).not.toThrow();
+  });
+});
+
+describe("setLogEnvPrefix", () => {
+  it("defaults to the MCP_ vocabulary", () => {
+    vi.stubEnv("MCP_LOG_DIR", "/tmp/from-mcp");
+    expect(getLogDirectory()).toBe("/tmp/from-mcp");
+  });
+
+  it("re-points every knob at the new prefix", () => {
+    // The motivating case: a non-MCP service configured by systemd
+    // `Environment=` lines should not have to write MCP_ in its unit file.
+    setLogEnvPrefix("IMSG");
+    vi.stubEnv("IMSG_LOG_DIR", "/tmp/from-imsg");
+    vi.stubEnv("MCP_LOG_DIR", "/tmp/from-mcp");
+    expect(getLogDirectory()).toBe("/tmp/from-imsg");
+  });
+
+  it("stops reading the old prefix once re-pointed", () => {
+    setLogEnvPrefix("IMSG");
+    vi.stubEnv("MCP_LOG_LEVEL", "silent");
+    info("still emitted");
+    expect(getLogs()).toHaveLength(1);
+  });
+
+  it("normalises a lowercase, trailing-underscore prefix", () => {
+    setLogEnvPrefix("imsg_");
+    vi.stubEnv("IMSG_LOG_DIR", "/tmp/normalised");
+    expect(getLogDirectory()).toBe("/tmp/normalised");
+  });
+
+  it("rejects a prefix that cannot be a shell variable name", () => {
+    // Sanitising would produce variables nobody can set; failing at
+    // configuration time is the only outcome the caller can act on.
+    expect(() => setLogEnvPrefix("my-app")).toThrow(/Invalid logger envPrefix/);
+    expect(() => setLogEnvPrefix("9lives")).toThrow(/Invalid logger envPrefix/);
+  });
+
+  it("is independent of the log-file prefix", () => {
+    // Two different jobs: one names env VARIABLES, the other names FILES.
+    setLogEnvPrefix("IMSG");
+    setLogFilePrefix("imsg-mcp");
+    expect(getLogDirectory()).toContain("imsg-mcp");
+    vi.stubEnv("IMSG_LOG_DIR", "/tmp/explicit");
+    expect(getLogDirectory()).toBe("/tmp/explicit");
+  });
+});
+
+describe("log level threshold", () => {
+  it("emits everything by default, exactly as before the gate existed", () => {
+    debug("d");
+    info("i");
+    warn("w");
+    error("e");
+    perf("p").end();
+    expect(getLogs()).toHaveLength(5);
+  });
+
+  it("drops levels below the threshold", () => {
+    setLogLevel("warn");
+    debug("d");
+    info("i");
+    warn("w");
+    error("e");
+    expect(getLogs().map((l) => l.replace(/^\S+ /, ""))).toEqual(["[warn] w", "[error] e"]);
+  });
+
+  it("keeps perf spans at info and below, drops them above", () => {
+    setLogLevel("info");
+    perf("kept").end();
+    expect(getLogs()).toHaveLength(1);
+
+    clearLogs();
+    setLogLevel("warn");
+    perf("dropped").end();
+    expect(getLogs()).toEqual([]);
+  });
+
+  it("silent drops even error", () => {
+    setLogLevel("silent");
+    error("gone");
+    expect(getLogs()).toEqual([]);
+  });
+
+  it("reads <PREFIX>_LOG_LEVEL", () => {
+    vi.stubEnv("MCP_LOG_LEVEL", "ERROR");
+    info("dropped");
+    error("kept");
+    expect(getLogs()).toHaveLength(1);
+  });
+
+  it("an explicit setLogLevel beats the env var", () => {
+    vi.stubEnv("MCP_LOG_LEVEL", "silent");
+    setLogLevel("debug");
+    info("kept");
+    expect(getLogs()).toHaveLength(1);
+  });
+
+  it("falls back to permissive on an unrecognised value", () => {
+    // A typo in a unit file must not silently delete the log trail.
+    vi.stubEnv("MCP_LOG_LEVEL", "verbose");
+    debug("kept");
+    expect(getLogs()).toHaveLength(1);
+  });
+
+  it("gates before the sinks, so a dropped line never reaches the mirror", () => {
+    setStderrMirror(true);
+    setLogLevel("error");
+    info("dropped");
+    expect(mockedWriteSync).not.toHaveBeenCalled();
+  });
+});
+
+describe("getFileLogLines", () => {
+  it("prefers this process's file over a newer one from another process", () => {
+    // Two instances on one machine (an MCP server + a TUI, or a respawned
+    // host) previously made get_logs answer with the OTHER process's log.
+    const dir = mkdtempSync(join(tmpdir(), "logger-pid-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+
+    // Reverse-lexical sort is newest-first, so `zzz` outranks ours by name.
+    writeFileSync(join(dir, `mcp-${process.pid}-2020-01-01.ndjson`), '{"msg":"mine"}\n');
+    writeFileSync(join(dir, "mcp-999999-zzz.ndjson"), '{"msg":"theirs"}\n');
+
+    expect(getFileLogLines()).toEqual(['{"msg":"mine"}']);
+  });
+
+  it("falls back to newest when this process has no file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "logger-pid-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    writeFileSync(join(dir, "mcp-999999-aaa.ndjson"), '{"msg":"older"}\n');
+    writeFileSync(join(dir, "mcp-999999-zzz.ndjson"), '{"msg":"newer"}\n');
+
+    expect(getFileLogLines()).toEqual(['{"msg":"newer"}']);
+  });
+
+  it("preferPid: 0 restores pure newest-first", () => {
+    const dir = mkdtempSync(join(tmpdir(), "logger-pid-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    writeFileSync(join(dir, `mcp-${process.pid}-2020-01-01.ndjson`), '{"msg":"mine"}\n');
+    writeFileSync(join(dir, "mcp-999999-zzz.ndjson"), '{"msg":"theirs"}\n');
+
+    expect(getFileLogLines(50, { preferPid: 0 })).toEqual(['{"msg":"theirs"}']);
+  });
+
+  it("returns [] rather than throwing when the directory does not exist", () => {
+    vi.stubEnv("MCP_LOG_DIR", join(tmpdir(), "definitely-not-a-log-dir-9f3a"));
+    expect(getFileLogLines()).toEqual([]);
   });
 });
