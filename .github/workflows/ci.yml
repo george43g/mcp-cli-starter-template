@@ -45,6 +45,9 @@ jobs:
       - name: Docs integrity (links, agent-file symlinks, index coverage)
         run: pnpm check:docs
 
+      - name: Repo script unit tests (runs before the checks that depend on them)
+        run: pnpm test:scripts
+
       - name: Publish shape (repository metadata, shipped dep specifiers)
         run: pnpm check:publishable-manifests
 
