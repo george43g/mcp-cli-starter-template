@@ -11,9 +11,17 @@ import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { APP_VERSION, buildStamp } from "../src/meta.js";
 
-function inGitCheckout(): boolean {
+/**
+ * A resolvable HEAD, not merely a `.git` directory.
+ *
+ * The scaffolder runs `git init` in its output, so a freshly generated repo has
+ * a git dir with NO COMMITS — `rev-parse HEAD` fails there and the stamp
+ * correctly falls back to bare semver. Guarding on `--git-dir` instead made
+ * this test demand a sha inside the E2E smoke, where none can exist.
+ */
+function hasCommits(): boolean {
   try {
-    execFileSync("git", ["rev-parse", "--git-dir"], {
+    execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: import.meta.dirname,
       stdio: ["ignore", "ignore", "ignore"],
     });
@@ -36,9 +44,18 @@ describe("buildStamp", () => {
     expect(buildStamp()).toBe(buildStamp());
   });
 
-  it("carries a commit count and sha when run from a git checkout", () => {
-    if (!inGitCheckout()) return; // packed tarball — fallback to bare semver
+  it("carries a commit count and sha when the checkout has commits", () => {
+    // No commits (fresh `git init`) or no git at all → bare semver, asserted by
+    // the degradation suite instead.
+    if (!hasCommits()) return;
     expect(buildStamp()).toMatch(/^\d+\.\d+\.\d+\+\d+\.[0-9a-f]{7}(\.dirty)?$/);
+  });
+
+  it("falls back to bare semver in a repo with no commits", () => {
+    if (hasCommits()) return;
+    // This is the path a freshly scaffolded repo takes, and the one the E2E
+    // smoke exercises for real.
+    expect(buildStamp()).toBe(APP_VERSION);
   });
 
   it("degrades to something usable rather than throwing", () => {
