@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.3.3](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.2...tui-kit-v0.3.3) (2026-08-09)
+
+
+### Bug Fixes
+
+* **tui-kit:** widen the robustness range to admit the coming 0.6.0 ([42104f4](https://github.com/george43g/mcp-cli-starter-template/commit/42104f483c1a3140429ae0b61516b4b28e953952))
+
 # [@george43g/tui-kit-v0.3.2](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.1...tui-kit-v0.3.2) (2026-08-09)
 
 

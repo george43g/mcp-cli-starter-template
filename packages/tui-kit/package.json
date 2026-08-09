@@ -1,6 +1,6 @@
 {
   "name": "@george43g/tui-kit",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Reusable Ink/React TUI building blocks: accent-driven theme system, useDevStats / useMouse / useVimKeys hooks, FullScreenInk wrapper integrated with the shutdown registry, DevStatsPanel, bounded-list eviction helper, and TTL+memory-pressure cache.",
   "type": "module",
   "license": "MIT",
