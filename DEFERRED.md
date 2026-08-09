@@ -1185,11 +1185,16 @@ bucket reports `{ ok: false, retryMs: 0 }`: the bucket can never refill, so the 
 to do rather than being told to wait forever.
 
 **Consumer**: browser-tab's screenshot rate limiter, which must reject with a hint rather than
-queue. It carries an app-local copy (`apps/browser-tab-mcp/src/daemon/screenshot.ts`, `ShotBucket`)
-until this ships. Reference implementation with docblock: their `packages/robustness/src/rate-limit.ts`
-at tag `v1.0.0` (deleted in their PR #38).
+queue. It carries an app-local copy until this ships.
 
-Additive, so a minor. Read their docblock before implementing.
+| What | Where |
+|---|---|
+| Reference implementation + docblock | browser-tab-mcp at tag `v1.0.0`, `packages/robustness/src/rate-limit.ts:56-74` (`tryAcquire`), refill helper at `:42-48` |
+| Live app-local copy to delete | `apps/browser-tab-mcp/src/daemon/screenshot.ts` (`class ShotBucket`), branch `chore/consume-published-kits` |
+| Equivalence tests that must still pass | `screenshot.test.ts:115` (deny-with-hint), `:128` (refill-then-retry) |
+
+Additive, so a minor. Read their docblock before implementing; their two tests are the acceptance
+criteria for the swap, so the shape has an existing oracle rather than needing one invented.
 
 ---
 
@@ -1211,9 +1216,20 @@ representable — but `text` is REQUIRED, which is exactly wrong for
 them to summary text in its own REPL wiring; up-bank hit the same interface from the other
 direction this morning and needed `structuredContent` + `_meta` (shipped in 0.3.1).
 
-**Do it properly rather than widening a third time**: a discriminated union over
-text / image / audio / resource, with the renderer summarising non-text blocks to one line
-(browser-tab's suggestion, and what their adapter already does).
+**Do it properly rather than widening a third time**: a discriminated union with the renderer
+summarising non-text blocks to one line (browser-tab's suggestion, and what their adapter already
+does).
+
+Scope correction from browser-tab after reviewing the plan: **`mcp-kit`'s own `ContentBlock` is
+`text | image` only** (`{type:"image", data, mimeType}`), so those two are the required cases and
+`audio` / `resource` are future-proofing rather than parity. Do not model the union off a
+half-remembered reading of the MCP spec — match `mcp-kit` first, then extend.
+
+**Drop-the-shim trigger for the consumer**: their REPL adapter
+(`apps/browser-tab-mcp/src/cli.ts`, the `callTool` wiring) already narrows on `type === "text"` and
+summarises the rest, so their migration is *deleting* the adapter rather than rewriting it. They
+pin caret ranges, so they will not absorb the break silently — but they have asked to be told the
+version when it ships.
 
 **This is a breaking change to a published interface** — a required property becomes conditional on
 the discriminant, so any consumer reading `content[0].text` unguarded stops typechecking. Needs a
