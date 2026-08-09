@@ -38,7 +38,7 @@
     "lint": "biome check .",
     "stress": "tsx scripts/stress-mcp.ts",
     "stress:tui": "tsx scripts/stress-tui.ts",
-    "screenshots": "for f in scripts/screenshots/*.tape; do vhs \"$f\"; done",
+    "screenshots": "for f in scripts/screenshots/*.tape; do (cd \"$(dirname \"$f\")\" && vhs \"$(basename \"$f\")\") || exit 1; done",
     "docs:cli": "mise run docs",
     "completions": "mise run completions",
     "manpage": "mise run manpage",

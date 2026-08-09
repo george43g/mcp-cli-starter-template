@@ -11,7 +11,9 @@
 
 [Install](#install) · [Tools](#tools) · [Connect from your editor](#one-click-install) · [Docs](#docs) · [Skill for AI agents](#install-the-companion-skill)
 
-![example-repo TUI](docs/screenshots/overview.gif)
+![example-repo TUI](docs/screenshots/tui.gif)
+
+![example-repo CLI](docs/screenshots/overview.gif)
 
 </div>
 

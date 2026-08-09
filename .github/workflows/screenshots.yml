@@ -63,10 +63,45 @@ jobs:
       - name: Regenerate screenshots
         run: |
           mkdir -p docs/screenshots
+          shopt -s nullglob
+          status=0
+          # Resolved so the comparison below is not defeated by a symlinked path.
+          root="$(pwd -P)"
           for f in apps/*/scripts/screenshots/*.tape; do
             echo "▶ $f"
-            vhs "$f"
+            # Run each tape from its OWN directory. vhs resolves `Output` and
+            # `Screenshot` paths against the process working directory, not the
+            # tape's location, so invoking `vhs apps/.../x.tape` from the repo
+            # root sends the tape's ../../../../ prefix four levels ABOVE the
+            # root — writing nothing, and still exiting 0.
+            if ! ( cd "$(dirname "$f")" && vhs "$(basename "$f")" ); then
+              echo "::error file=$f::vhs exited non-zero"
+              status=1
+              continue
+            fi
+            # An exit code is not enough on its own. vhs returns 0 when it
+            # cannot write its output at all, and it silently creates parent
+            # directories — so a wrong relative path either writes nothing or
+            # writes somewhere unexpected, and both look like success.
+            # Assert that every artifact the tape declares exists AND landed in
+            # docs/screenshots/.
+            while read -r out; do
+              artifact="$(dirname "$f")/$out"
+              if [[ ! -s "$artifact" ]]; then
+                echo "::error file=$f::declared '$out' but it is missing or empty"
+                status=1
+                continue
+              fi
+              resolved="$(cd "$(dirname "$artifact")" && pwd -P)"
+              if [[ "$resolved" != "$root/docs/screenshots" ]]; then
+                echo "::error file=$f::'$out' resolved to $resolved, outside docs/screenshots/"
+                status=1
+              fi
+            done < <(awk '$1 == "Output" || $1 == "Screenshot" { print $2 }' "$f")
           done
+          # A bare `for` loop exits with the LAST iteration's status, so a tape
+          # that fails anywhere but the end used to be reported as success.
+          exit $status
 
       - name: Commit regenerated screenshots (push only)
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'

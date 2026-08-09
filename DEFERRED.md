@@ -1149,7 +1149,51 @@ now has its own bullet.
 
 ---
 
-## 29. The screenshots workflow ships two CI traps into every generated repo
+## 29. RESOLVED — the screenshots workflow ships two CI traps into every generated repo
+
+**Status**: ✅ **RESOLVED 2026-08-10.** It was not two traps, it was four — and the pipeline had
+never produced a single screenshot. `docs/screenshots/` contained only `.gitkeep` while the
+workflow reported success on every run.
+
+Each of these alone is enough to yield zero output, and every one of them exits 0:
+
+1. **`Output` is resolved against the process cwd, not the tape's directory.** The workflow ran
+   `vhs apps/.../overview.tape` from the repo root, so the tape's `../../../../docs/screenshots/`
+   prefix pointed four levels ABOVE the root — `/docs/screenshots/`, which is not writable. vhs
+   wrote nothing and exited 0. Tapes now run from their own directory.
+2. **The bin the tapes typed does not exist.** They typed `example-repo-cli`; the bin is
+   `example-repo` (generated: `example-cli` vs the real `example`). Nothing links workspace bins
+   into `node_modules/.bin` either, so even the right name would not resolve. The tapes now define
+   a shell function over the built entrypoint in a `Hide` block.
+3. **`Output foo.png` writes a 210-file frame directory**, not a still. GIFs are the committed
+   artifact — `docs/screenshots/*.png` is gitignored, which is the fourth defect: the workflow's
+   commit step was filtering for files git had been told to ignore.
+4. **The `for` loop returned only the last tape's status** (the known trap), and there was no TUI
+   tape at all, so ink's CI gate (the other known trap) was never exercised.
+
+**What actually makes a tape fail is `Wait+Screen@<timeout> /regex/`.** vhs exits 0 for a command
+that does not exist, a blank TUI render, and an unwritable output path. Assert on a string from the
+command's *output*, never one echoed in the command line itself. The workflow additionally verifies
+that every artifact a tape declares exists AND resolved inside `docs/screenshots/` — the exit code
+is not sufficient, and vhs silently creates parent directories, so a wrong path can also "succeed"
+into the wrong place.
+
+Verified by reproduction at each step, on vhs 0.11.0:
+
+| Check | Before | After |
+|---|---|---|
+| `CI=true vhs tui.tape` | exit 1, blank, no artifact | exit 0, TUI rendered |
+| Output path outside the repo | exit 0, silent | exit 1, names the resolved path |
+| Non-last tape fails | exit 0 | exit 1, and later tapes still run |
+
+EQStack's report was accurate on both traps it named; it just could not see from outside that the
+pipeline underneath them had never worked. Their `Wait+Screen`-not-`Sleep` advice turned out to be
+the load-bearing part, for a reason neither of us stated at the time: it is the only assertion
+mechanism vhs has.
+
+**Original entry follows.**
+
+## 29 (original). The screenshots workflow ships two CI traps into every generated repo
 
 **Status**: open, found 2026-08-09 by the EQStack agent over cross-session messaging, then verified
 against this tree. `screenshots.yml` exists both here and at
