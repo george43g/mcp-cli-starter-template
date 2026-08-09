@@ -1122,3 +1122,137 @@ under-*scoping* (a `feat(vitest-config)` publishing robustness); this is the opp
 now has its own bullet.
 
 **Trigger**: each row clears when its package publishes. Check this table after every release.
+
+---
+
+## 29. The screenshots workflow ships two CI traps into every generated repo
+
+**Status**: open, found 2026-08-09 by the EQStack agent over cross-session messaging, then verified
+against this tree. `screenshots.yml` exists both here and at
+`apps/scaffolder/src/phases/12-ci-release/lib/.github/workflows/screenshots.yml`, so a generated
+repo inherits both traps pre-armed.
+
+**Trap 1 — a fullscreen ink TUI renders BLANK under CI, forever, silently.** GitHub Actions exports
+`CI=true`; ink then suppresses interactive frame rendering:
+
+```js
+// ink/build/ink.js:707
+return interactive ?? (!isInCi && Boolean(this.options.stdout.isTTY));
+```
+
+So a `vhs` capture of an ink TUI on a runner produces a permanently blank screen. Repro without a
+runner: `CI=true vhs <any-tui-tape>`. Fix (EQStack PR #76): prefix the tape's boot command with
+`CI=false CONTINUOUS_INTEGRATION=false` — `is-in-ci` treats the literal string `"false"` as not-CI.
+
+**This is LATENT here, not live**, and the distinction is the useful part. Our only tape
+(`apps/example-repo-mcp/scripts/screenshots/overview.tape`) never launches the TUI — it types
+`example-repo-cli health`, `noop --input …` and `--help`, all plain CLI. So nothing is broken
+today; the trap fires the first time anyone adds a TUI tape, in this repo or in any repo scaffolded
+from it. EQStack shipped blank screenshots for their project's entire history before noticing.
+
+**Trap 2 — the tape loop swallows every failure but the last.** Live in both copies:
+
+```sh
+for f in apps/*/scripts/screenshots/*.tape; do echo "▶ $f"; vhs "$f"; done
+```
+
+A `for` loop exits with the LAST iteration's status, so tape 1 failing and tape 3 succeeding is a
+green step. Harmless at one tape, wrong at two — and it is the thing that would hide trap 1 once
+someone adds the TUI tape. Fix independently of trap 1.
+
+**Checked and NOT applicable**: EQStack also warned that job-level `continue-on-error: true` turns
+job failures into run-level "success", so conclusions must be read per-job
+(`gh run view --json jobs`). `grep -rn continue-on-error` over our workflows and the template's
+returns nothing, so this repo is unaffected. Recorded because verifying it cost one grep and acting
+on it would have cost an afternoon.
+
+**Fix in one PR**, touching canonical + `lib/` mirror + `pnpm regen:example`: set the CI vars in the
+tape, replace the loop with one that accumulates a failure status, and add a TUI tape so trap 1 is
+actually exercised rather than merely avoided.
+
+---
+
+## 30. `TokenBucket` has no non-blocking acquire
+
+**Status**: open, requested 2026-08-09 by the browser-tab-mcp agent over cross-session messaging;
+verified. `packages/robustness/src/rate-limit.ts:59` exposes only
+`async acquire(n = 1): Promise<void>`, which waits. There is no way to express fail-fast-with-hint,
+so a caller that must never queue has to reimplement the bucket.
+
+**Requested shape**: `tryAcquire(n = 1): { ok: boolean; retryMs: number }` — refill, deduct if
+tokens suffice, else report `max(1, ceil((n - tokens) / rps * 1000))`. With `rps <= 0` an exhausted
+bucket reports `{ ok: false, retryMs: 0 }`: the bucket can never refill, so the caller decides what
+to do rather than being told to wait forever.
+
+**Consumer**: browser-tab's screenshot rate limiter, which must reject with a hint rather than
+queue. It carries an app-local copy until this ships.
+
+| What | Where |
+|---|---|
+| Reference implementation + docblock | browser-tab-mcp at tag `v1.0.0`, `packages/robustness/src/rate-limit.ts:56-74` (`tryAcquire`), refill helper at `:42-48` |
+| Live app-local copy to delete | `apps/browser-tab-mcp/src/daemon/screenshot.ts` (`class ShotBucket`), branch `chore/consume-published-kits` |
+| Equivalence tests that must still pass | `screenshot.test.ts:115` (deny-with-hint), `:128` (refill-then-retry) |
+
+Additive, so a minor. Read their docblock before implementing; their two tests are the acceptance
+criteria for the swap, so the shape has an existing oracle rather than needing one invented.
+
+---
+
+## 31. `ToolCallResult.content` is text-only, but MCP results carry image/audio/resource blocks
+
+**Status**: open, requested 2026-08-09 by the browser-tab-mcp agent; verified. This is the SECOND
+consumer in one day to find this interface under-modelled, which is the signal that the type is
+wrong rather than the usage.
+
+Current shape (`packages/cli-kit/src/repl.ts`):
+
+```ts
+content?: Array<{ type: string; text: string }>;
+```
+
+`type` is already `string` rather than a literal union, so an image block is *structurally*
+representable — but `text` is REQUIRED, which is exactly wrong for
+`{ type: "image", data, mimeType }`. browser-tab's screenshot tool returns image blocks and adapts
+them to summary text in its own REPL wiring; up-bank hit the same interface from the other
+direction this morning and needed `structuredContent` + `_meta` (shipped in 0.3.1).
+
+**Do it properly rather than widening a third time**: a discriminated union with the renderer
+summarising non-text blocks to one line (browser-tab's suggestion, and what their adapter already
+does).
+
+Scope correction from browser-tab after reviewing the plan: **`mcp-kit`'s own `ContentBlock` is
+`text | image` only** (`{type:"image", data, mimeType}`), so those two are the required cases and
+`audio` / `resource` are future-proofing rather than parity. Do not model the union off a
+half-remembered reading of the MCP spec — match `mcp-kit` first, then extend.
+
+**Drop-the-shim trigger for the consumer**: their REPL adapter
+(`apps/browser-tab-mcp/src/cli.ts`, the `callTool` wiring) already narrows on `type === "text"` and
+summarises the rest, so their migration is *deleting* the adapter rather than rewriting it. They
+pin caret ranges, so they will not absorb the break silently — but they have asked to be told the
+version when it ships.
+
+**This is a breaking change to a published interface** — a required property becomes conditional on
+the discriminant, so any consumer reading `content[0].text` unguarded stops typechecking. Needs a
+minor plus a migration note in the README's upgrade section, NOT a patch. Recorded explicitly
+because `cli-kit@0.3.1` shipped four new APIs under a `fix:` commit this morning and published as a
+patch when it should have been a minor; that mistake is not worth repeating on a change that
+actually breaks callers.
+
+---
+
+## 32. Announce that `_resetForTests` now resets the logger's prefixes
+
+**Status**: open, raised 2026-08-09 by the EQStack agent after adopting `robustness@0.6.0`.
+
+`_resetForTests()` now also clears `logFilePrefixOverride`, `envPrefix` and `logLevelOverride`, so a
+consumer calling it in test setup must RE-APPLY its prefixes afterwards or silently fall back to the
+`MCP_` vocabulary mid-suite. EQStack wraps this in a `configureKitLogger()` helper, which is the
+right shape.
+
+The reset itself is correct and deliberate: before 0.6.0 `logFilePrefix` was NOT reset, so one test
+calling `setLogFilePrefix` leaked into every later test in the same file. Fixing that leak is what
+created the announcement gap — the behaviour changed for consumers with nothing in the changelog
+saying so.
+
+**Fix**: a line in the robustness README's logging section and in the 0.6.0 changelog entry. Cheap,
+and it is the kind of thing only a real adopter finds.
