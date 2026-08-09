@@ -1296,7 +1296,42 @@ criteria for the swap, so the shape has an existing oracle rather than needing o
 
 ---
 
-## 31. `ToolCallResult.content` is text-only, but MCP results carry image/audio/resource blocks
+## 31. RESOLVED — `ToolCallResult.content` is text-only, but MCP results carry image/audio/resource blocks
+
+**Status**: ✅ **RESOLVED 2026-08-10**, shipping as **cli-kit 0.4.0 — the only breaking change in
+this batch.** Shape (B) as browser-tab chose it: a closed union, no catch-all, `data` raw base64.
+The renderer ships WITH the type, which was their condition — type-without-renderer "just relocates
+my 20-line adapter into every consumer's compile-error fixup".
+
+**One correction to the brief, found by reading our tree rather than trusting the reference.** The
+entry said to mirror "mcp-kit's own `ContentBlock` at `tool-registry.ts:16-24`". That describes
+browser-tab's *evolved fork*. In this repo `tool-registry.ts:16-24` is `ToolDefinition`, there is no
+`ContentBlock`, and `dispatch.ts:34` declares `content: Array<{ type: "text"; text: string }>` —
+our dispatcher emits exactly one text block and never an image. So the union went into cli-kit,
+which is dispatcher-agnostic by design, and mcp-kit was left alone: its text-only `ToolResult`
+stays assignable to `ContentBlock[]`, so nothing in this repo needed migrating.
+
+Renderer contract, verified against their stated preference: one line per non-text block, **in
+dispatcher order** (a dispatcher appending text last means a screenshot arrives as `[image, text]`,
+and reordering would misreport it), sizes in **decoded bytes** not base64 characters, meta footer
+last.
+
+**Deliberately more defensive than the type:** the union is closed so that adding `resource` is a
+compile error where a decision is needed, but the renderer degrades to a `[resource]` placeholder
+at runtime. A real MCP server can send blocks this version does not model, and taking the REPL
+down over one would be the wrong trade.
+
+Also non-breaking in the same release: optionals declared `?: T | undefined` so
+`exactOptionalPropertyTypes` consumers can pass results through verbatim instead of rebuilding them
+with conditional spreads — this collapses their `cli.ts:541-561` to `return callMcpTool(...)`.
+
+Verified: 4 of the new tests observed failing against the old `content[0].text` renderer, and a
+type probe confirms `r.content?.[0]?.text` now raises `TS2339: Property 'text' does not exist on
+type 'ContentBlock'` — the compile error they asked for, landing at the render site.
+
+**Original entry follows.**
+
+## 31 (original). `ToolCallResult.content` is text-only, but MCP results carry image/audio/resource blocks
 
 **Status**: open, requested 2026-08-09 by the browser-tab-mcp agent; verified. This is the SECOND
 consumer in one day to find this interface under-modelled, which is the signal that the type is

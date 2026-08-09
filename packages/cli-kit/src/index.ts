@@ -6,6 +6,7 @@ export { printAuto, printJson, printTable, resolveOutputMode } from "./output.js
 export type { ProgramOptions } from "./program.js";
 export { buildProgram } from "./program.js";
 export type {
+  ContentBlock,
   ReplDispatcher,
   ReplShortcut,
   RunReplOptions,

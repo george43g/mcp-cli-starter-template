@@ -13,7 +13,13 @@
 
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { parseConsoleInput, type ReplDispatcher, runRepl, type ToolDescriptor } from "./repl.js";
+import {
+  type ContentBlock,
+  parseConsoleInput,
+  type ReplDispatcher,
+  runRepl,
+  type ToolDescriptor,
+} from "./repl.js";
 
 describe("parseConsoleInput", () => {
   it("preserves a JSON payload verbatim in `rest`", () => {
@@ -408,5 +414,147 @@ describe("runRepl observability", () => {
     // have to be captured in the catch or they are unrecoverable once scrolled.
     const out = await runScript(["definitely_not_a_tool", "last-error", "quit"], richDispatcher());
     expect(out.match(/Unknown command: definitely_not_a_tool/g)).toHaveLength(2);
+  });
+});
+
+/**
+ * Non-text content blocks.
+ *
+ * `ToolCallResult.content` was `Array<{ type: string; text: string }>` — a shape
+ * no MCP server with an image tool can satisfy. Two consumers found it
+ * under-modelled in one day, which is the signal that the type was wrong rather
+ * than the usage. The union is closed on purpose; these cover what the renderer
+ * does with it.
+ */
+describe("runRepl content blocks", () => {
+  const PNG_1KB = "A".repeat(1364); // 1364 base64 chars -> 1023 decoded bytes
+
+  function blockDispatcher(content: ContentBlock[]): ReplDispatcher {
+    return {
+      listTools: () => TOOLS,
+      async callTool() {
+        await yieldToMacrotask();
+        return { content };
+      },
+    };
+  }
+
+  it("renders an image block as a one-line descriptor with its DECODED size", async () => {
+    const out = await runScript(
+      ["noop {}"],
+      blockDispatcher([{ type: "image", data: PNG_1KB, mimeType: "image/jpeg" }]),
+    );
+    // Not "1364 base64 chars": a meaningless unit, inflated 4/3 over the real size.
+    expect(out).toContain("[image image/jpeg, 1023 B]");
+    expect(out).not.toContain("base64");
+  });
+
+  it("scales the size unit", async () => {
+    const out = await runScript(
+      ["noop {}"],
+      blockDispatcher([{ type: "image", data: "B".repeat(84210), mimeType: "image/png" }]),
+    );
+    expect(out).toMatch(/\[image image\/png, 61\.7 KB\]/);
+  });
+
+  it("preserves dispatcher block ORDER — [image, text] renders image first", async () => {
+    // mcp-kit-style dispatchers append the text block last (`[...extra, text]`),
+    // so a screenshot arrives as [image, text]. Reordering would misreport it.
+    const out = await runScript(
+      ["noop {}"],
+      blockDispatcher([
+        { type: "image", data: PNG_1KB, mimeType: "image/jpeg" },
+        { type: "text", text: '{"saved":true}' },
+      ]),
+    );
+    const image = out.indexOf("[image");
+    const text = out.indexOf('{"saved":true}');
+    expect(image).toBeGreaterThan(-1);
+    expect(text).toBeGreaterThan(-1);
+    expect(image).toBeLessThan(text);
+  });
+
+  it("puts the meta footer after ALL blocks", async () => {
+    const d: ReplDispatcher = {
+      listTools: () => TOOLS,
+      async callTool() {
+        return {
+          content: [
+            { type: "image", data: PNG_1KB, mimeType: "image/jpeg" },
+            { type: "text", text: "done" },
+          ] as ContentBlock[],
+          _meta: { duration_ms: 12, engine: "ts" },
+        };
+      },
+    };
+    const out = await runScript(["noop {}"], d, undefined, { showMeta: true });
+    expect(out.indexOf("· 12ms · engine=ts")).toBeGreaterThan(out.indexOf("done"));
+  });
+
+  it("still renders a text-only result unchanged", async () => {
+    const out = await runScript(["noop {}"], blockDispatcher([{ type: "text", text: "plain" }]));
+    expect(out).toContain("plain");
+  });
+
+  it("does not crash on a block type the union does not model", async () => {
+    // A real server can send `resource` or `audio`. The type is closed so that
+    // adding one is a deliberate compile error, but the RENDERER must degrade
+    // rather than take the REPL down with it.
+    const rogue = [{ type: "resource", uri: "file:///x" }] as unknown as ContentBlock[];
+    const out = await runScript(["noop {}"], blockDispatcher(rogue));
+    expect(out).toContain("[resource]");
+  });
+
+  it("reports an error result carried in a text block", async () => {
+    const d: ReplDispatcher = {
+      listTools: () => TOOLS,
+      async callTool() {
+        return { content: [{ type: "text" as const, text: "boom" }], isError: true };
+      },
+    };
+    const out = await runScript(["noop {}", "last-error"], d);
+    expect(out).toContain("boom");
+  });
+});
+
+describe("content block size formatting", () => {
+  function imageDispatcher(data: string, mimeType = "image/png"): ReplDispatcher {
+    return {
+      listTools: () => TOOLS,
+      async callTool() {
+        return { content: [{ type: "image" as const, data, mimeType }] };
+      },
+    };
+  }
+
+  it("reports B, KB and MB", async () => {
+    // No padding: decoded = floor(len * 3 / 4).
+    expect(await runScript(["noop {}"], imageDispatcher("A".repeat(8)))).toContain("6 B");
+    expect(await runScript(["noop {}"], imageDispatcher("A".repeat(4096)))).toContain("3.0 KB");
+    expect(await runScript(["noop {}"], imageDispatcher("A".repeat(1_400_000)))).toContain(
+      "1.0 MB",
+    );
+  });
+
+  it("subtracts base64 padding from the decoded size", async () => {
+    // "AAAAAA==" is 8 chars -> 6 raw -> 4 real bytes. Ignoring padding would
+    // overstate every image whose length is not a multiple of 3.
+    expect(await runScript(["noop {}"], imageDispatcher("AAAAAA=="))).toContain("4 B");
+    expect(await runScript(["noop {}"], imageDispatcher("AAAAAAA="))).toContain("5 B");
+  });
+
+  it("handles an empty payload without dividing by nothing", async () => {
+    expect(await runScript(["noop {}"], imageDispatcher(""))).toContain("0 B");
+  });
+
+  it("falls back to 'unknown' when a block's type is not even a string", async () => {
+    const rogue = [{ type: 42 }] as unknown as ContentBlock[];
+    const d: ReplDispatcher = {
+      listTools: () => TOOLS,
+      async callTool() {
+        return { content: rogue };
+      },
+    };
+    expect(await runScript(["noop {}"], d)).toContain("[unknown]");
   });
 });
