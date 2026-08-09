@@ -43,6 +43,10 @@ export async function runMcpServer(opts: { transport?: "stdio" | "http" } = {}):
 
   const resourcesEnabled = process.env.MCP_DISABLE_RESOURCES !== "1";
   const server = new Server(
+    // Bare semver on purpose, NOT the build stamp. This is a protocol field
+    // advertised to clients, not a diagnostic — a client may compare or parse
+    // it, and `+build` metadata has no meaning to them. `--version` and the
+    // REPL banner carry the stamp instead.
     { name: APP_NAME, version: APP_VERSION },
     { capabilities: { tools: {}, ...(resourcesEnabled ? { resources: {} } : {}) } },
   );

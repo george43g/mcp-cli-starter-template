@@ -33,6 +33,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # See ci.yml: the build stamp's commit count needs full history.
+          fetch-depth: 0
 
       - name: Install mise (provides usage)
         uses: jdx/mise-action@v4

@@ -22,7 +22,7 @@ import { checkLocalAccess, formatAccessReport } from "./access-check.js";
 import { applyHttpEnvFromOpts, registerHttpCommand } from "./commands/http.js";
 import { callMcpTool } from "./dispatcher.js";
 import { runMcpServer } from "./index.js";
-import { APP_NAME, APP_VERSION } from "./meta.js";
+import { APP_NAME, buildStamp } from "./meta.js";
 
 async function printResult(result: Awaited<ReturnType<typeof callMcpTool>>, json: boolean) {
   if (json) {
@@ -41,7 +41,7 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
   program
     .name(APP_NAME.replace(/^@[^/]+\//, "").replace(/-mcp$/, ""))
     .description("example-repo — single bin; subcommands run the MCP server, TUI, doctor, etc.")
-    .version(APP_VERSION, "-V, --version")
+    .version(buildStamp(), "-V, --version")
     .option("--json", "Emit machine-readable JSON")
     .option("-q, --quiet", "Suppress non-error output")
     .option("-v, --verbose", "Log debug-level info to stderr")
@@ -112,7 +112,7 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
       const { runRepl } = await import("@george43g/cli-kit");
       await runRepl({
         prompt: APP_NAME.replace(/^@[^/]+\//, "").replace(/-mcp$/, ""),
-        banner: color.dim(`${APP_NAME} ${APP_VERSION} — type 'help' for commands.`),
+        banner: color.dim(`${APP_NAME} ${buildStamp()} — type 'help' for commands.`),
         dispatcher: {
           async listTools() {
             const { makeAppRegistry } = await import("./tools/registry.js");

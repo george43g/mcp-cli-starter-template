@@ -128,6 +128,14 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
   (DEFERRED #34): staying on 0.x adds no protection, because `^1.x` does not
   cross a major either, so the insulation against breaking changes is identical.
   All 0.x buys is blocking *additive* minors, which consumers want automatic.
+- **NEVER spell a release-control token in commit prose.** `semantic-release`
+  reads the breaking-change footer token ANYWHERE in a commit body, including
+  inside a sentence describing a past incident. A `docs:` commit whose body
+  explained the previous mishap published `cli-kit@2.0.0` — a major whose
+  `dist/` was byte-identical to `1.0.0`. Two unplanned majors in one session,
+  both from message text. `pnpm test:scripts` + the `release-tokens` CI job now
+  reject the token unless the subject also carries `!`; to write ABOUT it, use
+  lowercase prose and do not spell the literal.
 - **Shared-tool-config packages are NEVER published.** `tsconfig`, `vitest-config`,
   and `biome-config` are per-monorepo shared config, meant to be customised for
   the repo they live in — not real dependencies. They stay `private: true`. A

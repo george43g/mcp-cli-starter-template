@@ -49,12 +49,12 @@ jobs:
         if: github.event_name == 'pull_request' && steps.skip.outputs.skip == 'false'
         run: |
           DIFF_RANGE="origin/${{ github.base_ref }}...HEAD"
-          SRC_CHANGED=$(git diff --name-only $DIFF_RANGE | grep -E '^(apps|packages)/[^/]+/src/' | grep -cv '/lib/' || true)
+          SRC_CHANGED=$(git diff --name-only "$DIFF_RANGE" | grep -E '^(apps|packages)/[^/]+/src/' | grep -cv '/lib/' || true)
           if [ "$SRC_CHANGED" -eq 0 ]; then
             echo "No source code changes — README check skipped."
             exit 0
           fi
-          README_CHANGED=$(git diff --name-only $DIFF_RANGE | grep -cE '(^|/)README\.md$' || true)
+          README_CHANGED=$(git diff --name-only "$DIFF_RANGE" | grep -cE '(^|/)README\.md$' || true)
           if [ "$README_CHANGED" -eq 0 ]; then
             echo "::error::Source code changed but no README.md was updated."
             echo "Add a [skip-readme] tag to your commit/PR title if a docs update is genuinely not warranted."
@@ -71,12 +71,12 @@ jobs:
           else
             DIFF_RANGE="$BEFORE_SHA..HEAD"
           fi
-          SRC_CHANGED=$(git diff --name-only $DIFF_RANGE | grep -E '^(apps|packages)/[^/]+/src/' | grep -cv '/lib/' || true)
+          SRC_CHANGED=$(git diff --name-only "$DIFF_RANGE" | grep -E '^(apps|packages)/[^/]+/src/' | grep -cv '/lib/' || true)
           if [ "$SRC_CHANGED" -eq 0 ]; then
             echo "No source code changes — README check skipped."
             exit 0
           fi
-          README_CHANGED=$(git diff --name-only $DIFF_RANGE | grep -cE '(^|/)README\.md$' || true)
+          README_CHANGED=$(git diff --name-only "$DIFF_RANGE" | grep -cE '(^|/)README\.md$' || true)
           if [ "$README_CHANGED" -eq 0 ]; then
             echo "::error::Source code changed but no README.md was updated."
             exit 1

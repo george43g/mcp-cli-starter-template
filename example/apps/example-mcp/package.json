@@ -65,6 +65,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@george43g/build-config": "workspace:*",
     "@george43g/tsconfig": "workspace:*",
     "@george43g/vitest-config": "workspace:*",
     "@types/node": "^24.13.3",

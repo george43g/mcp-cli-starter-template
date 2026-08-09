@@ -12,7 +12,7 @@
 import { DevStatsPanel, HelpBar, StatusBar, useTheme, useVimKeys } from "@george43g/tui-kit";
 import { Box, Text, useApp, useInput } from "ink";
 import { useState } from "react";
-import { APP_NAME, APP_VERSION } from "../meta.js";
+import { APP_NAME, buildStamp } from "../meta.js";
 import { engineLabel } from "../native-bridge.js";
 
 const ITEMS = Array.from({ length: 30 }, (_, i) => ({
@@ -50,7 +50,7 @@ export function App() {
         <Text color={theme.palette.accent} bold>
           {APP_NAME}
         </Text>
-        <Text color={theme.palette.fgDim}> v{APP_VERSION}</Text>
+        <Text color={theme.palette.fgDim}> v{buildStamp()}</Text>
       </Box>
 
       <Box flexDirection="row" flexGrow={1} paddingX={1}>
