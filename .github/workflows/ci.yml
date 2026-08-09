@@ -79,8 +79,6 @@ jobs:
       - name: Registry boundary (generated-app imports vs the released surface)
         run: pnpm check:registry-boundary
 
-      - name: Workflow YAML lint (all three surfaces)
-        run: pnpm check:workflows
 
       - name: Typecheck
         run: pnpm typecheck
@@ -107,6 +105,11 @@ jobs:
         # regenerate completions + manpage + docs; mise pulls a pinned
         # binary so the check is reproducible across runners.
         uses: jdx/mise-action@v4
+
+      - name: Workflow YAML lint (all three surfaces)
+        # After the mise step above: actionlint is pinned in mise.toml, so it is
+        # not on PATH until mise has installed it.
+        run: pnpm check:workflows
 
       - name: Check usage(1) artifacts are fresh vs .usage.kdl
         # Covers both the mcp-scaffold CLI and every generated CLI app.
