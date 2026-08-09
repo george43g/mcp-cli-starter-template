@@ -140,24 +140,30 @@ After `ef3809b`, a docs/harness pass applied the practices from
 
 ## Next decision, not next implementation
 
-**Current next task (2026-08-09, user-directed): the DEFERRED #16 split — 16a/16b.**
-The user's framing, preserve it: *this is one of the most important parts,
-because it will surface a lot of fixes and improvements to the published
-packages — get them as good as possible before they are consumed everywhere.*
-Concretely: rewrite `DEFERRED.md` #16 as 16a (kit-side, OURS) / 16b (EQStack
-adoption, THEIRS — never touch that repo); execute 16a's unblocked subset
-(logger file-write opt-out, sync `writeStderrLine` + stderr mirroring,
-`redactValue`/`redactString` — the logger has none and imsg logs failure
-payloads verbatim, default shutdown diagnostics). Items in 16a that need
-EQStack-side agreement stay deferred: the theme model (flat `Theme extends
-Palette` vs nested), `useVimKeys` double-dispatch — and note that 16a's
-"replace `runRepl` with imsg's queue-based loop" needs RE-EVALUATION first:
-PR #19 fixed the REPL's real defects and pinned its behaviour with 20
-contract tests, so the replacement's remaining rationale is the recursive
-`rl.question` EOF race, not missing features. Any 16a work that changes
-published packages should batch into as few releases as possible (every
-release currently strands `example/` — DEFERRED #22 — and grows the caret
-chains — DEFERRED #20).
+**DONE (2026-08-09): the DEFERRED #16 split — 16a/16b — executed on
+`feat/16a-kit-hardening`.** `DEFERRED.md` #16 is rewritten as 16a (kit-side,
+OURS) / 16b (EQStack adoption, THEIRS — never touch that repo). 16a's
+unblocked subset shipped in one batch: logger file-write opt-out
+(`MCP_LOG_TO_FILE`/`setFileLogging`), sync `writeStderrLine` + stderr mirror
+(`setStderrMirror`, wired in the example app's stdio branch), redaction
+(`redactValue`/`redactString` lifted from voice-mcp + cycle guard, ON by
+default with `MCP_LOG_REDACT`/`setLogRedaction` opt-out, plus `safeStringify`
+hardening for circular/BigInt data), default shutdown diagnostic sink, the
+#15 `unhandledRejection`-suppression residual (`exitOnUnhandledRejection`,
+default true), and `useDevStats(visible)` in tui-kit (old gap 5 — including
+`DevStatsPanel`, which shipped the OOM pattern itself). The "replace
+`runRepl`" item was re-evaluated and CLOSED without action — PR #19 removed
+its stated defects; trigger to reopen is a reproducible defect the current
+loop cannot fix. Still deferred inside 16a pending EQStack agreement: theme
+model, `useVimKeys` double-dispatch, and the ranked upstream candidates.
+Releases batched into the single PR merge (robustness minor + tui-kit
+minor); sibling ranges pre-widened with `|| ^0.5.0` (DEFERRED #20 pattern),
+and the release will strand `example/` again (DEFERRED #22 — resync after).
+
+**Next task: pick from DEFERRED by trigger** — #18 build identity (with
+turbo hole (a) and the `--print` flag), #22 release-time `example/` resync,
+#19 release-please question, #17 `regen:example` dedup. #10/#12 await the
+user.
 
 The older landing decisions below are retained for history:
 

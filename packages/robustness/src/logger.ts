@@ -3,7 +3,14 @@
  *
  * - In-memory ring buffer (default last 500 lines) for runtime introspection.
  * - NDJSON file output to MCP_LOG_DIR (default: $TMPDIR/mcp/) for post-mortem
- *   analysis. Rotates at 10MB by default.
+ *   analysis. Rotates at 10MB by default. Opt out with MCP_LOG_TO_FILE=0 or
+ *   `setFileLogging(false)` — a bin that reads sensitive user data should not
+ *   leave $TMPDIR trails for every end user by default in its own wrapper.
+ * - Optional stderr mirror (`setStderrMirror(true)`) so an MCP host's
+ *   connection log surfaces info/warn/error without polluting stdout JSON-RPC.
+ * - Redaction ON by default: phone numbers and secret-shaped strings in msg or
+ *   data are rewritten before any sink sees them. `setLogRedaction(false)` or
+ *   MCP_LOG_REDACT=0 to opt out.
  * - Performance spans: `const span = perf("op"); ... span.end({ rows: 100 })`.
  * - Heartbeat heap monitor for crash forensics.
  *
@@ -13,10 +20,18 @@
  * the hot path of every dispatch; a write failure must degrade silently.
  */
 
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { envNum, envStr } from "./env.js";
+import { envBool, envNum, envStr } from "./env.js";
+import { redactString, redactValue } from "./redact.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -59,6 +74,53 @@ export function setLogFilePrefix(prefix: string): void {
   logFilePrefix = prefix;
 }
 
+/**
+ * Programmatic overrides beat the env knobs; `null` means "env decides".
+ * All three are checked at call time, not module load, for the same
+ * `applyEnvFromFlags` reason as the numeric knobs above.
+ */
+let fileLoggingOverride: boolean | null = null;
+let redactionOverride: boolean | null = null;
+let stderrMirrorEnabled = false;
+
+/** Enable/disable NDJSON file output. Overrides MCP_LOG_TO_FILE (default on). */
+export function setFileLogging(enabled: boolean): void {
+  fileLoggingOverride = enabled;
+}
+
+const fileLoggingEnabled = () => fileLoggingOverride ?? envBool("MCP_LOG_TO_FILE", true);
+
+/** Enable/disable redaction of msg/data. Overrides MCP_LOG_REDACT (default on). */
+export function setLogRedaction(enabled: boolean): void {
+  redactionOverride = enabled;
+}
+
+const redactionEnabled = () => redactionOverride ?? envBool("MCP_LOG_REDACT", true);
+
+/**
+ * Mirror info/warn/error lines to stderr (perf spans excluded — too chatty).
+ * OFF by default: a full-screen Ink TUI renders to the same terminal, and
+ * stray stderr writes garble it. Enable from the MCP stdio entrypoint, where
+ * the host (Claude Desktop, Cursor, ...) surfaces stderr in its connection log.
+ */
+export function setStderrMirror(enabled: boolean): void {
+  stderrMirrorEnabled = enabled;
+}
+
+/**
+ * Write a line to stderr (fd 2) SYNCHRONOUSLY. Unlike `console.error`, a
+ * synchronous fd write is flushed before the process can exit, so the line
+ * survives a crash microseconds later — the failure mode that makes startup
+ * crashes invisible in an MCP host's log. Never throws.
+ */
+export function writeStderrLine(line: string): void {
+  try {
+    writeSync(2, `${line}\n`);
+  } catch {
+    // stderr may be closed mid-shutdown; never re-throw from the logger.
+  }
+}
+
 // ── State ──────────────────────────────────────────────────────────────
 
 const memoryLines: string[] = [];
@@ -89,6 +151,7 @@ function ensureLogFile(): string | null {
 }
 
 function writeToFile(json: string): void {
+  if (!fileLoggingEnabled()) return;
   const path = ensureLogFile();
   if (!path) return;
   try {
@@ -106,21 +169,47 @@ function heapMB(): number {
   return Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 10) / 10;
 }
 
+/**
+ * Circular or BigInt-bearing data would make JSON.stringify throw on the hot
+ * path, violating the never-throw invariant. Degrade to a marker instead.
+ */
+function safeStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value) ?? "null";
+  } catch {
+    return '"[unserializable]"';
+  }
+}
+
 function formatMemoryLine(entry: LogEntry): string {
   let line = `${entry.ts} [${entry.level}] ${entry.msg}`;
   if (entry.dur_ms != null) line += ` (${entry.dur_ms.toFixed(1)}ms)`;
-  if (entry.data != null) line += ` ${JSON.stringify(entry.data)}`;
+  if (entry.data != null) line += ` ${safeStringify(entry.data)}`;
   return line;
 }
 
 function emit(entry: LogEntry): void {
-  const line = formatMemoryLine(entry);
+  // Redact before ANY sink — ring buffer, file, and mirror must agree.
+  const safe: LogEntry = redactionEnabled()
+    ? {
+        ...entry,
+        msg: redactString(entry.msg),
+        ...(entry.data !== undefined
+          ? { data: redactValue(entry.data) as Record<string, unknown> }
+          : {}),
+      }
+    : entry;
+
+  const line = formatMemoryLine(safe);
   memoryLines.push(line);
   const cap = maxLogLines();
   if (memoryLines.length > cap) {
     memoryLines.splice(0, memoryLines.length - cap);
   }
-  writeToFile(JSON.stringify(entry));
+  writeToFile(safeStringify(safe));
+  if (stderrMirrorEnabled && safe.level !== "perf") {
+    writeStderrLine(`[${logFilePrefix}] ${line}`);
+  }
 }
 
 // ── Public API ─────────────────────────────────────────────────────────
@@ -283,6 +372,9 @@ export function _resetForTests(): void {
   memoryLines.length = 0;
   logFilePath = null;
   logFileBytes = 0;
+  fileLoggingOverride = null;
+  redactionOverride = null;
+  stderrMirrorEnabled = false;
   if (heapMonitorTimer) {
     clearInterval(heapMonitorTimer);
     heapMonitorTimer = null;

@@ -13,7 +13,10 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * changes its double-dispatch behaviour, so tests written against today's
  * semantics would encode the bug.
  *
- * Raised 19 → 31 → 32 → 33 as MemoryCache, palette, and viewport gained tests.
+ * Raised 19 → 31 → 32 → 33 as MemoryCache, palette, and viewport gained
+ * tests, then 33 → 42 when useDevStats gained the package's first `.test.tsx`
+ * suite (ink-testing-library + a mocked robustness barrel — proof the tsx
+ * globs work end-to-end).
  *
  * FUNCTIONS MOVED DOWN, 81 → 77, and that is not a regression. The v8 provider
  * reports a file it never loaded as 0% statements but **100% functions** —
@@ -30,8 +33,8 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * reports 0% statements but 100% branches and functions.
  */
 export default withCoverageFloor(shared, {
-  statements: 33,
-  branches: 88,
-  functions: 79,
-  lines: 33,
+  statements: 42,
+  branches: 89,
+  functions: 80,
+  lines: 42,
 });
