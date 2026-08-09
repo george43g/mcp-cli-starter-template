@@ -94,6 +94,48 @@ function checkFilesEntry(dir, pkg, name) {
 }
 
 /**
+ * An `exports` map with only an `import` condition is unreachable from CJS.
+ *
+ * `exports` fully replaces `main`, so a CJS consumer calling `require()` gets
+ * ERR_PACKAGE_PATH_NOT_EXPORTED — not the friendlier ERR_REQUIRE_ESM, and not
+ * a fallback to `main`. Node 24 can `require()` an ES module, but it resolves
+ * the specifier under the `require` condition first, which an import-only map
+ * does not answer. Reported by secret-store's first real consumer (2026-08-09),
+ * who had to convert their project to ESM to use the package at all.
+ *
+ * The fix needs no CJS build: `"default": "./dist/index.js"` last in the
+ * condition list points require() at the same ESM file, which Node 24 loads
+ * natively. Applies to every workspace package, not just published ones —
+ * mcp-kit and shared-types ship as SOURCE into generated repos, so a defect
+ * here is inherited by every scaffolded tool.
+ */
+function checkExportsResolvable(dir, pkg) {
+  for (const [subpath, conditions] of Object.entries(pkg.exports ?? {})) {
+    if (typeof conditions !== "object" || conditions === null) continue;
+    const keys = Object.keys(conditions);
+    if (!keys.includes("import")) continue;
+    if (!keys.includes("default") && !keys.includes("require")) {
+      failures.push(
+        `${dir}: exports["${subpath}"] has "import" but no "default" or "require"\n` +
+          `    Fix: add "default": ${JSON.stringify(conditions.import)} as the LAST condition. ` +
+          `Without it require() fails with ERR_PACKAGE_PATH_NOT_EXPORTED, because exports ` +
+          `replaces main entirely. No CJS build is needed — Node 24 requires ESM natively.`,
+      );
+      continue;
+    }
+    // Conditions match in order; anything after "default" is dead.
+    const defaultIndex = keys.indexOf("default");
+    if (defaultIndex !== -1 && defaultIndex !== keys.length - 1) {
+      failures.push(
+        `${dir}: exports["${subpath}"] lists "default" before ${JSON.stringify(
+          keys[defaultIndex + 1],
+        )}\n    Fix: move "default" last — it matches everything, so later conditions never apply.`,
+      );
+    }
+  }
+}
+
+/**
  * Every workspace dependency on a package WE publish must admit that package's
  * current version. A caret on a 0.x release pins the MINOR (`^0.1.1` means
  * `>=0.1.1 <0.2.0`), so bumping a sibling to 0.2.0 silently strands every
@@ -150,6 +192,7 @@ for (const { dir, manifestAbs } of await collectManifests()) {
   // Applies to EVERY workspace package, published or not: anyone depending on a
   // package we publish must track its version.
   checkSiblingRanges(dir, pkg, publishedVersions);
+  checkExportsResolvable(dir, pkg);
 
   if (!PUBLISHABLE.has(dir)) {
     // Catch a package made publish-shaped without being registered here (and

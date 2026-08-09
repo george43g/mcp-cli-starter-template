@@ -20,23 +20,28 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./env": {
       "types": "./dist/env.d.ts",
-      "import": "./dist/env.js"
+      "import": "./dist/env.js",
+      "default": "./dist/env.js"
     },
     "./logger": {
       "types": "./dist/logger.d.ts",
-      "import": "./dist/logger.js"
+      "import": "./dist/logger.js",
+      "default": "./dist/logger.js"
     },
     "./watchdog": {
       "types": "./dist/watchdog.d.ts",
-      "import": "./dist/watchdog.js"
+      "import": "./dist/watchdog.js",
+      "default": "./dist/watchdog.js"
     },
     "./shutdown": {
       "types": "./dist/shutdown.d.ts",
-      "import": "./dist/shutdown.js"
+      "import": "./dist/shutdown.js",
+      "default": "./dist/shutdown.js"
     }
   },
   "files": [

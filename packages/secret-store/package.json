@@ -1,7 +1,7 @@
 {
   "name": "@george43g/secret-store",
   "version": "0.2.0",
-  "description": "Vendor-neutral secret mechanism for local tools: resolve from process env, .env files, and the OS keychain, with an optional external-command fallback — plus keychain save/delete for setup flows. No vault-vendor logic.",
+  "description": "Vendor-neutral secret mechanism for local tools: resolve from process env, .env files, and the OS keychain, with an optional external-command fallback \u2014 plus keychain save/delete for setup flows. No vault-vendor logic.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -20,19 +20,23 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./env": {
       "types": "./dist/env.d.ts",
-      "import": "./dist/env.js"
+      "import": "./dist/env.js",
+      "default": "./dist/env.js"
     },
     "./keychain": {
       "types": "./dist/keychain.d.ts",
-      "import": "./dist/keychain.js"
+      "import": "./dist/keychain.js",
+      "default": "./dist/keychain.js"
     },
     "./exec": {
       "types": "./dist/exec.d.ts",
-      "import": "./dist/exec.js"
+      "import": "./dist/exec.js",
+      "default": "./dist/exec.js"
     }
   },
   "files": [
