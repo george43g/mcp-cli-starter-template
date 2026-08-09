@@ -10,6 +10,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Squash-merging makes the PR title + body the commit message, and
+  # semantic-release reads a release-control token anywhere in that body. So
+  # this has to run BEFORE the merge — afterwards the package is already
+  # published and npm versions are immutable.
+  release-tokens:
+    name: Commit message cannot trigger an unintended release
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Check PR title + body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s\n\n%s' "$PR_TITLE" "$PR_BODY" | node scripts/check-release-tokens.mjs
+
   build-test:
     name: ${{ matrix.os }} · node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
@@ -21,6 +40,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # Full history: the build stamp counts commits with
+          # `git rev-list --count HEAD`, and the default depth of 1 would make
+          # every CI build report a count of 1 — wrong, but plausible enough to
+          # be believed, which is the failure the stamp exists to prevent.
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6

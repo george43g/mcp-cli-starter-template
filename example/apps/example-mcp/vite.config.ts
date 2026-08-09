@@ -1,7 +1,11 @@
-import { builtinModules } from "node:module";
+import { builtinModules, createRequire } from "node:module";
 import { resolve } from "node:path";
+import { buildDefines } from "@george43g/build-config";
 import banner from "rollup-plugin-banner2";
 import { defineConfig } from "vite";
+
+const require = createRequire(import.meta.url);
+const { version } = require("./package.json") as { version: string };
 
 /**
  * Vite library-mode build with two entry points.
@@ -22,6 +26,13 @@ import { defineConfig } from "vite";
  * (workspace:*) or the SDK; users get the source-level tree.
  */
 export default defineConfig({
+  // Build identity, substituted at compile time. `src/meta.ts` reads these.
+  //
+  // This MUST happen in the app's own config: `define` only reaches modules
+  // Vite bundles, and `/^@george43g\//` below is external — so a stamp exported
+  // from a published kit would never be substituted, and would silently fall
+  // through to a plausible-looking default forever.
+  define: buildDefines(version),
   build: {
     target: "node22",
     outDir: "dist",

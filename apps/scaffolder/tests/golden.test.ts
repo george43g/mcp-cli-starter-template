@@ -46,6 +46,9 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   // Only the two preset files live in lib/; vitest-config's package.json stays
   // inline in the migration because its scope is substituted per target.
   ["03-configs/lib/vitest-config", "packages/vitest-config"],
+  // Same arrangement as vitest-config: the stamp module byte-mirrors, only
+  // package.json stays inline in the migration because its scope is substituted.
+  ["03-configs/lib/build-config", "packages/build-config"],
   ["06-mcp-kit/lib", "packages/mcp-kit"],
   ["07-shared-types/lib", "packages/shared-types"],
   ["08-app/lib", "apps/example-repo-mcp"],

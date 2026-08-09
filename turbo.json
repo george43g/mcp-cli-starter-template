@@ -38,6 +38,9 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      // Part of the cache key: a build carries an identity stamp, so replaying
+      // a cached artifact under a different stamp would ship a wrong one.
+      "env": ["BUILD_STAMP"],
       "outputs": ["dist/**", "!dist/**/*.test.*", "*.node", "index.js", "index.d.ts"],
       "inputs": [
         "src/**",

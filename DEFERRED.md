@@ -287,7 +287,18 @@ case-exactly), the Trusted Publisher config on npmjs.com for three packages, and
 
 ---
 
-## 13. Local validation for `.github/workflows/*.yml`
+## 13. RESOLVED — Local validation for `.github/workflows/*.yml`
+
+**Status**: ✅ **RESOLVED 2026-08-10.** `actionlint` 1.7.7 is pinned in `mise.toml` and runs as
+`pnpm check:workflows` over ALL THREE workflow surfaces — `.github/`, `12-ci-release/lib/` and
+`example/` — wired into `pnpm verify` and CI.
+
+It found two real `SC2086` issues immediately: unquoted `$DIFF_RANGE` in `readme-check.yml`, on
+both the PR and push paths. Fixed, so the check is a gate rather than advisory.
+
+**Original entry follows.**
+
+## 13 (original). Local validation for `.github/workflows/*.yml`
 
 **Status**: not started, deliberately. Nothing in the repo parses workflow YAML, so a
 malformed workflow is only discovered by pushing it — and it surfaces as an opaque 0-second
@@ -686,7 +697,35 @@ disagree with each other; trust this block or re-measure.
 
 ---
 
-## 18. Build identity — every build between two releases is indistinguishable
+## 18. RESOLVED — Build identity — every build between two releases is indistinguishable
+
+**Status**: ✅ **RESOLVED 2026-08-10** per `docs/plans/2026-08-build-identity.md`, which was
+followed as written. `--version`, the REPL banner and the TUI header now report
+`<semver>+<count>.<sha>[.dirty.<MMDDTHHmm>]`.
+
+**One improvement on the design.** The plan's prerequisite was `fetch-depth: 0` on the three
+shallow workflows, because a depth-1 checkout makes `git rev-list --count HEAD` return `1`. That is
+done — but the stamp ALSO probes `git rev-parse --is-shallow-repository` and reports `0` when the
+checkout is shallow. Reproduced against a real `git clone --depth 1`: naive counting says `1`, the
+stamp says `0`. A visible zero beats a believable lie, and it means a consumer who misses the
+workflow fix gets an obviously-degraded stamp rather than a plausible wrong one.
+
+**The open decision is settled**: the MCP handshake `version` (`index.ts`) stays **bare semver**. It
+is a protocol field advertised to clients, which may compare or parse it, and `+build` metadata
+means nothing to them. Diagnostics carry the stamp instead.
+
+**Verified against the built artifact, not just the source:**
+- the stamp appears as a string literal in `dist/`;
+- it is stable across re-runs, so it describes the BUILD and not the current checkout;
+- `dist/` contains no `execFileSync` reachable on the define path — no runtime recomputation.
+
+`packages/build-config` is `private: true` and stays that way: Vite `define` is compile-time
+substitution over BUNDLED modules, and the apps mark the kits external, so a published reader would
+be permanently unsubstituted — degrading to a plausible fallback rather than erroring.
+
+**Original entry follows.**
+
+## 18 (original). Build identity — every build between two releases is indistinguishable
 
 **Status**: designed, not started. Full design: [`docs/plans/2026-08-build-identity.md`](docs/plans/2026-08-build-identity.md).
 
@@ -955,7 +994,29 @@ workflow blocks publishing — the owner's call. But nothing about the analysis 
 
 ---
 
-## 23. Generated-app source cannot use a kit API in the same PR that adds it
+## 23. RESOLVED — Generated-app source cannot use a kit API in the same PR that adds it
+
+**Status**: ✅ **RESOLVED 2026-08-10.** `pnpm check:registry-boundary` compares every named
+`@george43g/*` import under `apps/example-repo-mcp/src/**` against the package's surface **at its
+release tag**, and fails with a message that names the split-the-PR fix.
+
+**Why tags rather than the registry or the store.** semantic-release commits the version bump back
+and tags `<pkg>-v<version>`, so the tree at that tag IS the published source — it answers exactly
+"does the released version export this?" with no network call. The first attempt read the pnpm
+store instead and silently skipped everything, because the workspace uses `workspace:*` links and
+holds no published tarballs. That version "passed" while checking nothing, which is the same
+failure this repo fixed in the manifest checker.
+
+**One subtlety worth keeping**: a flat text match on the barrel reports every re-exported symbol as
+unpublished, because `tui-kit/src/index.ts` is mostly `export * from "./components/index.js"`. The
+check follows those wildcards. Without that it produced 7 false positives on the first run.
+
+Verified both directions: passes on the current tree, and fails on an injected import of a
+nonexistent export.
+
+**Original entry follows.**
+
+## 23 (original). Generated-app source cannot use a kit API in the same PR that adds it
 
 **Status**: discovered 2026-08-09 by CI failing PR #21 (the 16a kit hardening) on both matrix legs.
 
@@ -1530,3 +1591,41 @@ therefore changes the upgrade contract for every consumer, and from then on a br
 goes, the analyzer config should stop being an accident.
 
 **Cost**: ~20 min for the config change (B), plus whatever the 1.0 conversation costs.
+
+---
+
+## 35. RESOLVED — commit PROSE published two unplanned majors
+
+**Status**: ✅ **RESOLVED 2026-08-10** with a mechanical guard, after it fired twice in one session.
+
+`@semantic-release/commit-analyzer` treats the breaking-change footer token as breaking wherever it
+appears in a commit body — including inside a sentence *describing* an incident rather than
+declaring one. It does not require a footer position.
+
+| Publish | Cause |
+|---|---|
+| `cli-kit@1.0.0` (planned 0.4.0) | A genuine `!` marker whose consequence on a 0.x package was not checked — see #34 |
+| `cli-kit@2.0.0` | A **`docs:`** commit whose body explained the 1.0.0 mishap and spelled the token while doing so |
+
+`2.0.0`'s `dist/` is **byte-identical to `1.0.0`** — verified by unpacking both tarballs; only
+`README.md` and the version field differ. A pure no-op major.
+
+**The guard**: `scripts/lib/release-tokens.mjs` + `scripts/check-release-tokens.mjs`, tested in
+`scripts/check-release-tokens.test.mjs` — whose first case is the real 2.0.0 commit message
+verbatim. The rule is symmetric:
+
+- The token without `!` in the subject → **rejected**. Prose cannot cut a release.
+- `!` in the subject without the token → **rejected**. A major must say what broke.
+
+It runs as a `release-tokens` CI job gated on `pull_request`, because squash-merging makes the PR
+title and body the commit message — so the check has to happen BEFORE the merge. Afterwards the
+package is published and npm versions are immutable. Shipped to the generated template too; it has
+the same semantic-release setup and therefore the same trap.
+
+**Not renumbered.** Publishing a 3.0.0 to "undo" 2.0.0 would be a third breaking bump for zero API
+change. Consumers on `^1.0.0` are unaffected — caret does not cross a major — and the next real
+cli-kit release will simply be 2.x.
+
+**What generalises**: this repo already had a rule against writing skip-CI markers in commit prose.
+The same hazard class covers every token a CI or release tool greps for out of a commit message.
+Treat commit messages as machine input, not only as prose.

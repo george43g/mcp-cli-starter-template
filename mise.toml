@@ -17,6 +17,12 @@ pnpm = "10.29.3"
 # Pinned: usage(1) emits slightly different completion shells between
 # minor versions; a floating "latest" makes the drift gates flap.
 usage = "3.3.0"
+# `actionlint` parses workflow YAML, checks expression syntax and shell
+# snippets, and catches typo'd `runs-on`/`uses` values. Nothing else in this
+# repo parses these files, so before this a malformed workflow was only
+# discoverable by pushing it. Validating release-packages.yml by hand once
+# required installing pyyaml into a scratch venv, which is the tell.
+actionlint = "1.7.7"
 
 [env]
 # Default to non-dev mode unless overridden. Test runs flip it via .env.test.

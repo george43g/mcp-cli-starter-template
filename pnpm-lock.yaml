@@ -84,6 +84,9 @@ importers:
         specifier: ^3.23.0
         version: 3.25.76
     devDependencies:
+      '@george43g/build-config':
+        specifier: workspace:*
+        version: link:../../packages/build-config
       '@george43g/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -247,6 +250,8 @@ importers:
         version: 3.2.7(@types/node@24.13.3)(tsx@4.23.1)
 
   packages/biome-config: {}
+
+  packages/build-config: {}
 
   packages/cli-kit:
     dependencies:
