@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.4.0](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.4...tui-kit-v0.4.0) (2026-08-09)
+
+
+### Features
+
+* **tui-kit:** add grapheme-aware width helpers and Nerd Font detection ([#39](https://github.com/george43g/mcp-cli-starter-template/issues/39)) ([54f5b29](https://github.com/george43g/mcp-cli-starter-template/commit/54f5b298d14aeea656b63546ce12fea9ec508e4d)), closes [#27](https://github.com/george43g/mcp-cli-starter-template/issues/27) [#11](https://github.com/george43g/mcp-cli-starter-template/issues/11) [#11](https://github.com/george43g/mcp-cli-starter-template/issues/11)
+
 # [@george43g/tui-kit-v0.3.4](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.3...tui-kit-v0.3.4) (2026-08-09)
 
 
