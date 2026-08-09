@@ -26,15 +26,18 @@ const PKG_JSON = (scope: string, ctx: MigrationContext) => `{
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./http": {
       "types": "./dist/transports/http.d.ts",
-      "import": "./dist/transports/http.js"
+      "import": "./dist/transports/http.js",
+      "default": "./dist/transports/http.js"
     },
     "./stdio": {
       "types": "./dist/transports/stdio.d.ts",
-      "import": "./dist/transports/stdio.js"
+      "import": "./dist/transports/stdio.js",
+      "default": "./dist/transports/stdio.js"
     }
   },
   "files": [

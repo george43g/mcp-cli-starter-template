@@ -638,3 +638,71 @@ are ideas, not commitments; none is scheduled unless promoted into
     any manifest edit that touches a dependency field, run `pnpm install` and
     commit the lockfile — then confirm with `pnpm install --frozen-lockfile`,
     which is the assertion CI actually makes and `verify` never does.
+
+55. **The registry-only boundary makes a new kit API and its generated-app call
+    site two separate PRs, and `pnpm verify` structurally cannot tell you.**
+    PR #21 added `setStderrMirror` to robustness and called it from
+    `apps/example-repo-mcp/src/index.ts` in the same commit. Locally that is
+    correct code: the workspace resolves `@george43g/robustness` to the source
+    right next to it. In a *generated* repo the same import resolves to
+    **npm**, where the export will not exist until this PR merges and releases.
+    Both matrix legs failed the E2E smoke with `TS2305: Module
+    '"@george43g/robustness"' has no exported member 'setStderrMirror'`.
+
+    The interesting part is which check caught it. Lint, typecheck, all four
+    coverage gates, `test:no-native`, the 13-assertion stress harness and the
+    `example/` sync check all passed, because every one of them resolves
+    through the workspace. Only the scaffolder smoke — which installs from the
+    registry into a tempdir — sees the dependency graph a real consumer gets.
+    That is not a gap in `verify`; it is the definition of the two surfaces.
+    A local proxy would have to typecheck the app's `@george43g/*` imports
+    against the *published* `.d.ts`, not the workspace copy.
+
+    The rule that falls out: publish first, wire second. The post-release
+    `example/` resync PR (field note on #22) is free real estate for the call
+    site, because that PR has to happen anyway.
+
+56. **Two logger hardening bugs that only a redaction rewrite would surface.**
+    Adding redaction to `emit()` meant touching the one function every log line
+    passes through, which is where two latent never-throw violations became
+    visible. First, `JSON.stringify` on caller-supplied `data` throws on
+    circular structures and on BigInt — so `info("x", data)` could throw
+    straight through the logger, on the hot path of every dispatch, in direct
+    contradiction of the file's own stated invariant. Second, a naive deep
+    redact recurses forever on the same circular input.
+
+    Both are fixed defensively (`safeStringify`, and a `WeakSet` ancestor path
+    in `redactValue`), and the ancestor-path detail matters: tracking *every*
+    visited object would report a diamond — the same object referenced twice
+    without a cycle — as `[circular]`, which `JSON.stringify` accepts happily.
+    Deleting from the set on the way back up keeps the two cases distinct.
+
+57. **An `import`-only `exports` map makes a package unreachable from CJS, and
+    every package in this repo had one.** Reported by secret-store's first real
+    consumer: `require("@george43g/secret-store")` fails with
+    `ERR_PACKAGE_PATH_NOT_EXPORTED`, so they converted their project to ESM to
+    use it at all. Reproduced against the published 0.2.0 tarball on Node 24.
+
+    Three things make this sharper than it looks. `exports` *replaces* `main`
+    entirely, so the `"main": "./dist/index.js"` sitting right above it is dead
+    weight and provides no fallback. Node 24 can `require()` an ES module, but
+    it resolves the specifier under the `require` condition first — an
+    import-only map simply does not answer, so require(esm) never gets a chance.
+    And the error names the wrong problem: not "this is ESM" but "no exports
+    main defined", which reads like a broken package rather than a condition
+    gap.
+
+    The fix needs no CJS build: `"default": "./dist/index.js"` last in the
+    condition list points `require()` at the same ESM file. Verified both ways —
+    require() and import() both resolve, root and subpath.
+
+    The generalisable part: this was never one package's bug. All four published
+    packages, plus `mcp-kit`/`shared-types` (which ship as SOURCE into every
+    scaffolded repo) and `mcpsync`, had the identical shape — nine manifests,
+    two of them inline literals inside scaffolder migrations rather than files
+    that `regen:example` would have carried. A defect in a shape that gets
+    copied is a defect in every copy, so the fix has to be a check, not an edit:
+    `check-publishable-manifests.mjs` now enforces it across **every** workspace
+    package, and also rejects `default` listed before another condition (it
+    matches everything, so anything after it is dead). Both branches were proven
+    to fail before being trusted to pass.

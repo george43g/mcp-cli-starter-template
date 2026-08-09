@@ -1,7 +1,7 @@
 {
   "name": "@george43g/cli-kit",
   "version": "0.2.0",
-  "description": "Commander helpers + TTY/color/output utilities + env↔flag binder + interactive REPL. Building blocks for the `example-repo-cli` bin in any tool cloned from the starter.",
+  "description": "Commander helpers + TTY/color/output utilities + env\u2194flag binder + interactive REPL. Building blocks for the `example-repo-cli` bin in any tool cloned from the starter.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -20,7 +20,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "files": [
