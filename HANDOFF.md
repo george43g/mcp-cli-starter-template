@@ -140,8 +140,7 @@ After `ef3809b`, a docs/harness pass applied the practices from
 
 ## Next decision, not next implementation
 
-**DONE (2026-08-09): the DEFERRED #16 split — 16a/16b — executed on
-`feat/16a-kit-hardening`.** `DEFERRED.md` #16 is rewritten as 16a (kit-side,
+**DONE (2026-08-09): the DEFERRED #16 split — 16a/16b — merged as PR #21.** `DEFERRED.md` #16 is rewritten as 16a (kit-side,
 OURS) / 16b (EQStack adoption, THEIRS — never touch that repo). 16a's
 unblocked subset shipped in one batch: logger file-write opt-out
 (`MCP_LOG_TO_FILE`/`setFileLogging`), sync `writeStderrLine` + stderr mirror
@@ -156,14 +155,39 @@ default true), and `useDevStats(visible)` in tui-kit (old gap 5 — including
 its stated defects; trigger to reopen is a reproducible defect the current
 loop cannot fix. Still deferred inside 16a pending EQStack agreement: theme
 model, `useVimKeys` double-dispatch, and the ranked upstream candidates.
-Releases batched into the single PR merge (robustness minor + tui-kit
-minor); sibling ranges pre-widened with `|| ^0.5.0` (DEFERRED #20 pattern),
-and the release will strand `example/` again (DEFERRED #22 — resync after).
+Shipped as robustness 0.5.0 + tui-kit 0.3.0; sibling ranges pre-widened with
+`|| ^0.5.0` (DEFERRED #20 pattern).
 
-**Next task: pick from DEFERRED by trigger** — #18 build identity (with
-turbo hole (a) and the `--print` flag), #22 release-time `example/` resync,
-#19 release-please question, #17 `regen:example` dedup. #10/#12 await the
-user.
+**DONE (2026-08-09): the CJS `exports` fix — PR #22.** secret-store's first
+real consumer reported `ERR_PACKAGE_PATH_NOT_EXPORTED` on `require()`;
+reproduced against the published tarball. `exports` replaces `main` entirely,
+and Node 24 resolves `require()` under the `require` condition first, which an
+import-only map never answers — so require(esm) never engages. Fixed with a
+trailing `"default"` (no CJS build) across **nine** manifests: all four
+published packages, `mcp-kit`/`shared-types` (which ship as SOURCE into every
+scaffolded repo), `mcpsync`, and two inline literals inside scaffolder
+migrations that `regen:example` would not have carried. Enforced going
+forward by `check-publishable-manifests.mjs` across every workspace package,
+including a "`default` must be last" branch; both branches proven to fail
+before being trusted. Shipped as the `.1` patches, verified by `require()`-ing
+the published tarballs. PR #22 also wired the `setStderrMirror` call site
+DEFERRED #23 had held back.
+
+**Next task: pick from DEFERRED by trigger.** Ranked by evidence:
+1. **#22 release-time `example/` resync — now the strongest candidate.** It
+   was paid by hand THREE times in this session alone (after PR #19's four
+   bumps, after 16a's two, after the exports patch's four). Each occurrence is
+   a manual `regen:example` plus a PR, and the failure it causes surfaces on
+   the next innocent PR. The fix — have the last release job run
+   `pnpm regen:example` and include `example/` in its `[skip ci]` commit — was
+   deliberately NOT done unilaterally because it edits the release pipeline;
+   that is the owner's call, but the evidence now strongly favours it.
+2. #18 build identity (with turbo hole (a) and the `--print` flag).
+3. #23's remaining half — a fast local check that typechecks generated-app
+   imports against PUBLISHED `.d.ts`, so the two-PR rule is not enforced only
+   by a slow remote smoke.
+4. #19 release-please question, #17 `regen:example` dedup, #20 comparator
+   ranges. #10/#12 await the user.
 
 The older landing decisions below are retained for history:
 

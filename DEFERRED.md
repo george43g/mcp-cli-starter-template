@@ -811,6 +811,13 @@ Worked around by hand each time (`pnpm regen:example` + a resync PR). Real fixes
 
 **Cost**: ~1h for the first option, which is the one that actually removes the manual step.
 
+**Evidence update (2026-08-09)**: paid by hand **three times in a single session** — after PR #19's
+four release bumps, after 16a's robustness 0.5.0 + tui-kit 0.3.0, and after the exports patch's
+four `.1` bumps. Each time it is a `pnpm regen:example` plus a PR that exists only to carry
+generated churn. That makes this the highest-frequency manual step in the repo. It was still not
+fixed unilaterally because the first option edits the release pipeline, and a broken release
+workflow blocks publishing — the owner's call. But nothing about the analysis is open any more.
+
 ---
 
 ## 23. Generated-app source cannot use a kit API in the same PR that adds it
