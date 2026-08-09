@@ -44,6 +44,29 @@ const found = await resolveSecret({ toolPrefix: "example-repo", name: "api_key" 
 // → { value, source } | null — looks for EXAMPLE_REPO_API_KEY, then .env, then the keychain
 ```
 
+## Logging
+
+Logs go through `@george43g/robustness` — never `console.log`, which would
+corrupt the JSON-RPC stream once the stdio transport is open.
+
+In **stdio mode** the server calls `setStderrMirror(true)`, so info/warn/error
+lines are mirrored to stderr and your MCP host (Claude Desktop, Cursor, …)
+surfaces them in its own connection log. That is the difference between "the
+server just stopped" and an actual error message. The mirror is deliberately
+NOT enabled in HTTP or TUI mode: the TUI renders to the same terminal and stray
+stderr writes would garble it.
+
+Useful knobs, all read at call time so CLI flags still reach them:
+
+| Variable | Effect |
+|---|---|
+| `MCP_LOG_TO_FILE=0` | Stop writing NDJSON to disk. Set this if your users should not accumulate `$TMPDIR` logs. |
+| `MCP_LOG_REDACT=0` | Disable redaction. On by default: phone numbers and secret-shaped strings are rewritten before any sink sees them. |
+| `MCP_LOG_DIR` | Where NDJSON files go (default `$TMPDIR/<tool>/`, 10MB rotation). |
+
+The equivalent programmatic setters (`setFileLogging`, `setLogRedaction`,
+`setStderrMirror`) take precedence over the environment.
+
 ## Removing surfaces
 
 - **Drop HTTP support**: delete the `http` subcommand from `src/cli.ts`, the `--http` branch from `src/index.ts`, and case #9 from `scripts/stress-mcp.ts`. Remove `MCP_HTTP_TOKEN` from `.env.example`. If nothing else in your tool resolves a secret, drop `@george43g/secret-store` from `package.json` too.
