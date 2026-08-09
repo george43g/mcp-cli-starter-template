@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.3.1](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.0...tui-kit-v0.3.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **exports:** add a default condition so CJS consumers can require() the packages ([eb9632b](https://github.com/george43g/mcp-cli-starter-template/commit/eb9632be11b7a0c2a497814ce9caf58ba8bfa7c1))
+
 # [@george43g/tui-kit-v0.3.0](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.2.0...tui-kit-v0.3.0) (2026-08-09)
 
 
