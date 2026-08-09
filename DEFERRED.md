@@ -776,8 +776,29 @@ were re-verified against this repo's source before acting; three needed correcti
    `include: [..., "tests/**/*.test.ts"]`, dropping `tests/**/*.test.tsx`. PR #18 had already
    changed it to `tests/**/*.test.{ts,tsx}`, which covers both. No action.
 
-**Explicitly NOT wanted**: `cli-kit`'s `output.ts` and `env-flag-binder.ts` were reviewed and
-declared correct — the consumer simply never called them. No API change there.
+7. ✅ **`resolveOutputMode` had no way to force human output** — DONE 2026-08-09.
+   **This item was mis-recorded here and nearly lost.** The line below used to read "Explicitly
+   NOT wanted: `output.ts` and `env-flag-binder.ts` were reviewed and declared correct… No API
+   change there." That conflated two different sections of the consumer's brief: their §4 said no
+   change was wanted *to adopt* those helpers, but their §5 was an explicit **"Asked for:"** — an
+   opt-in that outranks the implicit signals. Reading only the summary message (not the full
+   brief) is how the request went missing; it was found later by opening
+   `UPSTREAM-KIT-BRIEF.md` itself.
+
+   The gap: `resolveOutputMode` returned `"json"` for `--json`, a non-TTY stdout, **or** `CI=true`,
+   with no inverse — so the human view was unreachable the moment stdout was not a terminal.
+   `mytool list | less` was impossible, and the consumer had to run their CLI under a pty
+   (`script -q /dev/null …`) just to see their own renderer.
+
+   Fixed additively: `human?: boolean` on `OutputFlags` plus a `FORCE_HUMAN` env opt-in, both
+   ranking above the inferred TTY/CI signals and below an explicit `json`. Existing behaviour is
+   unchanged when neither is set. 14 tests; 4 of them fail if the feature line is removed.
+
+**Versioning constraint (their §4, PR #26 update)**: `resolveOutputMode`, `printJson`,
+`bindEnvFlags` and `applyEnvFromFlags` are now on browser-tab's hot path for every read command.
+Treat them as **load-bearing**: a behaviour change to output-mode precedence or to flag-name
+derivation (strip prefix → lowercase → `_`→`-`) is a BREAKING change for that consumer, not a
+patch. `env-flag-binder.ts` itself was reviewed and needs no change.
 
 **Trigger for the rest**: #18 lands → do turbo (a) with it. (b) can go any time.
 
