@@ -448,45 +448,84 @@ territory), and the v8 function/branch inflation note below (provider swap is an
 
 ---
 
-## 16. EQStack migration is BLOCKED on upstream work in the kits
+## 16. SPLIT 2026-08-09 → 16a (kit-side, ours) / 16b (EQStack adoption, theirs)
 
-**Status**: analysed 2026-08-09, nothing built. EQStack's `apps/imsg-mcp` is the only real
+Originally "EQStack migration is BLOCKED on upstream work in the kits" — one item conflating
+changes to our published kits with work that belongs on EQStack's backlog, executed by EQStack's
+agent, in EQStack's repo. We never touch that repo. EQStack's `apps/imsg-mcp` is the only real
 consumer (`analysis` is a 13-line shell; `voice-mcp` overlaps only weakly).
 
-**Clean wins, ready now**: the whole 368-line `imsg-mcp/src/watchdog.ts` collapses into
-`createWatchdog({ envPrefix: "IMSG" })` — a verified 1:1 on all twelve env names and defaults.
-Same for `tui/themes/color.ts` and `tui/hooks/useMouse.ts` (both lifted verbatim originally), the
-shutdown controller, and the TTY/colour helpers. `withRetry`/`TokenBucket`/`withTimeout` are pure
-additions.
+### 16a — kit-side upstreaming (OURS)
 
-**Blocking gaps — the kits must change first**:
-1. **Logger writes files unconditionally**; imsg gates disk logging behind `IMSG_DEV`/an explicit
-   call. Migrating turns on `$TMPDIR` NDJSON for every end user of a bin that reads their iMessage
-   database. Needs an opt-out knob upstream.
-2. **No stderr mirroring and no synchronous `writeStderrLine`** — imsg relies on a sync fd-2 write
-   so a crash *before* handler installation is still visible in the Claude/Cursor connection log.
-3. **Shutdown emits no diagnostics by default**, so migrating without wiring `onDiagnostic`
-   silently deletes the crash trail.
-4. **`cli-kit`'s `runRepl` uses the recursive `rl.question` pattern imsg explicitly abandoned**
-   (documented EOF race that truncated piped input) and has no `close`/EOF handling at all.
-5. **`useDevStats` lacks the `visible` parameter** whose absence caused two measured `rss_exceeded`
-   OOM kills in imsg (2026-07-12).
-6. **Theme model is structurally incompatible** — imsg's `Theme extends Palette` (flat, ~30 domain
-   keys, all derived from the accent hue) vs tui-kit's nested `{palette,glyphs,preset,accent}` with
-   hard-coded neutrals. ~19 components read `theme.<domainKey>` directly.
-7. `useVimKeys` registers its own `useInput` and would double-dispatch against imsg's mode-aware
-   handler; `StatusBar`/`HelpBar`/`DevStatsPanel` are same-name-different-component.
-8. **Peer ranges do not resolve against EQStack's lockfile today**: it has `ink@7.0.1` /
-   `react@19.2.5`, below tui-kit's `^7.1.1` / `^19.2.8` floors.
+**Executed 2026-08-09** (`feat/16a-kit-hardening`; ships as robustness minor + tui-kit minor):
 
-**Worth upstreaming from EQStack** (ranked): `redactValue`/`redactString` from voice-mcp — the
-robustness logger has NO redaction and imsg logs failure payloads verbatim; log-level filtering;
-the sync stderr writer; a Prometheus metrics module; imsg's queue-based REPL loop (should replace
-`cli-kit/repl.ts` outright); `--yaml` output; grapheme-aware `visual-width.ts`; `detectNerdFont()`,
-which directly complements `GLYPH_PRESETS.powerline` (today it can silently render blanks).
+1. ✅ **Logger file-write opt-out** (old gap 1). `MCP_LOG_TO_FILE=0` or `setFileLogging(false)`;
+   default stays ON so generated servers keep their post-mortem trail. Programmatic override
+   beats env; both read at call time (the `applyEnvFromFlags` contract).
+2. ✅ **Sync `writeStderrLine` + stderr mirror** (old gap 2). `writeSync(2, ...)` so a crash
+   microseconds later still leaves the line in the MCP host's connection log; `setStderrMirror(true)`
+   mirrors info/warn/error (perf excluded). Wired in the example app's stdio branch — never the TUI.
+3. ✅ **Redaction** (from the "worth upstreaming" list). `redactString`/`redactValue`/`lastFour`
+   lifted from voice-mcp's `domain/redact.ts` with a cycle guard added (logger hot path must never
+   throw). Logger redacts msg+data in every sink **by default**; `MCP_LOG_REDACT=0` or
+   `setLogRedaction(false)` opts out. Also hardened emit with `safeStringify` — circular or BigInt
+   data used to throw straight through `info()`.
+4. ✅ **Default shutdown diagnostics** (old gap 3). When `onDiagnostic` is not wired, a default
+   sink logs every event and writes error-level events to stderr synchronously. Before this,
+   installing handlers made crashes *completely* silent: an `uncaughtException` listener suppresses
+   Node's own stderr report, so an unwired consumer lost the trail entirely.
+5. ✅ **`unhandledRejection` exits by default** (the #15 residual, now closed).
+   `exitOnUnhandledRejection?: boolean`, default true — merely installing the observer listener
+   used to suppress Node's platform default of treating unhandled rejections as fatal, for the
+   whole consumer app. TUIs disable it alongside `exitOnUncaughtException`.
+6. ✅ **`useDevStats(visible)`** (old gap 5 — kit-side, so it belongs here, not in 16b).
+   Hidden mode rides the watchdog's 60s `onMemorySample` instead of a 2s interval — the 2s
+   setState on a hidden panel re-rendered the whole Ink app 30×/min forever, measured at
+   ~17-20MB/min heap churn in two real `rss_exceeded` kills (2026-07-12). Also fixed a per-render
+   effect re-init defect, and threaded `visible` through `DevStatsPanel`, which shipped the exact
+   OOM pattern itself.
 
-**Recommended order**: watchdog → shutdown (wire `onDiagnostic`, mind #14) → tty/colour →
-theme/color + useMouse → withTimeout. Everything else is blocked on the gaps above.
+**Re-evaluated and closed without action**:
+- **Replace `runRepl` with imsg's queue-based loop** (old gap 4). The stated defects — "documented
+  EOF race that truncated piped input" and "no close/EOF handling at all" — were both fixed by
+  PR #19 (`rl.on("close")` resolution; 20 contract tests drive the loop over piped multi-command
+  input, which would fail on truncation). What remains is a preference for a different loop shape
+  with no observable defect behind it. Not planned. The contract tests make a future swap safe;
+  the trigger to reopen is a reproducible REPL defect the current loop cannot fix.
+
+**Still open in 16a — needs EQStack-side agreement, not just our decision**:
+- Theme model (old gap 6): imsg's flat `Theme extends Palette` (~30 domain keys derived from the
+  accent hue) vs tui-kit's nested `{palette,glyphs,preset,accent}` with hard-coded neutrals; ~19
+  components read `theme.<domainKey>` directly.
+- `useVimKeys` double-dispatch (old gap 7): it registers its own `useInput` and would fight imsg's
+  mode-aware handler; `StatusBar`/`HelpBar`/`DevStatsPanel` are same-name-different-component.
+- Remaining upstream candidates (ranked): log-level filtering; a Prometheus metrics module;
+  `--yaml` output; grapheme-aware `visual-width.ts`; `detectNerdFont()`, which complements
+  `GLYPH_PRESETS.powerline` (today it can silently render blanks).
+
+**Trigger**: EQStack's agent proposes concrete contracts (see 16b), or the next tui-kit consumer
+hits the theme model.
+
+### 16b — EQStack adoption (THEIRS)
+
+Belongs on EQStack's backlog, in EQStack's repo. Recorded here only so the handoff is complete.
+
+**Clean wins, ready now** (verified 1:1 on 2026-08-09): the whole 368-line
+`imsg-mcp/src/watchdog.ts` collapses into `createWatchdog({ envPrefix: "IMSG" })` — all twelve
+env names and defaults match. Same for `tui/themes/color.ts` and `tui/hooks/useMouse.ts` (both
+lifted verbatim originally), the shutdown controller, and the TTY/colour helpers.
+`withRetry`/`TokenBucket`/`withTimeout` are pure additions.
+
+**Blockers removed by 16a**: file logging is now opt-out (`setFileLogging(false)` replaces the
+`IMSG_DEV` gate); `writeStderrLine`/`setStderrMirror` replace imsg's local writer; shutdown keeps
+a crash trail without wiring `onDiagnostic`; redaction ships in the kit.
+
+**Their-side fixes**: bump `ink@7.0.1`/`react@19.2.5` to tui-kit's `^7.1.1`/`^19.2.8` floors
+(old gap 8 — cheapest fixed in their lockfile, not by lowering our floors).
+
+**Recommended order**: watchdog → shutdown (accept the new default sink or wire `onDiagnostic`;
+mind #14; note `exitOnUnhandledRejection: false` for the TUI) → tty/colour → theme/color +
+useMouse → withTimeout.
 
 ---
 
@@ -708,10 +747,11 @@ were re-verified against this repo's source before acting; three needed correcti
    unreachable. Also fixed while in there: `runRepl` never resolved on EOF, so piped input hung the
    process — which is also what made it untestable.
 
-   The tests are written against the **contract**, not the readline loop, precisely because
-   DEFERRED #16a plans to replace that loop. A replacement must still satisfy them. That supersedes
-   #15's note that repl tests were deliberately skipped pending the rewrite: a blocked consumer
-   outranks a rewrite with no date.
+   The tests are written against the **contract**, not the readline loop — at the time #16a still
+   planned to replace that loop. The replacement has since been re-evaluated and closed (see #16a);
+   the contract tests are what made that closure safe to decide, and they still bind any future
+   swap. That supersedes #15's note that repl tests were deliberately skipped pending the rewrite:
+   a blocked consumer outranks a rewrite with no date.
 
 **Class B — template source**
 
@@ -770,3 +810,36 @@ Worked around by hand each time (`pnpm regen:example` + a resync PR). Real fixes
 **Trigger to action**: the next release. This will recur every single time until fixed.
 
 **Cost**: ~1h for the first option, which is the one that actually removes the manual step.
+
+---
+
+## 23. Generated-app source cannot use a kit API in the same PR that adds it
+
+**Status**: discovered 2026-08-09 by CI failing PR #21 (the 16a kit hardening) on both matrix legs.
+
+The registry-only runtime boundary (decided 2026-08-09) means the scaffolder E2E smoke installs
+`@george43g/robustness` **from npm**, not from the workspace. So `apps/example-repo-mcp/src/` —
+which is mirrored into `08-app/lib/` and becomes the generated app's source — may only call kit
+APIs that are **already published**. Adding `setStderrMirror` to robustness and calling it from
+the example app in the same PR typechecks locally (workspace resolution) and fails in the smoke
+with `TS2305: Module '@george43g/robustness' has no exported member 'setStderrMirror'`.
+
+`pnpm verify` cannot catch this: it resolves everything through the workspace. Only the E2E smoke,
+which installs from the registry, sees the real dependency graph a generated repo gets.
+
+**The rule**: a new kit API and its generated-app call site are **two PRs**, in that order —
+publish first, wire second. Landing the call site in the post-release `example/` resync PR
+(see #22) is free, since that PR has to happen anyway.
+
+**Deferred call site**: `setStderrMirror(true)` in the stdio branch of
+`apps/example-repo-mcp/src/index.ts` (mirror `08-app/lib/src/index.ts`, then `regen:example`).
+It was written, reverted from PR #21, and is waiting on robustness `0.5.0` reaching npm.
+
+**Fix options** (the rule works, but it is currently only enforced by a slow remote check):
+- Add a fast local check that typechecks the app's imports against the *published* `.d.ts` of each
+  kit rather than the workspace copy. Cheap version: grep the app's `@george43g/*` named imports
+  and assert each appears in the published package's type exports.
+- Or accept the smoke as the enforcement point and make its failure self-explaining — the message
+  above is accurate but does not say "you are calling an unpublished API; split the PR."
+
+**Trigger**: the next time a kit API is added with a generated-app consumer in mind. It will recur.

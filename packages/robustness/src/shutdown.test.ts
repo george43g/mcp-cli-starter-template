@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getLogs, _resetForTests as resetLogger, setFileLogging } from "./logger.js";
 import {
   createShutdownController,
   installShutdownHandlers,
@@ -12,6 +13,9 @@ import {
 
 beforeEach(() => {
   resetShutdown();
+  // The default diagnostic sink routes through the logger; keep these tests
+  // from leaving NDJSON files in the real $TMPDIR.
+  setFileLogging(false);
 });
 
 describe("createShutdownController", () => {
@@ -122,6 +126,99 @@ describe("createShutdownController.reconfigure", () => {
 afterEach(() => {
   resetShutdown();
   vi.useRealTimers();
+});
+
+describe("unhandledRejection policy", () => {
+  it("exits by default, restoring the platform semantics listeners suppress", async () => {
+    const host = new EventEmitter() as unknown as NodeJS.Process;
+    const exited = Promise.withResolvers<number>();
+    const diagnostics: string[] = [];
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: ({ event }) => diagnostics.push(event),
+    });
+    controller.installHandlers();
+
+    host.emit("unhandledRejection", new Error("stray promise"));
+
+    expect(await exited.promise).toBe(70);
+    expect(diagnostics).toContain("unhandled_rejection");
+    controller.reset();
+  });
+
+  it("only observes when exitOnUnhandledRejection is false", async () => {
+    const host = new EventEmitter() as unknown as NodeJS.Process;
+    const exits: number[] = [];
+    const diagnostics: string[] = [];
+    const controller = createShutdownController({
+      process: host,
+      exitOnUnhandledRejection: false,
+      exit: (code) => exits.push(code),
+      onDiagnostic: ({ event }) => diagnostics.push(event),
+    });
+    controller.installHandlers();
+
+    host.emit("unhandledRejection", new Error("observed only"));
+    await new Promise((r) => setImmediate(r));
+
+    expect(diagnostics).toContain("unhandled_rejection");
+    expect(exits).toEqual([]);
+    expect(controller.isShuttingDown()).toBe(false);
+    controller.reset();
+  });
+});
+
+describe("default diagnostic sink", () => {
+  beforeEach(() => {
+    resetLogger();
+    setFileLogging(false);
+  });
+
+  afterEach(() => {
+    resetLogger();
+  });
+
+  it("routes info diagnostics to the package logger when no sink is wired", () => {
+    const controller = createShutdownController({ exit: () => {} });
+    controller.reconfigure({ forceExitAfterMs: 1_000 });
+
+    expect(getLogs().some((l) => l.includes("shutdown: shutdown_reconfigured"))).toBe(true);
+    controller.reset();
+  });
+
+  it("leaves an error-level trail for an unobserved crash", async () => {
+    const host = new EventEmitter() as unknown as NodeJS.Process;
+    const exited = Promise.withResolvers<number>();
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exited.resolve(code),
+    });
+    controller.installHandlers();
+
+    host.emit("uncaughtException", new Error("nobody wired onDiagnostic"));
+
+    expect(await exited.promise).toBe(70);
+    expect(getLogs().some((l) => l.includes("shutdown: uncaught_exception"))).toBe(true);
+    controller.reset();
+  });
+
+  it("survives a user sink that throws mid-shutdown", async () => {
+    const exited = Promise.withResolvers<number>();
+    const controller = createShutdownController({
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: () => {
+        throw new Error("bad sink");
+      },
+    });
+    controller.registerCleanup(() => {
+      throw new Error("boom");
+    });
+
+    await controller.shutdown(5);
+    expect(await exited.promise).toBe(5);
+    controller.reset();
+  });
 });
 
 describe("registerCleanup / unregisterCleanup", () => {

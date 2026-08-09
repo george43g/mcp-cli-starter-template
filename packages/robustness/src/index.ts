@@ -17,16 +17,21 @@ export {
   logShutdown,
   logStartup,
   perf,
+  setFileLogging,
   setLogFilePrefix,
+  setLogRedaction,
+  setStderrMirror,
   startHeapMonitor,
   stopHeapMonitor,
   warn,
+  writeStderrLine,
 } from "./logger.js";
 export {
   acquire as rateLimitAcquire,
   defaultLimiterAvailable,
   TokenBucket,
 } from "./rate-limit.js";
+export { lastFour, redactString, redactValue } from "./redact.js";
 export type { RetryOptions } from "./retry.js";
 export { isTransientError, withRetry } from "./retry.js";
 export type {

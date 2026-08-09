@@ -11,8 +11,8 @@ completed work, local-only work, and deliberately deferred work.
 
 | Item | Current state |
 | --- | --- |
-| Branch | `main` |
-| `origin/main` | Last code-bearing merge: **PR #19** (kit API shape + REPL fixes + useTerminalSize), then four `[skip ci]` release bumps. No literal SHA and no CI verdict: a records file cannot name its own merge commit, nor testify to a check that runs after it is written. Use `git log --oneline -1 origin/main` and `gh pr checks`. |
+| Branch | `feat/16a-kit-hardening` — the DEFERRED #16 split + 16a execution (redaction, logger knobs, stderr mirror, shutdown default sink + `exitOnUnhandledRejection`, `useDevStats(visible)`); expect a robustness minor + tui-kit minor on merge |
+| `origin/main` | Last code-bearing merge: **PR #20** (post-release resync + #15 closure), after PR #19 (kit API shape + REPL fixes + useTerminalSize) and its four `[skip ci]` release bumps. No literal SHA and no CI verdict: a records file cannot name its own merge commit, nor testify to a check that runs after it is written. Use `git log --oneline -1 origin/main` and `gh pr checks`. |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |

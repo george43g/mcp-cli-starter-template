@@ -48,7 +48,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@george43g/robustness": "^0.1.1 || ^0.2.0 || ^0.3.0 || ^0.4.0",
+    "@george43g/robustness": "^0.1.1 || ^0.2.0 || ^0.3.0 || ^0.4.0 || ^0.5.0",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.0",
     "fullscreen-ink": "^0.1.0",

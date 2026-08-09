@@ -16,7 +16,11 @@ The package includes:
 - `useVimKeys` — j/k/gg/G/half-page navigation with a numeric count buffer,
   forwarding anything it doesn't handle to `onUnhandled`.
 - `useMouse` — opt-in mouse reporting, with `TuiMouseEvent` for the payload.
-- `useDevStats` — reads watchdog state for a live diagnostics panel.
+- `useDevStats(visible)` — reads watchdog state for a live diagnostics panel.
+  Pass the panel's visibility: while hidden it stops the 2s sampling interval
+  and rides the watchdog's 60s memory sample instead, because a 2s `setState`
+  on a hidden panel re-renders the whole app 30x/min forever (measured at
+  ~17-20MB/min of heap churn behind two real OOM kills). Defaults to `true`.
 - `useTerminalSize` — current `{ rows, columns }`, re-read on terminal resize,
   falling back to 24x80 when stdout is not a TTY.
 - `viewportRows()` and `visibleWindow()` — pure scroll-window arithmetic
@@ -99,6 +103,13 @@ the public surface; patch versions will not.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Upgrading to 0.3.0
+
+No API breaks. `useDevStats` gained an optional `visible` parameter (defaults
+to `true`, matching the 0.2.x call shape) and `DevStatsPanel` now suspends its
+2s sampling while hidden — if you rendered the panel conditionally to work
+around the constant re-renders, you can pass `visible` and keep it mounted.
 
 ## Upgrading from 0.1.x
 

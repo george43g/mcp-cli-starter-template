@@ -8,7 +8,14 @@
  * Configuration is applied in place (`reconfigure`) rather than by replacing the
  * controller, so cleanups registered before a consumer configures the singleton
  * still run. Replacing it silently dropped them.
+ *
+ * Diagnostics have a default sink (the package logger + a synchronous stderr
+ * line for error-level events). Installing an uncaughtException listener
+ * suppresses Node's own stderr report, so before the default sink existed, a
+ * consumer that never wired `onDiagnostic` had crashes vanish without trace.
  */
+
+import { error as logError, info as logInfo, writeStderrLine } from "./logger.js";
 
 export type CleanupFn = () => void | Promise<void>;
 
@@ -21,9 +28,22 @@ export interface RuntimeDiagnostic {
 export interface ShutdownControllerOptions {
   /** Exit on uncaughtException. Disable for long-running interactive TUIs. */
   exitOnUncaughtException?: boolean;
+  /**
+   * Exit on unhandledRejection. Defaults to true — Node itself treats an
+   * unhandled rejection as fatal, and merely installing a listener (which the
+   * controller must, to observe the event) suppresses that platform default
+   * for the whole consumer app. Disable for long-running interactive TUIs,
+   * alongside exitOnUncaughtException.
+   */
+  exitOnUnhandledRejection?: boolean;
   /** Force process exit when asynchronous cleanup stalls. Defaults to 3000ms. */
   forceExitAfterMs?: number;
-  /** Receive lifecycle diagnostics without coupling the controller to a logger. */
+  /**
+   * Receive lifecycle diagnostics. When omitted, a default sink logs every
+   * event via the package logger and writes error-level events to stderr
+   * synchronously, so an unobserved crash still leaves a trail. Pass a no-op
+   * to silence diagnostics entirely.
+   */
   onDiagnostic?: (diagnostic: RuntimeDiagnostic) => void;
   /** Test/embed hook. Defaults to process.exit. */
   exit?: (code: number) => void;
@@ -49,6 +69,24 @@ export interface ShutdownController {
   dispose(): void;
   /** Test-only state reset. */
   reset(): void;
+}
+
+function defaultDiagnosticSink(d: RuntimeDiagnostic): void {
+  if (d.level === "error") {
+    logError(`shutdown: ${d.event}`, d.data);
+    let suffix = "";
+    if (d.data !== undefined) {
+      try {
+        suffix = ` ${JSON.stringify(d.data)}`;
+      } catch {
+        // Diagnostic data is controller-built and serializable, but the sink
+        // runs during crashes — degrade rather than throw.
+      }
+    }
+    writeStderrLine(`[shutdown] ${d.event}${suffix}`);
+  } else {
+    logInfo(`shutdown: ${d.event}`, d.data);
+  }
 }
 
 function resolveForceExitAfterMs(value: number | undefined): number {
@@ -85,7 +123,14 @@ export function createShutdownController(
     level: RuntimeDiagnostic["level"],
     event: string,
     data?: Record<string, unknown>,
-  ) => config.onDiagnostic?.({ level, event, ...(data ? { data } : {}) });
+  ) => {
+    const sink = config.onDiagnostic ?? defaultDiagnosticSink;
+    try {
+      sink({ level, event, ...(data ? { data } : {}) });
+    } catch {
+      // A throwing sink mid-shutdown would mask the event it was reporting.
+    }
+  };
 
   const registerCleanup = (fn: CleanupFn): void => {
     registry.add(fn);
@@ -167,6 +212,7 @@ export function createShutdownController(
         reason: reason instanceof Error ? reason.message : String(reason),
         stack: reason instanceof Error ? reason.stack : undefined,
       });
+      if (config.exitOnUnhandledRejection ?? true) void shutdown(70);
     }) as (...args: unknown[]) => void);
 
     addListener("uncaughtException", ((error: Error) => {
@@ -245,6 +291,7 @@ export function createShutdownController(
     diagnostic("info", "shutdown_reconfigured", {
       force_exit_after_ms: forceExitAfterMs,
       exit_on_uncaught_exception: merged.exitOnUncaughtException ?? true,
+      exit_on_unhandled_rejection: merged.exitOnUnhandledRejection ?? true,
       host_process_replaced: relocating,
     });
   };

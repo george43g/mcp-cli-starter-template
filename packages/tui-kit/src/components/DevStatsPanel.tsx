@@ -23,7 +23,9 @@ function fmtDuration(sec: number): string {
 }
 
 export function DevStatsPanel({ visible, engine }: DevStatsPanelProps) {
-  const stats = useDevStats();
+  // Threading visible through drops the hidden panel to the watchdog's 60s
+  // cadence instead of a 2s full-app re-render loop (see useDevStats).
+  const stats = useDevStats(visible);
   const theme = useTheme();
 
   if (!visible) return null;
