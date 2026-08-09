@@ -1,3 +1,21 @@
+# [@george43g/cli-kit-v2.0.0](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v1.0.0...cli-kit-v2.0.0) (2026-08-09)
+
+
+### Documentation
+
+* correct cli-kit to 1.0.0 and record why the number differs ([#40](https://github.com/george43g/mcp-cli-starter-template/issues/40)) ([fad1687](https://github.com/george43g/mcp-cli-starter-template/commit/fad1687638cf605570e0448199597ad3ea4f2f93)), closes [#34](https://github.com/george43g/mcp-cli-starter-template/issues/34)
+
+
+### BREAKING CHANGES
+
+* must be a major. The README's Stability section said "this
+package is pre-1.0" and is now simply wrong; rewritten as the stronger
+promise the version actually makes.
+
+Adds the AGENTS.md rule, because this is live for the other three: robustness,
+tui-kit and secret-store all use the same stock analyzer and will each jump
+straight to 1.0.0 on their first breaking commit.
+
 # [@george43g/cli-kit-v1.0.0](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v0.3.1...cli-kit-v1.0.0) (2026-08-09)
 
 
