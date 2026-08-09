@@ -1,3 +1,10 @@
+# [@george43g/cli-kit-v0.3.0](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v0.2.1...cli-kit-v0.3.0) (2026-08-09)
+
+
+### Features
+
+* **cli-kit:** let callers force human output with `human` / FORCE_HUMAN ([ba0d220](https://github.com/george43g/mcp-cli-starter-template/commit/ba0d220e207e84e11700dc21f82b262dfe9a437b)), closes [#21](https://github.com/george43g/mcp-cli-starter-template/issues/21)
+
 # [@george43g/cli-kit-v0.2.1](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v0.2.0...cli-kit-v0.2.1) (2026-08-09)
 
 
