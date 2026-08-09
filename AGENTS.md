@@ -117,6 +117,18 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
   are optional) but the version under-signalled, and there is no honest way to
   correct it afterwards short of an empty `feat` commit. **Before writing the
   type, check whether the diff adds anything to a package's public surface.**
+- **A breaking marker on a 0.x package publishes 1.0.0, not the next minor.**
+  `@semantic-release/commit-analyzer` ships no `releaseRules` override here, and
+  its default maps any breaking change to a **major** — it does not clamp `0.x`
+  the way some tools do. `feat(cli-kit)!:` with a `BREAKING CHANGE:` footer was
+  planned as `0.4.0` and published as **`cli-kit@1.0.0`**, which is immutable.
+  This applies equally to `robustness`, `tui-kit` and `secret-store`, all still
+  0.x. **Before using `!` or a `BREAKING CHANGE:` footer on a 0.x package,
+  decide whether you mean to cut its 1.0.0** — the number is not cosmetic: on
+  `0.x` a caret locks the MINOR so every minor is an explicit opt-in, while on
+  `^1.x` minors arrive automatically. To ship a breaking change without leaving
+  0.x, the analyzer needs a `releaseRules` entry mapping breaking → `minor`.
+  See DEFERRED #34.
 - **Shared-tool-config packages are NEVER published.** `tsconfig`, `vitest-config`,
   and `biome-config` are per-monorepo shared config, meant to be customised for
   the repo they live in — not real dependencies. They stay `private: true`. A
