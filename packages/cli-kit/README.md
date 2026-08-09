@@ -16,7 +16,7 @@ The package includes:
   matching environment variable stay in sync.
 - `runRepl()` / `parseConsoleInput()` — a dispatcher-driven interactive shell.
   Any tool the dispatcher lists is callable as `<tool> <json>`; shortcuts add
-  positional-argument aliases on top.
+  positional-argument aliases on top. Works over a pipe as well as a terminal.
 - `isInteractive()`, `isCI()`, `isStdoutTTY()`, `colorEnabled()` and friends —
   TTY/CI detection, plus `color` / `disableColors`.
 
@@ -60,6 +60,35 @@ The REPL also changed, all of it fixes:
 - `parseConsoleInput` is now exported and returns `{ cmd, rest, args }`. `rest`
   is the remainder of the line verbatim — read JSON from it; `args` is the
   shell-style split, for positional shortcuts.
+
+### Upgrading from 0.3.x
+
+**Piped multi-command input works.** Up to and including 0.3.0, `runRepl` read
+lines with a recursive `rl.question()`. That arms a *one-shot* listener, so
+while an async command was being awaited no listener existed and every line
+readline had already buffered was emitted into nothing:
+
+```sh
+printf 'help\ntools\nquit\n' | mytool console   # 0.3.0: ran only `help`
+```
+
+EOF then closed the stream cleanly, so the loss was silent. Input is now
+consumed through a serial queue that also waits for the queue to drain before
+resolving at EOF. Two independent consumers reported this; if you worked around
+it by invoking one command per process, you can stop.
+
+Four additions to `runRepl`, all opt-in and all backwards compatible:
+
+| Addition | What it does |
+|---|---|
+| `formatResult(result)` | Pretty-print a successful result yourself. Receives the whole result, so it can read `structuredContent`. |
+| `showMeta: true` | Print a dim `· 12ms · engine=ts` footer after each call, from the dispatcher's `_meta`. Both `duration_ms` and `dur_ms` are read. |
+| `json` built-in | Toggles raw `structuredContent` output. Outranks `formatResult` — the point is to see what the tool actually returned. |
+| `last-error` built-in | Reprints the last error, whether it came back as an `isError` result or was thrown while parsing. |
+
+`ToolCallResult` gained `structuredContent?: unknown` and
+`_meta?: Record<string, unknown>` to carry what those read. Both are optional,
+so existing dispatchers still typecheck.
 
 ## Basic usage
 

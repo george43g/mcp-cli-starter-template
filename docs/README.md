@@ -20,6 +20,7 @@ solely for this repo and can be edited freely.
 | [scaffolder-cli/evaluations/imsg-mcp-2026-07.md](scaffolder-cli/evaluations/imsg-mcp-2026-07.md) | Evidence from the real-repository retrofit probe |
 | [agent-handoff/EQSTACK-16B-MESSAGE.md](agent-handoff/EQSTACK-16B-MESSAGE.md) | Handing the kit adoption to EQStack's agent: paste this into it |
 | [agent-handoff/EQSTACK-16B-BRIEF.md](agent-handoff/EQSTACK-16B-BRIEF.md) | The detail behind that message — verified parity, blockers, migration order |
+| [agent-handoff/EQSTACK-REPLY-2026-08-09.md](agent-handoff/EQSTACK-REPLY-2026-08-09.md) | Our reply to their adoption findings: logger changes coming, lifts taken vs deferred |
 
 ## Golden-output (shipped into generated repos; lib-mirrored)
 
