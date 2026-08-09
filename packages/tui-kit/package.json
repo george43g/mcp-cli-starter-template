@@ -27,7 +27,8 @@
       "types": "./dist/theme/index.d.ts",
       "import": "./dist/theme/index.js",
       "default": "./dist/theme/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
