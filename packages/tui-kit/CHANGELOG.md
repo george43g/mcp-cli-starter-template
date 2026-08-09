@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.3.4](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.3...tui-kit-v0.3.4) (2026-08-09)
+
+
+### Bug Fixes
+
+* make the sibling-range check actually evaluate ranges ([#20](https://github.com/george43g/mcp-cli-starter-template/issues/20)) ([#34](https://github.com/george43g/mcp-cli-starter-template/issues/34)) ([29dab73](https://github.com/george43g/mcp-cli-starter-template/commit/29dab7300ebd3030be0b27369b29372bbd54b44b))
+
 # [@george43g/tui-kit-v0.3.3](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.2...tui-kit-v0.3.3) (2026-08-09)
 
 
