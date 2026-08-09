@@ -1462,7 +1462,43 @@ golden byte-equality, so it is a mirror-and-regen change rather than a one-line 
 
 ---
 
-## 34. A breaking marker on a 0.x package publishes 1.0.0 — decide whether that is wanted
+## 34. DECIDED — A breaking marker on a 0.x package publishes 1.0.0
+
+**Status**: ✅ **DECIDED 2026-08-10 — option A. No config change. This is working as intended.**
+
+A breaking change to `robustness`, `tui-kit` or `secret-store` will cut that package's 1.0.0, the
+same way it did for cli-kit. The analyzer config stays stock.
+
+**The framing in the original entry below was wrong, and the correction is the reason for the
+decision.** It implied that staying on `0.x` protects consumers from breaking changes. It does not
+add any such protection:
+
+| | breaking change reaches a caret consumer? | additive minor reaches them? |
+|---|---|---|
+| `^0.3.1` on 0.x | **no** — caret locks the minor | no |
+| `^1.0.0` on 1.x | **no** — a breaking change is a major, and caret does not cross majors | yes |
+
+The insulation against breaking changes is IDENTICAL. The only thing `0.x` adds is blocking
+*additive* minors — protection against the case that does not need it, and the case a consumer
+(up-bank) explicitly said they want automatic: "the accidental 1.0.0 actually helps consumers like
+us (additive-by-contract minors via plain `pnpm update`)".
+
+Two consequences worth keeping:
+
+- **Reaching 1.0 because a package needed a breaking change is a legitimate trigger**, not an
+  accident to be engineered around. The original entry called that "decided by accident of what
+  broke first"; on reflection, "this package's API was wrong enough to break" is exactly the
+  evidence that its surface has stopped moving arbitrarily.
+- **Do not renumber cli-kit.** up-bank raised this unprompted and they are right: a 2.0.0 to "fix"
+  the 1.0.0 would be a second breaking bump for zero API change, which is strictly worse for every
+  consumer than the number being unplanned.
+
+What remains true and is now an AGENTS.md rule: `!` or a `BREAKING CHANGE:` footer on a 0.x package
+means you are cutting its 1.0.0. That is now a deliberate choice rather than a surprise.
+
+**Original entry follows, retained for the mechanism.**
+
+## 34 (original). A breaking marker on a 0.x package publishes 1.0.0 — decide whether that is wanted
 
 **Status**: open, and it already fired once. Recorded 2026-08-10.
 

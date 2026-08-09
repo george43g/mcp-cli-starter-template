@@ -123,12 +123,11 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
   the way some tools do. `feat(cli-kit)!:` with a `BREAKING CHANGE:` footer was
   planned as `0.4.0` and published as **`cli-kit@1.0.0`**, which is immutable.
   This applies equally to `robustness`, `tui-kit` and `secret-store`, all still
-  0.x. **Before using `!` or a `BREAKING CHANGE:` footer on a 0.x package,
-  decide whether you mean to cut its 1.0.0** — the number is not cosmetic: on
-  `0.x` a caret locks the MINOR so every minor is an explicit opt-in, while on
-  `^1.x` minors arrive automatically. To ship a breaking change without leaving
-  0.x, the analyzer needs a `releaseRules` entry mapping breaking → `minor`.
-  See DEFERRED #34.
+  0.x. **`!` or a `BREAKING CHANGE:` footer on a 0.x package means you are
+  cutting its 1.0.0** — write it only when you mean that. Kept deliberately
+  (DEFERRED #34): staying on 0.x adds no protection, because `^1.x` does not
+  cross a major either, so the insulation against breaking changes is identical.
+  All 0.x buys is blocking *additive* minors, which consumers want automatic.
 - **Shared-tool-config packages are NEVER published.** `tsconfig`, `vitest-config`,
   and `biome-config` are per-monorepo shared config, meant to be customised for
   the repo they live in — not real dependencies. They stay `private: true`. A
