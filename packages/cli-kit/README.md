@@ -9,8 +9,9 @@ The package includes:
 - `buildProgram()` — a Commander program with the starter's global flags
   already wired: `--json`, `-q/--quiet`, `-v/--verbose`, `--no-color`.
 - `resolveOutputMode()` / `printAuto()` / `printJson()` / `printTable()` —
-  human-vs-JSON output resolution (`--json`, non-TTY, or `CI` forces JSON) and
-  the renderers that follow from it.
+  human-vs-JSON output resolution and the renderers that follow from it.
+  Explicit requests (`json`, `human`) outrank the inferred signals (non-TTY,
+  `CI`).
 - `bindEnvFlags()` / `applyEnvFromFlags()` — declare a flag once and have the
   matching environment variable stay in sync.
 - `runRepl()` / `parseConsoleInput()` — a dispatcher-driven interactive shell.
@@ -82,8 +83,25 @@ program.command("list").action(() => {
 await program.parseAsync();
 ```
 
-Output mode resolves to JSON when `--json` is passed, when stdout is not a TTY,
-or when `CI` is set — so piping a command into `jq` needs no extra flag.
+### Output mode
+
+`resolveOutputMode` picks JSON or human form by this precedence, highest first:
+
+| # | Signal | Result |
+|---|---|---|
+| 1 | `json: true` (bind to `--json`) | `json` |
+| 2 | `human: true` (bind to `--human` / `--no-json`) | `human` |
+| 3 | `FORCE_HUMAN` set to anything but `0`/`false`/empty | `human` |
+| 4 | stdout is not a TTY | `json` |
+| 5 | `CI` is set | `json` |
+| — | otherwise | `human` |
+
+Levels 4–5 mean piping into `jq` needs no extra flag. Levels 2–3 are the
+inverse that used to be missing: without them the human view was unreachable
+the moment stdout was not a terminal, so `mytool list | less` was impossible
+and testing a renderer meant running the CLI under a pty. Two contradictory
+explicit requests resolve to `json`, on the grounds that something asking for
+`--json` is probably a pipeline.
 
 ## Stability
 

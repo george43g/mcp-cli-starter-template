@@ -321,11 +321,19 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     if (eventLoopTimer) clearInterval(eventLoopTimer);
     if (memoryTimer) clearInterval(memoryTimer);
     if (idleTimer) clearInterval(idleTimer);
-    if (forceExitTimer) clearTimeout(forceExitTimer);
     eventLoopTimer = null;
     memoryTimer = null;
     idleTimer = null;
-    forceExitTimer = null;
+    // The force-exit timer is deliberately NOT cleared while a kill is in
+    // flight. `dispose` is itself a registered shutdown cleanup, so a kill
+    // reaches it via shutdown() — clearing here disarmed the last-resort net
+    // during the exact hang it exists to escape, leaving a wedged cleanup with
+    // nothing to kill the process. Voluntary disposal (tests, embedding) has no
+    // kill in flight and still clears it.
+    if (forceExitTimer && !state.killReason) {
+      clearTimeout(forceExitTimer);
+      forceExitTimer = null;
+    }
     shutdownController?.unregisterCleanup(dispose);
     installed = false;
   };
@@ -393,6 +401,12 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
 
   const reset = (): void => {
     dispose();
+    // Unlike dispose, reset is unconditional teardown: drop the force-exit
+    // timer even mid-kill so a test cannot leave one armed for the next case.
+    if (forceExitTimer) {
+      clearTimeout(forceExitTimer);
+      forceExitTimer = null;
+    }
     Object.assign(state, initialState());
     state.heapHistory = [];
     subscribers.clear();
