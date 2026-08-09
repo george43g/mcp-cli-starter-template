@@ -12,15 +12,15 @@ verification matrix, dependency decisions, and deferred work.
 | --- | --- |
 | Repository | `/Users/george/repos/mcp-cli-starter-template` |
 | Branch | `main` |
-| `origin/main` | Last code-bearing merge: **PR #17** (secret-store wired to the HTTP bearer token). Two things are deliberately NOT recorded here. (1) A literal SHA — this file cannot name the merge commit of the PR that writes it, so the field was always one docs-merge stale; use `git log --oneline -1 origin/main`. (2) A CI verdict — the first draft of this row asserted "CI green on all four checks" before CI had run, and `readme-check` then failed. A records file written pre-merge cannot testify to a post-merge event; check `gh pr checks` instead. |
+| `origin/main` | Last code-bearing merge: **PR #19** (kit API shape + REPL fixes + useTerminalSize), followed by four `[skip ci]` release bump commits. Two things are deliberately NOT recorded here. (1) A literal SHA — this file cannot name the merge commit of the PR that writes it, so the field was always one docs-merge stale; use `git log --oneline -1 origin/main`. (2) A CI verdict — a records file written pre-merge cannot testify to a post-merge event; check `gh pr checks` instead. |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Remote check | fetch + push succeeded on 2026-08-09 |
 | Working tree | clean |
 | Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |
-| Last landed | **`secret-store` shipped, de-vendored, and WIRED** (PRs #11–#17, 2026-08-09). The HTTP bearer token now resolves through `secret-store` (`env → .env → keychain → exec`); `HttpServerOptions.token` is additive and `MCP_HTTP_TOKEN` still wins, so existing deployments are unaffected. That closes the "published with no importer" caveat on DEFERRED #11, and the ExecPlan is complete. `@george43g/secret-store@0.1.0` is live; `packages/secrets` and `packages/env-loader` are retired (DEFERRED #11, superseding #8); generated repos now DEPEND on the four published packages instead of receiving byte-identical copies, and the scaffolder installs at the end of a run that changes dependencies. Record: [docs/plans/2026-08-secret-store-and-kit-hardening.md](docs/plans/2026-08-secret-store-and-kit-hardening.md). Prior: DEFERRED #14 / robustness 0.2.1 — [docs/plans/2026-08-robustness-reconfigure.md](docs/plans/2026-08-robustness-reconfigure.md) |
+| Last landed | **DEFERRED #15 closed + downstream Class A fixes shipped** (PRs #18–#19, 2026-08-09). Coverage gates now actually execute (`test:coverage` in `verify` + CI; per-workspace `withCoverageFloor()` ratchets); API shape fixed (commander→peer, `TuiMouseEvent` rename, `FullScreenHandle` exported, `brighten` behaviour fix, `stripInternal`, `src` in tarballs); nine module-load-time env reads made lazy; REPL fixed against the browser-tab report (verbatim `rest` for JSON, real `<tool> <json>` dispatch, case preserved, EOF resolves) with 20 contract tests; `useTerminalSize` + pure `viewport.ts` added to tui-kit. Downstream report record: DEFERRED #21. Prior: secret-store shipped/de-vendored/wired, PRs #11–#17 — [docs/plans/2026-08-secret-store-and-kit-hardening.md](docs/plans/2026-08-secret-store-and-kit-hardening.md) |
 | mcpsync | `apps/mcpsync` landed (5 stages + audit + publish prep); npm publish DEFERRED — release job is `workflow_dispatch`-only; local global bin installed via `pnpm add -g`. Desktop write-guard merged (`95f6c03`, PR #2). Round 2026-08-05 merged (`9d90a2c`, PR #3): 3 life-stack findings resolved + `imsg-mcp`→`EQStack` doc rename. Home decision REVERSED same session → relocate mcpsync to life-stack after publishing the kits (DEFERRED #10; import-as-library retracted for an optional `npx` shell-out). (see [docs/plans/2026-08-mcpsync-overview.md](docs/plans/2026-08-mcpsync-overview.md)) |
-| Package state | Published: **`@george43g/robustness@0.2.1`**, **`@george43g/cli-kit@0.1.0`**, **`@george43g/tui-kit@0.1.1`**, **`@george43g/secret-store@0.1.0`** (user-run bootstrap 2026-08-09; Trusted Publisher set via `npm trust github`, not the website). The 0.1.0 kit bootstraps were user-run (2026-08-08); robustness 0.2.0/0.2.1 and tui-kit 0.1.1 were cut by CI over OIDC (2026-08-09) — the pipeline is proven for machine-driven releases. Trusted Publishers configured for all three. `@george43g/mcpsync` remains bootstrap-pending (its job is still `workflow_dispatch`-only). |
+| Package state | Published: **`@george43g/robustness@0.4.0`**, **`@george43g/cli-kit@0.2.0`**, **`@george43g/tui-kit@0.2.0`**, **`@george43g/secret-store@0.2.0`** — all four cut by CI over OIDC on 2026-08-09 after PR #19. Trusted Publishers configured for all four (secret-store via `npm trust github`). **Two accidental releases in the trail**: robustness 0.3.0 and secret-store 0.2.0 were cut by a `feat(vitest-config):` commit that touched files inside their directories — `semantic-release-monorepo` reads the commit TYPE against every package path and ignores the scope (field-note 52). Trigger paths now exclude test/tooling files. `@george43g/mcpsync` remains bootstrap-pending (its job is still `workflow_dispatch`-only). |
 | Release pipeline | `.github/workflows/release-packages.yml` PROVEN end-to-end: full verify matrix → npm OIDC trusted publishing (no `NPM_TOKEN`) → tag + CHANGELOG + GitHub release → `[skip ci]` bump commit (loop-safe, confirmed no re-trigger). Now five chained jobs (robustness → cli-kit → tui-kit → secret-store → mcpsync), serialized because each pushes a bump commit. **Build provenance is deliberately OFF** — it requires a public source repo and this one is private; requesting it 422s the publish (field-note 23, which supersedes 19). |
 | Runtime default | **Registry only.** `--runtime-source` was REMOVED — there is no source-vendoring mode. Generated repos depend on the four published packages; ranges are DERIVED from `packages/*/package.json` at build time into `src/generated/published-versions.ts`, never hand-written. `mcp-kit`, `shared-types` and the three tool-config packages are still generated as source. |
 
@@ -140,8 +140,26 @@ After `ef3809b`, a docs/harness pass applied the practices from
 
 ## Next decision, not next implementation
 
-The next agent should not begin another feature sweep by default. The
-remaining landing decisions are:
+**Current next task (2026-08-09, user-directed): the DEFERRED #16 split — 16a/16b.**
+The user's framing, preserve it: *this is one of the most important parts,
+because it will surface a lot of fixes and improvements to the published
+packages — get them as good as possible before they are consumed everywhere.*
+Concretely: rewrite `DEFERRED.md` #16 as 16a (kit-side, OURS) / 16b (EQStack
+adoption, THEIRS — never touch that repo); execute 16a's unblocked subset
+(logger file-write opt-out, sync `writeStderrLine` + stderr mirroring,
+`redactValue`/`redactString` — the logger has none and imsg logs failure
+payloads verbatim, default shutdown diagnostics). Items in 16a that need
+EQStack-side agreement stay deferred: the theme model (flat `Theme extends
+Palette` vs nested), `useVimKeys` double-dispatch — and note that 16a's
+"replace `runRepl` with imsg's queue-based loop" needs RE-EVALUATION first:
+PR #19 fixed the REPL's real defects and pinned its behaviour with 20
+contract tests, so the replacement's remaining rationale is the recursive
+`rl.question` EOF race, not missing features. Any 16a work that changes
+published packages should batch into as few releases as possible (every
+release currently strands `example/` — DEFERRED #22 — and grows the caret
+chains — DEFERRED #20).
+
+The older landing decisions below are retained for history:
 
 0. **DONE (2026-08-08): the kits are published and CI-releasable.**
    `@george43g/cli-kit@0.1.0` and `@george43g/tui-kit@0.1.0` are on npm; tags

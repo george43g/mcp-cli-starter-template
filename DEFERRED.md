@@ -358,7 +358,10 @@ these survived. See #15.
 
 ## 15. Published-kit quality gaps found in the pre-adoption sweep (2026-08-09)
 
-**Status**: coverage infrastructure ✅ **DONE 2026-08-09**; API-shape items still open (see below).
+**Status**: ✅ **DONE 2026-08-09** — coverage infrastructure (PR #18) and the API-shape items
+(PR #19; released as robustness 0.4.0 / cli-kit 0.2.0 / tui-kit 0.2.0). Two residuals live
+elsewhere: `installShutdownHandlers`'s process-wide `unhandledRejection` suppression (16a
+territory), and the v8 function/branch inflation note below (provider swap is an open option).
 
 - ~~**Coverage gates are fiction.**~~ **RESOLVED.** `@vitest/coverage-v8` is installed in all nine
   test-running workspaces, `test:coverage` exists everywhere, `pnpm verify` runs it instead of
