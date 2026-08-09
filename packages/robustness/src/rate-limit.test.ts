@@ -192,10 +192,18 @@ describe("the default limiter", () => {
   });
 
   it("acquire() deducts from the shared bucket", async () => {
+    // rps must stay LOW here. The default limiter is built internally and uses
+    // the real Date.now, so any wall-clock time between the acquire and the
+    // read refills the bucket. At rps=1000 that is a token per millisecond,
+    // which passed locally and failed on a slower CI runner. At rps=1 the
+    // refill over the same gap is ~0.001 tokens. Burst 5 >= 2 keeps acquire
+    // from blocking, which is what the high rps was mistakenly protecting.
     process.env.MCP_RATE_LIMIT_BURST = "5";
-    process.env.MCP_RATE_LIMIT_RPS = "1000";
+    process.env.MCP_RATE_LIMIT_RPS = "1";
     await acquire(2);
-    expect(defaultLimiterAvailable()).toBeCloseTo(3, 0);
+    const left = defaultLimiterAvailable();
+    expect(left).toBeGreaterThanOrEqual(3);
+    expect(left).toBeLessThan(3.5);
   });
 
   it("_resetDefaultLimiterForTests rebuilds from current env", () => {
