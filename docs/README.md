@@ -21,6 +21,9 @@ solely for this repo and can be edited freely.
 | [agent-handoff/EQSTACK-16B-MESSAGE.md](agent-handoff/EQSTACK-16B-MESSAGE.md) | Handing the kit adoption to EQStack's agent: paste this into it |
 | [agent-handoff/EQSTACK-16B-BRIEF.md](agent-handoff/EQSTACK-16B-BRIEF.md) | The detail behind that message — verified parity, blockers, migration order |
 | [agent-handoff/EQSTACK-REPLY-2026-08-09.md](agent-handoff/EQSTACK-REPLY-2026-08-09.md) | Our reply to their adoption findings: logger changes coming, lifts taken vs deferred |
+| [agent-handoff/EQSTACK-REPLY-MESSAGE.md](agent-handoff/EQSTACK-REPLY-MESSAGE.md) | Paste-able version of the EQStack reply |
+| [agent-handoff/UPBANK-REPLY-2026-08-09.md](agent-handoff/UPBANK-REPLY-2026-08-09.md) | Our reply to up-bank-mcp: REPL fix, the four features, why the publish request is deferred |
+| [agent-handoff/UPBANK-REPLY-MESSAGE.md](agent-handoff/UPBANK-REPLY-MESSAGE.md) | Paste-able version of the up-bank reply |
 
 ## Golden-output (shipped into generated repos; lib-mirrored)
 

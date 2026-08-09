@@ -485,13 +485,29 @@ consumer (`analysis` is a 13-line shell; `voice-mcp` overlaps only weakly).
    effect re-init defect, and threaded `visible` through `DevStatsPanel`, which shipped the exact
    OOM pattern itself.
 
-**Re-evaluated and closed without action**:
-- **Replace `runRepl` with imsg's queue-based loop** (old gap 4). The stated defects — "documented
-  EOF race that truncated piped input" and "no close/EOF handling at all" — were both fixed by
-  PR #19 (`rl.on("close")` resolution; 20 contract tests drive the loop over piped multi-command
-  input, which would fail on truncation). What remains is a preference for a different loop shape
-  with no observable defect behind it. Not planned. The contract tests make a future swap safe;
-  the trigger to reopen is a reproducible REPL defect the current loop cannot fix.
+**REOPENED AND FIXED 2026-08-09 — this entry previously closed a real bug on a false claim**:
+- **Replace `runRepl` with a queue-based loop** (old gap 4). This was closed with the sentence
+  *"20 contract tests drive the loop over piped multi-command input, which would fail on
+  truncation."* **That claim was false.** All eleven `runScript(...)` calls in
+  `packages/cli-kit/src/repl.test.ts` passed exactly ONE line
+  (`repl.test.ts:119,125,133,139,146,159,167,174,180,189,194`). The multi-command piped case was
+  never tested at any point. EQStack's original report of an EOF race truncating piped input was
+  correct, and it was dismissed on the strength of evidence that was never checked.
+- **The bug was real and a second consumer hit it.** `rl.question()` arms a ONE-SHOT listener, so
+  while an async command was awaited no listener existed and every line readline had already
+  buffered from a pipe was emitted into nothing. `printf 'help\ntools\nquit\n' | <bin> console`
+  ran only `help`; EOF then closed cleanly, hiding the loss. up-bank-mcp hit it against the
+  published tarball and carried a skipped test waiting on the fix.
+- **Why the suite passed anyway**: `fakeDispatcher.listTools` was synchronous and `callTool`
+  resolved immediately, so every `await` settled on the microtask queue before readline could emit
+  another line. See #26 — the general lesson, which this shares with #24 one day earlier.
+- **Fixed** (PR #26, ships as a cli-kit minor): serial line queue, a deliberately hostile
+  `slowDispatcher` that yields to the macrotask queue, six multi-command cases, and a real-pipe
+  end-to-end test in the example app. Every new test was observed FAILING against the old loop
+  before the fix was trusted — the step skipped the first time.
+- **The rule this earns**: a closure that cites tests as evidence must name the test file and
+  line. "N tests cover this" is not evidence; it is a claim that costs one `grep` to check and, in
+  this case, was wrong.
 
 **Still open in 16a — needs EQStack-side agreement, not just our decision**:
 - Theme model (old gap 6): imsg's flat `Theme extends Palette` (~30 domain keys derived from the
@@ -723,6 +739,19 @@ end-to-end — nothing here argues for changing that. The question is only about
 scaffolder *generates* for a cloned tool, where "I want releases and changelogs but I am
 not publishing to npm" is the common case and the current default carries an npm plugin
 it will never use.
+
+**A trap to avoid if this ever migrates to `@anolilab/multi-semantic-release`** (reported by
+the EQStack agent 2026-08-09, who hit it in anger): msr **always overrides** a per-package
+`.releaserc` `tagFormat`, defaulting to `${name}@${version}`. Their per-package tagFormat was
+silently ignored, so the first real release run could not see their existing
+`imsg-mcp-v1.19.2` tag baseline and computed **v1.0.0** — a wrong publish that was stopped only
+by an unrelated `EUNSUPPORTEDPROTOCOL` failure in `@semantic-release/npm` (EQStack run
+31304184401). They fixed it with a global `--tag-format '${name}-v${version}'` plus
+`@anolilab/semantic-release-pnpm`.
+
+We use `semantic-release-monorepo`, so **we are not affected today**. It is recorded here
+because this item is exactly where a tooling migration would be decided, and the failure mode
+is invisible until it publishes something wrong.
 
 **Trigger to action**: pair it with DEFERRED #18 — both concern build/release identity,
 and a reader comparing them will want one answer, not two. Independent otherwise: semver
@@ -966,6 +995,102 @@ handoff brief paid for itself before anyone read it.
 (`shutdownController`), in-repo tests that all inject the friendly implementation cannot see the
 defect. Test guards against a hostile injection — here, a controller that runs its cleanups and
 then never resolves.
+
+---
+
+## 25. Publishing `mcp-kit` and `shared-types` — requested, deferred, with reasons
+
+**Status**: deferred 2026-08-09 by explicit decision. Requested by the up-bank-mcp agent, who
+forked both to consume them. Recorded because the request will come back and the reasons are
+substantive rather than scheduling.
+
+**Decide the two separately.** `mcp-kit`'s case is much stronger than `shared-types`'.
+
+**Against publishing `mcp-kit`**: it would slow every mcp-kit change, permanently. Per #23, a
+generated-app call site may only use an ALREADY-PUBLISHED API. `apps/example-repo-mcp/src/**` has
+nine files importing mcp-kit and is its primary consumer, so every mcp-kit API change becomes two
+PRs a release cycle apart. None of the four already-published packages is this tightly coupled to
+the example app — that coupling is the cost, and it does not go away.
+
+**Against publishing `shared-types`**: near-zero independent value, and publishing inverts its
+stated design intent. Its entire surface is three demo tools' schemas plus a two-entry
+`MIRRORED_SCHEMAS`. `docs/SHARED_RUNTIME.md:38-39` says its job is to be *edited alongside* the
+consuming repo's Rust structs — which a downstream repo cannot do to a registry dependency.
+
+**Mechanical cost if revisited**: roughly ten manifest failures each (no README/LICENSE/engines/
+repository/publishConfig, `private: true`, `version 0.0.0`), two manual npm bootstrap publishes,
+and one real design choice — mcp-kit's `workspace:*` on robustness becomes either a caret chain
+that grows a `|| ^0.x` clause forever (#20) or a peer range like tui-kit's.
+
+**Trap to flag if it is ever done**: `build-templates.mjs:68` selects published packages by
+`publishConfig.access` alone and ignores `private`. Merely ADDING `publishConfig` flips the
+scaffolder into rewriting ranges and churning `example/` before any phase is deleted. The manifest
+change and `pnpm regen:example` must land in one commit.
+
+**Already fine**: both pass the exports-condition check — `default` is last in every condition map,
+so the defect that broke secret-store's first consumer is not present here, and both now carry the
+`./package.json` entry.
+
+**Trigger to reopen**: a second independent consumer asking for the same package (one asked for
+both together, which is weaker evidence than it looks), or the example app ceasing to be mcp-kit's
+primary consumer.
+
+---
+
+## 26. Fast test doubles hide async defects — test against a HOSTILE injection
+
+**Status**: standing rule, earned by three findings in two days. Generalises #24 and the reopened
+#16a REPL bug.
+
+When a guard or a loop depends on INJECTED behaviour, a friendly double proves nothing. All three
+of these shipped with passing suites:
+
+| Defect | Injected dependency | Why the double hid it |
+|---|---|---|
+| Watchdog force-exit disarmed itself (#24) | `shutdownController` | Ours has its own 3s net, so the disarmed timer never mattered. A consumer-supplied controller with no net would hang forever. |
+| REPL dropped piped input (#16a) | `dispatcher` | `listTools` synchronous, `callTool` resolving immediately — every `await` settled on the microtask queue before readline could emit a second line. |
+| Watchdog sleep-skew guard | — (no test at all) | Not a friendly double; simply never exercised. Found by a downstream consumer who wrote the test for us. |
+
+**The rule**: inject the hostile version.
+
+- A dispatcher that actually yields to the MACROTASK queue (`await new Promise(r => setImmediate(r))`),
+  not one that resolves on the microtask queue.
+- A shutdown controller that runs its cleanups and then never resolves.
+- A clock that jumps, not one that ticks.
+
+**And prove the test discriminates.** Every one of these fixes was verified by reverting the fix
+and watching the new tests fail — six for the REPL, one for the eager env read, one for the
+sleep-skew guard. The first time round that step was skipped, and a bug was closed as fixed on a
+claim about tests that turned out to be false.
+
+**Where a unit harness is not enough at all**: the REPL needed a real child process with a real
+pipe (`apps/example-repo-mcp/tests/repl-pipe.test.ts`). A unit harness with an in-memory stream
+is what produced the false confidence in the first place.
+
+---
+
+## 27. Four capabilities approved for lift from EQStack, not yet taken
+
+**Status**: open, approved by the source, deliberately not in the 2026-08-09 batch. All MIT, same
+author; a header credit is appreciated but not required. Pointers supplied by the EQStack agent so
+the approval is not lost when the briefs age out.
+
+| Capability | Source | Notes |
+|---|---|---|
+| Grapheme-aware `visualWidth` | `EQStack/apps/imsg-mcp/src/visual-width.ts` (101 lines) | Pure, zero-dep, `Intl.Segmenter`-based with East-Asian-width + emoji/ZWJ handling. Tests at `tests/visual-width.test.ts`. We have nothing like it, and tui-kit's table/truncation code is where it belongs. |
+| `detectNerdFont()` | `EQStack/apps/imsg-mcp/src/font-detect.ts` (64 lines) | `spawnSync("fc-list")`, 1s timeout, tri-state `boolean \| null`. Pairs with `GLYPH_PRESETS.powerline`, which today can silently render blanks. |
+| `--yaml` output (`toYaml`) | `EQStack/apps/imsg-mcp/src/analytics-render.ts:177` | Zero-dep, phone-safe (no anchors/flow). Extract `toYaml` only — the rest of that file is imsg-domain. Belongs beside cli-kit's `printJson`/`printTable`. |
+| Prometheus metrics | `EQStack/apps/voice-mcp/src/gateway/metrics.ts` (88 lines) | Zero-dep `Counter`/`Histogram` + `renderProm()` exposition. |
+
+The fifth offered lift, **log-level filtering**, was taken in the 2026-08-09 robustness minor.
+
+**Why deferred**: each is additive new public surface with exactly one consumer, and that batch was
+already two releases deep on the packages EQStack is actively adopting. New public surface is
+permanent; a lift with one consumer has not yet shown which shape it should have.
+
+**Trigger to action**: any of them becoming blocking for a consumer (one blocked consumer outranks
+four nice-to-haves), or a second consumer wanting the same one — the cross-consumer signal that
+drove the whole 2026-08-09 batch.
 
 ---
 
