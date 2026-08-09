@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.3.2](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.1...tui-kit-v0.3.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **exports:** add the "./package.json" subpath to every package ([30137bd](https://github.com/george43g/mcp-cli-starter-template/commit/30137bd3710dbb8837afc86b6504bc78e122e14e))
+
 # [@george43g/tui-kit-v0.3.1](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.0...tui-kit-v0.3.1) (2026-08-09)
 
 
