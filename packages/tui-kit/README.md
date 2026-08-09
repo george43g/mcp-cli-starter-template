@@ -17,6 +17,11 @@ The package includes:
   forwarding anything it doesn't handle to `onUnhandled`.
 - `useMouse` — opt-in mouse reporting, with `TuiMouseEvent` for the payload.
 - `useDevStats` — reads watchdog state for a live diagnostics panel.
+- `useTerminalSize` — current `{ rows, columns }`, re-read on terminal resize,
+  falling back to 24x80 when stdout is not a TTY.
+- `viewportRows()` and `visibleWindow()` — pure scroll-window arithmetic
+  (`CHROME_ROWS`, `MIN_VIEWPORT`, `VisibleWindow`): terminal height in, a
+  `[start, end)` slice with the cursor centred out.
 - `StatusBar`, `HelpBar`, `DevStatsPanel` — presentational chrome.
 - `boundIfNeeded()` and `MemoryCache` — bounded-list eviction and a
   TTL + memory-pressure cache.
@@ -63,6 +68,23 @@ const screen = await renderFullScreen(
 );
 await screen.waitUntilExit();
 ```
+
+## Scrolling lists
+
+```tsx
+import { useTerminalSize, viewportRows, visibleWindow } from "@george43g/tui-kit";
+
+function List({ items, cursor }: { items: string[]; cursor: number }) {
+  const { rows } = useTerminalSize();
+  const { start, end } = visibleWindow(cursor, items.length, viewportRows(rows));
+  return <>{items.slice(start, end).map((item) => <Text key={item}>{item}</Text>)}</>;
+}
+```
+
+The window is always exactly `min(viewport, items.length)` tall — it does not
+shrink as the cursor nears the end of the list. `viewportRows` and
+`visibleWindow` are pure functions with no Ink or React dependency, so list
+maths can be unit-tested without a renderer.
 
 ## Subpath exports
 
