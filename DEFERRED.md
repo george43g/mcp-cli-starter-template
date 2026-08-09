@@ -1095,7 +1095,44 @@ is what produced the false confidence in the first place.
 
 ---
 
-## 27. Four capabilities approved for lift from EQStack, not yet taken
+## 27. PARTIALLY RESOLVED — Four capabilities approved for lift from EQStack, not yet taken
+
+**Status**: ⏳ **2 of 4 LIFTED 2026-08-10** into tui-kit. `toYaml` and the Prometheus metrics module
+stay parked — still no warm consumer, which was the whole trigger condition.
+
+**Lifted**: `clusterWidth` / `visualWidth` / `truncateToWidth` (`visual-width.ts`) and
+`detectNerdFont` / `_resetDetectNerdFontCache` (`font-detect.ts`).
+
+Taken **verbatim from source, not reimplemented from the brief.** That was a deliberate ask: the
+brief gave signatures and semantics but not the cluster-segmentation body, and rebuilding that from
+a description is precisely how the surrogate-splitting bug the file exists to prevent comes back.
+Their test suites were ported nearly verbatim for the same reason — they are the acceptance oracle,
+so rewriting them would discard the only evidence the semantics survived the move. Verified: 5 of
+them reject a naive `slice`-based implementation, including the headline surrogate case.
+
+**The one thing the brief could not convey, which had to be asked:** `truncateToWidth`'s ellipsis
+counts AGAINST `maxCols`, so `visualWidth(result) <= maxCols` always. Guessing the other way puts a
+one-column overflow into every truncated row, which a flexbox parent wraps or clips — and it
+presents as a tui-kit layout bug, not a width bug. Two further contract points came with it: a
+string that already fits is returned unmodified, and `ellipsisW >= maxCols` returns clusters-only
+with no ellipsis.
+
+Both deliberate semantics preserved and now pinned by tests: the coarse width model, and
+`0x2600`–`0x27BF` dingbats at width 1 despite UAX #11 calling them ambiguous.
+
+`_resetDetectNerdFontCache` ships `@internal` with no options param — confirmed with the source as
+test-only. `detectNerdFont` keeps the three-variant `FontDetectResult`; **`null` is never collapsed
+to `false`**, because default macOS has no fontconfig and those users routinely do have a patched
+font.
+
+Coverage floor moved 42 → 47 on statements/lines only. Branches and functions were left alone
+despite measuring higher: `font-detect` coverage is environment-dependent (macOS and Linux take
+different fc-list branches), and pinning a floor to a runner-dependent number is how a green local
+suite fails in CI.
+
+**Original entry follows.**
+
+## 27 (original). Four capabilities approved for lift from EQStack, not yet taken
 
 **Status**: open, approved by the source, deliberately not in the 2026-08-09 batch. All MIT, same
 author; a header credit is appreciated but not required. Pointers supplied by the EQStack agent so

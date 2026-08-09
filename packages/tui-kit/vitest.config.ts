@@ -31,10 +31,18 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * in DEFERRED #15. `useTerminalSize.ts` is the newest instance: it ships
  * untested by design (ink-testing-library cannot drive it) and therefore
  * reports 0% statements but 100% branches and functions.
+ *
+ * Raised 42 → 47 (statements/lines) by the `visual-width` + `font-detect` lift.
+ * Branches and functions are deliberately LEFT ALONE despite measuring 90.51
+ * and 82, because `font-detect` coverage is environment-dependent: whichever of
+ * the fc-list-present / fc-list-absent branches the runner does not take stays
+ * uncovered, and macOS and Linux take different ones. Ratcheting a floor onto a
+ * number that moves with the runner is how a green local suite fails in CI —
+ * which happened once already this session, on a real-clock test.
  */
 export default withCoverageFloor(shared, {
-  statements: 42,
+  statements: 47,
   branches: 89,
   functions: 80,
-  lines: 42,
+  lines: 47,
 });

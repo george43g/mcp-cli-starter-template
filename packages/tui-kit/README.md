@@ -90,6 +90,72 @@ shrink as the cursor nears the end of the list. `viewportRows` and
 `visibleWindow` are pure functions with no Ink or React dependency, so list
 maths can be unit-tested without a renderer.
 
+## Text width and truncation
+
+Never truncate terminal text with `String#slice`. It counts UTF-16 code units,
+so it splits surrogate pairs — one emoji is two units — and paints a broken
+glyph. It also assumes one unit is one cell, which is wrong for emoji and CJK.
+
+```ts
+import { truncateToWidth, visualWidth } from "@george43g/tui-kit";
+
+visualWidth("🎉Hi");             // 4, not 3
+truncateToWidth("🎉Hello", 5);   // "🎉He…"
+```
+
+`truncateToWidth` is the function you actually want; `visualWidth` and
+`clusterWidth` are exposed for layout maths. Contract:
+
+- **The ellipsis counts against the budget** — `visualWidth(result) <= maxCols`
+  always holds. The alternative (appending after) overflows every truncated row
+  by one column, which a flexbox parent then wraps or clips, and it presents as
+  a layout bug rather than a width bug.
+- A string that already fits is returned **unmodified**, with no ellipsis.
+- `maxCols <= 0` returns `""`. If the ellipsis alone does not fit, as many
+  clusters as fit are returned with no ellipsis.
+- Best-effort and never throws: it runs on a render path over arbitrary content.
+
+Two properties are deliberate and should not be "corrected":
+
+1. **The width model is coarse** — a range check, not a UAX #11 table. It covers
+   the failure that actually happens (emoji in user-supplied names) at a cost a
+   render path can pay every frame.
+2. **`0x2600`–`0x27BF` are width 1**, though UAX #11 calls them ambiguous.
+   Terminals paint `▶ ◀ ● ✉ ✓ ✗ ★` single-cell, and following the standard here
+   misaligns every layout drawn with them.
+
+There is no padding counterpart on purpose — ink's flexbox handles padding.
+
+## Nerd Font detection
+
+For TUIs offering a glyph preset that needs a patched font. Without a check the
+user picks "powerline" and gets blank boxes with no explanation.
+
+```ts
+import { detectNerdFont } from "@george43g/tui-kit";
+
+const font = detectNerdFont();
+if (font.detected === false) warnHard();       // fc-list confirmed none
+else if (font.detected === null) warnSoftly(); // could not tell
+```
+
+The three-variant result is the whole point:
+
+| Result | Meaning |
+|---|---|
+| `{ detected: true, source: "fc-list" }` | confirmed present |
+| `{ detected: false, source: "fc-list" }` | confirmed absent |
+| `{ detected: null, source: "unavailable", reason }` | could not determine |
+
+**`null` is never collapsed to `false`.** Default macOS ships no fontconfig, and
+those users routinely *do* have a patched font — so answering `false` fires the
+"no Nerd Font" warning at exactly the people for whom it is wrong. Render a hard
+warning only for a confirmed absence and a soft hint for `null`.
+
+`reason` distinguishes "not on PATH" from "timed out" when a user reports the
+warning. The result is cached per process (the probe costs ~1s); the exported
+cache reset is a test seam only.
+
 ## Subpath exports
 
 `@george43g/tui-kit/theme` exposes the theme and color layer on its own, for
