@@ -104,6 +104,41 @@ Two fixes worth upgrading for, both reported by a downstream consumer:
   piped input all went to stdout, so `… | yourtool repl | jq .` could never
   work. When stdin is not a TTY the REPL now emits only results. Interactive use
   is unchanged — it keeps readline's history, arrows and SIGINT handling.
+
+  > **⚠ Re-baseline any snapshots of piped REPL output.** One consumer measured
+  > 594 bytes → 337 for the same script, and **8 of 12 snapshot tests failed**.
+  > Re-baseline, don't debug — the old output was the bug.
+
+### Rendered output is not covered by semver
+
+Worth stating once, because it will recur every time this package improves a
+rendering — and it is the reason the change above could ship as a *patch* with
+no type error and nothing thrown.
+
+**Semver describes the API. A snapshot test asserts on the rendering, which
+semver never promised to hold still.** So:
+
+> **cli-kit patches may change rendered output. If you snapshot stdout, expect
+> to re-baseline. The results and the meta footers are stable; the chrome is
+> not.**
+
+That second clause is a real promise, and it is what one consumer's line-by-line
+audit of all 8 failures showed: every changed line was removed banner, removed
+trailing prompt, or a stripped `tool> ` prefix. **Zero result rows and zero
+footers changed.** Direct-CLI `--json` paths were untouched, since they never
+enter `runRepl`, and multi-command piped transcripts still run every command
+with its own footer.
+
+**Whether this affects you has a one-command answer** — and it is not about how
+much cli-kit surface you use. The consumer with the *most* cli-kit surface had
+zero exposure; the one with less had 8 failures. What matters is only whether
+you assert on stdout as a blob:
+
+```console
+$ rg -l "toMatchSnapshot|toMatchInlineSnapshot|toMatchFileSnapshot"
+```
+
+No hits means nothing to do.
 - **`isCI()` parses the value, not just the presence.** `Boolean("false")` is
   `true`, so `CI=false yourtool somecmd` was treated as running in CI and forced
   JSON output on a real terminal. Now matches ink's `is-in-ci`, with one
