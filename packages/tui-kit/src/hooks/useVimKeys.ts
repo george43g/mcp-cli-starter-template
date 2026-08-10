@@ -23,6 +23,12 @@
  * passed to `onUnhandled` intact, so a pasted paragraph cannot drive motion or
  * reach a consumer's destructive-key handler. `jjjj` from a paste is
  * indistinguishable from `jjjj` typed fast, and is treated as motion.
+ *
+ * DO NOT relax that restriction to a plain per-character fan-out. A consumer
+ * router had already shipped the incident it prevents: single keys bound to
+ * "open file", "write to ~/Downloads" and "quit", so pasting a recipient name
+ * containing `q` quit the app. Passing non-owned chunks through whole is the
+ * property that makes fanning out safe at all.
  */
 
 import { useInput } from "ink";

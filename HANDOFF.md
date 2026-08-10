@@ -93,7 +93,7 @@ not intent. Where a consumer said "unknown" it is recorded as unknown.
 | Repo | State |
 |---|---|
 | up-bank-mcp | **cli-kit 2.0.0** (PR #17, `899c706`), `pnpm verify` green, 205 tests. Was **stranded on 1.0.0** before the correction — the predicted starvation, confirmed live. Correcting a stale claim of mine: only TWO of their four `.text` sites are cli-kit-typed (`cli-format.ts:11,15` alias + `:128-129` narrow). `cli.ts:34,42` and `tui/data/source.ts:191-200` sit behind THEIR dispatcher's closed `Array<{type:"text";text:string}>` and are immune to anything `ContentBlock` does. `formatUpResult` dispatches on their `structuredContent` shapes, so it is **portable, not deletable** — their expectation, explicitly not measured |
-| EQStack (`imsg-mcp`) | **Adopted and shipped** — PR #81 → `imsg-mcp@1.21.1`, both local files deleted, their suites re-pointed at the kit. Proved the lift twice: comment-stripped code-identity diff (54 + 31 lines identical) and real `chat.db` emoji data, 6 strings × 4 widths, 0 width-violations, 0 broken surrogates |
+| EQStack (`imsg-mcp`) | **Adopted and shipped** — PR #81 → `imsg-mcp@1.21.1`, both local files deleted, their suites re-pointed at the kit. Proved the lift twice: comment-stripped code-identity diff (54 + 31 lines identical) and real `chat.db` emoji data, 6 strings × 4 widths, 0 width-violations, 0 broken surrogates. **Does NOT consume `useVimKeys`** (verified by grep — they run one mode-aware `useInput` router deliberately, since a second dispatcher is their `q`-in-recipient-name incident class), so the 0.4.1 patch does not affect them; staying on 0.4.0 until a routine bump. Their imports are `truncateToWidth`, `visualWidth`, `detectNerdFont`, `useMouse`, and the `theme` subpath |
 | browser-tab-mcp | **NOT upgraded** — resolved cli-kit `0.3.1`, robustness `0.6.0`, tui-kit `0.3.3`. George sequenced it behind two of their PRs; they declined to treat my relayed "direct request from George" as authorization and surfaced it to him instead, which was correct. They have no observed upgrade result and asked that a prediction not be recorded as one |
 | life-stack | **Landed** (`45ea71c`) after George confirmed directly: robustness `^0.6.0 → ^0.7.0` (os-fork-core, os-fork-control, os-fork-ctl), cli-kit `^0.3.1 → ^2.0.0` (os-fork-ctl). Typecheck 6/6, 140 tests, lint over 114 files, all green. **No breakage across both cli-kit majors** — their only imports are `buildProgram`, `color`, `printJson`, `resolveOutputMode`, so the `ToolCallResult` union never touched them |
 | wm-stack | Confirmed zero dependency on any kit |
@@ -125,6 +125,18 @@ implementation in hand is not the same as applying it.
 
 Ink delivers a keystroke burst or paste as ONE `useInput` call — that is the root cause of the
 first, and it is a trap for any future ink hook here.
+
+**It is an ink bug class, not a `useVimKeys` bug.** EQStack read the fix, went looking, and found
+BOTH defects in their own `apps/imsg-mcp/src/tui/App.tsx` router the same day — they had filed the
+symptom ("`gg` ignored when both g's arrive in one chunk") as minor polish without connecting it to
+keystroke loss. `tui-kit`'s README now carries the two greps that find it, because every hand-written
+key router in every consumer is exposed.
+
+**Never relax the fan-out to plain per-character dispatch.** It is restricted to owned keys, and
+EQStack supplied the incident that justifies it from their own history: single keys bound to open /
+write-to-Downloads / quit, so pasting a recipient name containing `q` quit the app. Passing
+non-owned chunks through whole is what makes fanning out safe at all. Recorded in the hook's
+docblock so it cannot be "simplified" away.
 
 ### The guard was not on the path that publishes
 
