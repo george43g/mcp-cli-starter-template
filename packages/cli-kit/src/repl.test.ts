@@ -169,6 +169,70 @@ const TOOLS: ToolDescriptor[] = [
   { name: "get_logs", description: "logs" },
 ];
 
+describe("runRepl piped output", () => {
+  /**
+   * Reported by the browser-tab consumer: `... | tool repl | jq .` can never
+   * work, because the banner, the prompt, and readline's echo of the piped
+   * input all land on stdout alongside the results.
+   *
+   * A PassThrough has no `isTTY`, so these tests already exercise the
+   * non-interactive path — which is exactly why the defect was invisible: the
+   * suite asserted with `toContain`, and extra leading noise never fails that.
+   */
+  it("writes no banner when input is not a TTY", async () => {
+    const d = fakeDispatcher(TOOLS);
+    const text = await runScript(["health_check"], d, undefined, {
+      banner: "WELCOME-BANNER-SENTINEL",
+    });
+    expect(text).not.toContain("WELCOME-BANNER-SENTINEL");
+  });
+
+  it("writes no prompt when input is not a TTY", async () => {
+    const d = fakeDispatcher(TOOLS);
+    const text = await runScript(["health_check"], d);
+    expect(text).not.toContain("test>");
+  });
+
+  /**
+   * The discrimination check. Without this, "no banner when piped" is also
+   * satisfied by deleting the banner entirely — the interactive path is the
+   * primary use and must keep its chrome.
+   */
+  it("still writes the banner and prompt when input IS a TTY", async () => {
+    const input = new PassThrough() as PassThrough & { isTTY?: boolean };
+    input.isTTY = true;
+    const output = new PassThrough();
+    let text = "";
+    output.on("data", (c: Buffer) => {
+      text += c.toString();
+    });
+
+    const done = runRepl({
+      prompt: "test",
+      dispatcher: fakeDispatcher(TOOLS),
+      input,
+      output,
+      banner: "WELCOME-BANNER-SENTINEL",
+    });
+    input.write("health_check\n");
+    input.end();
+    await done;
+
+    expect(text).toContain("WELCOME-BANNER-SENTINEL");
+    expect(text).toContain("test>");
+  });
+
+  it("emits the result and nothing else, so the stream stays parseable", async () => {
+    const d = fakeDispatcher(TOOLS);
+    const text = await runScript(["health_check"], d, undefined, {
+      banner: "WELCOME-BANNER-SENTINEL",
+    });
+    // The strict form: output is EXACTLY what the dispatcher produced. Asserting
+    // absence of known chrome would pass again the moment a new prefix is added.
+    expect(text).toBe("ok:health_check\n");
+  });
+});
+
 describe("runRepl dispatch", () => {
   it("calls a tool by name with JSON arguments", async () => {
     const d = fakeDispatcher(TOOLS);

@@ -96,6 +96,29 @@ Four additions to `runRepl`, all opt-in and all backwards compatible:
 `_meta?: Record<string, unknown>` to carry what those read. Both are optional,
 so existing dispatchers still typecheck.
 
+### 2.0.0 is a no-op major — there is nothing to migrate from 1.0.0
+
+If you are on `1.0.0`, upgrading to `2.0.0` is a range edit and a lockfile
+update. **No code change, no API change.** The published `dist/` of 2.0.0 is
+byte-identical to 1.0.0; the only differences in the tarball are this README and
+the `version` field:
+
+```console
+$ diff -r cli-kit-1.0.0/package/dist cli-kit-2.0.0/package/dist
+(no output)
+```
+
+It was published from a documentation-only commit. The commit body described the
+0.4.0-vs-1.0.0 incident below and spelled a release-control marker in its prose;
+`semantic-release` reads that marker anywhere in a body, including inside a
+sentence about a past event, and cut a major from a docs change. The version is
+immutable, and renumbering would mean a *third* major for zero API change — so
+it stands. A CI check now rejects that marker in a message unless the subject
+declares a breaking change too.
+
+**The real migration is 0.3.x → 1.0.0, below.** If you are coming from `0.3.x`,
+do that one and land on `2.0.0` directly.
+
 ### Upgrading from 0.3.x to 1.0.0
 
 > **Why 1.0.0 and not 0.4.0.** This release was intended as `0.4.0`. It carries
