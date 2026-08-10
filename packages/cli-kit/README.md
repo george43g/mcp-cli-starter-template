@@ -96,6 +96,21 @@ Four additions to `runRepl`, all opt-in and all backwards compatible:
 `_meta?: Record<string, unknown>` to carry what those read. Both are optional,
 so existing dispatchers still typecheck.
 
+### Fixed after 2.0.0: piped REPL output, and `CI=false`
+
+Two fixes worth upgrading for, both reported by a downstream consumer:
+
+- **`runRepl` is now pipe-safe.** The banner, the prompt, and readline's echo of
+  piped input all went to stdout, so `… | yourtool repl | jq .` could never
+  work. When stdin is not a TTY the REPL now emits only results. Interactive use
+  is unchanged — it keeps readline's history, arrows and SIGINT handling.
+- **`isCI()` parses the value, not just the presence.** `Boolean("false")` is
+  `true`, so `CI=false yourtool somecmd` was treated as running in CI and forced
+  JSON output on a real terminal. Now matches ink's `is-in-ci`, with one
+  deliberate difference: an empty value counts as *not* CI.
+
+No API change in either.
+
 ### 2.0.0 is a no-op major — there is nothing to migrate from 1.0.0
 
 If you are on `1.0.0`, upgrading to `2.0.0` is a range edit and a lockfile
