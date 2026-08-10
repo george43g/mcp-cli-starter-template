@@ -34,6 +34,14 @@ const SEG = new Intl.Segmenter("en", { granularity: "grapheme" });
 /**
  * Approximate width, in monospaced terminal cells, of a single grapheme
  * cluster. 2 for emoji / CJK / Hangul / fullwidth, 1 otherwise.
+ *
+ * Deliberately exported, though `visualWidth` + `truncateToWidth` cover most
+ * callers. Incremental column-layout and wrap-point maths needs per-cluster
+ * widths; doing that with `visualWidth` alone forces an O(n^2) rescan, and
+ * narrowing the surface pushes consumers to hand-roll `Intl.Segmenter`
+ * iteration — which recreates the surrogate-splitting bug this module exists to
+ * kill. Total function, never throws: one cluster in, cells out.
+ * (Consumer-argued by the EQStack session, 2026-08-10.)
  */
 export function clusterWidth(cluster: string): number {
   // ASCII fast path — one code unit, one cell.
