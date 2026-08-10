@@ -29,35 +29,65 @@ const BREAKING_TOKEN = /\bBREAKING[ -]CHANGE\b/;
  *
  *     chore(release): cli-kit 1.0.0 [skip ci]
  *
- * Their body is `${nextRelease.notes}`, which quotes the triggering commit's
- * footer — so a genuine breaking release produces a bump commit that contains
- * the token without declaring anything. Two independent reasons they are safe
- * to skip: they carry `[skip ci]` so they never trigger the release workflow,
- * and they are written by the machine AFTER the release decision was made.
+ * Their body is `${nextRelease.notes}`, which can quote the triggering commit's
+ * footer — so a genuine breaking release could produce a bump commit containing
+ * the token without declaring anything.
  *
- * Both markers are required. A hand-written `chore(release):` subject without
- * `[skip ci]` is NOT skipped — that would be a trivial bypass.
+ * Skipping is keyed on the AUTHOR, not on the message. Message text is
+ * attacker-and-accident-writable: a human can type any subject they like,
+ * including this one. The life-stack session asked exactly that — "does quoting
+ * inside a `chore(release):` subject become the new hole?" — and it did, because
+ * the first version of this matched on the subject alone. It is a narrow hole (a
+ * non-HEAD commit in a multi-commit push, since `[skip ci]` on the head commit
+ * stops the workflow entirely) but a real one.
+ *
+ * Identity closes it: only semantic-release-bot's own commits are skipped, and
+ * nothing a human writes can impersonate that without commit-author control.
+ *
+ * All three conditions are required, and the subject markers are kept as a
+ * second signal so a future change of bot identity fails CLOSED (checking a
+ * commit that could have been skipped) rather than open.
+ *
+ * Worth knowing: no bump commit in this repo's history has ever contained the
+ * token, because conventional-changelog's heading is the PLURAL "BREAKING
+ * CHANGES" and the regex above ends in `\b`. So this skip is belt-and-braces,
+ * not load-bearing — which is the right posture for a bypass.
  */
 const GENERATED_BUMP = /^chore\(release\):.*\[skip ci\]/;
 
-export function isGeneratedReleaseCommit(subject) {
-  return GENERATED_BUMP.test(subject);
+/** semantic-release's committer identity, verified against this repo's tags. */
+export const RELEASE_BOT_EMAIL = "semantic-release-bot@martynus.net";
+
+/**
+ * @param {string} subject first line of the commit message
+ * @param {string | undefined} authorEmail commit author email (`%ae`)
+ */
+export function isGeneratedReleaseCommit(subject, authorEmail) {
+  return authorEmail === RELEASE_BOT_EMAIL && GENERATED_BUMP.test(subject);
 }
 
 /**
- * Split `git log --format=%B%x00` output into individual commit messages.
+ * Split `git log --format=%ae%x1f%B%x00` output into commit records.
  *
- * NUL is the only separator safe here: commit bodies contain blank lines and
- * arbitrary prose, so any textual delimiter can appear inside a message.
+ * NUL separates records and US (0x1f) separates the author email from the
+ * body. Both are chosen because a commit body contains blank lines and
+ * arbitrary prose, so any printable delimiter can occur inside one.
  *
  * @param {string} raw
- * @returns {string[]}
+ * @returns {Array<{ authorEmail: string, message: string }>}
  */
-export function splitCommitMessages(raw) {
+export function splitCommitRecords(raw) {
   return raw
     .split("\0")
-    .map((m) => m.trim())
-    .filter((m) => m.length > 0);
+    .map((record) => {
+      const sep = record.indexOf("");
+      if (sep === -1) return { authorEmail: "", message: record.trim() };
+      return {
+        authorEmail: record.slice(0, sep).trim(),
+        message: record.slice(sep + 1).trim(),
+      };
+    })
+    .filter((r) => r.message.length > 0);
 }
 
 /** `type(scope)!:` or `type!:` — the other way to declare a breaking change. */
