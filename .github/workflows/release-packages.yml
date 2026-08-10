@@ -79,8 +79,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The guard that has to be ON THIS PATH, not only on pull_request.
+  #
+  # ci.yml runs the same check against a PR's title + body, which covers the
+  # squash-merge case. It does not cover a direct push: `main` is NOT a
+  # protected branch (the branch-protection API returns 404), so a push never
+  # opens a PR and never meets that check. A merger can also edit a squash
+  # commit's message at merge time, which makes the PR body a prediction of the
+  # commit message rather than the commit message itself.
+  #
+  # Every release job below `needs:` this one, so a bad message blocks the
+  # publish. That is the only remedy available — npm versions are immutable, and
+  # a `docs:` commit whose PROSE spelled the footer token has already published
+  # one unintended major here.
+  release-tokens:
+    name: Commit messages cannot trigger an unintended release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Check every commit message being released
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: node scripts/check-release-tokens.mjs --range "${BEFORE:-}..${SHA}"
+
   robustness:
     runs-on: ubuntu-latest
+    needs: release-tokens
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -24,6 +24,42 @@
 /** The exact tokens conventional-changelog treats as a breaking-change footer. */
 const BREAKING_TOKEN = /\bBREAKING[ -]CHANGE\b/;
 
+/**
+ * semantic-release's own bump commits, e.g.
+ *
+ *     chore(release): cli-kit 1.0.0 [skip ci]
+ *
+ * Their body is `${nextRelease.notes}`, which quotes the triggering commit's
+ * footer — so a genuine breaking release produces a bump commit that contains
+ * the token without declaring anything. Two independent reasons they are safe
+ * to skip: they carry `[skip ci]` so they never trigger the release workflow,
+ * and they are written by the machine AFTER the release decision was made.
+ *
+ * Both markers are required. A hand-written `chore(release):` subject without
+ * `[skip ci]` is NOT skipped — that would be a trivial bypass.
+ */
+const GENERATED_BUMP = /^chore\(release\):.*\[skip ci\]/;
+
+export function isGeneratedReleaseCommit(subject) {
+  return GENERATED_BUMP.test(subject);
+}
+
+/**
+ * Split `git log --format=%B%x00` output into individual commit messages.
+ *
+ * NUL is the only separator safe here: commit bodies contain blank lines and
+ * arbitrary prose, so any textual delimiter can appear inside a message.
+ *
+ * @param {string} raw
+ * @returns {string[]}
+ */
+export function splitCommitMessages(raw) {
+  return raw
+    .split("\0")
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0);
+}
+
 /** `type(scope)!:` or `type!:` — the other way to declare a breaking change. */
 const SUBJECT_BANG = /^[a-z]+(\([^)]*\))?!:/;
 

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { checkReleaseTokens } from "./lib/release-tokens.mjs";
+import {
+  checkReleaseTokens,
+  isGeneratedReleaseCommit,
+  splitCommitMessages,
+} from "./lib/release-tokens.mjs";
 
 /**
  * The regression case is REAL and is the first test: this exact message shipped
@@ -62,5 +66,52 @@ Mentions BREAKING-CHANGE in passing.`;
 
   it("catches the token in the subject line as well as the body", () => {
     assert.equal(checkReleaseTokens("docs: describe the BREAKING CHANGE trap").ok, false);
+  });
+
+  /**
+   * semantic-release's own bump commit body is `${nextRelease.notes}`, whose
+   * heading is the PLURAL "BREAKING CHANGES". The token regex ends in `\b`, so
+   * the trailing S denies the match. This is load-bearing and easy to break by
+   * "simplifying" the regex — verified against the real 1.0.0 bump commit body.
+   */
+  it("tolerates the plural heading semantic-release writes into bump commits", () => {
+    const msg = `chore(release): cli-kit 1.0.0 [skip ci]
+
+# [1.0.0](https://github.com/x/y/compare/a...b) (2026-08-10)
+
+### BREAKING CHANGES
+
+* ToolCallResult.content is now a discriminated union.`;
+    assert.equal(checkReleaseTokens(msg).ok, true);
+  });
+});
+
+describe("isGeneratedReleaseCommit", () => {
+  it("recognises a real semantic-release bump subject", () => {
+    assert.equal(isGeneratedReleaseCommit("chore(release): cli-kit 2.0.0 [skip ci]"), true);
+  });
+
+  it("requires BOTH markers, so a hand-written subject is not a bypass", () => {
+    // Without [skip ci] it is not machine-generated and must still be checked.
+    assert.equal(isGeneratedReleaseCommit("chore(release): sneak this past the guard"), false);
+    assert.equal(isGeneratedReleaseCommit("docs: something [skip ci]"), false);
+  });
+});
+
+describe("splitCommitMessages", () => {
+  it("splits on NUL and drops the trailing empty record", () => {
+    assert.deepEqual(splitCommitMessages("first\0second\0"), ["first", "second"]);
+  });
+
+  it("keeps blank lines inside a message intact", () => {
+    // The reason NUL is the separator: bodies contain blank lines, so any
+    // textual delimiter can occur inside a message.
+    const [only] = splitCommitMessages("subject\n\nbody line\n\nmore\0");
+    assert.equal(only, "subject\n\nbody line\n\nmore");
+  });
+
+  it("returns nothing for empty git output", () => {
+    assert.deepEqual(splitCommitMessages(""), []);
+    assert.deepEqual(splitCommitMessages("\0\0"), []);
   });
 });
