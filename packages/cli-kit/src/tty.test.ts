@@ -39,6 +39,36 @@ describe("isCI", () => {
       expect(isCI()).toBe(true);
     },
   );
+
+  /**
+   * The whole suite above only ever set "true", so presence-vs-value was never
+   * discriminated. `CI=false` is the documented way to tell a tool it is NOT in
+   * CI — ink's own `is-in-ci` honours it — and a naive `Boolean(env.CI)` reads
+   * the string "false" as true. Reported by the browser-tab consumer.
+   */
+  it.each(["CI", "GITHUB_ACTIONS", "GITLAB_CI", "CIRCLECI", "TRAVIS", "BUILDKITE"])(
+    "returns false when %s is explicitly disabled",
+    (key) => {
+      for (const value of ["false", "0", ""]) {
+        process.env[key] = value;
+        expect(isCI(), `${key}=${JSON.stringify(value)}`).toBe(false);
+      }
+    },
+  );
+
+  it("still returns true for other truthy values", () => {
+    for (const value of ["1", "true", "yes", "TRUE"]) {
+      process.env.CI = value;
+      expect(isCI(), `CI=${value}`).toBe(true);
+    }
+  });
+
+  it("treats an unrelated var as independent", () => {
+    // CI disabled but a provider var genuinely set: still CI.
+    process.env.CI = "false";
+    process.env.GITHUB_ACTIONS = "true";
+    expect(isCI()).toBe(true);
+  });
 });
 
 describe("colorEnabled", () => {

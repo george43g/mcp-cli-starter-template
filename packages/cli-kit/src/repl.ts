@@ -347,15 +347,36 @@ export async function runRepl(opts: RunReplOptions): Promise<void> {
     },
   };
 
-  if (opts.banner) {
+  // Interactive vs piped. When stdin is a pipe there is nobody to read a
+  // banner or a prompt, but there IS usually something parsing stdout — so
+  // emitting them corrupts the output. Three separate sources of that noise:
+  // the banner, the prompt, and readline's echo of the piped input.
+  //
+  // `... | tool repl | jq .` could never work before this. Reported by the
+  // browser-tab consumer; the test suite could not see it because a
+  // PassThrough is already non-TTY and every assertion used `toContain`,
+  // which leading noise does not disturb.
+  const interactive = Boolean((inp as { isTTY?: boolean }).isTTY);
+
+  if (opts.banner && interactive) {
     out.write(`${opts.banner}\n`);
   }
 
-  // No `terminal: false` here. Writing the prompt by hand would work, but it
-  // costs history, arrow keys and readline's SIGINT handling for anyone using
-  // this interactively — which is the primary use.
-  const rl: Interface = createInterface({ input: inp, output: out });
+  // Interactive keeps `output` and readline's terminal handling: writing the
+  // prompt by hand would work, but it costs history, arrow keys and readline's
+  // SIGINT handling for the primary use. Piped drops both — `terminal: false`
+  // is what stops readline echoing the input it just consumed.
+  const rl: Interface = interactive
+    ? createInterface({ input: inp, output: out })
+    : createInterface({ input: inp, terminal: false });
   const promptStr = color.cyan(`${opts.prompt}> `);
+
+  /** No-op when piped — see `interactive` above. */
+  const showPrompt = () => {
+    if (!interactive) return;
+    rl.setPrompt(promptStr);
+    rl.prompt();
+  };
 
   return new Promise<void>((resolveRepl) => {
     const queue: string[] = [];
@@ -521,8 +542,7 @@ export async function runRepl(opts: RunReplOptions): Promise<void> {
         processing = false;
       }
       if (!finished && !closed) {
-        rl.setPrompt(promptStr);
-        rl.prompt();
+        showPrompt();
       }
       maybeFinish();
     }
@@ -540,7 +560,6 @@ export async function runRepl(opts: RunReplOptions): Promise<void> {
       maybeFinish();
     });
 
-    rl.setPrompt(promptStr);
-    rl.prompt();
+    showPrompt();
   });
 }

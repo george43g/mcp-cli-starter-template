@@ -87,13 +87,63 @@ The user's standing instruction: **tell every consumer to upgrade to the latest 
 breakage; if something needs an upstream fix, publish it and re-request the upgrade from
 everyone.** Round-trips are expected — consumers should not absorb a kit defect locally.
 
+All rows below are RESOLVED versions the consumer verified with `pnpm why`, not declared ranges and
+not intent. Where a consumer said "unknown" it is recorded as unknown.
+
 | Repo | State |
 |---|---|
-| up-bank-mcp | On all four latest. Zero rendered-output change, no `TokenBucket` throw, 192 tests + 12 stress. Nothing needed upstream |
-| EQStack (`imsg-mcp`) | Deleted both lifted files and re-pointed THEIR suites at our implementation — 995 tests green. Strongest available evidence the #27 lift preserved semantics |
-| browser-tab-mcp | Upgrade queued behind two of their own PRs; confirmed nothing runs `pnpm update --latest` |
-| life-stack | Holding deliberately — correctly refuses to treat a peer relay as its user's approval, and is asking George directly |
+| up-bank-mcp | **cli-kit 2.0.0** (PR #17, `899c706`), `pnpm verify` green, 205 tests. Was **stranded on 1.0.0** before the correction — the predicted starvation, confirmed live. Correcting a stale claim of mine: only TWO of their four `.text` sites are cli-kit-typed (`cli-format.ts:11,15` alias + `:128-129` narrow). `cli.ts:34,42` and `tui/data/source.ts:191-200` sit behind THEIR dispatcher's closed `Array<{type:"text";text:string}>` and are immune to anything `ContentBlock` does. `formatUpResult` dispatches on their `structuredContent` shapes, so it is **portable, not deletable** — their expectation, explicitly not measured |
+| EQStack (`imsg-mcp`) | **Adopted and shipped** — PR #81 → `imsg-mcp@1.21.1`, both local files deleted, their suites re-pointed at the kit. Proved the lift twice: comment-stripped code-identity diff (54 + 31 lines identical) and real `chat.db` emoji data, 6 strings × 4 widths, 0 width-violations, 0 broken surrogates |
+| browser-tab-mcp | **NOT upgraded** — resolved cli-kit `0.3.1`, robustness `0.6.0`, tui-kit `0.3.3`. George sequenced it behind two of their PRs; they declined to treat my relayed "direct request from George" as authorization and surfaced it to him instead, which was correct. They have no observed upgrade result and asked that a prediction not be recorded as one |
+| life-stack | **Landed** (`45ea71c`) after George confirmed directly: robustness `^0.6.0 → ^0.7.0` (os-fork-core, os-fork-control, os-fork-ctl), cli-kit `^0.3.1 → ^2.0.0` (os-fork-ctl). Typecheck 6/6, 140 tests, lint over 114 files, all green. **No breakage across both cli-kit majors** — their only imports are `buildProgram`, `color`, `printJson`, `resolveOutputMode`, so the `ToolCallResult` union never touched them |
 | wm-stack | Confirmed zero dependency on any kit |
+
+**Never hand-carry a version number to a consumer — cite the command instead.** Every one of the
+five sessions above was told `cli-kit 1.0.0`; the accidental 2.0.0 published *between* those
+messages and their installs, and nothing corrected them. life-stack caught it only because they ran
+`npm view` instead of trusting the relay, and said so. A consumer who acts on a stale number pins
+`^1.0.0`, which **cannot cross to 2.0.0** — stranding them one major behind while they believe they
+are current. A relayed number is stale the moment the next release fires, and releases here fire on
+push to `main`. Send `npm view @george43g/<pkg> version` and let them resolve it themselves.
+
+### The round-trip paid for itself: three kit defects came back (2026-08-10)
+
+browser-tab ran an adversarial stress pass of their TUI/CLI/REPL and returned three defects that
+were **ours, not theirs** — none of which any of our own suites could see. All three are fixed, each
+reproduced before being trusted, and each confirmed present in the PUBLISHED tarballs first:
+
+| Defect | Where | Why our tests missed it |
+|---|---|---|
+| `useVimKeys` drops multi-character chunks, and `input >= "0" && input <= "9"` is a LEXICOGRAPHIC range so `"5j"` enters the count buffer and replays as a stale count | `tui-kit@0.4.0` `dist/hooks/useVimKeys.js:40` | The hook had **no test at all**. v8 scores a never-loaded file as 100% branches, so its untested half was reported as covered for its whole life |
+| `runRepl` writes banner + prompt + readline's echo to stdout when piped, so `\| jq .` can never work | `cli-kit@2.0.0` `dist/repl.js` | A `PassThrough` is already non-TTY, so the suite ran the broken path — and every assertion used `toContain`, which leading noise does not disturb |
+| `isCI()` treats `CI=false` as true (`Boolean("false")`) | `cli-kit@2.0.0` `dist/tty.js` | The suite only ever set `"true"`, so presence-vs-value was never discriminated |
+
+The third is the sore one: the correct semantics were quoted verbatim in the Stage 2 plan
+(`is-in-ci`: `key in env && env[key] !== '0' && env[key] !== 'false'`) and used to fix the
+screenshots pipeline, **without noticing our own `isCI()` had the same bug**. Having a reference
+implementation in hand is not the same as applying it.
+
+Ink delivers a keystroke burst or paste as ONE `useInput` call — that is the root cause of the
+first, and it is a trap for any future ink hook here.
+
+### The guard was not on the path that publishes
+
+`ci.yml`'s `release-tokens` job is `if: github.event_name == 'pull_request'`, and `main` is **not a
+protected branch** (branch-protection API returns 404). So a direct push never opened a PR and never
+met the check, and a merger can edit a squash commit's message at merge time — making the PR body a
+*prediction* of the commit message. life-stack asked whether the guard was actually on the
+publishing path, correctly flagging it as unknown rather than a finding. It was not.
+
+Now fixed: `release-packages.yml` has its own `release-tokens` gate that every release job
+`needs:`, checking the real commit messages via `--range "$BEFORE".."$SHA"`. Machine-generated
+`chore(release): … [skip ci]` commits are skipped (their body quotes the triggering footer); both
+markers are required so a hand-written subject is not a bypass.
+
+**up-bank's caveat, which stands and is not fixed:** this guard constrains the token, so it prevents
+spurious MAJORS — the observed class. It does nothing about the genuinely dangerous class, **an
+under-classified breaking change published as a minor**, which a caret pulls in silently. No
+instance has occurred. Their tripwire (recorded in their own repo): a third unplanned major, or any
+one accidental minor carrying a real break, switches them to exact pins.
 
 ### Stage 7 is blocked on the user
 
