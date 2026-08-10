@@ -1,6 +1,6 @@
 # Current Handoff
 
-Last refreshed: 2026-08-09 (Australia/Melbourne)
+Last refreshed: 2026-08-10 (Australia/Melbourne)
 
 This is the front door for a fresh agent. Read
 [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) for the exhaustive history,
@@ -18,9 +18,9 @@ verification matrix, dependency decisions, and deferred work.
 | Remote check | fetch + push succeeded on 2026-08-09 |
 | Working tree | clean |
 | Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |
-| Last landed | **Cross-consumer kit batch** (PRs #26–#30, 2026-08-09). Four downstream briefs (browser-tab, up-bank, life-stack, EQStack) were folded into one plan; where two consumers asked for the same thing it was treated as the priority signal. Shipped: the REPL piped-input fix (P0, reported by TWO consumers and previously closed by us on a FALSE claim — see DEFERRED #16a) plus four REPL observability APIs; logger `setLogEnvPrefix` + level gate + the last eager env read; `getFileLogLines` PID preference; `withTimeout(label, …)`; EQStack's sleep-skew test for a guard that had shipped untested; `./package.json` on every exports map with a checker to enforce it; and DEFERRED #17 + #22 — `example/` now resyncs itself from the release job. Records: #16a reopened, #19 gains the msr `tagFormat` trap, #23 updated, #25–#28 added. Prior: DEFERRED #15 + downstream Class A fixes (PRs #18–#19); secret-store shipped/de-vendored/wired (PRs #11–#17) — [docs/plans/2026-08-secret-store-and-kit-hardening.md](docs/plans/2026-08-secret-store-and-kit-hardening.md) |
+| Last landed | **Backlog batch, 2026-08-10 — PRs #32–#43.** Stages 1–5 of a 7-stage plan, plus 2 of 3 tail items. Closed: #13, #18, #20, #23, #27 (2 of 4), #29, #30, #31, #32, #2. Decided: #19 (→ ticket #36), #34. Reframed: #3. New: #33, #34, #35, #36. Deferred by the user: #5. **Read "The 2026-08-10 batch" below before anything else — three shipped surfaces turned out never to have worked, and two unplanned majors were published.** |
 | mcpsync | `apps/mcpsync` landed (5 stages + audit + publish prep); npm publish DEFERRED — release job is `workflow_dispatch`-only; local global bin installed via `pnpm add -g`. Desktop write-guard merged (`95f6c03`, PR #2). Round 2026-08-05 merged (`9d90a2c`, PR #3): 3 life-stack findings resolved + `imsg-mcp`→`EQStack` doc rename. Home decision REVERSED same session → relocate mcpsync to life-stack after publishing the kits (DEFERRED #10; import-as-library retracted for an optional `npx` shell-out). (see [docs/plans/2026-08-mcpsync-overview.md](docs/plans/2026-08-mcpsync-overview.md)) |
-| Package state | Published: **`@george43g/robustness@0.6.0`**, **`@george43g/cli-kit@0.3.1`**, **`@george43g/tui-kit@0.3.3`**, **`@george43g/secret-store@0.2.2`** — all cut by CI over OIDC on 2026-08-09. Verified against the published TARBALLS, not the workspace: `setLogEnvPrefix("IMSG")` resolves `IMSG_LOG_DIR`, the level gate silences below threshold, `require("@george43g/robustness/package.json")` resolves, and a piped multi-command REPL script runs every command against a hostile async dispatcher. **Two versioning defects in the trail, both recorded**: robustness 0.3.0 + secret-store 0.2.0 were cut by a `feat(vitest-config):` commit touching their directories (type read against PATHS, scope ignored — field-note 52; trigger paths now exclude test/tooling files); and **cli-kit 0.3.1 is a PATCH carrying four new public APIs** because the commit was typed `fix:` when the diff added surface. Additive, so nothing broke, but it under-signals and cannot be honestly corrected after the fact — see the AGENTS.md bullet. `@george43g/mcpsync` remains bootstrap-pending (`workflow_dispatch`-only). |
+| Package state | Published: **`@george43g/robustness@0.7.0`**, **`@george43g/cli-kit@2.0.0`**, **`@george43g/tui-kit@0.4.0`**, **`@george43g/secret-store@0.2.2`**. **cli-kit's version is an accident twice over and must not be "corrected"** — see #34 and #35. It was planned as 0.4.0; a `!` marker took it to 1.0.0 (semantic-release maps any breaking change to a major with no 0.x clamp), then a **docs-only** commit whose PROSE spelled the footer token took it to 2.0.0, whose `dist/` is byte-identical to 1.0.0. Both immutable. A 3.0.0 renumber would be a third breaking bump for zero API change — up-bank argued this independently and it is recorded. Consumers on `^1.0.0` are unaffected; caret does not cross a major. Prior defects still worth knowing: robustness 0.3.0 + secret-store 0.2.0 cut by a `feat(vitest-config):` commit touching their directories (type read against PATHS, scope ignored); cli-kit 0.3.1 a PATCH carrying four new APIs. `@george43g/mcpsync` remains bootstrap-pending (`workflow_dispatch`-only). |
 | Release pipeline | `.github/workflows/release-packages.yml` PROVEN end-to-end: full verify matrix → npm OIDC trusted publishing (no `NPM_TOKEN`) → tag + CHANGELOG + GitHub release → `[skip ci]` bump commit (loop-safe, confirmed no re-trigger). Now five chained jobs (robustness → cli-kit → tui-kit → secret-store → mcpsync), serialized because each pushes a bump commit. **Build provenance is deliberately OFF** — it requires a public source repo and this one is private; requesting it 422s the publish (field-note 23, which supersedes 19).  **New 2026-08-09 (DEFERRED #22):** the `secret-store` job — the last to run on a push, since `mcpsync` is dispatch-only — regenerates `example/` and commits it, so a release no longer leaves the tracked output stale for the next PR to trip over. Proven on its first two real runs. It passes `--build` because `pnpm verify` builds the scaffolder BEFORE the bump, and `git pull --rebase` before pushing because `main` is unprotected. |
 | Runtime default | **Registry only.** `--runtime-source` was REMOVED — there is no source-vendoring mode. Generated repos depend on the four published packages; ranges are DERIVED from `packages/*/package.json` at build time into `src/generated/published-versions.ts`, never hand-written. `mcp-kit`, `shared-types` and the three tool-config packages are still generated as source. |
 
@@ -28,6 +28,92 @@ On 2026-07-29 the user authorized committing the verified working tree. The
 previously uncommitted implementation (87 modified + 42 untracked files,
 3,201 insertions / 1,201 deletions) landed as
 `ef3809b feat(scaffolder): target-profile retrofits, staged registry runtime, robustness 0.1.0 prep`.
+
+## The 2026-08-10 batch — read this first
+
+Eleven PRs (#32–#43) executing a 7-stage plan. Stages 1–5 are merged; Stage 6 is 2 of 3;
+Stage 7 has not started and is blocked on the user.
+
+### The finding that generalises: three surfaces were shipping without ever having worked
+
+Each reported success the entire time. This is now the first thing to test for, and it is why
+several entries below say "reframed" rather than "fixed".
+
+| Surface | Reported | Reality |
+|---|---|---|
+| `check-publishable-manifests` sibling ranges | passed | `if (!m) return true` waved through every comparator range — and hid a second defect nobody had recorded: `^1.2.0` admitted `1.1.9`, because the caret branch ignored the range's lower bound |
+| Screenshots pipeline (#29) | success on every run | Never produced a file. `docs/screenshots/` held only `.gitkeep` |
+| MCPB bundle (#3) | built a 36.4 MB artifact | The artifact does not run: `ERR_MODULE_NOT_FOUND: ajv` |
+
+**The mechanism in the last two is the same one**: `zip -r` follows symlinks, and a pnpm
+`node_modules` is a symlink farm. And `vhs` exits 0 for a missing command, a blank TUI render, and
+an unwritable output path alike — **`Wait+Screen@<timeout> /regex/` is the only assertion mechanism
+vhs has.** Any tape without one asserts nothing.
+
+### Two unplanned majors, and the guard that now prevents a third
+
+Both from commit-message TEXT, not code:
+
+1. **`cli-kit@1.0.0`** (planned 0.4.0) — a genuine `!` marker whose consequence on a 0.x package
+   was not checked. `@semantic-release/commit-analyzer` maps any breaking change to a **major**
+   with no 0.x clamp. Recorded as #34, now a settled policy: 0.x packages cut 1.0.0 on their first
+   breaking change, no `releaseRules` clamp. The reasoning matters — staying on 0.x adds NO
+   protection, because `^1.0.0` will not cross to 2.0.0 any more than `^0.3.1` crossed to 0.4.0.
+   All 0.x buys is blocking additive minors, which is the case that does not need blocking.
+2. **`cli-kit@2.0.0`** — a **`docs:`** commit whose body explained incident 1 and spelled the
+   footer token while doing so. The analyzer reads that token anywhere in a body. `dist/` is
+   byte-identical to 1.0.0. Recorded as #35.
+
+**Guard**: `scripts/check-release-tokens.mjs` + the `release-tokens` CI job, gated on
+`pull_request` because squash-merging makes the PR title and body the commit message — the check
+has to run BEFORE the merge, since afterwards the version is immutable. Its first test case is the
+real 2.0.0 commit message verbatim. **Never spell the footer token in prose; lowercase it.**
+
+Neither version is renumbered. A third bump for zero API change is worse than an unplanned number,
+and the up-bank agent argued that independently.
+
+### New checks, all wired into `pnpm verify` and CI
+
+| Command | What it catches |
+|---|---|
+| `pnpm test:scripts` | Node's built-in runner over `scripts/**/*.test.mjs` — the repo scripts had NO tests before this |
+| `pnpm check:registry-boundary` | A generated-app import of a kit API that is not in the released surface, compared against the package's git release TAG (no network) |
+| `pnpm check:workflows` | `actionlint`, pinned in `mise.toml`, over all three workflow surfaces |
+| `release-tokens` CI job | Commit prose that would cut an unintended release |
+
+### Consumer upgrade status (all five polled, 2026-08-10)
+
+The user's standing instruction: **tell every consumer to upgrade to the latest kits and report
+breakage; if something needs an upstream fix, publish it and re-request the upgrade from
+everyone.** Round-trips are expected — consumers should not absorb a kit defect locally.
+
+| Repo | State |
+|---|---|
+| up-bank-mcp | On all four latest. Zero rendered-output change, no `TokenBucket` throw, 192 tests + 12 stress. Nothing needed upstream |
+| EQStack (`imsg-mcp`) | Deleted both lifted files and re-pointed THEIR suites at our implementation — 995 tests green. Strongest available evidence the #27 lift preserved semantics |
+| browser-tab-mcp | Upgrade queued behind two of their own PRs; confirmed nothing runs `pnpm update --latest` |
+| life-stack | Holding deliberately — correctly refuses to treat a peer relay as its user's approval, and is asking George directly |
+| wm-stack | Confirmed zero dependency on any kit |
+
+### Stage 7 is blocked on the user
+
+- **#10** — relocating `apps/mcpsync` needs a destination repo.
+- **#12** — the repo rename needs the actual name; the plan deliberately left it a variable.
+
+### Also worth knowing
+
+- `packages/build-config` is new, `private: true`, and **must never be published**. Vite `define`
+  is compile-time substitution over BUNDLED modules; the apps mark `@george43g/*` external, so a
+  published reader would be permanently unsubstituted and would degrade to a plausible fallback
+  rather than erroring.
+- The build stamp reports a commit count of **0** in a shallow checkout rather than the
+  wrong-but-plausible `1` that naive counting gives. `fetch-depth: 0` is now set on the three
+  workflows that lacked it.
+- `#19` is decided — generated repos move to release-please, ticketed as **#36**. This repo's own
+  `release-packages.yml` is untouched and proven.
+- `#5` (vector-search demo) is **deferred by the user as an experiment**, with their own doubt
+  recorded: they do not know why a vector DB was raised in this repo at all. Do not schedule it;
+  remind them it exists.
 
 ## Do not repeat completed work
 
@@ -139,6 +225,32 @@ After `ef3809b`, a docs/harness pass applied the practices from
   into `pnpm verify` and CI after the Lint step.
 
 ## Next decision, not next implementation
+
+**NEXT, and both need the user (2026-08-10): Stage 7.**
+
+1. **#10 — relocate `apps/mcpsync` out of this repo.** 32 source files / 3,533 LOC plus 17 test
+   files, ZERO code coupling to `packages/*`, `apps/scaffolder`, `example/` or `turbo.json` — it
+   only consumes published kits. Blocked on: which repo it moves to. Before moving anything, write
+   `apps/mcpsync/HANDOFF.md` capturing DEFERRED #9 in full so the gap travels with the app, then
+   delete #9 from this repo. Removal checklist is in #10. **Two things easy to get wrong**: deleting
+   the mcpsync release job re-tails the chain on `secret-store`, which is where the `example/`
+   resync lives — verify the resync still fires; and mcpsync contributes ~160 tests to the meta
+   suite, so update any doc quoting a total.
+2. **#12 — the repo rename.** Blocked on the actual name. Touches `repository.url` in the five
+   published manifests (npm compares it case-sensitively against the signing certificate),
+   `REPO_URL` in `scripts/check-publishable-manifests.mjs`, ~40 relative doc links
+   (`pnpm check:docs` is the gate), and needs `pnpm regen:example` afterwards. Do it when no
+   release is in flight, and message all consumers when it lands.
+
+Deliberately last: four consumer repos are mid-adoption of the kits, and moving the repo under
+them while that settles is how references go stale silently.
+
+**Then**: #36 (release-please for generated repos, decided in #19), #3 (the MCPB bundle does not
+run — ~half a day, and it needs a runs-after-extraction assertion in CI or it recurs silently),
+#27's remaining two lifts (`toYaml`, Prometheus metrics — still no warm consumer).
+
+---
+
 
 **DONE (2026-08-09): the DEFERRED #16 split — 16a/16b — merged as PR #21.** `DEFERRED.md` #16 is rewritten as 16a (kit-side,
 OURS) / 16b (EQStack adoption, THEIRS — never touch that repo). 16a's

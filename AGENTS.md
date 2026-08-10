@@ -80,7 +80,10 @@ packages/
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm check:docs` | Docs integrity: relative links, agent-file symlinks, docs index coverage |
 | `pnpm check:publishable-manifests` | Publish shape of the npm-published packages: repository metadata, `files`, no `workspace:` in shipped deps |
-| `pnpm verify` | lint + docs check + manifest check + typecheck + test:coverage + build (the CI shape) |
+| `pnpm test:scripts` | Node's built-in runner over `scripts/**/*.test.mjs` — the repo scripts' own tests |
+| `pnpm check:registry-boundary` | A generated-app import of a kit API that is not in the RELEASED surface. Compares against each package's git release tag, so it needs no network — `pnpm verify` cannot catch this otherwise, because pnpm links the workspace copy |
+| `pnpm check:workflows` | `actionlint` (pinned in `mise.toml`) over all three workflow surfaces. Requires `mise install` first |
+| `pnpm verify` | lint + script tests + docs + manifests + registry boundary + workflows + typecheck + test:coverage + build (the CI shape) |
 | `pnpm stress` | 13-assertion MCP stress harness against `apps/example-repo-mcp/` |
 | `pnpm regen:example` | Rebuild the tracked `example/` output from the scaffolder |
 

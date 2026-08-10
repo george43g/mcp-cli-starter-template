@@ -12,7 +12,7 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| `origin/main` | Last code-bearing merges: **PRs #26–#30** (2026-08-09) — REPL serial queue + exports checker, logger env prefix + level gate, records + downstream replies, `example/` resync automation, deferred call sites. Interleaved with `[skip ci]` release bumps and, new this round, BOT-authored `chore(example): resync generated output after release` commits: those are DEFERRED #22's automation working, not drift. No literal SHA and no CI verdict: a records file cannot name its own merge commit, nor testify to a check that runs after it is written. Use `git log --oneline -1 origin/main` and `gh pr checks`. |
+| `origin/main` | Last code-bearing merges: **PRs #32–#43** (2026-08-10) — the backlog batch: manifest range checker, screenshots pipeline, `tryAcquire`, ContentBlock union, tui-kit lifts, build identity + registry boundary + workflow lint, and three decision/record PRs. Interleaved with `[skip ci]` release bumps and BOT-authored `chore(example): resync generated output after release` commits — DEFERRED #22's automation working, not drift. No literal SHA and no CI verdict: a records file cannot name its own merge commit, nor testify to a check that runs after it is written. Use `git log --oneline -1 origin/main` and `gh pr checks`. |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |
@@ -20,12 +20,70 @@ completed work, local-only work, and deliberately deferred work.
 | Working tree | clean |
 | Product boundary | fresh scaffolds are pnpm-only |
 | Runtime boundary | **Registry only, decided 2026-08-09.** `--runtime-source` removed; no source-vendoring mode exists. Generated repos depend on the four published packages with ranges derived from the real manifests at build time. |
-| Registry state | Published: **`@george43g/robustness@0.6.0`**, **`@george43g/cli-kit@0.3.1`**, **`@george43g/tui-kit@0.3.3`**, **`@george43g/secret-store@0.2.2`** (all CI OIDC, 2026-08-09). **Verified against the published tarballs, not the workspace**: `setLogEnvPrefix("IMSG")` resolves `IMSG_LOG_DIR`; the level gate silences below threshold and `_resetForTests` restores `MCP_`; `require("@george43g/robustness/package.json")` resolves; and a piped multi-command REPL script executes every command against a dispatcher that yields to the macrotask queue. robustness 0.6.0 = logger env prefix + level gate + the last eager env read + `getFileLogLines` PID preference + `withTimeout(label, …)` + EQStack's sleep-skew test. cli-kit 0.3.1 = the REPL serial queue and four observability APIs — **a patch that should have been a minor**, because the commit was typed `fix:` when its diff added public surface (additive, nothing broke; see the AGENTS.md bullet). tui-kit 0.3.3 and secret-store 0.2.2 = the `./package.json` exports entry, now enforced by `check-publishable-manifests`. Earlier trail: robustness 0.5.2 fixed the watchdog force-exit net (DEFERRED #24) — **consumers must not stay on 0.5.1**; cli-kit 0.3.0 added forced human output; the `.1` patches before them were the CJS `exports` fix (PR #22); before that 16a's robustness 0.5.0 and tui-kit 0.3.0; and PR #19's robustness 0.4.0 / cli-kit 0.2.0 / tui-kit 0.2.0 / secret-store 0.2.0. Trail note: robustness 0.3.0 and secret-store 0.2.0 were ACCIDENTAL — a `feat(vitest-config):` commit touched files inside their directories and `semantic-release-monorepo` reads the type against paths, not the scope (field-note 52); trigger paths now exclude test/tooling files. Trusted Publishers configured for all four — CI releases with no `NPM_TOKEN`. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
+| Registry state | Published: **`@george43g/robustness@0.7.0`**, **`@george43g/cli-kit@2.0.0`**, **`@george43g/tui-kit@0.4.0`**, **`@george43g/secret-store@0.2.2`**. **cli-kit's number is an accident twice over and must NOT be renumbered** — planned 0.4.0; a `!` marker took it to 1.0.0 (the analyzer maps any breaking change to a major with no 0.x clamp — DEFERRED #34), then a **docs-only** commit whose prose spelled the footer token took it to 2.0.0, whose `dist/` is byte-identical to 1.0.0 (#35, verified by unpacking both tarballs). A 3.0.0 would be a third breaking bump for zero API change. robustness 0.7.0 = `TokenBucket.tryAcquire` + the `n > capacity` throw (it used to spin forever) + the `_resetForTests` prefix-reset docs. tui-kit 0.4.0 = `visualWidth`/`clusterWidth`/`truncateToWidth` + `detectNerdFont`, lifted verbatim from EQStack with their tests as the oracle; 0.3.4 before it was the sibling-range fix. cli-kit's content = the `ContentBlock` discriminated union + its renderer. Earlier trail: robustness 0.6.0 (logger env prefix, level gate, `getFileLogLines` PID preference, `withTimeout(label, …)`); cli-kit 0.3.1 — **a patch that should have been a minor**, typed `fix:` when its diff added four public APIs; robustness 0.5.2 fixed the watchdog force-exit net (#24) — **consumers must not stay on 0.5.1**; robustness 0.3.0 and secret-store 0.2.0 were ACCIDENTAL, cut by a `feat(vitest-config):` commit touching their directories (type read against PATHS, scope ignored — field-note 52). Trusted Publishers configured for all four — CI releases with no `NPM_TOKEN`. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
 | mcpsync | `apps/mcpsync` landed on `main` (all 5 stages + audit + publish prep); npm publish DEFERRED — `release-packages.yml` mcpsync job is `workflow_dispatch`-only; interim install is the local global bin (`pnpm add -g <abs path to apps/mcpsync>`, installed 2026-08-03); MIGRATION COMPLETE 2026-08-03: opencode joined project scope, `~/dotfiles/mcp/` scripts and imsg `hot-deploy-ext.mjs` deleted — mcpsync is the single MCP config/deploy tool. **Guard (2026-08-05):** Desktop write-guard merged (`95f6c03`, PR #2). **Follow-ups merged 2026-08-05 (`9d90a2c`, PR #3):** 3 life-stack findings resolved (opencode project-scope help, backup prune-to-5 + gitignore, `${VAR}`→`{env:VAR}` in opencode command/args), `imsg-mcp`→`EQStack` doc rename. **Home decision REVERSED same session** → relocate mcpsync to life-stack after publishing the kits (see DEFERRED.md #10; generated-tools-import retracted for an optional `npx` shell-out). See [plans/2026-08-mcpsync-overview.md](plans/2026-08-mcpsync-overview.md) |
 
 Always re-run `git status --short --branch` before relying on this snapshot.
 
 ## History that must survive compaction
+
+### The 2026-08-10 backlog batch (PRs #32–#43)
+
+Stages 1–5 of a 7-stage plan, plus 2 of 3 tail items. Stage 7 (mcpsync relocation, repo rename) is
+not started and needs the user.
+
+**The generalisable finding: three surfaces had been shipping without ever having worked**, each
+reporting success. Two share one mechanism — `zip -r` follows symlinks and a pnpm `node_modules` is
+a symlink farm.
+
+1. **The sibling-range check** returned `true` for any clause its single regex could not parse. It
+   was blocking its own fix: the honest range `>=0.1.1 <1` fell into the escape hatch, so adopting
+   it would have made the check pass by opting out. Writing the script's FIRST test surfaced a
+   second, unrecorded defect: `^1.2.0` admitted `1.1.9`, because the caret branch compared only the
+   major and ignored the lower bound. Now delegates to `semver`; an unparseable range is a failure,
+   not an admission.
+2. **The screenshots pipeline** (#29) had never produced a file — `docs/screenshots/` held only
+   `.gitkeep`. FOUR independent defects, any one sufficient: `Output` resolved against the process
+   cwd rather than the tape's directory (landing at an unwritable `/docs/screenshots`); the tapes
+   typed a bin name that does not exist; `Output foo.png` writes a 210-file frame directory and
+   `*.png` was gitignored; and the `for` loop returned only the last tape's status. **The lever is
+   that `Wait+Screen@<timeout> /regex/` is the only assertion mechanism vhs has** — it exits 0 for
+   a missing command, a blank TUI, and an unwritable path alike. CI now commits a real TUI capture.
+3. **The MCPB bundle** (#3) does not run: `ERR_MODULE_NOT_FOUND: ajv` from a clean extract. Size is
+   36.4 MB, not the ~52 MB claimed, and size was never the defect — the zip flattens pnpm's nested
+   layout, stranding packages without their dependencies. Two fixes were attempted and REJECTED on
+   measurement (`pnpm deploy --prod` alone grew it to 46.6 MB; deploy + dereference reached
+   26.26 MB but still failed on `picocolors`). Nothing shipped. A correct fix must make the
+   extracted bundle run, and that assertion belongs in CI.
+
+**Two unplanned majors, both from commit-message TEXT rather than code.** `cli-kit@1.0.0` came from
+a `!` marker whose 0.x consequence was unchecked (#34); `cli-kit@2.0.0` came from a **`docs:`**
+commit whose body explained incident 1 and spelled the footer token while doing so (#35). The
+analyzer reads that token anywhere in a body. Guard: `scripts/check-release-tokens.mjs` plus a
+`release-tokens` CI job gated on `pull_request` — squash-merging makes the PR title and body the
+commit message, so it must run before the merge. Its first test case is the real 2.0.0 message.
+
+**#34's settled reasoning is worth keeping**, because the first framing was wrong: staying on `0.x`
+adds NO protection against breaking changes. `^1.0.0` will not cross to 2.0.0 any more than
+`^0.3.1` crossed to 0.4.0 — the insulation is identical. All `0.x` buys is blocking *additive*
+minors, which is the case that does not need blocking, and which a consumer explicitly said they
+want automatic.
+
+**Shipped capability**: `TokenBucket.tryAcquire` (#30, with `retryMs` guaranteed *sufficient*, not
+merely positive — covered across six bucket shapes); the `ContentBlock` discriminated union and its
+renderer (#31, cli-kit's only breaking change); `visualWidth`/`truncateToWidth`/`detectNerdFont`
+lifted verbatim from EQStack with their tests as the acceptance oracle (#27, 2 of 4); build identity
+(#18); and three new gates — `check:registry-boundary` (compares generated-app imports against each
+package's git release TAG, no network), `check:workflows` (actionlint over all three surfaces), and
+`test:scripts`.
+
+**Decided**: #19 → generated repos move to release-please (ticketed as #36); this repo's own
+`release-packages.yml` is untouched and proven. #34 → 0.x packages cut 1.0.0 on their first
+breaking change, no config clamp.
+
+**Deferred by the user**: #5, the vector-search Resources demo — kept as an experiment they want to
+run eventually, with their own doubt recorded that it belongs in this repo at all.
+
 
 ### Upstream remediation: `e431399`
 
@@ -462,6 +520,16 @@ assuming one edit propagates automatically.
    runtime default are separate decisions. None is authorized by this handoff.
 7. If starting a deferred migration, isolate it from the verified baseline and
    record the new decision in this file.
+8. **Before writing any commit message or PR body**, remember that they are
+   machine input: `semantic-release` reads the breaking-change footer token
+   anywhere in a body and cuts a MAJOR. Two unplanned `cli-kit` majors were
+   published this way on 2026-08-10. `pnpm test:scripts` and the `release-tokens`
+   CI job now block it; write about the token in lowercase rather than spelling
+   it. Same class as the existing rule about skip-CI markers in prose.
+9. **Assume a green check may be checking nothing until you have seen it fail.**
+   Three surfaces here reported success while never having worked (see "The
+   2026-08-10 backlog batch"). For any check you rely on or add, construct the
+   failure first and confirm it goes red.
 
 The former external plan path
 `/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md` is absent. Do not

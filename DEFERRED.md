@@ -146,6 +146,29 @@ into CI, or this recurs silently.
 
 ## 5. Semantic / vector search demo for the Resources kit
 
+**Status**: DEFERRED BY THE USER, 2026-08-10, and explicitly kept in the backlog as **an experiment
+they want to run eventually** — not as work anyone should schedule.
+
+> "this can be deferred until the end / later — I don't know why vector db was even brought up in
+> this repo — but do remind me that it's an experiment I want to do eventually"
+
+That doubt is worth preserving alongside the item: **the entry never justified why a vector search
+demo belongs in a starter template at all.** It was proposed as a richer Resources example, and the
+original text already conceded it "probably belongs in a separate advanced-patterns doc". Nobody
+has since asked for it, and the stated trigger below has never fired.
+
+**So the first question is not "how do we build it" but "does it belong here".** It would add an
+embedding dependency to every scaffolded repo to demonstrate one pattern. Weigh that before
+implementing — and if the answer is that it is an experiment rather than template content, the
+right home may be a scratch repo, not `08-app/lib`.
+
+Deprioritised below #3 (the MCPB bundle does not run) and Stage 7 (mcpsync relocation + repo
+rename) in the 2026-08-10 batch.
+
+**Original entry follows.**
+
+## 5 (original). Semantic / vector search demo for the Resources kit
+
 **Status**: not started.
 
 **Why deferred**: the MCP Resources demo (`apps/example-repo-mcp/src/resources/registry.ts`) currently exposes `health://` + `logs://recent/{n}`. Adding a `search://embeddings/{query}` example would show a richer pattern (vector index + pluggable embedding model), but it's bespoke and probably belongs in a separate "advanced patterns" doc.
