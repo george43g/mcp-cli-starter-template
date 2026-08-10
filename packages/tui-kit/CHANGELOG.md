@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.4.1](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.4.0...tui-kit-v0.4.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* **tui-kit:** dispatch chunked keystrokes in useVimKeys ([be3bd08](https://github.com/george43g/mcp-cli-starter-template/commit/be3bd08b963db3ec85fafbcba9cd5ec5d464399e))
+
 # [@george43g/tui-kit-v0.4.0](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.3.4...tui-kit-v0.4.0) (2026-08-09)
 
 
