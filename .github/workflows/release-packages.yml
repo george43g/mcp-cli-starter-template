@@ -153,6 +153,14 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Install actionlint via mise
+        # `pnpm verify` includes check:workflows, and actionlint is pinned in
+        # mise.toml — it is not on PATH until mise installs it. Without this the
+        # release path fails at Verify with `actionlint: not found`, which is
+        # how it failed on 2026-08-10: the check was added to verify for CI,
+        # where a mise step already existed, and the release jobs had none.
+        uses: jdx/mise-action@v4
+
       - name: Verify (lint + docs + typecheck + unit/integration tests + build)
         run: pnpm verify
 
@@ -206,6 +214,14 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Install actionlint via mise
+        # `pnpm verify` includes check:workflows, and actionlint is pinned in
+        # mise.toml — it is not on PATH until mise installs it. Without this the
+        # release path fails at Verify with `actionlint: not found`, which is
+        # how it failed on 2026-08-10: the check was added to verify for CI,
+        # where a mise step already existed, and the release jobs had none.
+        uses: jdx/mise-action@v4
+
       - name: Verify (lint + docs + manifests + typecheck + tests + build)
         run: pnpm verify
 
@@ -244,6 +260,14 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Install actionlint via mise
+        # `pnpm verify` includes check:workflows, and actionlint is pinned in
+        # mise.toml — it is not on PATH until mise installs it. Without this the
+        # release path fails at Verify with `actionlint: not found`, which is
+        # how it failed on 2026-08-10: the check was added to verify for CI,
+        # where a mise step already existed, and the release jobs had none.
+        uses: jdx/mise-action@v4
+
       - name: Verify (lint + docs + manifests + typecheck + tests + build)
         run: pnpm verify
 
@@ -276,9 +300,11 @@ jobs:
           node-version: "24"
           cache: pnpm
 
-      # Only this job needs mise: the example/ resync below runs the usage(1)
-      # tasks (docs, completions, manpage) inside the scaffolded output.
-      - name: Setup mise (usage(1) for the example/ resync)
+      # This job needs mise for TWO things: the example/ resync below runs the
+      # usage(1) tasks (docs, completions, manpage) inside the scaffolded
+      # output, and `pnpm verify` runs check:workflows, whose actionlint is
+      # pinned here too. One step covers both.
+      - name: Setup mise (usage(1) for the example/ resync, actionlint for verify)
         uses: jdx/mise-action@v4
         with:
           install: true
@@ -369,6 +395,14 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
+
+      - name: Install actionlint via mise
+        # `pnpm verify` includes check:workflows, and actionlint is pinned in
+        # mise.toml — it is not on PATH until mise installs it. Without this the
+        # release path fails at Verify with `actionlint: not found`, which is
+        # how it failed on 2026-08-10: the check was added to verify for CI,
+        # where a mise step already existed, and the release jobs had none.
+        uses: jdx/mise-action@v4
 
       - name: Verify (lint + docs + manifests + typecheck + tests + build)
         run: pnpm verify

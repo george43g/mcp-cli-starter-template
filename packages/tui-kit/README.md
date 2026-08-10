@@ -161,6 +161,30 @@ cache reset is a test seam only.
 `@george43g/tui-kit/theme` exposes the theme and color layer on its own, for
 consumers that want the palette without the components.
 
+## Fixed after 0.4.0: `useVimKeys` lost fast keystrokes
+
+If you are on `0.4.0` or earlier, upgrade — this one is invisible until you
+look for it.
+
+Ink delivers a fast keystroke burst or a paste as **one** `useInput` call
+containing the whole string, but every comparison in the hook was
+`input === "j"`. A burst matched nothing and was dropped: measured against a
+real 56-row list, `jj` sent as one write moved **0** rows, and ten rapid `j`
+moved **4**.
+
+The count buffer made it worse. The digit guard was `input >= "0" && input
+<= "9"` — a *lexicographic string range*, which `"5j"` satisfies. So a chunked
+count landed in the buffer and was replayed on the **next** keystroke, giving
+you a lone `j` that silently jumps 5 rows.
+
+A chunk is now dispatched per character, but only when every character is a key
+the hook owns (`0-9 g G j k`). Anything else still reaches `onUnhandled`
+intact, so a pasted paragraph cannot drive motion or reach your
+destructive-key handlers one character at a time.
+
+Reported by a downstream consumer running an adversarial TUI stress pass. No
+API change.
+
 ## Stability
 
 This package is pre-1.0. Minor version bumps may contain breaking changes to
