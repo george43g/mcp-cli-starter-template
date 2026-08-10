@@ -1776,3 +1776,39 @@ Swap what the scaffolder GENERATES from `semantic-release` to `release-please`. 
   not impossible.
 
 **Cost**: ~2h, most of it in the lib mirror and regen. Zero risk to this repo's own publishing.
+
+---
+
+## 37. A consumer-side canary for under-classified breaking changes
+
+**Status**: open, proposed by the up-bank-mcp session 2026-08-10. Not built, and deliberately not
+volunteered — it costs the user compute and is the user's call.
+
+**The gap it addresses.** The `release-tokens` guard (#35, hardened 2026-08-10) constrains a
+release-control token in a commit message, so it prevents **spurious majors** — the class that
+actually bit us twice. It does nothing about the mirror image, which is the dangerous one: **a
+breaking change the author did not know was breaking, published as a minor or patch**, which every
+consumer's caret range pulls in silently on their next install.
+
+up-bank's argument, which is correct and which I could not counter: *no commit-message linter can
+catch a change the author did not know was breaking — that is the definition of the class.* So this
+cannot be fixed on the publishing side. It needs a consumer running real code against a new version.
+
+**What it would be.** One downstream repo installs the newest kit versions its carets admit and runs
+its full suite **on a schedule**, not only on its own PRs — so a bad release is caught within a day
+rather than whenever that repo next happens to touch its lockfile.
+
+**Why up-bank is the natural candidate** (their own case, recorded as offered rather than accepted):
+205 tests, a committed REPL transcript suite, and a TUI PTY check, all fixture-backed and
+credential-free. They already caught the pipe-safety snapshot break by measurement rather than
+impression, which is exactly the behaviour a canary needs.
+
+**Evidence this class is not hypothetical.** `cli-kit@2.0.1` shipped as a PATCH and broke 8 of
+up-bank's 12 snapshot tests — no API change, no type error, no runtime error. That was a
+*deliberate* output fix and the right call, but it demonstrates that a patch can reach consumers
+with real behavioural consequences that nothing on the publishing side would flag. An *accidental*
+one would look identical from here.
+
+**Trigger to act**: the first under-classified breaking release that reaches a consumer, or the user
+deciding the standing round-trip is too manual to keep repeating. Ask up-bank's user before
+assuming their compute.

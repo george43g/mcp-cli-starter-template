@@ -4,7 +4,8 @@ import { describe, it } from "node:test";
 import {
   checkReleaseTokens,
   isGeneratedReleaseCommit,
-  splitCommitMessages,
+  RELEASE_BOT_EMAIL,
+  splitCommitRecords,
 } from "./lib/release-tokens.mjs";
 
 /**
@@ -87,31 +88,63 @@ Mentions BREAKING-CHANGE in passing.`;
 });
 
 describe("isGeneratedReleaseCommit", () => {
-  it("recognises a real semantic-release bump subject", () => {
-    assert.equal(isGeneratedReleaseCommit("chore(release): cli-kit 2.0.0 [skip ci]"), true);
+  const BOT = RELEASE_BOT_EMAIL;
+
+  it("recognises a real semantic-release bump commit", () => {
+    assert.equal(isGeneratedReleaseCommit("chore(release): cli-kit 2.0.0 [skip ci]", BOT), true);
   });
 
-  it("requires BOTH markers, so a hand-written subject is not a bypass", () => {
-    // Without [skip ci] it is not machine-generated and must still be checked.
-    assert.equal(isGeneratedReleaseCommit("chore(release): sneak this past the guard"), false);
-    assert.equal(isGeneratedReleaseCommit("docs: something [skip ci]"), false);
+  /**
+   * The hole the life-stack session asked about: the first version matched on
+   * the SUBJECT alone, so a human could write this exact subject, quote the
+   * footer token while explaining a past break — the precise thing that caused
+   * 2.0.0 — and be skipped. Identity is what closes it.
+   */
+  it("does NOT skip a human writing the same subject", () => {
+    assert.equal(
+      isGeneratedReleaseCommit("chore(release): cli-kit 9.9.9 [skip ci]", "human@example.com"),
+      false,
+    );
+  });
+
+  it("does not skip when the author is unknown", () => {
+    assert.equal(isGeneratedReleaseCommit("chore(release): x 1.0.0 [skip ci]", undefined), false);
+    assert.equal(isGeneratedReleaseCommit("chore(release): x 1.0.0 [skip ci]", ""), false);
+  });
+
+  it("still requires both subject markers, so a bot identity alone is not enough", () => {
+    // Keeps the check failing CLOSED if the bot identity ever changes.
+    assert.equal(isGeneratedReleaseCommit("chore(release): no skip marker", BOT), false);
+    assert.equal(isGeneratedReleaseCommit("docs: something [skip ci]", BOT), false);
   });
 });
 
-describe("splitCommitMessages", () => {
-  it("splits on NUL and drops the trailing empty record", () => {
-    assert.deepEqual(splitCommitMessages("first\0second\0"), ["first", "second"]);
+describe("splitCommitRecords", () => {
+  const rec = (email, msg) => `${email}\x1f${msg}`;
+
+  it("splits records on NUL and the author off on US", () => {
+    assert.deepEqual(splitCommitRecords(`${rec("a@x", "first")}\0${rec("b@y", "second")}\0`), [
+      { authorEmail: "a@x", message: "first" },
+      { authorEmail: "b@y", message: "second" },
+    ]);
   });
 
   it("keeps blank lines inside a message intact", () => {
-    // The reason NUL is the separator: bodies contain blank lines, so any
-    // textual delimiter can occur inside a message.
-    const [only] = splitCommitMessages("subject\n\nbody line\n\nmore\0");
-    assert.equal(only, "subject\n\nbody line\n\nmore");
+    // Why NUL and US: bodies contain blank lines and arbitrary prose, so any
+    // printable delimiter can occur inside a message.
+    const [only] = splitCommitRecords(rec("a@x", "subject\n\nbody line\n\nmore"));
+    assert.equal(only.message, "subject\n\nbody line\n\nmore");
+    assert.equal(only.authorEmail, "a@x");
+  });
+
+  it("does not mistake a US byte inside the body for the separator", () => {
+    const [only] = splitCommitRecords(rec("a@x", "subject\n\nbody with \x1f in it"));
+    assert.equal(only.authorEmail, "a@x");
+    assert.equal(only.message, "subject\n\nbody with \x1f in it");
   });
 
   it("returns nothing for empty git output", () => {
-    assert.deepEqual(splitCommitMessages(""), []);
-    assert.deepEqual(splitCommitMessages("\0\0"), []);
+    assert.deepEqual(splitCommitRecords(""), []);
+    assert.deepEqual(splitCommitRecords("\0\0"), []);
   });
 });

@@ -35,7 +35,7 @@ import { execFileSync } from "node:child_process";
 import {
   checkReleaseTokens,
   isGeneratedReleaseCommit,
-  splitCommitMessages,
+  splitCommitRecords,
 } from "./lib/release-tokens.mjs";
 
 /** `0000000000000000000000000000000000000000` — GitHub's "no previous commit". */
@@ -70,7 +70,7 @@ function resolveMessages(range) {
 
   if (!before || NULL_SHA.test(before)) {
     return {
-      messages: splitCommitMessages(git(["log", "--format=%B%x00", "-1", head])),
+      records: splitCommitRecords(git(["log", "--format=%ae%x1f%B%x00", "-1", head])),
       note: "no previous SHA (new branch or manual run) — checked HEAD only",
     };
   }
@@ -84,13 +84,13 @@ function resolveMessages(range) {
     });
   } catch {
     return {
-      messages: splitCommitMessages(git(["log", "--format=%B%x00", "-1", head])),
+      records: splitCommitRecords(git(["log", "--format=%ae%x1f%B%x00", "-1", head])),
       note: `previous SHA ${before.slice(0, 8)} is unreachable (force push?) — checked HEAD only`,
     };
   }
 
   return {
-    messages: splitCommitMessages(git(["log", "--format=%B%x00", `${before}..${head}`])),
+    records: splitCommitRecords(git(["log", "--format=%ae%x1f%B%x00", `${before}..${head}`])),
     note: null,
   };
 }
@@ -106,12 +106,12 @@ if (rangeFlag !== -1) {
     console.error("--range requires an argument, e.g. --range abc123..def456");
     process.exit(2);
   }
-  const { messages, note } = resolveMessages(range);
+  const { records, note } = resolveMessages(range);
   if (note) console.log(`note: ${note}`);
 
-  for (const message of messages) {
+  for (const { authorEmail, message } of records) {
     const subject = message.split("\n")[0] ?? "";
-    if (isGeneratedReleaseCommit(subject)) {
+    if (isGeneratedReleaseCommit(subject, authorEmail)) {
       skipped += 1;
       continue;
     }
