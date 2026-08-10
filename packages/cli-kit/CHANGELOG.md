@@ -1,3 +1,10 @@
+# [@george43g/cli-kit-v2.0.1](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v2.0.0...cli-kit-v2.0.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* **cli-kit:** parse CI env values and keep piped stdout parseable ([e5e5187](https://github.com/george43g/mcp-cli-starter-template/commit/e5e5187ef96afdf49325bb002e311af1a14ee8c3))
+
 # [@george43g/cli-kit-v2.0.0](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v1.0.0...cli-kit-v2.0.0) (2026-08-09)
 
 
