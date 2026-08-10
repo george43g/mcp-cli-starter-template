@@ -185,6 +185,31 @@ destructive-key handlers one character at a time.
 Reported by a downstream consumer running an adversarial TUI stress pass. No
 API change.
 
+### Check your own `useInput` handlers for the same two bugs
+
+This is not a `useVimKeys` bug so much as an **ink bug class**, and every
+hand-written key router is exposed to it. The first consumer to read this fix
+went looking and found both defects in their own router the same day — they had
+filed the symptom ("`gg` ignored when both g's arrive in one chunk") as minor
+polish, not realising it shared a cause with keystroke loss.
+
+Two greps will tell you:
+
+```console
+# 1. Single-character equality — misses every burst and paste
+$ grep -n 'input === "' src/**/*.tsx
+
+# 2. A lexicographic digit range — "5j" satisfies it
+$ node -e 'console.log("5j" >= "0" && "5j" <= "9")'
+true
+```
+
+The fix that works: fan a chunk out **only** when every character is a key you
+own, and pass anything else through whole. Do not fan out unconditionally — if
+any single key of yours is destructive (quit, delete, send, write a file),
+pasting text containing that character will fire it. One consumer had already
+shipped exactly that incident: a paste containing `q` quit the app.
+
 ## Stability
 
 This package is pre-1.0. Minor version bumps may contain breaking changes to
