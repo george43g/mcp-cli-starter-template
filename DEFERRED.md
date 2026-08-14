@@ -1736,10 +1736,32 @@ verbatim. The rule is symmetric:
 - The token without `!` in the subject → **rejected**. Prose cannot cut a release.
 - `!` in the subject without the token → **rejected**. A major must say what broke.
 
-It runs as a `release-tokens` CI job gated on `pull_request`, because squash-merging makes the PR
-title and body the commit message — so the check has to happen BEFORE the merge. Afterwards the
-package is published and npm versions are immutable. Shipped to the generated template too; it has
-the same semantic-release setup and therefore the same trap.
+**Where it runs — and this took two corrections, both prompted by consumer questions rather than by
+our own review:**
+
+1. `ci.yml`, on `pull_request`. Squash-merging makes the PR title and body the commit message, so
+   the check has to happen BEFORE the merge; afterwards the package is published and npm versions
+   are immutable. Shipped to the generated template too — same semantic-release setup, same trap.
+2. `release-packages.yml`, as a gate every release job `needs:`, checking the REAL commit messages
+   over the pushed range. **This is the load-bearing copy.** The `pull_request` job alone was not on
+   the publishing path: `main` is **not a protected branch** (`gh api …/branches/main/protection`
+   returns 404), so a direct push never opens a PR and never met the check — and a merger can edit a
+   squash commit's message at merge time, which makes the PR body a *prediction* of the commit
+   message rather than the message.
+
+Bot-authored bump commits are skipped, keyed on `semantic-release-bot`'s **authorship**. The first
+version keyed on the subject text, which anyone can type — a second hole, found by the same session
+asking whether quoting inside a `chore(release):` subject had become the new bypass. The subject
+markers are kept as a second condition so a future change of bot identity fails CLOSED.
+
+Worth knowing: **no bump commit in this repo's history has ever contained the token**, because
+conventional-changelog's heading is the plural form and the regex ends in a word boundary. The skip
+is belt-and-braces, not load-bearing — the right posture for a bypass, and pinned by a test against
+the real 1.0.0 bump body so a future "simplification" of the regex cannot silently break it.
+
+**What this guard does NOT cover, and structurally cannot**: an under-classified breaking change
+published as a minor or patch. No commit-message linter catches a break the author did not know
+about. See **#37**.
 
 **Not renumbered.** Publishing a 3.0.0 to "undo" 2.0.0 would be a third breaking bump for zero API
 change. Consumers on `^1.0.0` are unaffected — caret does not cross a major — and the next real

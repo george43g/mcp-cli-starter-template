@@ -136,9 +136,23 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
   inside a sentence describing a past incident. A `docs:` commit whose body
   explained the previous mishap published `cli-kit@2.0.0` — a major whose
   `dist/` was byte-identical to `1.0.0`. Two unplanned majors in one session,
-  both from message text. `pnpm test:scripts` + the `release-tokens` CI job now
+  both from message text. `pnpm test:scripts` + the `release-tokens` job now
   reject the token unless the subject also carries `!`; to write ABOUT it, use
-  lowercase prose and do not spell the literal.
+  lowercase prose and do not spell the literal. The job runs in **two** places —
+  `ci.yml` on `pull_request`, and `release-packages.yml` as a gate every release
+  job needs. The second is the one that matters: `main` is unprotected, so a
+  direct push never opens a PR. It catches spurious majors, **not** an
+  under-classified breaking change published as a minor (DEFERRED #37).
+- **Rendered output is not covered by semver.** A patch that improves a
+  rendering breaks any consumer snapshotting stdout — no API change, no type
+  error, nothing thrown. `cli-kit@2.0.1` broke 8 of one consumer's 12 snapshot
+  tests. When changing what a kit prints, say so in its README: cli-kit's
+  standing promise is *results and meta footers stable, chrome not*.
+- **Never hand-carry a version number to a consumer — cite `npm view`.** A
+  relayed number is stale the moment the next release fires, and releases here
+  fire on push to `main`. Five sessions were told `cli-kit 1.0.0`; one pinned
+  `^1.0.0` and sat a major behind believing it was current. Semantics travel
+  fine by hand; numbers do not.
 - **Shared-tool-config packages are NEVER published.** `tsconfig`, `vitest-config`,
   and `biome-config` are per-monorepo shared config, meant to be customised for
   the repo they live in — not real dependencies. They stay `private: true`. A
