@@ -1,6 +1,7 @@
 # Current Handoff
 
-Last refreshed: 2026-08-10 (Australia/Melbourne)
+Last refreshed: 2026-08-14 (Australia/Melbourne). The work it describes landed
+2026-08-10; nothing has changed on `main` since.
 
 This is the front door for a fresh agent. Read
 [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) for the exhaustive history,
@@ -18,9 +19,9 @@ verification matrix, dependency decisions, and deferred work.
 | Remote check | fetch + push succeeded on 2026-08-09 |
 | Working tree | clean |
 | Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |
-| Last landed | **Backlog batch, 2026-08-10 — PRs #32–#43.** Stages 1–5 of a 7-stage plan, plus 2 of 3 tail items. Closed: #13, #18, #20, #23, #27 (2 of 4), #29, #30, #31, #32, #2. Decided: #19 (→ ticket #36), #34. Reframed: #3. New: #33, #34, #35, #36. Deferred by the user: #5. **Read "The 2026-08-10 batch" below before anything else — three shipped surfaces turned out never to have worked, and two unplanned majors were published.** |
+| Last landed | **Two batches, both 2026-08-10.** (1) **Backlog, PRs #32–#43** — Stages 1–5 of a 7-stage plan plus 2 of 3 tail items. Closed: #13, #18, #20, #23, #27 (2 of 4), #29, #30, #31, #32, #2. Decided: #19 (→ #36), #34. Reframed: #3. New: #33–#36. Deferred by the user: #5. (2) **Consumer round-trip, PRs #45–#48** — three kit defects reported by a consumer, fixed and released as patches; the release-token guard moved onto the publishing path and re-keyed on bot identity; the release jobs given mise. New: #37. **Read "The 2026-08-10 batch" below before anything else — four shipped surfaces turned out never to have worked, and two unplanned majors were published.** |
 | mcpsync | `apps/mcpsync` landed (5 stages + audit + publish prep); npm publish DEFERRED — release job is `workflow_dispatch`-only; local global bin installed via `pnpm add -g`. Desktop write-guard merged (`95f6c03`, PR #2). Round 2026-08-05 merged (`9d90a2c`, PR #3): 3 life-stack findings resolved + `imsg-mcp`→`EQStack` doc rename. Home decision REVERSED same session → relocate mcpsync to life-stack after publishing the kits (DEFERRED #10; import-as-library retracted for an optional `npx` shell-out). (see [docs/plans/2026-08-mcpsync-overview.md](docs/plans/2026-08-mcpsync-overview.md)) |
-| Package state | Published: **`@george43g/robustness@0.7.0`**, **`@george43g/cli-kit@2.0.0`**, **`@george43g/tui-kit@0.4.0`**, **`@george43g/secret-store@0.2.2`**. **cli-kit's version is an accident twice over and must not be "corrected"** — see #34 and #35. It was planned as 0.4.0; a `!` marker took it to 1.0.0 (semantic-release maps any breaking change to a major with no 0.x clamp), then a **docs-only** commit whose PROSE spelled the footer token took it to 2.0.0, whose `dist/` is byte-identical to 1.0.0. Both immutable. A 3.0.0 renumber would be a third breaking bump for zero API change — up-bank argued this independently and it is recorded. Consumers on `^1.0.0` are unaffected; caret does not cross a major. Prior defects still worth knowing: robustness 0.3.0 + secret-store 0.2.0 cut by a `feat(vitest-config):` commit touching their directories (type read against PATHS, scope ignored); cli-kit 0.3.1 a PATCH carrying four new APIs. `@george43g/mcpsync` remains bootstrap-pending (`workflow_dispatch`-only). |
+| Package state | Published: **`@george43g/robustness@0.7.0`**, **`@george43g/cli-kit@2.0.1`**, **`@george43g/tui-kit@0.4.1`**, **`@george43g/secret-store@0.2.2`** (verified against npm 2026-08-10; re-verify with `npm view`, never from this table — see the hand-carried-number rule below). The two `.1` patches carry the consumer-reported fixes. **cli-kit's version is an accident twice over and must not be "corrected"** — see #34 and #35. It was planned as 0.4.0; a `!` marker took it to 1.0.0 (semantic-release maps any breaking change to a major with no 0.x clamp), then a **docs-only** commit whose PROSE spelled the footer token took it to 2.0.0, whose `dist/` is byte-identical to 1.0.0. Both immutable. A 3.0.0 renumber would be a third breaking bump for zero API change — up-bank argued this independently and it is recorded. Consumers on `^1.0.0` are unaffected; caret does not cross a major. Prior defects still worth knowing: robustness 0.3.0 + secret-store 0.2.0 cut by a `feat(vitest-config):` commit touching their directories (type read against PATHS, scope ignored); cli-kit 0.3.1 a PATCH carrying four new APIs. `@george43g/mcpsync` remains bootstrap-pending (`workflow_dispatch`-only). |
 | Release pipeline | `.github/workflows/release-packages.yml` PROVEN end-to-end: full verify matrix → npm OIDC trusted publishing (no `NPM_TOKEN`) → tag + CHANGELOG + GitHub release → `[skip ci]` bump commit (loop-safe, confirmed no re-trigger). Now five chained jobs (robustness → cli-kit → tui-kit → secret-store → mcpsync), serialized because each pushes a bump commit. **Build provenance is deliberately OFF** — it requires a public source repo and this one is private; requesting it 422s the publish (field-note 23, which supersedes 19).  **New 2026-08-09 (DEFERRED #22):** the `secret-store` job — the last to run on a push, since `mcpsync` is dispatch-only — regenerates `example/` and commits it, so a release no longer leaves the tracked output stale for the next PR to trip over. Proven on its first two real runs. It passes `--build` because `pnpm verify` builds the scaffolder BEFORE the bump, and `git pull --rebase` before pushing because `main` is unprotected. |
 | Runtime default | **Registry only.** `--runtime-source` was REMOVED — there is no source-vendoring mode. Generated repos depend on the four published packages; ranges are DERIVED from `packages/*/package.json` at build time into `src/generated/published-versions.ts`, never hand-written. `mcp-kit`, `shared-types` and the three tool-config packages are still generated as source. |
 
@@ -34,7 +35,7 @@ previously uncommitted implementation (87 modified + 42 untracked files,
 Eleven PRs (#32–#43) executing a 7-stage plan. Stages 1–5 are merged; Stage 6 is 2 of 3;
 Stage 7 has not started and is blocked on the user.
 
-### The finding that generalises: three surfaces were shipping without ever having worked
+### The finding that generalises: FOUR surfaces were shipping without ever having worked
 
 Each reported success the entire time. This is now the first thing to test for, and it is why
 several entries below say "reframed" rather than "fixed".
@@ -44,6 +45,15 @@ several entries below say "reframed" rather than "fixed".
 | `check-publishable-manifests` sibling ranges | passed | `if (!m) return true` waved through every comparator range — and hid a second defect nobody had recorded: `^1.2.0` admitted `1.1.9`, because the caret branch ignored the range's lower bound |
 | Screenshots pipeline (#29) | success on every run | Never produced a file. `docs/screenshots/` held only `.gitkeep` |
 | MCPB bundle (#3) | built a 36.4 MB artifact | The artifact does not run: `ERR_MODULE_NOT_FOUND: ajv` |
+| `release-tokens` guard (#35) | passing on every PR | Not on the publishing path at all — `pull_request`-only against an **unprotected** `main`, so a direct push never met it. Then, once fixed, its bump-commit skip keyed on subject TEXT, which a human can type |
+
+The fourth is the sharpest, because it was built *this session* as the fix for an earlier failure,
+and it was described to three consumer sessions as closing the hole before anyone had checked that
+it ran where it mattered. **A guard you wrote yourself is not exempt from this rule.**
+
+Both of its defects were found by a consumer asking a question — and the second only surfaced
+*because* the first was fixed and the fix was described. Explaining a mechanism out loud is a
+cheap way to discover it is wrong.
 
 **The mechanism in the last two is the same one**: `zip -r` follows symlinks, and a pnpm
 `node_modules` is a symlink farm. And `vhs` exits 0 for a missing command, a blank TUI render, and
@@ -64,10 +74,23 @@ Both from commit-message TEXT, not code:
    footer token while doing so. The analyzer reads that token anywhere in a body. `dist/` is
    byte-identical to 1.0.0. Recorded as #35.
 
-**Guard**: `scripts/check-release-tokens.mjs` + the `release-tokens` CI job, gated on
-`pull_request` because squash-merging makes the PR title and body the commit message — the check
-has to run BEFORE the merge, since afterwards the version is immutable. Its first test case is the
-real 2.0.0 commit message verbatim. **Never spell the footer token in prose; lowercase it.**
+**Guard**: `scripts/check-release-tokens.mjs`, in TWO places, because the first version was not on
+the path that publishes (see "The guard was not on the path that publishes" below):
+
+1. `ci.yml`, on `pull_request` — squash-merging makes the PR title and body the commit message, so
+   this runs BEFORE the merge, while the version is still mutable.
+2. `release-packages.yml`, as a gate every release job `needs:` — checks the REAL commit messages
+   over the pushed range (`--range "$BEFORE".."$SHA"`). This is the one that matters; `main` is
+   unprotected, so a direct push never opens a PR.
+
+Its first test case is the real 2.0.0 commit message verbatim. Bot-authored bump commits are
+skipped, keyed on `semantic-release-bot`'s **authorship** — not on the subject text, which anyone
+can type (that was a second hole, found the same way). **Never spell the footer token in prose;
+lowercase it.**
+
+**What the guard does NOT cover, and cannot:** an under-classified breaking change published as a
+minor or patch. No commit-message linter catches a break the author did not know about. That is the
+dangerous class, it remains open, and the only mechanism that addresses it is DEFERRED **#37**.
 
 Neither version is renumbered. A third bump for zero API change is worse than an unplanned number,
 and the up-bank agent argued that independently.
@@ -79,7 +102,7 @@ and the up-bank agent argued that independently.
 | `pnpm test:scripts` | Node's built-in runner over `scripts/**/*.test.mjs` — the repo scripts had NO tests before this |
 | `pnpm check:registry-boundary` | A generated-app import of a kit API that is not in the released surface, compared against the package's git release TAG (no network) |
 | `pnpm check:workflows` | `actionlint`, pinned in `mise.toml`, over all three workflow surfaces |
-| `release-tokens` CI job | Commit prose that would cut an unintended release |
+| `release-tokens` job, in BOTH `ci.yml` and `release-packages.yml` | Commit prose that would cut an unintended release. The second copy is the load-bearing one — it gates every release job and reads real commit messages, because `main` is unprotected and a direct push never opens a PR |
 
 ### Consumer upgrade status (all five polled, 2026-08-10)
 
@@ -321,12 +344,24 @@ After `ef3809b`, a docs/harness pass applied the practices from
    (`pnpm check:docs` is the gate), and needs `pnpm regen:example` afterwards. Do it when no
    release is in flight, and message all consumers when it lands.
 
-Deliberately last: four consumer repos are mid-adoption of the kits, and moving the repo under
-them while that settles is how references go stale silently.
+Deliberately last: the consumer repos were mid-adoption of the kits, and moving the repo under them
+while that settles is how references go stale silently. **That has now largely settled** — see the
+consumer table above — but two repos (browser-tab, up-bank) are green on unmerged branches blocked
+on their user's commit signing, so the rename should still wait for those to land.
 
-**Then**: #36 (release-please for generated repos, decided in #19), #3 (the MCPB bundle does not
-run — ~half a day, and it needs a runs-after-extraction assertion in CI or it recurs silently),
-#27's remaining two lifts (`toYaml`, Prometheus metrics — still no warm consumer).
+**Then, in rough priority order:**
+
+1. **#3 — the MCPB bundle does not run.** Promoted above #36: it is a *shipped artifact* that fails
+   at `ERR_MODULE_NOT_FOUND`, not a missing feature. ~half a day, and it needs a
+   runs-after-extraction assertion in CI or it silently recurs — it is one of the four surfaces
+   above that reported success while never having worked.
+2. **#36 — release-please for generated repos** (decided in #19).
+3. **#37 — the consumer-side canary** (new). The only mechanism that addresses an under-classified
+   breaking change, which the release-token guard structurally cannot catch. **Offered by up-bank,
+   not accepted** — it would spend their user's compute, so it needs that user's agreement, not
+   ours.
+4. **#33** — `readme-check` counts test files as source (3-surface fix).
+5. **#27's remaining two lifts** (`toYaml`, Prometheus metrics — still no warm consumer).
 
 ---
 

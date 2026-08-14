@@ -1,6 +1,6 @@
 # Project State and Continuation Handoff
 
-Last refreshed: 2026-08-09
+Last refreshed: 2026-08-14 (work described landed 2026-08-10; `main` unchanged since)
 
 This document is the durable continuation record for
 `mcp-cli-starter-template`. It exists so a context compact, a restarted agent, or
@@ -12,7 +12,7 @@ completed work, local-only work, and deliberately deferred work.
 | Item | Current state |
 | --- | --- |
 | Branch | `main` |
-| `origin/main` | Last code-bearing merges: **PRs #32–#43** (2026-08-10) — the backlog batch: manifest range checker, screenshots pipeline, `tryAcquire`, ContentBlock union, tui-kit lifts, build identity + registry boundary + workflow lint, and three decision/record PRs. Interleaved with `[skip ci]` release bumps and BOT-authored `chore(example): resync generated output after release` commits — DEFERRED #22's automation working, not drift. No literal SHA and no CI verdict: a records file cannot name its own merge commit, nor testify to a check that runs after it is written. Use `git log --oneline -1 origin/main` and `gh pr checks`. |
+| `origin/main` | Last code-bearing merges: **PRs #32–#43 then #45–#48** (both 2026-08-10). The backlog batch: manifest range checker, screenshots pipeline, `tryAcquire`, ContentBlock union, tui-kit lifts, build identity + registry boundary + workflow lint, and three decision/record PRs. Then the consumer round-trip batch (#45–#48): three consumer-reported kit defects fixed and released as patches, the release-token guard moved onto the publishing path and re-keyed on bot identity, and mise added to the release jobs. Interleaved with `[skip ci]` release bumps and BOT-authored `chore(example): resync generated output after release` commits — DEFERRED #22's automation working, not drift. No literal SHA and no CI verdict: a records file cannot name its own merge commit, nor testify to a check that runs after it is written. Use `git log --oneline -1 origin/main` and `gh pr checks`. |
 | Ahead/behind | in sync |
 | Local commits | none |
 | Push state | everything pushed; all merged branches deleted — `main` is the only branch on origin |
@@ -20,7 +20,7 @@ completed work, local-only work, and deliberately deferred work.
 | Working tree | clean |
 | Product boundary | fresh scaffolds are pnpm-only |
 | Runtime boundary | **Registry only, decided 2026-08-09.** `--runtime-source` removed; no source-vendoring mode exists. Generated repos depend on the four published packages with ranges derived from the real manifests at build time. |
-| Registry state | Published: **`@george43g/robustness@0.7.0`**, **`@george43g/cli-kit@2.0.0`**, **`@george43g/tui-kit@0.4.0`**, **`@george43g/secret-store@0.2.2`**. **cli-kit's number is an accident twice over and must NOT be renumbered** — planned 0.4.0; a `!` marker took it to 1.0.0 (the analyzer maps any breaking change to a major with no 0.x clamp — DEFERRED #34), then a **docs-only** commit whose prose spelled the footer token took it to 2.0.0, whose `dist/` is byte-identical to 1.0.0 (#35, verified by unpacking both tarballs). A 3.0.0 would be a third breaking bump for zero API change. robustness 0.7.0 = `TokenBucket.tryAcquire` + the `n > capacity` throw (it used to spin forever) + the `_resetForTests` prefix-reset docs. tui-kit 0.4.0 = `visualWidth`/`clusterWidth`/`truncateToWidth` + `detectNerdFont`, lifted verbatim from EQStack with their tests as the oracle; 0.3.4 before it was the sibling-range fix. cli-kit's content = the `ContentBlock` discriminated union + its renderer. Earlier trail: robustness 0.6.0 (logger env prefix, level gate, `getFileLogLines` PID preference, `withTimeout(label, …)`); cli-kit 0.3.1 — **a patch that should have been a minor**, typed `fix:` when its diff added four public APIs; robustness 0.5.2 fixed the watchdog force-exit net (#24) — **consumers must not stay on 0.5.1**; robustness 0.3.0 and secret-store 0.2.0 were ACCIDENTAL, cut by a `feat(vitest-config):` commit touching their directories (type read against PATHS, scope ignored — field-note 52). Trusted Publishers configured for all four — CI releases with no `NPM_TOKEN`. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
+| Registry state | Published: **`@george43g/robustness@0.7.0`**, **`@george43g/cli-kit@2.0.1`**, **`@george43g/tui-kit@0.4.1`**, **`@george43g/secret-store@0.2.2`** (verified against npm 2026-08-10 — always re-verify with `npm view`, never from a table; a written version is stale the moment the next release fires). cli-kit 2.0.1 = pipe-safe `runRepl` + value-parsing `isCI()`; tui-kit 0.4.1 = `useVimKeys` chunk dispatch. Both consumer-reported. **cli-kit's number is an accident twice over and must NOT be renumbered** — planned 0.4.0; a `!` marker took it to 1.0.0 (the analyzer maps any breaking change to a major with no 0.x clamp — DEFERRED #34), then a **docs-only** commit whose prose spelled the footer token took it to 2.0.0, whose `dist/` is byte-identical to 1.0.0 (#35, verified by unpacking both tarballs). A 3.0.0 would be a third breaking bump for zero API change. robustness 0.7.0 = `TokenBucket.tryAcquire` + the `n > capacity` throw (it used to spin forever) + the `_resetForTests` prefix-reset docs. tui-kit 0.4.0 = `visualWidth`/`clusterWidth`/`truncateToWidth` + `detectNerdFont`, lifted verbatim from EQStack with their tests as the oracle; 0.3.4 before it was the sibling-range fix. cli-kit's content = the `ContentBlock` discriminated union + its renderer. Earlier trail: robustness 0.6.0 (logger env prefix, level gate, `getFileLogLines` PID preference, `withTimeout(label, …)`); cli-kit 0.3.1 — **a patch that should have been a minor**, typed `fix:` when its diff added four public APIs; robustness 0.5.2 fixed the watchdog force-exit net (#24) — **consumers must not stay on 0.5.1**; robustness 0.3.0 and secret-store 0.2.0 were ACCIDENTAL, cut by a `feat(vitest-config):` commit touching their directories (type read against PATHS, scope ignored — field-note 52). Trusted Publishers configured for all four — CI releases with no `NPM_TOKEN`. Build provenance removed: it needs a public source repo and would 422 (field-note 23 supersedes 19) |
 | mcpsync | `apps/mcpsync` landed on `main` (all 5 stages + audit + publish prep); npm publish DEFERRED — `release-packages.yml` mcpsync job is `workflow_dispatch`-only; interim install is the local global bin (`pnpm add -g <abs path to apps/mcpsync>`, installed 2026-08-03); MIGRATION COMPLETE 2026-08-03: opencode joined project scope, `~/dotfiles/mcp/` scripts and imsg `hot-deploy-ext.mjs` deleted — mcpsync is the single MCP config/deploy tool. **Guard (2026-08-05):** Desktop write-guard merged (`95f6c03`, PR #2). **Follow-ups merged 2026-08-05 (`9d90a2c`, PR #3):** 3 life-stack findings resolved (opencode project-scope help, backup prune-to-5 + gitignore, `${VAR}`→`{env:VAR}` in opencode command/args), `imsg-mcp`→`EQStack` doc rename. **Home decision REVERSED same session** → relocate mcpsync to life-stack after publishing the kits (see DEFERRED.md #10; generated-tools-import retracted for an optional `npx` shell-out). See [plans/2026-08-mcpsync-overview.md](plans/2026-08-mcpsync-overview.md) |
 
 Always re-run `git status --short --branch` before relying on this snapshot.
@@ -84,6 +84,47 @@ breaking change, no config clamp.
 **Deferred by the user**: #5, the vector-search Resources demo — kept as an experiment they want to
 run eventually, with their own doubt recorded that it belongs in this repo at all.
 
+### The consumer round-trip batch (PRs #45–#48, 2026-08-10)
+
+The user's standing instruction — tell every consumer to upgrade, collect breakage, fix upstream,
+re-request — stopped being a courtesy and started returning defects. **Everything in this batch
+originated with a consumer, not with our own review.**
+
+**Three kit defects, each reproduced locally AND confirmed in the published tarball before being
+touched.** All three had shipped for the life of the code:
+
+| Defect | Confirmed in | Why our own tests could not see it |
+|---|---|---|
+| `useVimKeys` dropped multi-character chunks; `input >= "0" && input <= "9"` is a LEXICOGRAPHIC range, so `"5j"` entered the count buffer and replayed as a stale count on the next key | `tui-kit@0.4.0` `dist/hooks/useVimKeys.js:40` | The hook had **no test at all**, and v8 scores a never-loaded file as **100% branches** — so its untested half was reported as covered for its entire life |
+| `runRepl` wrote banner + prompt + readline's echo to stdout when piped | `cli-kit@2.0.0` `dist/repl.js` | A `PassThrough` is already non-TTY, so the suite ran the BROKEN path; every assertion used `toContain`, which leading noise does not disturb |
+| `isCI()` treated `CI=false` as true | `cli-kit@2.0.0` `dist/tty.js` | The suite only ever set `"true"` — presence-vs-value was never discriminated |
+
+Ink delivering a burst or paste as ONE `useInput` call is the root cause of the first, and it is an
+**ink bug class, not a `useVimKeys` bug**: the consumer who read the fix went looking and found both
+defects in their own router the same day. `tui-kit`'s README now carries the two greps that find it.
+
+The `isCI` one is the instructive failure: `is-in-ci`'s semantics had been quoted **verbatim** in
+the Stage 2 plan hours earlier and used to fix the screenshots pipeline, without anyone checking our
+own `isCI()` against them. Having a reference implementation in hand is not applying it.
+
+**Released as patches** — `cli-kit@2.0.1`, `tui-kit@0.4.1`. The first release of the day that went
+exactly as planned.
+
+**The release-token guard was found to be twice broken, both times by a consumer question:**
+
+1. It ran only on `pull_request`, and `main` is **not a protected branch** (`gh api …/protection`
+   → 404), so a direct push never met it. It now also runs inside `release-packages.yml` as a gate
+   every release job `needs:`.
+2. Once fixed, its bump-commit skip keyed on subject TEXT — which a human can type. Re-keyed on
+   `semantic-release-bot` authorship, with the subject markers kept as a second condition so a
+   future bot-identity change fails CLOSED.
+
+**A second CI gap surfaced from the failed release run**: `check:workflows` was added to
+`pnpm verify` in the Stage 4 batch and validated against `ci.yml`, which already had mise.
+`release-packages.yml` runs the same `pnpm verify` with none, so `actionlint: not found` stopped the
+chain. Nothing published — the correct behaviour — and all five release jobs now install mise.
+
+**New**: #37, the consumer-side canary. **Not accepted** — it spends another user's compute.
 
 ### Upstream remediation: `e431399`
 
@@ -527,9 +568,30 @@ assuming one edit propagates automatically.
    CI job now block it; write about the token in lowercase rather than spelling
    it. Same class as the existing rule about skip-CI markers in prose.
 9. **Assume a green check may be checking nothing until you have seen it fail.**
-   Three surfaces here reported success while never having worked (see "The
-   2026-08-10 backlog batch"). For any check you rely on or add, construct the
-   failure first and confirm it goes red.
+   FOUR surfaces here reported success while never having worked — including the
+   `release-tokens` guard, which was written *as a fix* in the same session and
+   described to three consumer sessions as closing the hole before anyone
+   checked it ran on the path that publishes. **A guard you wrote yourself is
+   not exempt.** For any check you rely on or add, construct the failure first
+   and confirm it goes red.
+10. **Never hand-carry a version number to a consumer — cite the command.** All
+    five consumer sessions were told `cli-kit 1.0.0`; an accidental 2.0.0
+    published between the message and their installs, and nothing corrected
+    them. One repo pinned `^1.0.0` and was stranded a major behind while its own
+    notes said "latest". A relayed number is stale the moment the next release
+    fires, and releases here fire on push to `main`. Send
+    `npm view @george43g/<pkg> version`. Semantics travel fine by hand; numbers
+    do not.
+11. **Rendered output is not covered by semver.** A patch that improves a
+    rendering breaks any consumer snapshotting stdout — no API change, no type
+    error, nothing thrown. `cli-kit@2.0.1` broke 8 of one consumer's 12 snapshot
+    tests. The promise cli-kit now makes is in its README: results and meta
+    footers stable, chrome not. Exposure is `rg -l toMatchSnapshot`, and is NOT
+    proportional to how much of the API a consumer uses.
+12. **Explaining a mechanism out loud is a cheap way to discover it is wrong.**
+    Both guard defects were found by a consumer asking a question, and the
+    second surfaced only *because* the first was fixed and the fix described.
+    When a peer asks "is X actually true?", check rather than reassure.
 
 The former external plan path
 `/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md` is absent. Do not
