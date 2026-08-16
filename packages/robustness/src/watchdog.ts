@@ -12,6 +12,7 @@ import { normalizeEnvPrefix } from "./env.js";
 import { error, info, warn } from "./logger.js";
 import {
   isShuttingDown,
+  noteShutdownCause,
   registerCleanup,
   type ShutdownController,
   shutdown,
@@ -29,6 +30,12 @@ export interface WatchdogState {
   heapHistory: number[];
   lastActivityTs: number;
   killReason: string | null;
+  /**
+   * False until the first memory sample lands. `rssMb`/`heapMb` are still
+   * populated before then (read live on access), so this is the only way to
+   * tell a fresh live reading from a sampler-recorded one.
+   */
+  memorySampled: boolean;
 }
 
 export interface WatchdogDiagnostic {
@@ -59,10 +66,17 @@ export interface WatchdogOptions {
   sleepSkewMultiplier?: number;
   statePath?: string;
   onDiagnostic?: (diagnostic: WatchdogDiagnostic) => void;
+  /**
+   * `noteShutdownCause` is optional in this shape on purpose: requiring it
+   * would break every consumer (and test) that passes a hand-built stub of the
+   * four original methods, and a required-member addition to a 0.x package
+   * publishes a major.
+   */
   shutdownController?: Pick<
     ShutdownController,
     "registerCleanup" | "unregisterCleanup" | "isShuttingDown" | "shutdown"
-  >;
+  > &
+    Partial<Pick<ShutdownController, "noteShutdownCause">>;
   /** Test/embed hook. Defaults to process.exit. */
   exit?: (code: number) => void;
 }
@@ -90,6 +104,7 @@ const defaultShutdownController: WatchdogOptions["shutdownController"] = {
   registerCleanup,
   unregisterCleanup,
   isShuttingDown,
+  noteShutdownCause,
   shutdown: async (exitCode?: number) => {
     await shutdown(exitCode);
   },
@@ -174,6 +189,9 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
   const triggerKill = (reason: string, data: Record<string, unknown>): void => {
     if (state.killReason) return;
     state.killReason = reason;
+    // Before shutdown(), so the watchdog is the first writer: the shutdown it
+    // initiates would otherwise be attributed to whatever fires next.
+    shutdownController?.noteShutdownCause?.(`watchdog:${reason}`);
     diagnostic("error", `watchdog_kill: ${reason}`, data);
     forceExitTimer = setTimeout(() => {
       diagnostic("error", "watchdog_force_exit", { reason });
@@ -244,6 +262,7 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     const heapMb = round1(usage.heapUsed / 1_024 / 1_024);
     state.rssMb = rssMb;
     state.heapMb = heapMb;
+    state.memorySampled = true;
 
     for (const callback of subscribers) {
       try {
@@ -422,7 +441,11 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     noteActivity: () => {
       state.lastActivityTs = Date.now();
     },
-    readState: () => state,
+    // Identity is preserved once sampled — a caller holding the reference keeps
+    // seeing live updates, as before. Only the pre-first-sample case allocates.
+    // Identity is preserved once sampled — a caller holding the reference keeps
+    // seeing live updates, as before. Only the pre-first-sample case allocates.
+    readState: () => (state.memorySampled ? state : { ...state, ...resolveMemory(state) }),
     onMemorySample: (callback) => {
       subscribers.add(callback);
       return () => subscribers.delete(callback);
@@ -443,6 +466,27 @@ function initialState(): WatchdogState {
     heapHistory: [],
     lastActivityTs: now,
     killReason: null,
+    memorySampled: false,
+  };
+}
+
+/**
+ * Memory figures with the pre-first-sample hole filled in.
+ *
+ * The sampler runs every `memorySampleMs` (default 60s) but consumers poll far
+ * faster — dev panels every few seconds, health endpoints on demand — so until
+ * the first sample landed both figures read 0. A freshly started process
+ * reported using no memory during exactly the window someone debugging a
+ * startup problem is watching. Reading live costs one `process.memoryUsage()`
+ * call and is the same measurement the sampler takes; `memorySampled` keeps the
+ * "not sampled yet" distinction available rather than erasing it.
+ */
+function resolveMemory(state: WatchdogState): { rssMb: number; heapMb: number } {
+  if (state.memorySampled) return { rssMb: state.rssMb, heapMb: state.heapMb };
+  const usage = process.memoryUsage();
+  return {
+    rssMb: round1(usage.rss / 1_024 / 1_024),
+    heapMb: round1(usage.heapUsed / 1_024 / 1_024),
   };
 }
 
@@ -456,6 +500,9 @@ function readPositiveNumber(name: string, fallback: number): number {
 function writeStateSnapshot(path: string, state: WatchdogState): void {
   if (!path) return;
   try {
+    // Same fill-in as readState: the event-loop sampler writes this snapshot
+    // every 5s by default, twelve times before the first 60s memory sample.
+    const { rssMb, heapMb } = resolveMemory(state);
     writeFileSync(
       path,
       JSON.stringify({
@@ -464,8 +511,9 @@ function writeStateSnapshot(path: string, state: WatchdogState): void {
         eventLoopP99Ms: state.eventLoopP99Ms,
         eventLoopMaxMs: state.eventLoopMaxMs,
         eventLoopSustainedCount: state.eventLoopSustainedCount,
-        rssMb: state.rssMb,
-        heapMb: state.heapMb,
+        rssMb,
+        heapMb,
+        memorySampled: state.memorySampled,
         killReason: state.killReason,
       }),
     );

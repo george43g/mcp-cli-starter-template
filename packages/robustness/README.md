@@ -88,6 +88,36 @@ Two defaults to know:
   observing the event would otherwise suppress process-wide. Long-running
   interactive TUIs disable it alongside `exitOnUncaughtException`.
 
+### Why the process is shutting down
+
+A final shutdown log line is far more useful when it names the cause. Without
+one, a user quit, a supervisor `SIGTERM`, a watchdog self-kill and an uncaught
+exception all produce an identical last line.
+
+```ts
+import { getShutdownCause, registerCleanup } from "@george43g/robustness";
+
+registerCleanup(() => {
+  log.info("shutdown", { reason: getShutdownCause(), uptime_s: uptime() });
+});
+// → {"msg":"shutdown","data":{"reason":"signal:SIGTERM","uptime_s":8}}
+```
+
+Recorded automatically: `signal:<NAME>`, `uncaught_exception`,
+`unhandled_rejection`, `stdin_eof`, `orphaned`, and `watchdog:<reason>` when the
+watchdog initiates the kill. Anything else is `"normal"`. Name your own causes
+with `noteShutdownCause("user_quit")` before calling `shutdown()`.
+
+**First writer wins.** The initiating cause beats the follow-on events it
+triggers — a watchdog kill that escalates to a signal still reports
+`watchdog:event_loop_blocked`, not `signal:SIGTERM`. Last-writer-wins would make
+a postmortem's first line name the symptom rather than the cause.
+
+`stdin_eof` and `orphaned` are also **newly emitted as diagnostics**. Both paths
+previously shut the process down without emitting anything at all, so a consumer
+sink observed a shutdown with no event to attribute it to. If you match on
+diagnostic events, expect these two.
+
 ## Logging
 
 The logger keeps an in-memory ring buffer (last 500 lines) and appends NDJSON
@@ -143,6 +173,30 @@ beforeEach(() => {
   configureKitLogger(); // without this the prefix silently reverts to MCP_
 });
 ```
+
+## Watchdog state
+
+`readWatchdogState()` returns the live watchdog state — event-loop percentiles,
+memory, idle timers, and `killReason`.
+
+**`rssMb`/`heapMb` are populated from the moment the process starts.** The memory
+sampler only runs every `memorySampleMs` (default 60s), but consumers poll far
+faster — dev panels every few seconds, health endpoints on demand — so both
+figures used to read `0` until the first sample landed. A freshly started process
+reported using no memory during exactly the window someone debugging a startup
+problem is watching. They are now read live on access before the first sample, at
+the cost of one `process.memoryUsage()` call.
+
+`memorySampled` tells the two apart when it matters:
+
+```ts
+const { rssMb, heapMb, memorySampled } = readWatchdogState();
+// memorySampled === false → a live reading taken just now
+// memorySampled === true  → the value the sampler last recorded
+```
+
+The same fill-in applies to the `MCP_WATCHDOG_STATE_PATH` snapshot, which the
+event-loop sampler writes every 5s — twelve times before the first memory sample.
 
 ## Rate limiting
 
