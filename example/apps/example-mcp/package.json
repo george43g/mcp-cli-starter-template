@@ -53,7 +53,7 @@
   "dependencies": {
     "@george43g/cli-kit": "^2.0.1",
     "@george43g/mcp-kit": "workspace:*",
-    "@george43g/robustness": "^0.7.0",
+    "@george43g/robustness": "^0.8.0",
     "@george43g/secret-store": "^0.2.2",
     "@george43g/shared-types": "workspace:*",
     "@george43g/tui-kit": "^0.4.1",
