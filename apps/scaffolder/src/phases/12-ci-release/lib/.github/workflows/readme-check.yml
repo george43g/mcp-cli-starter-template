@@ -49,7 +49,10 @@ jobs:
         if: github.event_name == 'pull_request' && steps.skip.outputs.skip == 'false'
         run: |
           DIFF_RANGE="origin/${{ github.base_ref }}...HEAD"
-          SRC_CHANGED=$(git diff --name-only "$DIFF_RANGE" | grep -E '^(apps|packages)/[^/]+/src/' | grep -cv '/lib/' || true)
+          SRC_CHANGED=$(git diff --name-only "$DIFF_RANGE" \
+            | grep -E '^(apps|packages)/[^/]+/src/' \
+            | grep -v '/lib/' \
+            | grep -cvE '\.(test|spec)\.(ts|tsx|mts|js|jsx)$' || true)
           if [ "$SRC_CHANGED" -eq 0 ]; then
             echo "No source code changes — README check skipped."
             exit 0
@@ -71,7 +74,10 @@ jobs:
           else
             DIFF_RANGE="$BEFORE_SHA..HEAD"
           fi
-          SRC_CHANGED=$(git diff --name-only "$DIFF_RANGE" | grep -E '^(apps|packages)/[^/]+/src/' | grep -cv '/lib/' || true)
+          SRC_CHANGED=$(git diff --name-only "$DIFF_RANGE" \
+            | grep -E '^(apps|packages)/[^/]+/src/' \
+            | grep -v '/lib/' \
+            | grep -cvE '\.(test|spec)\.(ts|tsx|mts|js|jsx)$' || true)
           if [ "$SRC_CHANGED" -eq 0 ]; then
             echo "No source code changes — README check skipped."
             exit 0

@@ -1627,9 +1627,28 @@ and it is the kind of thing only a real adopter finds.
 
 ---
 
-## 33. `readme-check` counts test files as source, so test-only PRs need a bypass
+## 33. RESOLVED — `readme-check` counted test files as source
 
-**Status**: open, hit 2026-08-10 on a PR that changed only `rate-limit.test.ts`.
+**Status**: ✅ **RESOLVED 2026-08-16.** The trigger fired exactly as written — a test-only PR
+(the `useDevStats` deflake, #55) tripped the check — so it was fixed rather than tagged around.
+
+The selector now drops test files alongside the existing `lib/` exclusion, on all three surfaces:
+
+```sh
+SRC_CHANGED=$(git diff --name-only "$DIFF_RANGE" \
+  | grep -E '^(apps|packages)/[^/]+/src/' \
+  | grep -v '/lib/' \
+  | grep -cvE '\.(test|spec)\.(ts|tsx|mts|js|jsx)$' || true)
+```
+
+Verified against six cases before trusting it, including the two that must NOT regress:
+a **mixed** test+src PR still counts as 1 (a real docs gap is still gated), and a lib-mirror-only
+change still counts as 0. Also covers `.spec.` and the empty-input path, where `grep -c` prints `0`
+and exits non-zero — hence the `|| true`.
+
+**Original entry below.**
+
+**Status (original)**: open, hit 2026-08-10 on a PR that changed only `rate-limit.test.ts`.
 
 `.github/workflows/readme-check.yml:52` selects changed source with
 `grep -E '^(apps|packages)/[^/]+/src/' | grep -cv '/lib/'`. Test files live under `src/`, so a
