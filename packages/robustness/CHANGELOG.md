@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.8.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.7.0...robustness-v0.8.0) (2026-08-16)
+
+
+### Features
+
+* **robustness:** record why the process is shutting down, and fill the pre-sample memory hole ([c11cc0a](https://github.com/george43g/mcp-cli-starter-template/commit/c11cc0ae17b825f7db891857da9bc0050842f2ad))
+
 # [@george43g/robustness-v0.7.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.6.0...robustness-v0.7.0) (2026-08-09)
 
 
