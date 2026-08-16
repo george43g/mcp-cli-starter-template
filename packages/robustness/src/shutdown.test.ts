@@ -270,3 +270,167 @@ describe("installShutdownHandlers", () => {
     expect(diagnostics).toContain("cleanup_failed");
   });
 });
+
+describe("shutdown cause", () => {
+  /** A host whose stdin and ppid are steerable; `ppid` is writable per test. */
+  function fakeHost(ppid = 4242): NodeJS.Process {
+    const host = new EventEmitter() as unknown as NodeJS.Process;
+    const stdin = new EventEmitter() as unknown as NodeJS.Process["stdin"];
+    (stdin as unknown as { resume: () => void }).resume = () => {};
+    Object.assign(host, { stdin, ppid });
+    return host;
+  }
+
+  it("defaults to normal for an explicit shutdown", async () => {
+    const controller = createShutdownController({ exit: () => {} });
+    expect(controller.getShutdownCause()).toBe("normal");
+    await controller.shutdown(0);
+    expect(controller.getShutdownCause()).toBe("normal");
+    controller.reset();
+  });
+
+  it("names the signal rather than a generic literal", async () => {
+    const host = fakeHost();
+    const exited = Promise.withResolvers<number>();
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: () => {},
+    });
+    controller.installHandlers();
+
+    host.emit("SIGTERM", "SIGTERM");
+
+    await exited.promise;
+    expect(controller.getShutdownCause()).toBe("signal:SIGTERM");
+    controller.reset();
+  });
+
+  it("distinguishes SIGINT from SIGTERM", async () => {
+    const host = fakeHost();
+    const exited = Promise.withResolvers<number>();
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: () => {},
+    });
+    controller.installHandlers();
+
+    host.emit("SIGINT", "SIGINT");
+
+    expect(await exited.promise).toBe(130);
+    expect(controller.getShutdownCause()).toBe("signal:SIGINT");
+    controller.reset();
+  });
+
+  it("records a crash", async () => {
+    const host = fakeHost();
+    const exited = Promise.withResolvers<number>();
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: () => {},
+    });
+    controller.installHandlers();
+
+    host.emit("uncaughtException", new Error("boom"));
+
+    await exited.promise;
+    expect(controller.getShutdownCause()).toBe("uncaught_exception");
+    controller.reset();
+  });
+
+  it("records an unhandled rejection", async () => {
+    const host = fakeHost();
+    const exited = Promise.withResolvers<number>();
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: () => {},
+    });
+    controller.installHandlers();
+
+    host.emit("unhandledRejection", new Error("stray"));
+
+    await exited.promise;
+    expect(controller.getShutdownCause()).toBe("unhandled_rejection");
+    controller.reset();
+  });
+
+  it("records stdin EOF, which used to shut down silently", async () => {
+    const host = fakeHost();
+    const exited = Promise.withResolvers<number>();
+    const diagnostics: string[] = [];
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: ({ event }) => diagnostics.push(event),
+    });
+    controller.enableStdinEofDetection();
+
+    host.stdin.emit("end");
+
+    await exited.promise;
+    expect(controller.getShutdownCause()).toBe("stdin_eof");
+    // The cause is only half of it: before this change the whole path emitted
+    // nothing at all, so a consumer sink saw a shutdown with no event.
+    expect(diagnostics).toContain("stdin_eof");
+    controller.reset();
+  });
+
+  it("records orphaning, which also used to shut down silently", async () => {
+    vi.useFakeTimers();
+    const host = fakeHost(4242);
+    const exits: number[] = [];
+    const diagnostics: string[] = [];
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exits.push(code),
+      onDiagnostic: ({ event }) => diagnostics.push(event),
+    });
+    controller.enableOrphanWatchdog(1_000);
+
+    Object.assign(host, { ppid: 1 });
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(exits).toEqual([0]);
+    expect(controller.getShutdownCause()).toBe("orphaned");
+    expect(diagnostics).toContain("orphaned");
+    controller.reset();
+    vi.useRealTimers();
+  });
+
+  it("keeps the first writer, so a postmortem names the cause not the symptom", async () => {
+    const host = fakeHost();
+    const exited = Promise.withResolvers<number>();
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: () => {},
+    });
+    controller.installHandlers();
+
+    controller.noteShutdownCause("watchdog:event_loop_blocked");
+    // A watchdog kill that escalates to a signal must not be reported as the
+    // signal — last-writer-wins would name the symptom.
+    host.emit("SIGTERM", "SIGTERM");
+
+    await exited.promise;
+    expect(controller.getShutdownCause()).toBe("watchdog:event_loop_blocked");
+    controller.reset();
+  });
+
+  it("clears on reset and does not leak between controllers", () => {
+    const first = createShutdownController({ exit: () => {} });
+    const second = createShutdownController({ exit: () => {} });
+
+    first.noteShutdownCause("signal:SIGHUP");
+
+    expect(first.getShutdownCause()).toBe("signal:SIGHUP");
+    // Module-scoped state would have leaked here.
+    expect(second.getShutdownCause()).toBe("normal");
+
+    first.reset();
+    expect(first.getShutdownCause()).toBe("normal");
+  });
+});

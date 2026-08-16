@@ -60,6 +60,23 @@ export interface ShutdownController {
   enableOrphanWatchdog(intervalMs?: number): void;
   isShuttingDown(): boolean;
   /**
+   * Why this process is shutting down: "signal:SIGTERM", "uncaught_exception",
+   * "unhandled_rejection", "stdin_eof", "orphaned", "watchdog:<reason>", or a
+   * consumer-supplied string. Defaults to "normal" — an explicit `shutdown()`
+   * with no recorded cause is a clean exit.
+   *
+   * Exists so a final shutdown log line names the cause instead of a hardcoded
+   * literal: a user quit, a supervisor SIGTERM, a watchdog self-kill and a
+   * crash otherwise produce an identical last line.
+   */
+  getShutdownCause(): string;
+  /**
+   * Record why shutdown is happening. FIRST WRITER WINS: the initiating cause
+   * must beat the follow-on events it triggers, or a postmortem's first line
+   * names the symptom rather than the cause. Call before `shutdown()`.
+   */
+  noteShutdownCause(cause: string): void;
+  /**
    * Apply new options to the live controller. Merges over the current options;
    * registered cleanups, installed handlers, and shutdown state all survive.
    * Throws without mutating anything if an option is invalid.
@@ -118,6 +135,13 @@ export function createShutdownController(
   let orphanTimer: ReturnType<typeof setInterval> | null = null;
   let handlersInstalled = false;
   let stdinListener: (() => void) | undefined;
+  // Closure-scoped, not module-scoped: two controllers (an embedded one and the
+  // singleton) must not share a cause.
+  let shutdownCause: string | null = null;
+
+  const noteShutdownCause = (cause: string): void => {
+    if (shutdownCause === null) shutdownCause = cause;
+  };
 
   const diagnostic = (
     level: RuntimeDiagnostic["level"],
@@ -202,12 +226,14 @@ export function createShutdownController(
 
     for (const signal of ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"] as const) {
       addListener(signal, ((received: NodeJS.Signals) => {
+        noteShutdownCause(`signal:${received}`);
         diagnostic("info", "signal_received", { signal: received });
         void shutdown(received === "SIGINT" ? 130 : 0);
       }) as (...args: unknown[]) => void);
     }
 
     addListener("unhandledRejection", ((reason: unknown) => {
+      noteShutdownCause("unhandled_rejection");
       diagnostic("error", "unhandled_rejection", {
         reason: reason instanceof Error ? reason.message : String(reason),
         stack: reason instanceof Error ? reason.stack : undefined,
@@ -216,6 +242,7 @@ export function createShutdownController(
     }) as (...args: unknown[]) => void);
 
     addListener("uncaughtException", ((error: Error) => {
+      noteShutdownCause("uncaught_exception");
       diagnostic("error", "uncaught_exception", {
         message: error.message,
         stack: error.stack,
@@ -229,7 +256,13 @@ export function createShutdownController(
   const enableStdinEofDetection = (): void => {
     if (stdinListener) return;
     stdinListener = () => {
-      if (!shuttingDown) void shutdown(0);
+      if (shuttingDown) return;
+      noteShutdownCause("stdin_eof");
+      // Previously silent: this path and the orphan watchdog below shut the
+      // process down without emitting anything, so a consumer sink observed a
+      // shutdown with no cause at all.
+      diagnostic("info", "stdin_eof");
+      void shutdown(0);
     };
     hostProcess.stdin.on("end", stdinListener);
     hostProcess.stdin.resume();
@@ -242,7 +275,10 @@ export function createShutdownController(
     orphanIntervalMs = intervalMs;
     const parentPid = hostProcess.ppid;
     orphanTimer = setInterval(() => {
-      if (hostProcess.ppid === 1 || hostProcess.ppid !== parentPid) void shutdown(0);
+      if (hostProcess.ppid !== 1 && hostProcess.ppid === parentPid) return;
+      noteShutdownCause("orphaned");
+      diagnostic("info", "orphaned", { parent_pid: parentPid, current_ppid: hostProcess.ppid });
+      void shutdown(0);
     }, intervalMs);
     orphanTimer.unref();
   };
@@ -301,6 +337,7 @@ export function createShutdownController(
     registry.clear();
     shuttingDown = false;
     forceExitTriggered = false;
+    shutdownCause = null;
   };
 
   return {
@@ -311,6 +348,8 @@ export function createShutdownController(
     enableStdinEofDetection,
     enableOrphanWatchdog,
     isShuttingDown: () => shuttingDown,
+    getShutdownCause: () => shutdownCause ?? "normal",
+    noteShutdownCause,
     reconfigure,
     dispose,
     reset,
@@ -347,6 +386,16 @@ export function enableOrphanWatchdog(intervalMs = 5_000): void {
 
 export function isShuttingDown(): boolean {
   return defaultController.isShuttingDown();
+}
+
+/** See {@link ShutdownController.getShutdownCause}. */
+export function getShutdownCause(): string {
+  return defaultController.getShutdownCause();
+}
+
+/** See {@link ShutdownController.noteShutdownCause}. First writer wins. */
+export function noteShutdownCause(cause: string): void {
+  defaultController.noteShutdownCause(cause);
 }
 
 /** @internal */

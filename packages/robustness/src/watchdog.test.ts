@@ -283,3 +283,107 @@ describe("force-exit net when a kill triggers shutdown", () => {
     expect(exits).toEqual([]);
   });
 });
+
+describe("readState memory before the first sample", () => {
+  it("reports live memory instead of 0MB during the pre-sample window", () => {
+    // The sampler runs every memorySampleMs (60s by default) but consumers poll
+    // in seconds, so a freshly started process used to report using no memory
+    // during exactly the window someone debugging a startup problem watches.
+    const controller = createWatchdog({
+      ...INERT,
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+
+    const state = controller.readState();
+
+    expect(state.memorySampled).toBe(false);
+    expect(state.rssMb).toBeGreaterThan(0);
+    expect(state.heapMb).toBeGreaterThan(0);
+    controller.dispose();
+  });
+
+  it("keeps the not-sampled-yet distinction available", () => {
+    vi.useFakeTimers();
+    const controller = createWatchdog({
+      ...INERT,
+      memorySampleMs: 1_000,
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+
+    expect(controller.readState().memorySampled).toBe(false);
+    vi.advanceTimersByTime(1_000);
+
+    const sampled = controller.readState();
+    expect(sampled.memorySampled).toBe(true);
+    expect(sampled.rssMb).toBeGreaterThan(0);
+    controller.dispose();
+    vi.useRealTimers();
+  });
+
+  it("preserves the live state reference once sampled", () => {
+    vi.useFakeTimers();
+    const controller = createWatchdog({
+      ...INERT,
+      memorySampleMs: 1_000,
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+    vi.advanceTimersByTime(1_000);
+
+    // Identity is part of the existing contract: a caller holding the object
+    // keeps seeing updates. Only the pre-sample case may allocate.
+    expect(controller.readState()).toBe(controller.readState());
+    controller.dispose();
+    vi.useRealTimers();
+  });
+});
+
+describe("watchdog kill attributes the shutdown cause", () => {
+  it("names itself as the cause before initiating shutdown", async () => {
+    vi.useFakeTimers();
+    const causes: string[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      memorySampleMs: 1_000,
+      maxRssMb: 1, // any real process exceeds this
+      onDiagnostic: () => {},
+      shutdownController: {
+        registerCleanup: () => {},
+        unregisterCleanup: () => {},
+        isShuttingDown: () => false,
+        noteShutdownCause: (cause) => causes.push(cause),
+        shutdown: async () => {},
+      },
+    });
+    controller.install();
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(causes).toEqual(["watchdog:rss_exceeded"]);
+    controller.dispose();
+    vi.useRealTimers();
+  });
+
+  it("works with a shutdownController that predates the hook", async () => {
+    vi.useFakeTimers();
+    // trackingShutdown has no noteShutdownCause — exactly the stub a consumer
+    // on the previous version passes. Requiring the method would have broken
+    // them at compile time and published a major.
+    const controller = createWatchdog({
+      ...INERT,
+      memorySampleMs: 1_000,
+      maxRssMb: 1,
+      onDiagnostic: () => {},
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(controller.readState().killReason).toBe("rss_exceeded");
+    controller.dispose();
+    vi.useRealTimers();
+  });
+});
