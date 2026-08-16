@@ -41,18 +41,27 @@ export async function startStdio({ server, entrypoint }: StartStdioOptions): Pro
   // and stdin EOF — the MCP host going away, the most common exit of all —
   // leaves no trace at all.
   //
-  // Registered LAST on purpose. The controller's `exit` listener sweeps the
-  // whole cleanup registry synchronously, so a marker registered last still
-  // runs when an earlier cleanup hangs and trips the force-exit net. Registering
-  // it FIRST instead emits the line TWICE in that case — once in the async pass,
-  // once in the sweep — which corrupts anything counting shutdowns. Measured on
-  // robustness 0.8.1, marker-first + hanging co-cleanup = 2 lines, marker-last
-  // = 1, both clean cases = 1.
+  // Write-once, two ways, because either alone is insufficient.
+  //
+  // Registered LAST: the controller's `exit` listener sweeps the whole cleanup
+  // registry synchronously, so a cleanup the async pass already ran executes a
+  // SECOND time when a later one hangs and trips the force-exit net. Last is
+  // the position where the sweep is the only invocation.
+  //
+  // Guarded as well, because "last" is not a position you can hold. Anything
+  // registering a cleanup at RUNTIME lands after this one — a lazily armed
+  // watcher in a tool handler, an ink component registering on mount (tui-kit's
+  // FullScreenInk does exactly that). Measured on robustness 0.8.1: marker
+  // registered last, then a runtime registration that hangs → 2 lines unguarded,
+  // 1 guarded.
   //
   // NOT done inside the shutdown controller: EQStack and up-bank-mcp already
   // call `logShutdown` themselves and would get a duplicate line. The transport
   // is also the component that owns stdout, so the decision belongs here.
+  let markerWritten = false;
   registerCleanup(() => {
+    if (markerWritten) return;
+    markerWritten = true;
     logShutdown(getShutdownCause());
   });
 
