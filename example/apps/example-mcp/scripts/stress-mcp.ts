@@ -23,7 +23,9 @@
 
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { dirname, resolve } from "node:path";
+import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -139,6 +141,11 @@ class McpClient {
 
   kill(signal: NodeJS.Signals = "SIGTERM"): void {
     this.child.kill(signal);
+  }
+
+  /** Close stdin without signalling — the MCP host going away. */
+  closeStdin(): void {
+    this.child.stdin.end();
   }
 }
 
@@ -301,6 +308,56 @@ async function caseRssWatchdogKill(): Promise<void> {
   }
 }
 
+/** The `shutdown` NDJSON marker a run left behind, if any. */
+function readShutdownMarker(dir: string): { reason?: string } | null {
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".ndjson"))) {
+    for (const line of readFileSync(join(dir, file), "utf8").split("\n")) {
+      if (!line.trim()) continue;
+      try {
+        const parsed = JSON.parse(line) as { msg?: string; data?: { reason?: string } };
+        if (parsed.msg === "shutdown") return parsed.data ?? {};
+      } catch {
+        // A torn final line is possible if the process died mid-write.
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * The generated AGENTS.md tells every agent "file without `shutdown` = crash".
+ * That rule was false for every process this template ever produced: startStdio
+ * logged startup and nothing logged the counterpart, so a clean exit was
+ * indistinguishable from a crash. Found by the up-bank-mcp session, in whose
+ * repo the same rule had been documented and believed for months.
+ *
+ * Asserts the CAUSE, not merely that a marker exists — a presence-only check
+ * passes against a hardcoded literal, which is the thing this exists to kill.
+ */
+async function caseShutdownMarker(): Promise<void> {
+  const paths: Array<[string, string, (c: McpClient) => void]> = [
+    ["SIGTERM", "signal:SIGTERM", (c) => c.kill("SIGTERM")],
+    ["stdin EOF", "stdin_eof", (c) => c.closeStdin()],
+  ];
+  for (const [label, expected, trigger] of paths) {
+    const dir = mkdtempSync(join(tmpdir(), "stress-shutdown-"));
+    const c = new McpClient({ MCP_LOG_DIR: dir, MCP_LOG_TO_FILE: "1" });
+    try {
+      await c.initialize();
+      trigger(c);
+      await c.waitExit(6_000);
+    } finally {
+      c.kill("SIGKILL");
+    }
+    const marker = readShutdownMarker(dir);
+    record(
+      `shutdown marker names the real cause (${label})`,
+      marker?.reason === expected,
+      `reason=${marker ? String(marker.reason) : "NO MARKER"} expected=${expected}`,
+    );
+  }
+}
+
 async function caseHttpTransport(): Promise<void> {
   const token = randomBytes(16).toString("hex");
   const port = 18000 + Math.floor(Math.random() * 1000);
@@ -439,6 +496,7 @@ async function main(): Promise<void> {
   await caseForcedTimeout();
   await caseSigTermClean();
   await caseRssWatchdogKill();
+  await caseShutdownMarker();
   await caseHttpTransport();
 
   const failed = results.filter((r) => !r.pass);
