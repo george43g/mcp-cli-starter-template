@@ -63,9 +63,14 @@ export interface ShutdownController {
    *
    * The corollary matters for anything that writes a line: a cleanup the async
    * pass DID reach before a later one hung runs a SECOND time in the sweep,
-   * because a stalled `runCleanup` never reaches `registry.clear()`. Register
-   * write-once cleanups (log markers, metrics flushes) LAST, where the sweep is
-   * their only invocation. Measured, not assumed.
+   * because a stalled `runCleanup` never reaches `registry.clear()`.
+   *
+   * Registering write-once cleanups LAST helps, but is not sufficient — a
+   * cleanup registered at RUNTIME (a lazily armed watcher, an ink component
+   * registering on mount) lands after yours, so "last" is unstable by
+   * construction. **Make write-once cleanups idempotent.** Ordering tells you
+   * when the double-invocation bites; a `if (done) return` guard removes the
+   * precondition. Measured, not assumed.
    */
   registerCleanup(fn: CleanupFn): void;
   unregisterCleanup(fn: CleanupFn): void;
