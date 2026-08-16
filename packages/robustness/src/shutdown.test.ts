@@ -434,3 +434,94 @@ describe("shutdown cause", () => {
     expect(first.getShutdownCause()).toBe("normal");
   });
 });
+
+describe("cause is only recorded when the event actually initiates shutdown", () => {
+  // Reported by the eqstack session against 0.8.0. A survivable error recorded a
+  // cause the process never acted on, and first-writer-wins then MASKED the real
+  // cause hours later — the exact inversion of the property it exists to protect.
+  it("a survived unhandled rejection is not the cause of a later signal", async () => {
+    const host = new EventEmitter() as unknown as NodeJS.Process;
+    const exited = Promise.withResolvers<number>();
+    const controller = createShutdownController({
+      process: host,
+      exitOnUnhandledRejection: false,
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: () => {},
+    });
+    controller.installHandlers();
+
+    host.emit("unhandledRejection", new Error("survivable"));
+    await new Promise((r) => setImmediate(r));
+
+    // Nothing shut down, so nothing caused a shutdown.
+    expect(controller.isShuttingDown()).toBe(false);
+    expect(controller.getShutdownCause()).toBe("normal");
+
+    host.emit("SIGTERM", "SIGTERM");
+    await exited.promise;
+
+    expect(controller.getShutdownCause()).toBe("signal:SIGTERM");
+    controller.reset();
+  });
+
+  it("a survived uncaught exception is not the cause of a later quit", async () => {
+    const host = new EventEmitter() as unknown as NodeJS.Process;
+    const controller = createShutdownController({
+      process: host,
+      exitOnUncaughtException: false,
+      exit: () => {},
+      onDiagnostic: () => {},
+    });
+    controller.installHandlers();
+
+    host.emit("uncaughtException", new Error("logged, not fatal"));
+    await new Promise((r) => setImmediate(r));
+
+    expect(controller.getShutdownCause()).toBe("normal");
+
+    controller.noteShutdownCause("user_quit");
+    expect(controller.getShutdownCause()).toBe("user_quit");
+    controller.reset();
+  });
+
+  it("still records when the policy IS to exit", async () => {
+    const host = new EventEmitter() as unknown as NodeJS.Process;
+    const exited = Promise.withResolvers<number>();
+    const controller = createShutdownController({
+      process: host,
+      exit: (code) => exited.resolve(code),
+      onDiagnostic: () => {},
+    });
+    controller.installHandlers();
+
+    host.emit("unhandledRejection", new Error("fatal by default"));
+
+    expect(await exited.promise).toBe(70);
+    expect(controller.getShutdownCause()).toBe("unhandled_rejection");
+    controller.reset();
+  });
+
+  it("reports the error regardless of exit policy", async () => {
+    const host = new EventEmitter() as unknown as NodeJS.Process;
+    const diagnostics: string[] = [];
+    const controller = createShutdownController({
+      process: host,
+      exitOnUncaughtException: false,
+      exitOnUnhandledRejection: false,
+      exit: () => {},
+      onDiagnostic: ({ event }) => diagnostics.push(event),
+    });
+    controller.installHandlers();
+
+    host.emit("uncaughtException", new Error("x"));
+    host.emit("unhandledRejection", new Error("y"));
+    await new Promise((r) => setImmediate(r));
+
+    // The error fact is not lost — the diagnostic is the right channel for
+    // "this process survived an error", the cause is not.
+    expect(diagnostics).toContain("uncaught_exception");
+    expect(diagnostics).toContain("unhandled_rejection");
+    expect(controller.getShutdownCause()).toBe("normal");
+    controller.reset();
+  });
+});
