@@ -233,21 +233,32 @@ export function createShutdownController(
     }
 
     addListener("unhandledRejection", ((reason: unknown) => {
-      noteShutdownCause("unhandled_rejection");
       diagnostic("error", "unhandled_rejection", {
         reason: reason instanceof Error ? reason.message : String(reason),
         stack: reason instanceof Error ? reason.stack : undefined,
       });
-      if (config.exitOnUnhandledRejection ?? true) void shutdown(70);
+      // Only a cause when it actually initiates the shutdown. Recorded
+      // unconditionally, a SURVIVED error became the permanent cause and
+      // first-writer-wins then masked the real one hours later — the exact
+      // inversion of the property it exists to protect. The diagnostic above is
+      // the channel for "this process survived an error"; the cause is not.
+      if (config.exitOnUnhandledRejection ?? true) {
+        noteShutdownCause("unhandled_rejection");
+        void shutdown(70);
+      }
     }) as (...args: unknown[]) => void);
 
     addListener("uncaughtException", ((error: Error) => {
-      noteShutdownCause("uncaught_exception");
       diagnostic("error", "uncaught_exception", {
         message: error.message,
         stack: error.stack,
       });
-      if (config.exitOnUncaughtException ?? true) void shutdown(70);
+      // Gated for the same reason as unhandledRejection above — a long-running
+      // TUI pins exitOnUncaughtException:false and survives these routinely.
+      if (config.exitOnUncaughtException ?? true) {
+        noteShutdownCause("uncaught_exception");
+        void shutdown(70);
+      }
     }) as (...args: unknown[]) => void);
 
     addListener("exit", syncCleanup as (...args: unknown[]) => void);

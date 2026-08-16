@@ -108,6 +108,15 @@ Recorded automatically: `signal:<NAME>`, `uncaught_exception`,
 watchdog initiates the kill. Anything else is `"normal"`. Name your own causes
 with `noteShutdownCause("user_quit")` before calling `shutdown()`.
 
+**A cause is only recorded when the event actually initiates the shutdown.** If
+you run with `exitOnUncaughtException: false` or `exitOnUnhandledRejection:
+false` — as a long-running TUI should — an error the process *survives* is not
+the cause of an exit six hours later. The `uncaught_exception` /
+`unhandled_rejection` diagnostic still fires unconditionally; that is the channel
+for "this process survived an error", and the cause is not. Fixed in 0.8.1;
+in 0.8.0 a survived error was recorded permanently and first-writer-wins then
+masked the real cause.
+
 **First writer wins.** The initiating cause beats the follow-on events it
 triggers — a watchdog kill that escalates to a signal still reports
 `watchdog:event_loop_blocked`, not `signal:SIGTERM`. Last-writer-wins would make
