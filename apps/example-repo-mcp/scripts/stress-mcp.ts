@@ -353,7 +353,13 @@ async function caseShutdownMarker(): Promise<void> {
     record(
       `shutdown marker names the real cause (${label})`,
       marker?.reason === expected,
-      `reason=${marker ? String(marker.reason) : "NO MARKER"} expected=${expected}`,
+      marker
+        ? `reason=${String(marker.reason)} expected=${expected}` +
+            // This case asserts the cause STRING, so it also pins the cause
+            // vocabulary. If getShutdownCause() is ever re-worded, this fails for
+            // a reason that has nothing to do with the marker.
+            (marker.reason === undefined ? "" : " (cause vocabulary is pinned here)")
+        : `NO MARKER written — expected reason=${expected}`,
     );
   }
 }
