@@ -88,6 +88,26 @@ Two defaults to know:
   observing the event would otherwise suppress process-wide. Long-running
   interactive TUIs disable it alongside `exitOnUncaughtException`.
 
+### Cleanup ordering — register write-once cleanups LAST
+
+Cleanups run in registration order in an async pass, **and** the `exit` listener
+sweeps the whole registry synchronously. That second pass is a guarantee, not an
+accident: a cleanup still runs when an earlier one hangs and trips the force-exit
+timer.
+
+The corollary bites anything that writes a line. A stalled `runCleanup` never
+reaches `registry.clear()`, so a cleanup the async pass *did* reach runs a second
+time in the sweep:
+
+| registered | a later cleanup hangs | all cleanups clean |
+|---|---|---|
+| first | **2 invocations** | 1 |
+| last | 1 | 1 |
+
+So register log markers, metrics flushes, and anything else write-once **last**,
+where the sweep is their only invocation. Registering them first to "get them in
+early" is the intuitive move and it is the wrong one.
+
 ### Why the process is shutting down
 
 A final shutdown log line is far more useful when it names the cause. Without

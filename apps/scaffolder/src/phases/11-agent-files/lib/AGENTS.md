@@ -135,7 +135,7 @@ NDJSON files written to `$TMPDIR/example-repo-mcp/example-repo-mcp-{PID}-{date}.
 - `level: "info" | "warn" | "error"` — events
 - `level: "perf"` with `dur_ms` — performance spans
 - `msg: "heartbeat"` — periodic memory/uptime (every 60s)
-- `msg: "startup"` / `msg: "shutdown"` — process markers (file without `shutdown` = crash)
+- `msg: "startup"` / `msg: "shutdown"` — process markers. No `shutdown` line = the process crashed. `data.reason` names why it ended: `stdin_eof` (host disconnected), `signal:SIGTERM`, `watchdog:<reason>`, `uncaught_exception`, or `normal`. stdio path only — the HTTP transport writes neither marker
 
 Also in-memory ring buffer (last 500 lines). In dev mode (`MCP_DEV=1`), a `get_logs` MCP tool is registered for AI-driven log inspection.
 

@@ -52,6 +52,21 @@ export interface ShutdownControllerOptions {
 }
 
 export interface ShutdownController {
+  /**
+   * Register a cleanup to run on shutdown.
+   *
+   * GUARANTEE, relied on by callers and therefore stable: cleanups run in
+   * registration order in an async pass, and the `exit` listener additionally
+   * sweeps the WHOLE registry synchronously. So a cleanup still runs even when
+   * an earlier one hangs and trips the force-exit timer — the async pass never
+   * reaches it, the sweep does.
+   *
+   * The corollary matters for anything that writes a line: a cleanup the async
+   * pass DID reach before a later one hung runs a SECOND time in the sweep,
+   * because a stalled `runCleanup` never reaches `registry.clear()`. Register
+   * write-once cleanups (log markers, metrics flushes) LAST, where the sweep is
+   * their only invocation. Measured, not assumed.
+   */
   registerCleanup(fn: CleanupFn): void;
   unregisterCleanup(fn: CleanupFn): void;
   shutdown(exitCode?: number): Promise<void>;

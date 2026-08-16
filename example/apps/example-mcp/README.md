@@ -67,6 +67,31 @@ Useful knobs, all read at call time so CLI flags still reach them:
 The equivalent programmatic setters (`setFileLogging`, `setLogRedaction`,
 `setStderrMirror`) take precedence over the environment.
 
+### Process markers — telling a clean exit from a crash
+
+Every stdio run writes two markers, and `AGENTS.md` states the rule that depends
+on them: **a log file without a `shutdown` line means the process crashed.**
+
+```json
+{"msg":"startup","data":{"pid":75652,"entrypoint":"example-mcp"}}
+{"msg":"shutdown","data":{"pid":75652,"reason":"stdin_eof","uptime_s":41}}
+```
+
+`reason` names *why*, not merely *that*: `stdin_eof` (the MCP host disconnected —
+the most common exit of all), `signal:SIGTERM`, `watchdog:rss_exceeded`,
+`uncaught_exception`, or `normal`. A supervisor respawn and a crash loop look
+identical without it.
+
+Two caveats worth knowing:
+
+- **Only the stdio path writes them.** `runHttpMcp` does not install shutdown
+  handlers, so the HTTP server has no markers — and its `registerCleanup(() =>
+  handle.close())` never fires either. If you run HTTP as a long-lived service,
+  wire `installShutdownHandlers()` yourself.
+- The rule above was **false before this was added**: `logStartup` shipped
+  without its counterpart, so every clean exit looked like a crash. If you
+  scaffolded before then, check that `startStdio` registers the marker.
+
 ## Removing surfaces
 
 - **Drop HTTP support**: delete the `http` subcommand from `src/cli.ts`, the `--http` branch from `src/index.ts`, and case #9 from `scripts/stress-mcp.ts`. Remove `MCP_HTTP_TOKEN` from `.env.example`. If nothing else in your tool resolves a secret, drop `@george43g/secret-store` from `package.json` too.
