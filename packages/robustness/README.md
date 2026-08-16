@@ -104,9 +104,27 @@ time in the sweep:
 | first | **2 invocations** | 1 |
 | last | 1 | 1 |
 
-So register log markers, metrics flushes, and anything else write-once **last**,
-where the sweep is their only invocation. Registering them first to "get them in
-early" is the intuitive move and it is the wrong one.
+Registering write-once cleanups **last** puts them where the sweep is their only
+invocation. But last is not a position you can hold: anything that registers a
+cleanup at **runtime** lands after yours — a lazily armed watcher inside a tool
+handler, or an ink component registering on mount (tui-kit's `FullScreenInk`
+does exactly that). In that shape "last" is unstable by construction.
+
+**So make write-once cleanups idempotent. Ordering alone cannot protect them
+once registration is dynamic:**
+
+```ts
+let written = false;
+registerCleanup(() => {
+  if (written) return;
+  written = true;
+  logShutdown(getShutdownCause());
+});
+```
+
+Measured: marker registered last, then a runtime registration that hangs — two
+lines unguarded, one guarded. The ordering advice tells you when it bites; the
+guard removes the precondition.
 
 ### Why the process is shutting down
 
