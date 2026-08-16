@@ -51,8 +51,26 @@ function ProbeDefault() {
   return <Text>p99={stats.eventLoopP99Ms}</Text>;
 }
 
-/** Let React/Ink flush through their (real) scheduling channels. */
+/**
+ * Let React/Ink flush through their (real) scheduling channels.
+ *
+ * A fixed sleep is a wall-clock race: 20ms is ample on an idle laptop and not
+ * always enough on a loaded CI runner, where this failed a release chain with
+ * `expected 'p99=5' to contain 'p99=12'` — the assertion ran before ink had
+ * repainted. Reproduced 0/15 times locally, which is the signature of a
+ * load-dependent timing bug rather than a logic one.
+ *
+ * `flushUntil` polls for the condition instead, so a slow runner costs latency
+ * rather than a false failure, and a genuine regression still fails — just at
+ * the timeout rather than instantly.
+ */
+const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 const flush = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+async function flushUntil(predicate: () => boolean, timeoutMs = 2_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate() && Date.now() < deadline) await tick();
+}
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
@@ -73,7 +91,7 @@ describe("useDevStats", () => {
 
     h.watchdog.eventLoopP99Ms = 12;
     vi.advanceTimersByTime(2000);
-    await flush();
+    await flushUntil(() => Boolean(lastFrame()?.includes("p99=12")));
     expect(lastFrame()).toContain("p99=12");
     expect(h.onMemorySample).not.toHaveBeenCalled();
     unmount();
@@ -83,7 +101,7 @@ describe("useDevStats", () => {
     const { unmount } = render(<Probe visible={true} />);
     expect(vi.getTimerCount()).toBe(1);
     unmount();
-    await flush();
+    await flushUntil(() => vi.getTimerCount() === 0);
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -105,7 +123,7 @@ describe("useDevStats", () => {
 
     h.watchdog.eventLoopP99Ms = 20;
     h.samplers.at(-1)?.(100, 50);
-    await flush();
+    await flushUntil(() => Boolean(lastFrame()?.includes("p99=20")));
     expect(lastFrame()).toContain("p99=20");
     unmount();
   });
@@ -114,7 +132,7 @@ describe("useDevStats", () => {
     const { unmount } = render(<Probe visible={false} />);
     expect(h.unsubscribe).not.toHaveBeenCalled();
     unmount();
-    await flush();
+    await flushUntil(() => h.unsubscribe.mock.calls.length === 1);
     expect(h.unsubscribe).toHaveBeenCalledTimes(1);
   });
 
@@ -124,12 +142,12 @@ describe("useDevStats", () => {
     expect(h.onMemorySample).not.toHaveBeenCalled();
 
     rerender(<Probe visible={false} />);
-    await flush();
+    await flushUntil(() => vi.getTimerCount() === 0 && h.onMemorySample.mock.calls.length === 1);
     expect(vi.getTimerCount()).toBe(0);
     expect(h.onMemorySample).toHaveBeenCalledTimes(1);
 
     rerender(<Probe visible={true} />);
-    await flush();
+    await flushUntil(() => vi.getTimerCount() === 1 && h.unsubscribe.mock.calls.length === 1);
     expect(vi.getTimerCount()).toBe(1);
     expect(h.unsubscribe).toHaveBeenCalledTimes(1);
     unmount();
@@ -139,7 +157,7 @@ describe("useDevStats", () => {
     const { lastFrame, unmount } = render(<ProbeDefault />);
     h.watchdog.eventLoopP99Ms = 33;
     vi.advanceTimersByTime(2000);
-    await flush();
+    await flushUntil(() => Boolean(lastFrame()?.includes("p99=33")));
     expect(lastFrame()).toContain("p99=33");
     expect(h.onMemorySample).not.toHaveBeenCalled();
     unmount();
