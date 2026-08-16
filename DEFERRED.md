@@ -766,8 +766,17 @@ plan docs), or a **test fixture** (an arbitrary unmanaged-server name in
 Measured 2026-08-09 (previous snapshot was ~3 months stale and disagreed with
 HANDOFF.md and PROJECT_STATE.md three different ways — see field-note 35).
 
-- Published packages: `@george43g/robustness@0.2.1`, `@george43g/cli-kit@0.1.0`,
-  `@george43g/tui-kit@0.1.1`. `@george43g/mcpsync` bootstrap-pending.
+**The counts below are ALSO stale and were never re-measured** — coverage now
+runs, the scaffolder has more tests than listed, and `env-loader`/`secrets` were
+retired (#11). Re-measure before quoting any of it; the note above about
+disagreeing files applied to this block too, one round later.
+
+- Published packages: **do not read a version number from this file.** This block
+  said `robustness@0.2.1`, `cli-kit@0.1.0`, `tui-kit@0.1.1` for six days after
+  robustness alone had shipped five more releases. Run:
+  `for p in robustness cli-kit tui-kit secret-store; do npm view @george43g/$p version; done`
+  `@george43g/mcpsync` is bootstrap-pending (`workflow_dispatch`-only) — that
+  fact is stable, the numbers are not.
 - Workspaces: 14 (excludes `example/**`)
 - Scaffolder: 10 phases, 21 migrations, 13 test files (136 tests)
 - Stress: 13 assertions
