@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.8.1](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.8.0...robustness-v0.8.1) (2026-08-16)
+
+
+### Bug Fixes
+
+* **robustness:** only record a shutdown cause when the event initiates the shutdown ([2209f3e](https://github.com/george43g/mcp-cli-starter-template/commit/2209f3e763fdcad8e8661a4e3e435d0ac6ba0ff9))
+
 # [@george43g/robustness-v0.8.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.7.0...robustness-v0.8.0) (2026-08-16)
 
 
