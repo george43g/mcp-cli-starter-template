@@ -6,6 +6,7 @@ import {
   onMemorySample,
   readWatchdogState,
   _resetForTests as resetWatchdog,
+  type WatchdogBreach,
   type WatchdogDiagnostic,
   type WatchdogOptions,
 } from "./watchdog.js";
@@ -385,5 +386,207 @@ describe("watchdog kill attributes the shutdown cause", () => {
     expect(controller.readState().killReason).toBe("rss_exceeded");
     controller.dispose();
     vi.useRealTimers();
+  });
+});
+
+describe("observe-only breach hook", () => {
+  /** A shutdown controller that records what the watchdog asked it to do. */
+  function recordingShutdown(shutdowns: number[]): WatchdogOptions["shutdownController"] {
+    return {
+      registerCleanup: () => {},
+      unregisterCleanup: () => {},
+      isShuttingDown: () => false,
+      shutdown: async (code?: number) => {
+        shutdowns.push(code ?? 0);
+      },
+    };
+  }
+
+  it("observes an RSS breach without killing, and still logs it", async () => {
+    vi.useFakeTimers();
+    const breaches: WatchdogBreach[] = [];
+    const events: string[] = [];
+    const exits: number[] = [];
+    const shutdowns: number[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      exit: (code) => exits.push(code),
+      memorySampleMs: 1_000,
+      maxRssMb: 1, // any real process exceeds this on the first sample
+      onDiagnostic: ({ event }) => events.push(event),
+      onBreach: (breach) => {
+        breaches.push(breach);
+        return "observe";
+      },
+      shutdownController: recordingShutdown(shutdowns),
+    });
+    controller.install();
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(breaches.map((b) => b.reason)).toEqual(["rss_exceeded"]);
+    expect(breaches[0]?.data).toMatchObject({ threshold_mb: 1 });
+    // The three things an observed breach must NOT do.
+    expect(controller.readState().killReason).toBeNull();
+    expect(shutdowns).toEqual([]);
+    expect(events).not.toContain("watchdog_kill: rss_exceeded");
+    // The one thing it must do.
+    expect(events).toContain("watchdog_breach_observed: rss_exceeded");
+
+    // No force-exit net was armed. 5s is the kill path's escape hatch.
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(events).not.toContain("watchdog_force_exit");
+    expect(exits).toEqual([]);
+
+    controller.reset();
+  });
+
+  it("re-fires on every subsequent sample while the breach persists", async () => {
+    vi.useFakeTimers();
+    const reasons: string[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      memorySampleMs: 1_000,
+      maxRssMb: 1,
+      onDiagnostic: () => {},
+      onBreach: ({ reason }) => {
+        reasons.push(reason);
+        return "observe";
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    // Deliberately unthrottled: the sampler interval is the rate limit, and a
+    // consumer cannot implement "kill on the third breach" from a latched hook.
+    expect(reasons).toEqual(["rss_exceeded", "rss_exceeded", "rss_exceeded"]);
+    expect(controller.readState().killReason).toBeNull();
+    controller.reset();
+  });
+
+  it("kills when the hook returns nothing, exactly as with no hook at all", async () => {
+    vi.useFakeTimers();
+    const events: string[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      memorySampleMs: 1_000,
+      maxRssMb: 1,
+      onDiagnostic: ({ event }) => events.push(event),
+      onBreach: () => {
+        // Observes and decides nothing — void must mean today's behaviour.
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(controller.readState().killReason).toBe("rss_exceeded");
+    expect(events).toContain("watchdog_kill: rss_exceeded");
+    expect(events).toContain("rss_kill_heap_forensics");
+    expect(events).not.toContain("watchdog_breach_observed: rss_exceeded");
+    controller.reset();
+  });
+
+  it("suppresses the kill-time heap forensics for an observed RSS breach", async () => {
+    vi.useFakeTimers();
+    const events: string[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      memorySampleMs: 1_000,
+      maxRssMb: 1,
+      onDiagnostic: ({ event }) => events.push(event),
+      onBreach: () => "observe",
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    // Full heap statistics plus every heap space, every 60s forever, is not a
+    // payload to emit for a breach the consumer has told us to tolerate.
+    expect(events).not.toContain("rss_kill_heap_forensics");
+    controller.reset();
+  });
+
+  it("observes an event-loop breach without killing", async () => {
+    vi.useFakeTimers();
+    const breaches: WatchdogBreach[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      eventLoopSampleMs: 1_000,
+      eventLoopKillMs: 0, // an idle histogram already satisfies p99 >= 0
+      onDiagnostic: () => {},
+      onBreach: (breach) => {
+        breaches.push(breach);
+        return "observe";
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(breaches.map((b) => b.reason)).toEqual(["event_loop_blocked"]);
+    expect(breaches[0]?.data).toMatchObject({ threshold_ms: 0 });
+    expect(controller.readState().killReason).toBeNull();
+    controller.reset();
+  });
+
+  it("lets the verdict differ per breach reason on one controller", async () => {
+    vi.useFakeTimers();
+    const reasons: string[] = [];
+    const controller = createWatchdog({
+      exit: () => {},
+      eventLoopSampleMs: 60_000,
+      memorySampleMs: 60_000,
+      maxRssMb: 1_000_000,
+      idleRestart: true,
+      idleRestartAfterMs: 1,
+      idleRestartQuietMs: 1,
+      idleCheckMs: 1_000,
+      onDiagnostic: () => {},
+      onBreach: ({ reason }) => {
+        reasons.push(reason);
+        return reason === "idle_restart" ? "observe" : "kill";
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(reasons).toEqual(["idle_restart"]);
+    expect(controller.readState().killReason).toBeNull();
+
+    controller.reconfigure({ memorySampleMs: 1_000, maxRssMb: 1 });
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(reasons).toContain("rss_exceeded");
+    expect(controller.readState().killReason).toBe("rss_exceeded");
+    controller.reset();
+  });
+
+  it("kills when the hook throws — a broken hook must not disarm the watchdog", async () => {
+    vi.useFakeTimers();
+    const events: string[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      memorySampleMs: 1_000,
+      maxRssMb: 1,
+      onDiagnostic: ({ event }) => events.push(event),
+      onBreach: () => {
+        throw new Error("consumer hook is broken");
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(events).toContain("watchdog_breach_handler_failed");
+    expect(controller.readState().killReason).toBe("rss_exceeded");
+    controller.reset();
   });
 });

@@ -44,6 +44,41 @@ export interface WatchdogDiagnostic {
   data?: Record<string, unknown>;
 }
 
+/**
+ * Every condition the watchdog acts on. `idle_restart` is a planned recycle
+ * rather than a fault, but it reaches the same decision point, so it is part
+ * of the same union: a consumer that wants to veto restarts can.
+ */
+export type WatchdogBreachReason =
+  | "event_loop_blocked"
+  | "event_loop_sustained_lag"
+  | "rss_exceeded"
+  | "memory_leak_suspected"
+  | "idle_restart";
+
+export interface WatchdogBreach {
+  reason: WatchdogBreachReason;
+  /** The same payload the `watchdog_kill: <reason>` diagnostic carries. */
+  data: Record<string, unknown>;
+}
+
+export type WatchdogBreachVerdict = "kill" | "observe";
+
+// Synchronous on purpose: the verdict is needed before the sampler can decide
+// whether to shut the process down, and there is nothing sensible to do with a
+// pending promise at that point. Do slow work in a queue the hook feeds.
+//
+// `| void`, not `| undefined`. Measured with tsc 5.9.3: against
+// `WatchdogBreachVerdict | undefined`, both `() => {}` and `() => { return; }`
+// fail with TS2322 ("Type 'void' is not assignable") — exactly the two shapes a
+// consumer writes when it only wants to observe. `| void` is what makes "return
+// nothing" mean "keep today's behaviour". The suppression has to be the last
+// comment line before the declaration (biome does not carry it across another
+// comment), which is why these notes are plain `//` and the docs a consumer
+// hovers live on `WatchdogOptions.onBreach`.
+// biome-ignore lint/suspicious/noConfusingVoidType: deliberate, see above
+export type WatchdogBreachHandler = (breach: WatchdogBreach) => WatchdogBreachVerdict | void;
+
 export interface WatchdogOptions {
   /** Environment namespace without trailing underscore. Defaults to MCP. */
   envPrefix?: string;
@@ -66,6 +101,22 @@ export interface WatchdogOptions {
   sleepSkewMultiplier?: number;
   statePath?: string;
   onDiagnostic?: (diagnostic: WatchdogDiagnostic) => void;
+  /**
+   * Called synchronously on EVERY detected breach, before anything is killed.
+   *
+   * Return `"observe"` to keep the process alive: the breach is still logged
+   * (`watchdog_breach_observed: <reason>`) but no kill reason is recorded, no
+   * force-exit net is armed, and `shutdown()` is not called. Returning
+   * `"kill"`, returning nothing, or throwing all leave today's behaviour
+   * exactly as it was — which is why adding this cannot change an existing
+   * consumer, and why the hook may not silently disarm the watchdog by
+   * crashing.
+   *
+   * The verdict is per breach, not global: the handler receives the reason, so
+   * `({ reason }) => (reason === "rss_exceeded" ? "observe" : "kill")` is the
+   * whole mechanism for a per-condition policy.
+   */
+  onBreach?: WatchdogBreachHandler;
   /**
    * `noteShutdownCause` is optional in this shape on purpose: requiring it
    * would break every consumer (and test) that passes a hand-built stub of the
@@ -186,7 +237,43 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     else info(event, data);
   };
 
-  const triggerKill = (reason: string, data: Record<string, unknown>): void => {
+  /**
+   * Ask the consumer what to do about a breach. True means "kill", which is
+   * what every path did unconditionally before `onBreach` existed.
+   *
+   * A non-killed breach is deliberately NOT latched: the hook fires again on
+   * every sample that still breaches. The sampler interval is already the rate
+   * limit (5s event loop, 60s memory), the file's own `event_loop_lag` warning
+   * has warned on that same cadence since day one, and a latched hook makes
+   * "kill on the third consecutive breach" impossible to express without the
+   * consumer rebuilding the sampler's timing itself.
+   */
+  const shouldKill = (reason: WatchdogBreachReason, data: Record<string, unknown>): boolean => {
+    // A kill is already in flight. Neither notify nor kill again.
+    if (state.killReason) return false;
+    if (!opts.onBreach) return true;
+
+    try {
+      if (opts.onBreach({ reason, data }) !== "observe") return true;
+    } catch (err) {
+      // Fail closed. A consumer hook that throws must not be able to turn the
+      // watchdog off, which is exactly what swallowing this and returning
+      // false would do. Only the hook call is inside the try, so a failing
+      // logger is never misreported as a failing breach handler.
+      diagnostic("error", "watchdog_breach_handler_failed", {
+        reason,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return true;
+    }
+
+    // Distinct event name, not `watchdog_kill`: a log scraper keyed on the kill
+    // line must not see a kill that never happened.
+    diagnostic("warn", `watchdog_breach_observed: ${reason}`, data);
+    return false;
+  };
+
+  const triggerKill = (reason: WatchdogBreachReason, data: Record<string, unknown>): void => {
     if (state.killReason) return;
     state.killReason = reason;
     // Before shutdown(), so the watchdog is the first writer: the shutdown it
@@ -224,23 +311,29 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     writeStateSnapshot(config.statePath, state);
 
     if (p99Ms >= config.eventLoopKillMs) {
-      triggerKill("event_loop_blocked", {
-        p99_ms: p99Ms,
-        max_ms: maxMs,
-        threshold_ms: config.eventLoopKillMs,
-      });
+      const data = { p99_ms: p99Ms, max_ms: maxMs, threshold_ms: config.eventLoopKillMs };
+      if (shouldKill("event_loop_blocked", data)) triggerKill("event_loop_blocked", data);
+      // Returns even when observed: the control flow below (sustained counter,
+      // lag warning) is unreachable at this p99 anyway, and keeping the shape
+      // identical to the kill path is one less thing to reason about.
       return;
     }
     if (p99Ms >= config.eventLoopSustainedMs) {
       state.eventLoopSustainedCount++;
       if (state.eventLoopSustainedCount >= config.eventLoopSustainedSamples) {
-        triggerKill("event_loop_sustained_lag", {
+        // The counter is deliberately not reset when the breach is observed:
+        // `consecutive_samples` keeps climbing, which is the number a consumer
+        // needs to escalate on its own schedule.
+        const data = {
           p99_ms: p99Ms,
           max_ms: maxMs,
           consecutive_samples: state.eventLoopSustainedCount,
           sample_interval_ms: config.eventLoopSampleMs,
           sustained_threshold_ms: config.eventLoopSustainedMs,
-        });
+        };
+        if (shouldKill("event_loop_sustained_lag", data)) {
+          triggerKill("event_loop_sustained_lag", data);
+        }
         return;
       }
     } else {
@@ -276,24 +369,32 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     if (state.heapHistory.length > config.memoryGrowthSamples) state.heapHistory.shift();
 
     if (rssMb >= config.maxRssMb) {
-      try {
-        diagnostic("error", "rss_kill_heap_forensics", {
-          heap_stats: getHeapStatistics(),
-          heap_spaces: getHeapSpaceStatistics().map((space) => ({
-            name: space.space_name,
-            used_mb: round1(space.space_used_size / 1_024 / 1_024),
-          })),
-          memory_usage: {
-            rss_mb: rssMb,
-            heap_used_mb: heapMb,
-            external_mb: round1(usage.external / 1_024 / 1_024),
-            array_buffers_mb: round1(usage.arrayBuffers / 1_024 / 1_024),
-          },
-        });
-      } catch {
-        // Forensics must never delay the kill.
+      const data = { rss_mb: rssMb, threshold_mb: config.maxRssMb };
+      // Forensics are gathered only on the kill path. Their order relative to
+      // `watchdog_kill` is unchanged, but an observed breach re-fires every
+      // memory sample, and full heap statistics plus every heap space is not a
+      // payload to emit every 60s forever for a condition the consumer has
+      // explicitly chosen to tolerate.
+      if (shouldKill("rss_exceeded", data)) {
+        try {
+          diagnostic("error", "rss_kill_heap_forensics", {
+            heap_stats: getHeapStatistics(),
+            heap_spaces: getHeapSpaceStatistics().map((space) => ({
+              name: space.space_name,
+              used_mb: round1(space.space_used_size / 1_024 / 1_024),
+            })),
+            memory_usage: {
+              rss_mb: rssMb,
+              heap_used_mb: heapMb,
+              external_mb: round1(usage.external / 1_024 / 1_024),
+              array_buffers_mb: round1(usage.arrayBuffers / 1_024 / 1_024),
+            },
+          });
+        } catch {
+          // Forensics must never delay the kill.
+        }
+        triggerKill("rss_exceeded", data);
       }
-      triggerKill("rss_exceeded", { rss_mb: rssMb, threshold_mb: config.maxRssMb });
       return;
     }
 
@@ -301,11 +402,12 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
       state.heapHistory.length >= config.memoryGrowthSamples &&
       isMonotonicallyGrowing(state.heapHistory, config.memoryGrowthMinMb)
     ) {
-      triggerKill("memory_leak_suspected", {
+      const data = {
         samples: state.heapHistory.slice(),
         sample_interval_ms: config.memorySampleMs,
         minimum_growth_mb: config.memoryGrowthMinMb,
-      });
+      };
+      if (shouldKill("memory_leak_suspected", data)) triggerKill("memory_leak_suspected", data);
     }
   };
 
@@ -314,7 +416,8 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     const uptimeMs = Date.now() - state.startedAt;
     const idleMs = Date.now() - state.lastActivityTs;
     if (uptimeMs >= config.idleRestartAfterMs && idleMs >= config.idleRestartQuietMs) {
-      triggerKill("idle_restart", { uptime_ms: uptimeMs, idle_ms: idleMs });
+      const data = { uptime_ms: uptimeMs, idle_ms: idleMs };
+      if (shouldKill("idle_restart", data)) triggerKill("idle_restart", data);
     }
   };
 

@@ -6,7 +6,8 @@ CLIs, and TUIs.
 The package includes:
 
 - Configurable watchdogs for event-loop lag, memory growth, RSS limits, and
-  quiet uptime restarts.
+  quiet uptime restarts — self-killing by default, or observe-only via an
+  `onBreach` hook the consumer owns.
 - Graceful shutdown controllers with cleanup registration, signal handling,
   stdin EOF detection, and orphan detection.
 - Structured logging with redaction on by default, performance spans, health
@@ -220,6 +221,61 @@ beforeEach(() => {
   configureKitLogger(); // without this the prefix silently reverts to MCP_
 });
 ```
+
+## Observing a breach instead of killing it
+
+By default every breach the watchdog detects kills the process: it records a
+kill reason, attributes the shutdown cause, logs `watchdog_kill: <reason>`, arms
+a 5s force-exit net and calls `shutdown(1)`. That is right for an unattended
+MCP server and wrong for a long-lived interactive process that would rather
+know about a breach than be restarted by one.
+
+`onBreach` lets the consumer decide, per breach:
+
+```ts
+import { createWatchdog, type WatchdogBreach } from "@george43g/robustness";
+
+const watchdog = createWatchdog({
+  onBreach: ({ reason, data }: WatchdogBreach) => {
+    metrics.increment(`watchdog.breach.${reason}`, data);
+    // Tolerate memory pressure, still self-kill on a wedged event loop.
+    return reason === "rss_exceeded" ? "observe" : "kill";
+  },
+});
+```
+
+`reason` is one of `event_loop_blocked`, `event_loop_sustained_lag`,
+`rss_exceeded`, `memory_leak_suspected`, `idle_restart`. `data` is the same
+payload the `watchdog_kill` diagnostic carries.
+
+**Nothing changes unless you return `"observe"`.** Returning `"kill"`, returning
+nothing at all, or throwing from the hook each leave the kill path exactly as it
+was — a hook that crashes must not be able to switch the watchdog off, so a
+throw is logged as `watchdog_breach_handler_failed` and the kill proceeds.
+
+An observed breach still logs. It emits `watchdog_breach_observed: <reason>` at
+`warn`, with the same data, and does none of the four things a kill does — no
+`killReason`, no shutdown cause, no force-exit timer, no `shutdown()`:
+
+```
+[warn] watchdog_breach_observed: rss_exceeded {"rss_mb":82.3,"threshold_mb":1}
+```
+
+The event name is deliberately not `watchdog_kill`, so a log scraper keyed on
+the kill line never sees a kill that did not happen.
+
+**An observed breach re-fires on every subsequent sample that still breaches** —
+every 5s for the event loop, every `memorySampleMs` for memory. It is not
+latched, because the sampler interval is already the rate limit and a latched
+hook makes "kill on the third consecutive breach" impossible to write without
+rebuilding the sampler's timing. The one thing suppressed on the observe path is
+the `rss_kill_heap_forensics` dump: full heap statistics plus every heap space,
+every 60s forever, is not a payload to emit for a condition you have chosen to
+tolerate.
+
+The hook is synchronous. The verdict is needed before the sampler can act, so
+there is nothing useful to do with a pending promise; feed a queue from the
+hook if the reaction is slow.
 
 ## Watchdog state
 

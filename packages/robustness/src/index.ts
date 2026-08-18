@@ -58,6 +58,10 @@ export {
 } from "./shutdown.js";
 export type {
   MemorySampleCallback,
+  WatchdogBreach,
+  WatchdogBreachHandler,
+  WatchdogBreachReason,
+  WatchdogBreachVerdict,
   WatchdogController,
   WatchdogDiagnostic,
   WatchdogOptions,
