@@ -17,11 +17,20 @@
  */
 
 import { startHttpServer } from "@george43g/mcp-kit";
-import { envNum, envStr, registerCleanup } from "@george43g/robustness";
+import {
+  envNum,
+  envStr,
+  getShutdownCause,
+  installShutdownHandlers,
+  logShutdown,
+  logStartup,
+  registerCleanup,
+} from "@george43g/robustness";
 import { resolveSecret } from "@george43g/secret-store";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { Command } from "commander";
 import { getCounters } from "../counters.js";
+import { APP_NAME } from "../meta.js";
 
 export interface RunHttpMcpOptions {
   server: Server;
@@ -52,6 +61,19 @@ export async function runHttpMcp(opts: RunHttpMcpOptions): Promise<void> {
   const port = opts.port ?? envNum("MCP_HTTP_PORT", 8080);
   const bind = opts.bind ?? envStr("MCP_HTTP_BIND", "127.0.0.1");
   const token = await resolveHttpToken();
+
+  // Nothing trapped a signal on this path until now, so the `registerCleanup`
+  // below could never run: SIGTERM — how every supervisor, container runtime
+  // and `pnpm` stops a server — terminated the process outright at status 143,
+  // dropping in-flight requests and leaving the listener to the OS. Installed
+  // before `startHttpServer` so a signal arriving mid-bind still finds a
+  // handler.
+  //
+  // The watchdog is deliberately NOT installed here. stdio serves one client
+  // and can safely self-kill on lag; an HTTP server is shared, and a restart
+  // policy belongs to whatever supervises it.
+  installShutdownHandlers();
+
   const handle = await startHttpServer({
     server: opts.server,
     port,
@@ -62,6 +84,25 @@ export async function runHttpMcp(opts: RunHttpMcpOptions): Promise<void> {
     getCounters,
   });
   registerCleanup(() => handle.close());
+
+  // After the bind, not before: this line means "serving", so a failed bind
+  // leaves no startup marker to contradict.
+  logStartup(APP_NAME);
+
+  // Its counterpart, without which every clean HTTP exit reads as a crash to
+  // the rule the generated AGENTS.md states ("file without `shutdown` =
+  // crash"). Registered LAST and guarded, for the two independent reasons
+  // measured in `packages/mcp-kit/src/transports/stdio.ts`: the controller's
+  // exit listener sweeps the whole registry synchronously, so a cleanup the
+  // async pass already ran executes twice when a later one hangs; and "last"
+  // is not a position you can hold, because anything registering a cleanup at
+  // runtime lands after this one.
+  let markerWritten = false;
+  registerCleanup(() => {
+    if (markerWritten) return;
+    markerWritten = true;
+    logShutdown(getShutdownCause());
+  });
 }
 
 /**
