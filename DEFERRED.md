@@ -1944,7 +1944,16 @@ assuming their compute.
 
 ## 38. The `example/` resync is skipped exactly when a release goes wrong
 
-**Status**: open, observed live 2026-08-16. Raised with the user, who agreed it warrants an entry.
+**Status**: open. **Observed TWICE — 2026-08-16 and again 2026-08-18, the second time with real
+cost.** On 2026-08-18 `robustness@0.9.0` published, then the `cli-kit` job failed at the RUNNER
+level (`steps: []`, `conclusion: failure`, log already expired — not a test failure), skipping
+`tui-kit`, `secret-store` and `mcpsync`. `secret-store` carries the resync, so `example/` kept
+claiming `"@george43g/robustness": "^0.8.1"` against a published `0.9.0`. Fixed by hand in a
+follow-up PR. The 2026-08-16 occurrence was harmless only by luck; this one was not, and the
+predicted consequence — an unrelated PR failing CI's sync check for a reason with nothing to do
+with its own diff — was avoided only because CI was itself down at the time.
+
+**Two occurrences in two days moves this from a design smell to a recurring fault.**
 
 **What happened**: `tui-kit`'s `useDevStats` test flaked on the runner during the release run for
 `8bd953f`. Because the release jobs are a strict chain —
@@ -1989,3 +1998,52 @@ on a failed job skips this one too and nothing changes.
 so it wants its own PR and a real (not simulated) failed-chain observation to confirm the fix.
 
 **Cost**: ~30 min plus one deliberate failed-chain test.
+
+
+---
+
+## 39. The logger rotates but never reaps, so long-lived processes grow $TMPDIR without bound
+
+**Status**: open, found 2026-08-18 while assessing the log volume of the watchdog's new
+observe-only mode. Pre-existing — this is not caused by that feature, but that feature is the
+first thing that makes a process log steadily, forever, unattended.
+
+**The defect**: `packages/robustness/src/logger.ts` rotates at `MCP_LOG_MAX_BYTES` (10MB) by
+**opening a new file** — `ensureLogFile()` builds a fresh `<prefix>-<pid>-<timestamp>.ndjson`
+when the current one is full. Nothing ever deletes the old one. Verified: no `unlink`, no prune,
+and the only `readdirSync` in the file (`:436`) belongs to `getFileLogLines`, a reader.
+
+So rotation bounds FILE size, not DISK usage. A long-lived server accumulates 10MB files
+indefinitely.
+
+**Why it is easy to miss**: the stdio path calls `setStderrMirror(true)`, so an operator sees the
+lines. The HTTP path deliberately does not (a TUI would be garbled by stray stderr), so on an HTTP
+server these accumulate silently in `$TMPDIR` where nobody is watching.
+
+**This repo already knows the pattern it is missing.** `apps/mcpsync/src/core/backup.ts:28`:
+```ts
+export function pruneBackups(path: string, keep = 5): void
+```
+Backups are reaped to the newest 5. Logs are not reaped at all.
+
+**Volume context, measured 2026-08-18** — an observed (non-killed) breach logs one line per
+breaching sample, and the two samplers differ by 12x:
+- memory conditions (`rss_exceeded`, `memory_leak_suspected`) ride `memorySampleMs`, default 60s
+  → ~1,440 lines/day, ~215 KB/day
+- `event_loop_sustained_lag` rides `eventLoopSampleMs`, default 5s → ~17,280 lines/day, ~4 MB/day
+
+**Fix**: a `pruneLogs(dir, keep)` alongside the existing rotation, called from `ensureLogFile()`
+when it rolls. Mirror `pruneBackups`'s shape rather than inventing a second convention. Decide
+deliberately whether the default is a file count or a total-bytes budget — a count is simpler, a
+byte budget is what an operator actually cares about.
+
+**Deliberately NOT bundled** into the observe-only wiring PR that surfaced it: it is unrelated to
+that call site, and smuggling a backlog entry into a wiring PR is the kind of scope creep that
+makes a diff hard to review and a revert hard to scope.
+
+**Trigger to action**: any report of `$TMPDIR` growth, or the first consumer that runs an
+observe-only watchdog on a long-lived HTTP service with file logging on. Bundle with other logger
+work if any appears first.
+
+**Cost**: ~1h including a test that proves old files are removed, which is the assertion that
+matters — a prune with an off-by-one that keeps everything looks identical to no prune at all.
