@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.9.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.8.1...robustness-v0.9.0) (2026-08-18)
+
+
+### Features
+
+* **robustness:** add an observe-only breach hook to the watchdog ([592ea10](https://github.com/george43g/mcp-cli-starter-template/commit/592ea10a5bb7ab5969418db185aa4ebae9aae557))
+
 # [@george43g/robustness-v0.8.1](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.8.0...robustness-v0.8.1) (2026-08-16)
 
 
