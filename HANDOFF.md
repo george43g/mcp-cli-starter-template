@@ -199,7 +199,13 @@ one accidental minor carrying a real break, switches them to exact pins.
 
 ### Stage 7 — what is actually blocked
 
-- **#10** — the destination is **NOT** open. `DEFERRED.md` #10 is titled "(to life-stack)" and its
+- **#10** — the destination is **NOT** open, but the move is now blocked on the life-stack
+  session's answers, not on George. Four decisions were put to them 2026-08-18; **do not start
+  deleting until Q1 (publish from life-stack / stay unpublished / do not move) is answered.**
+  Newly found and recorded in #10: life-stack has NO release pipeline, and npm OIDC trusted
+  publishing is a per-repo trust relationship only George can reconfigure. Also corrected there:
+  the "zero manifest changes" claim was false — cli-kit and tui-kit are `workspace:*` devDeps
+  that life-stack cannot resolve. `DEFERRED.md` #10 is titled "(to life-stack)" and its
   step 1 records life-stack as *verified* compatible: it already ships
   `packages/{tsconfig,vitest-config,biome-config}` under the same `@george43g/*` names, all
   private, so mcpsync's `workspace:*` devDeps resolve there with zero manifest changes. This line

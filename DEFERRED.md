@@ -265,11 +265,16 @@ generated tool. `npx` works regardless of where the source lives; it only needs 
    `@george43g/robustness` is on npm too (now `0.2.0`).
    **The tsconfig/vitest-config question is CLOSED, and the answer is "neither".** Shared-tool
    config packages are never published (see the rule in `AGENTS.md`) — a relocated package
-   depends on the destination monorepo's own equivalent. Verified: life-stack already ships
-   `packages/{tsconfig,vitest-config,biome-config}` under the **same** `@george43g/*` names and
-   all private, so mcpsync's `"@george43g/tsconfig": "workspace:*"` devDeps resolve there with
-   **zero manifest changes**. (EQStack uses `@eqstack/*` for its own — same pattern, its own
-   scope.) No work required for this sub-step.
+   depends on the destination monorepo's own equivalent. Verified 2026-08-18: life-stack ships
+   `@george43g/{tsconfig,vitest-config,biome-config}`, all `private: true`, so those resolve.
+
+   **CORRECTION 2026-08-18 — "zero manifest changes" was WRONG.** mcpsync has **four**
+   `workspace:*` devDeps, not two. `@george43g/cli-kit` and `@george43g/tui-kit` are NOT
+   workspace packages in life-stack, so they do not resolve there. They are devDeps rather than
+   deps because `apps/mcpsync/vite.config.ts` BUNDLES them into `dist/` — its own comment
+   (`:17-22`) says so and calls the bundling "legacy" now that both are published. Step 2 below
+   already covers rewriting them; it is this step's "no work required" that was false. The
+   original claim was made by checking only the two config packages and generalising.
 2. Move `apps/mcpsync` to life-stack (sibling of `opkeep`); rewrite `workspace:*` → the
    published versions; publish `@george43g/mcpsync` from there. It can also stop bundling the
    kits via Vite (`apps/mcpsync/vite.config.ts` externals) and take them as real deps —
@@ -286,10 +291,32 @@ generated tool. `npx` works regardless of where the source lives; it only needs 
    - `apps/mcpsync/vite.config.ts`'s bundling rationale (moot once relocated; see step 2)
    - its `LICENSE` (added 2026-08-08 to satisfy the manifest guardrail)
 
-**Trigger to action**: unblocked — step 1 is done. Remaining cost is the move itself.
+**BLOCKER found 2026-08-18, not previously recorded: life-stack has no release pipeline.**
+`ls .github/workflows/` there returns no release workflow at all. mcpsync is meant to publish as
+`@george43g/mcpsync` and carries `semantic-release` + `semantic-release-monorepo` +
+`@semantic-release/{changelog,git,npm}` in its own devDeps; its release job here is
+`release-packages.yml:369-374`, `workflow_dispatch`-only and bootstrap-pending. This repo
+publishes via **npm OIDC trusted publishing with no `NPM_TOKEN`** — a per-package,
+per-repository trust relationship configured in the npm UI. Relocating the package means that
+trust must be re-established pointing at life-stack, which is **a manual step only the user can
+take**. "Release wiring at the new home" is not mechanical when the home has no wiring.
 
-**Cost**: ~half a day once the kits are published — mostly mechanical (dep rewrites + move +
-release wiring at the new home).
+Also corrected: #10 said to place mcpsync "beside `opkeep`". `apps/opkeep` is a **bash** project
+(`bin/`, `lib/`, `load.sh`, `backends/`, `widgets/`, `mise.toml`), neither private nor
+publishConfig-bearing. It indicates where the directory goes and nothing about how a published
+TypeScript CLI should be wired there.
+
+**Trigger to action**: four decisions were put to the life-stack session on 2026-08-18 and are
+outstanding — (1) publish from life-stack / stay unpublished / do not move at all;
+(2) keep bundling cli-kit+tui-kit as pinned npm devDeps, or take them as real deps per the
+vite comment's stated end state; (3) `apps/` vs `packages/` placement; (4) any downstream bugs
+to fold in before the move. **Do not start deleting until Q1 is answered** — Q1(c) is "do not
+move", and the inclusion-rule argument for moving was written before anyone checked the
+destination could publish.
+
+**Cost**: ~half a day IF Q1 is (b) unpublished-at-life-stack. Materially more for (a), which
+means standing up a release pipeline plus an npm trusted-publisher reconfiguration in a repo
+that has deliberately never had one.
 
 ---
 
