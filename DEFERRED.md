@@ -1862,3 +1862,53 @@ one would look identical from here.
 **Trigger to act**: the first under-classified breaking release that reaches a consumer, or the user
 deciding the standing round-trip is too manual to keep repeating. Ask up-bank's user before
 assuming their compute.
+
+---
+
+## 38. The `example/` resync is skipped exactly when a release goes wrong
+
+**Status**: open, observed live 2026-08-16. Raised with the user, who agreed it warrants an entry.
+
+**What happened**: `tui-kit`'s `useDevStats` test flaked on the runner during the release run for
+`8bd953f`. Because the release jobs are a strict chain —
+`release-tokens → robustness → cli-kit → tui-kit → secret-store`, each `needs:` the previous —
+GitHub skipped `secret-store` entirely. That job carries the `example/` resync
+(`release-packages.yml:342`), so the resync never ran.
+
+**Why it is worse than a skipped step**: the resync exists (DEFERRED #22) so a release cannot leave
+the tracked `example/` output stale. `needs:` makes it skip on ANY upstream failure — so the safety
+net is removed precisely in the runs where something already went wrong and a release may be
+half-finished.
+
+**The concrete bad case**, which did NOT happen this time only by luck: `robustness` publishes,
+then a later job flakes. npm now serves the new version, `example/` still embeds the old range, and
+nothing refreshes it. The next unrelated PR fails CI's `example/` sync check, and its author debugs
+a failure that has nothing to do with their change. On 2026-08-16 `example/` was already in sync
+because PR #54 had regenerated it in-PR — luck, not design.
+
+**Fix**: lift the resync out of `secret-store` into its own job that depends on all four and runs
+regardless of their outcome:
+
+```yaml
+resync-example:
+  needs: [robustness, cli-kit, tui-kit, secret-store]
+  if: always() && github.event_name == 'push'
+```
+
+`if: always()` is the load-bearing part — it is what breaks the skip-cascade. Without it, `needs:`
+on a failed job skips this one too and nothing changes.
+
+**Two things to verify when doing it**, neither obvious:
+- The job must still run AFTER semantic-release has pushed its bump commits, and must check out
+  the post-bump tree — the existing step's `--build` flag exists because `pnpm verify` builds the
+  scaffolder BEFORE the bump, so `dist` embeds stale ranges. A relocated job needs its own
+  checkout/build ordering, not just a copied step.
+- Confirm it is genuinely last. The current placement is deliberate: the workflow comment at
+  `:336-341` explains that a job hung off `mcpsync` would be skipped on push, since mcpsync is
+  `workflow_dispatch`-only. Any new job must not reintroduce that.
+
+**Trigger to action**: the next release run that fails partway, or bundle it with other
+`release-packages.yml` work. Cheap on its own but it edits the pipeline that publishes everything,
+so it wants its own PR and a real (not simulated) failed-chain observation to confirm the fix.
+
+**Cost**: ~30 min plus one deliberate failed-chain test.

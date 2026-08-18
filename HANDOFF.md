@@ -376,7 +376,10 @@ on their user's commit signing, so the rename should still wait for those to lan
    breaking change, which the release-token guard structurally cannot catch. **Offered by up-bank,
    not accepted** — it would spend their user's compute, so it needs that user's agreement, not
    ours.
-4. **#33** — `readme-check` counts test files as source (3-surface fix).
+4. **#38** — the `example/` resync is skipped exactly when a release goes wrong: it lives at the
+   end of the `secret-store` job, and `needs:` skips it on ANY upstream failure. Observed live
+   2026-08-16 when a tui-kit test flake took the chain down. Needs `if: always()` on a standalone
+   job. (#33 — readme-check counting test files as source — is RESOLVED, 2026-08-16.)
 5. **#27's remaining two lifts** (`toYaml`, Prometheus metrics — still no warm consumer).
 
 ---
