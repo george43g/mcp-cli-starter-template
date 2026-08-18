@@ -64,7 +64,10 @@ interface HttpChild {
 }
 
 /** Boot `src/index.ts --http` on an ephemeral port and wait for its banner. */
-async function startHttpChild(logDir: string): Promise<HttpChild> {
+async function startHttpChild(
+  logDir: string,
+  extraEnv: Record<string, string> = {},
+): Promise<HttpChild> {
   const child = spawn(process.execPath, ["--import", TSX_LOADER, "src/index.ts", "--http"], {
     cwd: APP_DIR,
     stdio: ["ignore", "pipe", "pipe"],
@@ -76,6 +79,7 @@ async function startHttpChild(logDir: string): Promise<HttpChild> {
       MCP_HTTP_PORT: "0", // ephemeral — never collide with a developer's 8080
       MCP_HTTP_BIND: "127.0.0.1",
       MCP_LOG_DIR: logDir,
+      ...extraEnv,
     },
   });
 
@@ -108,8 +112,12 @@ async function startHttpChild(logDir: string): Promise<HttpChild> {
 
 interface LogEntry {
   msg: string;
-  /** Present on `shutdown`; `reason` is the cause `getShutdownCause()` recorded. */
-  data?: { reason?: string };
+  /**
+   * Diagnostic payload. `reason` is the cause `getShutdownCause()` recorded on
+   * `shutdown`; watchdog events carry their own keys (`threshold_mb`, ...),
+   * hence the open record alongside the one field asserted by name.
+   */
+  data?: Record<string, unknown> & { reason?: string };
 }
 
 /**
@@ -207,6 +215,55 @@ describe("http transport lifecycle", () => {
       // Write-once: the controller's exit listener sweeps the cleanup registry
       // synchronously, so a guard is the only thing keeping this at one.
       expect(messages.filter((m) => m === "shutdown")).toHaveLength(1);
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    }
+  }, 60_000);
+
+  /**
+   * `MCP_MAX_RSS_MB=50` is the exact knob stress case #8 uses to make the
+   * **stdio** server self-kill (`code=1`). HTTP must do the opposite with the
+   * same input: notice, say so, and keep serving.
+   */
+  it("detects an RSS breach and logs it without ever killing the server", async () => {
+    const logDir = await mkdtemp(join(tmpdir(), "http-observe-"));
+    const { child, url, stderr } = await startHttpChild(logDir, {
+      MCP_MAX_RSS_MB: "50", // any real node process is over this
+      MCP_MEMORY_SAMPLE_MS: "300", // don't wait out the 60s default
+    });
+
+    try {
+      // Three sample windows' worth, so a breach that only fires once would
+      // still be caught and a kill would have had ample time to land.
+      await new Promise((r) => setTimeout(r, 2_000));
+
+      const entries = await readLogEntries(logDir);
+      const messages = entries.map((e) => e.msg);
+
+      // The watchdog is running at all — this is what the HTTP path lacked.
+      expect(messages).toContain("watchdog_installed");
+      // …and it saw the breach.
+      const observed = entries.filter((e) =>
+        e.msg.startsWith("watchdog_breach_observed: rss_exceeded"),
+      );
+      expect(observed.length).toBeGreaterThan(0);
+      expect(observed[0]?.data).toMatchObject({ threshold_mb: 50 });
+
+      // The whole point: detection without enforcement. No kill marker, and
+      // the server is still answering.
+      expect(messages.some((m) => m.startsWith("watchdog_kill"))).toBe(false);
+      expect(child.exitCode).toBeNull();
+      const health = await fetch(`${url}/health`);
+      await health.text();
+      expect(health.status).toBe(200);
+
+      // Still exits cleanly afterwards — observing must not wedge shutdown.
+      // `code: 0, signal: null` is a real assertion here only because the
+      // child is the app rather than a tsx wrapper; see the header comment.
+      const exited = exitOf(child, stderr);
+      child.kill("SIGTERM");
+      const result = await exited;
+      expect({ code: result.code, signal: result.signal }).toEqual({ code: 0, signal: null });
     } finally {
       if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
     }

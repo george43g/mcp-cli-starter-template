@@ -16,15 +16,17 @@
  * deletion a single-file change.
  */
 
-import { startHttpServer } from "@george43g/mcp-kit";
+import { type HttpServerHandle, startHttpServer } from "@george43g/mcp-kit";
 import {
   envNum,
   envStr,
   getShutdownCause,
   installShutdownHandlers,
+  installWatchdog,
   logShutdown,
   logStartup,
   registerCleanup,
+  type WatchdogBreachVerdict,
 } from "@george43g/robustness";
 import { resolveSecret } from "@george43g/secret-store";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -56,8 +58,20 @@ async function resolveHttpToken(): Promise<string | null> {
   return found?.value ?? null;
 }
 
-/** Start the MCP server over Streamable HTTP. Returns once the server closes. */
-export async function runHttpMcp(opts: RunHttpMcpOptions): Promise<void> {
+/**
+ * Start the MCP server over Streamable HTTP.
+ *
+ * Returns as soon as the listener is up and the lifecycle is wired — NOT when
+ * the server closes, which is what this comment used to claim. The process
+ * stays alive because the listener holds the event loop, and it stops when a
+ * signal reaches the handlers installed below.
+ *
+ * The handle is returned so a caller can close the server without going
+ * through a process-wide `shutdown()`. `src/index.ts` ignores it; the
+ * in-process tests need it, and without it this file could only ever be
+ * exercised from a child process, i.e. never measured by coverage.
+ */
+export async function runHttpMcp(opts: RunHttpMcpOptions): Promise<HttpServerHandle> {
   const port = opts.port ?? envNum("MCP_HTTP_PORT", 8080);
   const bind = opts.bind ?? envStr("MCP_HTTP_BIND", "127.0.0.1");
   const token = await resolveHttpToken();
@@ -68,11 +82,26 @@ export async function runHttpMcp(opts: RunHttpMcpOptions): Promise<void> {
   // dropping in-flight requests and leaving the listener to the OS. Installed
   // before `startHttpServer` so a signal arriving mid-bind still finds a
   // handler.
-  //
-  // The watchdog is deliberately NOT installed here. stdio serves one client
-  // and can safely self-kill on lag; an HTTP server is shared, and a restart
-  // policy belongs to whatever supervises it.
   installShutdownHandlers();
+
+  // Detection without enforcement.
+  //
+  // An HTTP server is shared, so it must not self-kill the way stdio does —
+  // the restart decision belongs to whatever supervises it. That reasoning is
+  // unchanged; what changed is that it used to cost the *detection* too, so a
+  // wedged event loop or a leaking heap left no trace at all. `onBreach` (added
+  // in robustness 0.9.0) separates the two: the watchdog samples and logs
+  // exactly as it does on stdio, and only the kill is withheld.
+  //
+  // ─── TO ENABLE THE KILL: delete the `onBreach` line below. ───────────────
+  // The watchdog then behaves as it does on stdio — `watchdog_kill: <reason>`,
+  // a 5s force-exit net, then shutdown(1). Do that only if something will
+  // restart the process afterwards.
+  //
+  // Every breaching sample logs `watchdog_breach_observed: <reason>` at warn.
+  // See the README's "Process markers" section for the cadence and the knobs
+  // that quieten it.
+  installWatchdog({ onBreach: observeOnly });
 
   const handle = await startHttpServer({
     server: opts.server,
@@ -97,12 +126,39 @@ export async function runHttpMcp(opts: RunHttpMcpOptions): Promise<void> {
   // async pass already ran executes twice when a later one hangs; and "last"
   // is not a position you can hold, because anything registering a cleanup at
   // runtime lands after this one.
-  let markerWritten = false;
-  registerCleanup(() => {
-    if (markerWritten) return;
-    markerWritten = true;
+  registerCleanup(makeShutdownMarker());
+
+  return handle;
+}
+
+/**
+ * The write-once shutdown marker, as a factory rather than an inline closure.
+ *
+ * Extracted so the guard is directly testable: a cleanup only ever runs during
+ * a real process shutdown, so inline it could be proven only by spawning a
+ * child and counting lines afterwards. The guard is the part that was measured
+ * to matter — `stdio.ts` records 2 lines unguarded vs 1 guarded — so it earns a
+ * test that calls it twice and asserts once.
+ */
+export function makeShutdownMarker(): () => void {
+  let written = false;
+  return () => {
+    if (written) return;
+    written = true;
     logShutdown(getShutdownCause());
-  });
+  };
+}
+
+/**
+ * This path's breach policy: detect and log, never kill.
+ *
+ * A named export rather than an inline arrow so the one constraint that is not
+ * negotiable here — an HTTP server must not self-kill — is a single assertable
+ * function instead of a behaviour you can only observe by running a server for
+ * two seconds and watching it not die.
+ */
+export function observeOnly(): WatchdogBreachVerdict {
+  return "observe";
 }
 
 /**
