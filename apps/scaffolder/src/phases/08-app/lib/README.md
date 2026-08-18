@@ -69,8 +69,9 @@ The equivalent programmatic setters (`setFileLogging`, `setLogRedaction`,
 
 ### Process markers — telling a clean exit from a crash
 
-Every stdio run writes two markers, and `AGENTS.md` states the rule that depends
-on them: **a log file without a `shutdown` line means the process crashed.**
+Every run — stdio or HTTP — writes two markers, and `AGENTS.md` states the rule
+that depends on them: **a log file without a `shutdown` line means the process
+crashed.**
 
 ```json
 {"msg":"startup","data":{"pid":75652,"entrypoint":"example-repo-mcp"}}
@@ -84,13 +85,29 @@ identical without it.
 
 Two caveats worth knowing:
 
-- **Only the stdio path writes them.** `runHttpMcp` does not install shutdown
-  handlers, so the HTTP server has no markers — and its `registerCleanup(() =>
-  handle.close())` never fires either. If you run HTTP as a long-lived service,
-  wire `installShutdownHandlers()` yourself.
+- **The HTTP path was the exception until recently.** `runHttpMcp` registered
+  `handle.close()` as a cleanup but never called `installShutdownHandlers()`, so
+  nothing trapped a signal, the cleanup could not run, and no markers were
+  written: a `SIGTERM` terminated the process at status 143 with in-flight
+  requests dropped and a log indistinguishable from a crash. It now installs the
+  handlers and writes both markers, and a `SIGTERM` exits 0:
+
+  ```json
+  {"msg":"startup","data":{"pid":85509,"entrypoint":"@george43g/example-repo-mcp"}}
+  {"msg":"shutdown: signal_received","data":{"signal":"SIGTERM"}}
+  {"msg":"shutdown","data":{"pid":85509,"reason":"signal:SIGTERM","uptime_s":4}}
+  ```
+
+  If you scaffolded before this, add `installShutdownHandlers()` to
+  `runHttpMcp` — `tests/http-lifecycle.test.ts` is the check.
 - The rule above was **false before this was added**: `logStartup` shipped
   without its counterpart, so every clean exit looked like a crash. If you
   scaffolded before then, check that `startStdio` registers the marker.
+
+**The watchdog is still stdio-only, on purpose.** stdio serves one client and
+can safely self-kill on event-loop lag or memory growth; an HTTP server is
+shared, and the decision to restart it belongs to whatever supervises it. Call
+`installWatchdog()` in `runHttpMcp` yourself if you want it.
 
 ## Removing surfaces
 
