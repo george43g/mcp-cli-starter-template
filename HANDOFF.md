@@ -199,7 +199,21 @@ one accidental minor carrying a real break, switches them to exact pins.
 
 ### Stage 7 — what is actually blocked
 
-- **#10** — the destination is **NOT** open. `DEFERRED.md` #10 is titled "(to life-stack)" and its
+- **#10** — the destination is **NOT** open, but the move is now blocked on the life-stack
+  session's answers, not on George. Four decisions were put to them 2026-08-18; **do not start
+  deleting until Q1 (publish from life-stack / stay unpublished / do not move) is answered.**
+  life-stack answered on 2026-08-18 with evidence: **(b) move but stay unpublished**,
+  **(b) stop bundling cli-kit/tui-kit**, **`apps/mcpsync`**, **no accumulated bugs**.
+  Recorded in #10 with their reasoning.
+
+  **The one input still needed from George: should mcpsync be published, and soon?** If yes, do
+  NOT move it — publishing from here needs only a bootstrap + a trusted-publisher entry against a
+  workflow that already exists, whereas publishing from life-stack needs a pipeline built first.
+  Also newly established: `@george43g/mcpsync` has **never been published** (E404), so there is no
+  trusted publisher to migrate — and the sequence "publish here, then move" is the ONE ordering
+  that forces a TP migration. Corrected in #10 as well: the "zero manifest changes" claim was
+  false, and the removal checklist wrongly said the release job chains after `tui-kit` (it is
+  `needs: secret-store` and already the tail — deleting it needs no re-chaining). `DEFERRED.md` #10 is titled "(to life-stack)" and its
   step 1 records life-stack as *verified* compatible: it already ships
   `packages/{tsconfig,vitest-config,biome-config}` under the same `@george43g/*` names, all
   private, so mcpsync's `workspace:*` devDeps resolve there with zero manifest changes. This line

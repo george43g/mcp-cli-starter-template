@@ -265,11 +265,16 @@ generated tool. `npx` works regardless of where the source lives; it only needs 
    `@george43g/robustness` is on npm too (now `0.2.0`).
    **The tsconfig/vitest-config question is CLOSED, and the answer is "neither".** Shared-tool
    config packages are never published (see the rule in `AGENTS.md`) — a relocated package
-   depends on the destination monorepo's own equivalent. Verified: life-stack already ships
-   `packages/{tsconfig,vitest-config,biome-config}` under the **same** `@george43g/*` names and
-   all private, so mcpsync's `"@george43g/tsconfig": "workspace:*"` devDeps resolve there with
-   **zero manifest changes**. (EQStack uses `@eqstack/*` for its own — same pattern, its own
-   scope.) No work required for this sub-step.
+   depends on the destination monorepo's own equivalent. Verified 2026-08-18: life-stack ships
+   `@george43g/{tsconfig,vitest-config,biome-config}`, all `private: true`, so those resolve.
+
+   **CORRECTION 2026-08-18 — "zero manifest changes" was WRONG.** mcpsync has **four**
+   `workspace:*` devDeps, not two. `@george43g/cli-kit` and `@george43g/tui-kit` are NOT
+   workspace packages in life-stack, so they do not resolve there. They are devDeps rather than
+   deps because `apps/mcpsync/vite.config.ts` BUNDLES them into `dist/` — its own comment
+   (`:17-22`) says so and calls the bundling "legacy" now that both are published. Step 2 below
+   already covers rewriting them; it is this step's "no work required" that was false. The
+   original claim was made by checking only the two config packages and generalising.
 2. Move `apps/mcpsync` to life-stack (sibling of `opkeep`); rewrite `workspace:*` → the
    published versions; publish `@george43g/mcpsync` from there. It can also stop bundling the
    kits via Vite (`apps/mcpsync/vite.config.ts` externals) and take them as real deps —
@@ -277,8 +282,11 @@ generated tool. `npx` works regardless of where the source lives; it only needs 
    `dependencies`.
 3. Remove mcpsync from this repo. Full checklist (the earlier version of this list was
    incomplete — whoever executes the move would have hit the gaps mid-flight):
-   - its release job in `release-packages.yml` (currently chained after `tui-kit` — re-chain
-     `tui-kit` to whatever follows, or it becomes the tail)
+   - its release job in `release-packages.yml:369-374`. **CORRECTED 2026-08-18** (this line
+     previously said "chained after `tui-kit` — re-chain `tui-kit`"): mcpsync `needs: secret-store`
+     and is ALREADY the tail — nothing has `needs: mcpsync`. Deleting it requires **no re-chaining
+     at all**; `secret-store` simply stays the tail it already effectively is. Do not edit
+     `tui-kit`. Caught by the life-stack session reading the workflow rather than the checklist.
    - its entry in `PUBLISHABLE` in `scripts/check-publishable-manifests.mjs`
    - its meta-suite tests (it contributes 17 test files to `pnpm test`)
    - the whole **"MCP servers (project scope)" section of `AGENTS.md`**, which instructs agents to
@@ -286,10 +294,78 @@ generated tool. `npx` works regardless of where the source lives; it only needs 
    - `apps/mcpsync/vite.config.ts`'s bundling rationale (moot once relocated; see step 2)
    - its `LICENSE` (added 2026-08-08 to satisfy the manifest guardrail)
 
-**Trigger to action**: unblocked — step 1 is done. Remaining cost is the move itself.
+**BLOCKER found 2026-08-18, not previously recorded: life-stack has no release pipeline.**
+`ls .github/workflows/` there returns no release workflow at all. mcpsync is meant to publish as
+`@george43g/mcpsync` and carries `semantic-release` + `semantic-release-monorepo` +
+`@semantic-release/{changelog,git,npm}` in its own devDeps; its release job here is
+`release-packages.yml:369-374`, `workflow_dispatch`-only and bootstrap-pending. This repo
+publishes via **npm OIDC trusted publishing with no `NPM_TOKEN`**. "Release wiring at the new
+home" is not mechanical when the home has no wiring.
 
-**Cost**: ~half a day once the kits are published — mostly mechanical (dep rewrites + move +
-release wiring at the new home).
+**CORRECTED 2026-08-18 — "re-established" was wrong; there is nothing to re-establish.**
+`npm view @george43g/mcpsync version` returns **E404: the package has never been published.**
+The workflow header (`release-packages.yml:16-18, 30-36`) states both halves: trusted-publishing
+config "requires the package to already exist — each new package needs a one-time manual
+`pnpm publish` bootstrap", and mcpsync's publish is deferred by a user decision of 2026-08-03.
+
+So publishing mcpsync is **three** steps wherever it happens, not one: (i) a one-time manual
+`pnpm publish` of 0.1.0, (ii) creating a trusted publisher on npmjs.com pointed at whichever repo
+will publish it, (iii) a release pipeline in that repo. (i) and (ii) are the user's alone.
+
+**THE ORDERING TRAP** (life-stack's finding, and the most actionable thing here): exactly one
+sequence forces a trusted-publisher *migration*, and it is the one that looks safest — publish
+from THIS repo first, then move. That pays bootstrap + TP-here + TP-repoint-there + pipeline.
+The two clean orderings are **move now and publish later or never** (no TP is ever created here,
+so none is ever migrated), or **publish from here and never move** (cheapest route to a published
+mcpsync, since the job at `:369-374` is already written; permanently accepts the impurity).
+
+Also corrected: #10 said to place mcpsync "beside `opkeep`". `apps/opkeep` is a **bash** project
+(`bin/`, `lib/`, `load.sh`, `backends/`, `widgets/`, `mise.toml`), neither private nor
+publishConfig-bearing. It indicates where the directory goes and nothing about how a published
+TypeScript CLI should be wired there.
+
+**ANSWERED 2026-08-18 by the life-stack session, with evidence.** Their picks:
+- **Q1 → (b) move, stay private/unpublished.** Verified there: `.github/workflows/` holds only
+  `ci.yml` (lint/typecheck/test) and `reaper.yml`; zero `npm publish`, zero `id-token`.
+  **11 of 11 workspace packages are `private: true` with zero `publishConfig`**, and
+  `docs/REPOSITORY.md:38-39` states "Use `@george43g/*` only for private workspace linking.
+  Packages are not published by default." (a) would make mcpsync the first non-private member —
+  an architectural change to that repo, not a config toggle. Their argument for (b): it loses
+  nothing because nothing is currently gained; mcpsync is unpublished today and would be
+  unpublished tomorrow. **Known cost they insisted be written down**: the `npx @george43g/mcpsync`
+  self-setup story this entry adopted when it retracted import-as-library is DEAD under (b) until
+  someone publishes. Do not let that quietly evaporate.
+- **Q2 → (b) stop bundling; real deps at caret.** Decisive argument is asymmetric visibility, not
+  taste: a stale `dependencies` pin is visible to `pnpm outdated` and the lockfile, whereas a stale
+  BUNDLED devDep is compiled into `dist/` where no dependency tool looks — the repo's own top bug
+  class. Also concrete: life-stack ALREADY consumes `@george43g/cli-kit: ^2.0.1` as a real external
+  dep (`apps/os-fork-ctl/package.json:19`), so (a) would put cli-kit in that repo twice, once
+  unobservable.
+- **Q3 → `apps/mcpsync`.** `docs/REPOSITORY.md:45` reserves `packages/` for reusable libraries and
+  `:66` gates it on "at least one real reuse boundary" — mcpsync has a `bin` and zero in-repo
+  importers, so the rule actively forbids `packages/`.
+- **Q4 → nothing filed.** Nine `mcpsync` hits across their repo, all usage docs or design
+  precedent; no defect, complaint, or request. Reported as empty rather than invented.
+
+**THE CONDITION THAT FLIPS THIS TO (c)**, and it needs the user: *if mcpsync should be published
+soon, do not move it.* Publishing from here needs only the bootstrap plus a TP entry against a
+workflow that already exists; publishing from life-stack needs a pipeline built first. The move is
+right precisely because publishing is not urgent — if that assumption is wrong, the answer flips.
+
+**Two arrival-side facts to budget for**: mcpsync brings **React, Ink and Vite into life-stack,
+which has none of them today** (verified absent from their lockfile importers), so a green
+`mise run verify` there is an explicit acceptance step, not a formality; and their
+`mise run harness:check` validates their agent-knowledge layer, so the `AGENTS.md` MCP-servers
+section move must be checked immediately after that edit rather than at the end.
+
+**Still with the user** — whether mcpsync should be published at all or soon (the single
+input that flips Q1 to (c)), and — only if publishing is ever wanted — the manual bootstrap and
+trusted-publisher steps, which nobody else can perform. **Do not start deleting until that is
+answered.**
+
+**Cost**: ~half a day IF Q1 is (b) unpublished-at-life-stack. Materially more for (a), which
+means standing up a release pipeline plus an npm trusted-publisher reconfiguration in a repo
+that has deliberately never had one.
 
 ---
 
