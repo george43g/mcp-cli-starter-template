@@ -69,17 +69,38 @@ function* walk(dir: string): Generator<string> {
 describe("tsx spawn inventory", () => {
   it("has no unreviewed `.bin/tsx` call site", () => {
     const found = new Set<string>();
+    const scanned: string[] = [];
     for (const dir of SCANNED) {
       for (const file of walk(join(APP_DIR, dir))) {
-        const rel = relative(APP_DIR, file);
+        const rel = relative(APP_DIR, file).split("\\").join("/");
+        scanned.push(rel);
         // This file is the inventory; its own prose naming the path is not a site.
-        if (rel === join("tests", "tsx-spawn-inventory.test.ts")) continue;
+        if (rel === "tests/tsx-spawn-inventory.test.ts") continue;
         const hit = readFileSync(file, "utf8")
           .split("\n")
           .some((line) => line.includes("bin/tsx") && !isComment(line));
-        if (hit) found.add(rel.split("\\").join("/"));
+        if (hit) found.add(rel);
       }
     }
+
+    // POSITIVE CONTROL, and it is the whole reason this guard can be trusted.
+    //
+    // Every assertion below is of the form "we found no violations", which is
+    // exactly what a BROKEN SCAN also reports. A wrong cwd, an extension filter
+    // that matches nothing, a `SCANNED` entry that silently yields zero files —
+    // each turns this test green while checking nothing.
+    //
+    // So assert the scan itself worked, in a shape that fails if the
+    // enumeration layer breaks rather than re-running the same sweep and
+    // calling that confirmation. Contributed by the eqstack session, applying
+    // back the rule this repo had just written down and then not applied here.
+    expect(
+      scanned.length,
+      "file scan returned almost nothing — the walk is broken",
+    ).toBeGreaterThan(15);
+    expect(scanned, "the walk missed a file that certainly exists").toContain(
+      "scripts/stress-tui.ts",
+    );
 
     const unreviewed = [...found].filter((f) => !ALLOWED.has(f)).sort();
     expect(
