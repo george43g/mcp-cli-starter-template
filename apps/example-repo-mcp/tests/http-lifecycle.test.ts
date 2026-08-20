@@ -79,6 +79,34 @@ interface LogEntry {
   data?: { reason?: string };
 }
 
+/**
+ * Poll until `msg` appears, because the child's write is NOT synchronised with
+ * the wrapper's exit event.
+ *
+ * `child.kill("SIGTERM")` signals the tsx wrapper, which dies on its own default
+ * disposition (status 143) while the node process it spawned is still running
+ * its cleanup registry. So `child.once("exit")` fires EARLY — reading the log at
+ * that moment races the child's `appendFileSync`.
+ *
+ * Reading once lost that race on macOS whenever cleanup was slow: a `fetch` in
+ * the test leaves a keep-alive socket open, `handle.close()` waits on it, and
+ * shutdown does not complete until the 3s force-exit net fires. The run that
+ * exposed this took 3516ms and reported `no shutdown marker`, while the sibling
+ * test with no fetch completed in 2295ms and passed — same run, same code.
+ */
+async function waitForEntry(
+  logDir: string,
+  msg: string,
+  timeoutMs = 15_000,
+): Promise<LogEntry | undefined> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const found = (await readLogEntries(logDir)).find((e) => e.msg === msg);
+    if (found || Date.now() > deadline) return found;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+
 /** Every NDJSON entry the child wrote, across whatever file it chose. */
 async function readLogEntries(logDir: string): Promise<LogEntry[]> {
   const files = (await readdir(logDir)).filter((f) => f.endsWith(".ndjson"));
@@ -131,7 +159,7 @@ describe("http transport lifecycle", () => {
       // executing any cleanup, so an untrapped SIGTERM leaves no marker at all.
       // That is strictly stronger than an exit code AND independent of the
       // wrapper. The exit status stays in the failure message as a diagnostic.
-      const shutdown = (await readLogEntries(logDir)).find((e) => e.msg === "shutdown");
+      const shutdown = await waitForEntry(logDir, "shutdown");
       expect(
         shutdown,
         `no shutdown marker — SIGTERM was not trapped (wrapper exit code=${result.code} signal=${result.signal})`,
@@ -159,6 +187,8 @@ describe("http transport lifecycle", () => {
         ),
       ]);
 
+      // Same race as above: wait for the marker rather than reading once.
+      await waitForEntry(logDir, "shutdown");
       const messages = (await readLogEntries(logDir)).map((e) => e.msg);
       expect(messages).toContain("startup");
       expect(messages).toContain("shutdown");
