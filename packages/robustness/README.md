@@ -427,3 +427,35 @@ lifecycle package can move in a minor.
 If you have no such gate, **pin exactly** and upgrade deliberately. Picking
 `>=0.x <1` without one is choosing automatic delivery of changes nothing on
 your side is checking.
+
+### A correct range is not enough on pnpm 11
+
+A wide range assumes resolution can actually REACH a new publish, and on pnpm 11
+that assumption is false by default.
+
+`minimumReleaseAge` is a supply-chain guard: pnpm refuses to resolve a version
+published more recently than its threshold. **Exact specifiers bypass it;
+ranges do not.** pnpm 11 enables it by default. So a consumer with the right
+range, on the right registry, watching the right package, still gets the old
+version — `pnpm install` reports "up to date" and the natural conclusion is that
+the publish failed. That misdiagnosis cost a consumer twenty minutes with the
+correct range already in hand.
+
+```yaml
+# pnpm-workspace.yaml
+minimumReleaseAgeExclude:
+  - "@george43g/*"
+```
+
+Scope it to the packages you publish yourself. The quarantine is a good default
+for the rest of the registry and worth keeping.
+
+Reported by the gmail-cli-mcp session, who bisected it on pnpm 11.0.0 and
+11.15.1. Measured here on **pnpm 10.29.3 it is OFF by default** — a
+`>=0.9.0 <1` range resolves to the newest version — but the setting exists on
+10.x, so adding the exclude now is forward-compatible rather than premature.
+
+`resolutionMode` is a separate knob and, at least on 10.29.3, **does not need
+setting**: it is unset, the effective default is `highest`, and a direct
+`>=0.9.0 <1` dependency resolves to the newest version rather than the floor.
+Verified rather than assumed, because the opposite was reported.
