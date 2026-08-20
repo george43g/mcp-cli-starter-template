@@ -529,8 +529,11 @@ did *not* happen. Check here before acting on a recalled claim.
 
 ## State
 
-The repo is **PUBLIC** as of 2026-08-21, `robustness@0.9.0` is published, four
-PRs are open, and one pushed branch has no PR yet.
+Repo **PUBLIC** since 2026-08-21, `robustness@0.9.0` published, **every PR in
+the queue landed** (#62, #63, #64, #66, #67 merged; #61 closed as superseded),
+`main` at `1bb5190`. Nothing new published — no `packages/**` file changed
+since 0.9.0, so the release workflow correctly never fired, which also means
+the two release-pipeline changes in #67 are **merged but not yet exercised.**
 
 ## Constraints (verbatim, this session, George)
 
@@ -544,6 +547,10 @@ PRs are open, and one pushed branch has no PR yet.
   up to do anything... so that way you dont have to lose functionality for
   anyone that may happen to rely on it."* Shipped as `WatchdogOptions.onBreach`.
 - *"its a green light to preventing duplication in any case"* (CI per-OS work).
+- Green light 2026-08-21, in one answer, to: **land the whole merge queue**;
+  build **both** release-pipeline items (DEFERRED #38's `if: always()` resync
+  and npm provenance); and **message the consumer sessions** about the tsx
+  trap. All three are done — see Done.
 - On going public: *"i think its okay to make them public for now... i can
   always make it private again before I release something big publicly - not
   perfect, but i dont think the stakes are that high at the moment"* — decided
@@ -562,40 +569,61 @@ PRs are open, and one pushed branch has no PR yet.
 - **`robustness@0.9.0` published** (`npm view` confirms). Adds the observe-only
   watchdog breach hook. Default path measured byte-identical to 0.8.1: no hook →
   kill as before; `"observe"` → `killReason=null`; throwing hook → fails closed.
-- **#64's macOS failure is diagnosed, fixed and green on macOS.** Cause below
-  under Corrections. Commits `9537198` + `f893167` on
-  `fix/deflake-http-sigterm-test`; `gh pr checks 64` → all four pass, including
-  `macos-latest · node 24`. Verified locally too: `pnpm verify` exit 0,
-  `test:no-native` 27/27, `pnpm stress` 15/15, and both lifecycle tests fail as
-  intended when `installShutdownHandlers()` is removed from the HTTP path.
-- **CI de-duplication rewritten, NOT the version that was pushed.** `976707e`
-  on `ci/stop-duplicating-work-per-os` deletes the macOS leg outright and
-  justifies it with a claim this session disproved ("macOS surfaces timing
-  races rather than real defects"). It is superseded and should not be merged
-  as-is. The replacement keeps a macOS leg carrying ONLY the platform surface
-  (install, build, `pnpm test`, stress) and gates the other fourteen steps to
-  `ubuntu-latest` — the same shape browser-tab-mcp landed in their PR #69, and
-  the same change applied to the template's `ci.yml`, which ships a two-OS
-  matrix into every generated repo where it IS billed at 10x. Held uncommitted
-  as `scratchpad/ci-dedup.patch` (300 lines) because it must branch off a main
-  that already carries #64's `example/` resync, or its sync check fails for
-  #38's reason. `actionlint` clean, `pnpm verify` exit 0 with it applied.
+- **#64 — the tsx signal defect, diagnosed and fixed** (merged, `77f4c6b`).
+  Cause under Corrections. Fixed at three spawn sites' worth of surfaces;
+  `scripts/stress-tui.ts` deliberately left on the tsx CLI with a comment
+  saying why, since nothing there reads the child's exit status. Also carried
+  the `example/` resync that made #61 redundant.
+- **#66 — CI de-duplication** (merged, `1f10e02`), applied to BOTH this repo's
+  `ci.yml` and the template's, which ships a two-OS matrix into every generated
+  repo — where it IS billed, because a new repo from the template is private.
+  **Measured on the merge run**, macOS job: 14 steps skipped, 4 run (install,
+  build, `pnpm test`, stress), **83s down from 173s**. `976707e` on
+  `ci/stop-duplicating-work-per-os` — which deleted the leg outright — was
+  ABANDONED, not merged; its rationale is the claim disproved below.
+- **#67 — both release-pipeline items** (merged, `1bb5190`). DEFERRED #38's
+  resync is now its own `resync-example` job guarded by
+  `!cancelled() && github.event_name == 'push'` (not `always()`: any `if:` that
+  omits `success()` breaks the skip-cascade, and this one additionally declines
+  to push into a cancelled run). npm provenance is ON — five
+  `NPM_CONFIG_PROVENANCE: "true"` entries, never `publishConfig`. **Neither is
+  exercised until a real release runs.**
+- **#62 merged** (`29a826a`) after a hand-resolved rebase: it conflicted with
+  #64 in `http-lifecycle.test.ts` on all three surfaces, resolved by re-applying
+  its `extraEnv` + observe-only test onto #64's rewritten file. `pnpm verify`
+  exit 0 in its worktree, 37 app tests. Worktree removed.
+- **#63 merged** (`4e46ae2`) — DEFERRED #39 (logger reaper), #38 promoted, and
+  a new **#40** recording that the stress harness is 15 assertions while 19
+  prose sites still say 13.
+- **Four consumer sessions told about the tsx trap** — eqstack, up-bank-mcp,
+  browser-tab-mcp, life-stack — with the de-minified source, the two-row
+  reproduction and the one-line fix. **browser-tab-mcp confirmed VERIFIED YES
+  in one grep** (`apps/browser-tab-mcp/scripts/stress-tui.ts:29` spawns,
+  `:83` kills) and reported that it retroactively explains a failure they had
+  already written up as "probably a shutdown-trap race": their TUI soak exits
+  143 with no handler at heavy scale and 0 at default scale, which is the 30ms
+  ack window exactly. Recorded in their PR #74.
 
 ## Open
 
-- **#61 is superseded by #64** and should be closed, not merged — #64's
-  `regen:example` carries the same resync. Evidence: both modify
-  `example/**/package.json` robustness range.
-- **#64 is fixed and green on both legs** — see Done and Corrections. Awaiting
-  a merge decision only.
-- **#62 and #63 open**, both needing a verdict. #63 was failing only because
-  `example/` was stale on main.
-- **`ci/stop-duplicating-work-per-os` pushed with no PR** — `gh pr list` shows
-  only 61–64.
-- **DEFERRED #38** (release chain skips the `example/` resync on any upstream
-  failure) — observed 3 times, third time it blocked unrelated PR #63. Fix
-  recorded in the entry; not implemented.
+- **The two #67 changes are merged but UNTESTED IN ANGER.** Neither the
+  `resync-example` job nor provenance runs until a `packages/**` change reaches
+  `main`. Provenance is the one with teeth: it 422s and **fails the publish
+  outright** if the repo is private or `repository.url` mismatches. Both
+  preconditions verified at merge time — repo public, five manifests
+  case-exact, and `check-publishable-manifests.mjs` holds the second one
+  mechanically — but the first real release is the actual test. DEFERRED #38
+  also asked for a deliberate failed-chain observation; that was **not** done,
+  and the evidence is three organic occurrences rather than an induced one.
+- **DEFERRED #40** — 19 prose sites say the stress harness has 13 assertions;
+  it has 15. Recorded, not swept. `docs/PROJECT_STATE.md:287` must stay at 13:
+  it is a dated record of a run that really did have 13.
 - **DEFERRED #39** (logger rotates but never reaps) — recorded, not implemented.
+- **`docs/PROJECT_STATE.md` is stale in two ways** and was left alone
+  deliberately: its registry table says `robustness@0.8.0` (published is 0.9.0)
+  and it still records provenance as removed. The file warns against trusting
+  its own version numbers; the provenance line is a decision record that is now
+  wrong. Not fixed here to avoid a conflict with this checkpoint's own edits.
 - **mcpsync migration** — life-stack answered all four questions with evidence
   (move-but-unpublished / stop bundling / `apps/mcpsync` / no accumulated bugs).
   Recorded in #10. Blocked on George; see below.
@@ -643,6 +671,19 @@ PRs are open, and one pushed branch has no PR yet.
 
 ## Traps
 
+- **A CHECK THAT CANNOT SUCCEED RETURNS NOTHING, AND NOTHING READS AS
+  ALL-CLEAR.** life-stack's framing, earned against a check I wrote and shipped
+  to four sessions: `grep -rn 'bin/tsx' --include='*.ts' tests scripts` returns
+  zero on a repo whose tsx invocations live in `mise.toml` or an extensionless
+  `bin/` wrapper — and zero is exactly what "unaffected" looks like. Worse, the
+  obvious repair `| grep -v node_modules` filters LINES, so it drops every real
+  call site, which are all written as path strings CONTAINING `node_modules`
+  (`resolve(ROOT, "../../node_modules/.bin/tsx")`). Both forms return a clean
+  bill of health on this very repo. Use `--exclude-dir=node_modules`, which
+  excludes the directory rather than lines mentioning it. **A filter argument is
+  itself a claim about where the answer lives, and a wrong one returns zero
+  rather than an error.** The habit that catches it: when a check returns zero,
+  re-run it in a shape known to return non-zero before believing the zero.
 - **NEVER SIGNAL A CHILD SPAWNED THROUGH `node_modules/.bin/tsx`.** It is a
   supervisor, not a runner: it SIGKILLs its grandchild when the child's IPC
   signal-ack misses a 30ms window, which a loaded runner misses routinely and
@@ -669,19 +710,13 @@ PRs are open, and one pushed branch has no PR yet.
 
 ## Tree
 
-`main` at `d7260ce` — **unchanged; nothing has been merged.** Five PRs open
-(61–65). `fix/deflake-http-sigterm-test` is at `f893167`, two commits ahead of
-its pushed state at the time of the first checkpoint, both green in CI.
+`main` at `1bb5190`, working tree **clean**, no dirty paths, no worktrees
+(`/private/tmp/wt-robustness-hook` removed after #62 landed). Only this
+checkpoint branch is open.
 
-**Dirty paths, all mine, all deliberate:** `.github/workflows/ci.yml`,
-`apps/scaffolder/src/phases/12-ci-release/lib/.github/workflows/ci.yml` and
-`example/.github/workflows/ci.yml` carry the CI de-duplication, held back from
-a commit until #64 lands (see Done). Identical copy saved at
-`scratchpad/ci-dedup.patch`. Nothing else is modified.
-
-A second worktree exists at `/private/tmp/wt-robustness-hook` on
-`feat/http-observe-only-watchdog` (PR #62) — it belongs to a finished subagent;
-`git worktree remove` it once #62 lands.
+Two remote branches are dead and can be deleted whenever convenient:
+`ci/stop-duplicating-work-per-os` (`976707e`, superseded by #66 and never
+PR'd) and `fix/resync-example-after-skipped-job` (#61, closed).
 
 ## Blocked on you
 
@@ -700,24 +735,30 @@ A second worktree exists at `/private/tmp/wt-robustness-hook` on
 
 ## Resume
 
-**Next action: merge #64.** It is green on both legs, and everything else is
-queued behind it — #63 fails only on the stale `example/` that #64's
-`regen:example` repairs, and the CI de-duplication branch would fail the same
-way if branched off the current main. Order: **merge #64 → close #61 as
-superseded → re-run #63 → merge #62 → `git worktree remove`
-/private/tmp/wt-robustness-hook → branch the CI de-duplication off the new main
-and open its PR** (apply `scratchpad/ci-dedup.patch`, and **abandon `976707e`**
-on `ci/stop-duplicating-work-per-os`, whose rationale is disproved).
+**Nothing is blocked and nothing is mid-flight.** The queue is landed, the tree
+is clean, and every item below is a choice rather than a continuation.
 
-Then, in priority order, the three items under Blocked on you.
+**The one thing to watch, unprompted, is the NEXT RELEASE RUN.** It is the
+first exercise of both #67 changes, and provenance is the one that can fail
+hard — a 422 at the publish step means either the repo went private or a
+`repository.url` drifted. If that happens, the fix is to remove the five
+`NPM_CONFIG_PROVENANCE: "true"` lines, not to debug semantic-release. The
+`resync-example` job failing is comparatively benign: it means `example/` stays
+stale and the next PR trips the sync check, which is the status quo ante.
 
-Worth doing unprompted once the queue is clear: **tell the consumer sessions
-about the tsx trap** (first entry under Traps). Four of them spawn MCP servers
-in tests, and any that signals one through `.bin/tsx` has the same latent
-false-failure generator — including the two stress assertions this repo found
-in its own harness, which had been live and unnoticed for months.
+Then, in rough priority order:
 
-Mid-flight state: nothing staged; the three ci.yml files above are modified in
-the working tree; no background task running. The subagent that built the
-watchdog hook and the HTTP wiring has finished and reported; its worktree is
-idle.
+1. The three items under **Blocked on you** — mcpsync is the only one that
+   gates other work.
+2. **DEFERRED #40** (the 13-vs-15 assertion count) — cheap, and the durable
+   version makes the harness assert its own case count so docs cannot drift
+   again.
+3. **DEFERRED #39** (logger rotates but never reaps) — matters more now that
+   #62 shipped observe-only mode, which is the first feature that makes a
+   process log steadily and unattended forever.
+4. `docs/PROJECT_STATE.md` — its registry table and its provenance decision are
+   both stale; see Open.
+
+Consumer sessions are current: all four were told about the tsx trap and about
+the broken check that shipped with it. browser-tab-mcp confirmed affected and
+recorded it; life-stack confirmed unaffected and corrected the check.
