@@ -570,8 +570,20 @@ PRs are open, and one pushed branch has no PR yet.
 - **#61 is superseded by #64** and should be closed, not merged — #64's
   `regen:example` carries the same resync. Evidence: both modify
   `example/**/package.json` robustness range.
-- **#62, #63, #64 open**, all need a CI verdict on the now-single-leg matrix.
-  #63 was failing only because `example/` was stale on main; #64 fixes that.
+- **#64 is NOT fixed and must NOT be merged.** Verdict arrived after the first
+  draft of this checkpoint. Its macOS leg fails at `d22dfce` — the commit that
+  added polling — with the poll running its FULL 15s timeout (17104ms) and the
+  marker never appearing, while the sibling test passed in 291ms in the same
+  run. **A 15s poll that finds nothing is not a race.** On macOS the shutdown
+  marker is genuinely never written when a `fetch` precedes the SIGTERM.
+  UNVERIFIED hypothesis: the tsx wrapper dies at 143 and macOS tears down the
+  process group, so the child never reaches its `exit` handler, whereas Linux
+  orphans it and it completes. What would settle it: spawn the built `dist/`
+  directly with `node`, removing the wrapper, and see if it survives.
+  Note this may be a HARNESS artifact rather than a product defect — nothing in
+  production wraps the server in tsx.
+- **#62 and #63 open**, both needing a verdict. #63 was failing only because
+  `example/` was stale on main.
 - **`ci/stop-duplicating-work-per-os` pushed with no PR** — `gh pr list` shows
   only 61–64.
 - **DEFERRED #38** (release chain skips the `example/` resync on any upstream
@@ -590,11 +602,17 @@ PRs are open, and one pushed branch has no PR yet.
   `docs/` is byte-mirrored into `10-docs-readme/lib/docs` and shipped into every
   generated repo, so deleting it would break the product. History rewriting was
   considered and NOT done.
-- **"macOS and Linux never diverged in 30+ CI runs" was overtaken by events.**
-  One divergence appeared. **macOS was right and the TEST was wrong** — it
-  asserted on a spawned wrapper's exit timing rather than the log marker the app
-  writes. This does not resurrect the macOS leg: the finding is that a second OS
-  surfaces timing races, not platform bugs.
+- **"macOS and Linux never diverged in 30+ CI runs" was overtaken by events,
+  and my follow-up diagnosis was ALSO wrong.** A divergence appeared. I called
+  it a timing race and shipped a poll; the poll then ran its full 15s timeout
+  and still found nothing, which disproves the race. macOS is exposing a real
+  behavioural difference, cause unproven — see the #64 entry under Open. So the
+  honest position on the CI matrix is narrower than I first argued: the second
+  leg found something the first did not, and whether that something is a
+  product defect or an artifact of spawning through tsx is **not yet known.**
+  The matrix collapse (`976707e`) was justified on cost and duplication, which
+  still holds; it was NOT justified on "macOS never finds anything", which is
+  now false.
 - **The template's `ci.yml` is NOT mirrored from the root `ci.yml`.**
   `golden.test.ts:65` maps `12-ci-release/lib/.github/workflows/ci.yml` →
   `example/.github/workflows/ci.yml`. They are legitimately different (template
@@ -640,9 +658,14 @@ A second worktree exists at `/private/tmp/wt-robustness-hook` on
 
 ## Resume
 
-**Next action: open a PR for `ci/stop-duplicating-work-per-os` (commit
-`976707e`, already pushed), then get CI verdicts on #62/#63/#64 and merge in the
-order #64 → #63 → #62, closing #61 as superseded.**
+**Next action: diagnose #64's macOS failure by spawning the built `dist/` with
+`node` instead of through the tsx wrapper** — that single change decides whether
+this is a harness artifact or a real macOS shutdown defect, and everything else
+waits on the answer. Do NOT merge #64 until it is understood; do not "fix" it by
+loosening the assertion, which would bury the finding.
+
+After that: open a PR for `ci/stop-duplicating-work-per-os` (`976707e`, pushed,
+no PR), then #63 and #62, closing #61 as superseded by #64.
 
 Mid-flight state: nothing staged, nothing uncommitted, no background task
 running. The subagent that built the watchdog hook and the HTTP wiring has
