@@ -13,16 +13,49 @@
  * with a signal and what exit status the process reaches, and neither exists
  * in-process: `shutdown()` returns `Promise<never>` because it calls
  * `process.exit`.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * The child is `node --import tsx src/index.ts`, NEVER `node_modules/.bin/tsx`.
+ *
+ * The tsx CLI does not run your code — it spawns a GRANDCHILD and relays
+ * signals to it, on a 30ms budget (tsx 4.23.1, `dist/cli.mjs`,
+ * `relaySignalToChild`): forward the signal, wait 30ms for the child to report
+ * over IPC that it arrived, and if that report is late, `kill("SIGKILL")` and
+ * `process.exit(128 + signum)`.
+ *
+ * SIGKILL cannot be trapped, so the app's handlers never run — no cleanup, no
+ * marker, nothing. The report is late exactly when the child's event loop is
+ * busy, which is the normal state of a loaded CI runner and never the state of
+ * an idle laptop. Measured against a 12-line script that traps SIGTERM and
+ * writes a file:
+ *
+ *     child event loop idle   → wrapper exit code=0   signal=null · handler ran
+ *     child event loop busy   → wrapper exit code=143 signal=null · handler DID NOT run
+ *
+ * The second row is byte-identical to the macOS CI failure this test produced
+ * for three runs, through two "fixes" that both left tsx in the signal path:
+ * first asserting a different thing about the wrapper, then polling 15s for a
+ * marker that a SIGKILLed process was never going to write. `--import` runs
+ * the loader in ONE process, so `child` IS the app and the signal reaches it.
+ *
+ * Same reasoning applies to `scripts/stress-mcp.ts`; keep the two in step.
  */
 
 import { spawn } from "node:child_process";
 import { mkdtemp, readdir, readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const APP_DIR = resolve(import.meta.dirname, "..");
-const TSX = resolve(APP_DIR, "node_modules/.bin/tsx");
+/**
+ * tsx's own `.` export (`dist/loader.mjs`), resolved absolutely so the spawn
+ * does not depend on the child's cwd, and via the export map so it does not
+ * depend on tsx's internal layout.
+ */
+const TSX_LOADER = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 
 interface HttpChild {
   child: ReturnType<typeof spawn>;
@@ -32,7 +65,7 @@ interface HttpChild {
 
 /** Boot `src/index.ts --http` on an ephemeral port and wait for its banner. */
 async function startHttpChild(logDir: string): Promise<HttpChild> {
-  const child = spawn(TSX, ["src/index.ts", "--http"], {
+  const child = spawn(process.execPath, ["--import", TSX_LOADER, "src/index.ts", "--http"], {
     cwd: APP_DIR,
     stdio: ["ignore", "pipe", "pipe"],
     env: {
@@ -73,18 +106,50 @@ async function startHttpChild(logDir: string): Promise<HttpChild> {
   return { child, url, stderr: () => err };
 }
 
-/** Every NDJSON entry the child wrote, across whatever file it chose. */
-async function readLogEntries(logDir: string): Promise<Array<{ msg: string }>> {
+interface LogEntry {
+  msg: string;
+  /** Present on `shutdown`; `reason` is the cause `getShutdownCause()` recorded. */
+  data?: { reason?: string };
+}
+
+/**
+ * Every NDJSON entry the child wrote, across whatever file it chose.
+ *
+ * Reading once — rather than polling — is sound only because `child` is the app
+ * itself: the marker is written with `appendFileSync` from a cleanup, which
+ * runs before `process.exit` returns, so the `exit` event we awaited is proof
+ * the bytes are already on disk. Under the old tsx-wrapper spawn it was not,
+ * and that is what the polling here used to paper over.
+ */
+async function readLogEntries(logDir: string): Promise<LogEntry[]> {
   const files = (await readdir(logDir)).filter((f) => f.endsWith(".ndjson"));
-  const entries: Array<{ msg: string }> = [];
+  const entries: LogEntry[] = [];
   for (const file of files) {
     const raw = await readFile(join(logDir, file), "utf8");
     for (const line of raw.split("\n")) {
       if (!line.trim()) continue;
-      entries.push(JSON.parse(line) as { msg: string });
+      entries.push(JSON.parse(line) as LogEntry);
     }
   }
   return entries;
+}
+
+/** Resolve when the child exits, or reject after `timeoutMs`. */
+function exitOf(
+  child: ReturnType<typeof spawn>,
+  stderr: () => string,
+  timeoutMs = 20_000,
+): Promise<{ code: number | null; signal: string | null }> {
+  return new Promise((resolveExit, rejectExit) => {
+    const timer = setTimeout(
+      () => rejectExit(new Error(`no exit within ${timeoutMs}ms. stderr:\n${stderr()}`)),
+      timeoutMs,
+    );
+    child.once("exit", (code, signal) => {
+      clearTimeout(timer);
+      resolveExit({ code, signal });
+    });
+  });
 }
 
 describe("http transport lifecycle", () => {
@@ -98,28 +163,30 @@ describe("http transport lifecycle", () => {
       await health.text();
       expect(health.status).toBe(200);
 
-      const exited = new Promise<{ code: number | null; signal: string | null }>((resolveExit) => {
-        child.once("exit", (code, signal) => resolveExit({ code, signal }));
-      });
+      const exited = exitOf(child, stderr);
       child.kill("SIGTERM");
+      const result = await exited;
 
-      const result = await Promise.race([
-        exited,
-        new Promise<never>((_r, rejectRace) =>
-          setTimeout(
-            () => rejectRace(new Error(`no exit within 20s. stderr:\n${stderr()}`)),
-            20_000,
-          ),
-        ),
-      ]);
+      // Two independent assertions, because they fail for different reasons.
+      //
+      // `signal === null` is the one that names this test: a process killed by
+      // an untrapped SIGTERM reports `signal: "SIGTERM", code: null`, and one
+      // that trapped it and chose to leave reports `code: 0, signal: null`.
+      // This is only meaningful because `child` is the app — asserted against
+      // the tsx wrapper it measured the wrapper's teardown instead, which is
+      // how it came to report `expected 143 to be +0` for a correctly behaving
+      // server.
+      expect(
+        { code: result.code, signal: result.signal },
+        `expected a graceful self-exit. stderr:\n${stderr()}`,
+      ).toEqual({ code: 0, signal: null });
 
-      // Measured against the unwired version: code 143, i.e. 128 + SIGTERM,
-      // the status a process reaches when the default disposition terminates
-      // it. (`signal` is null rather than "SIGTERM" because the child we spawn
-      // is the tsx wrapper, which forwards the signal and reports the status.)
-      // A trapped SIGTERM runs the cleanup registry and exits 0.
-      expect(result.signal).toBeNull();
-      expect(result.code).toBe(0);
+      // And the cause was recorded, which no exit code can show: the marker
+      // must name the signal, not a hardcoded literal.
+      const entries = await readLogEntries(logDir);
+      const shutdown = entries.find((e) => e.msg === "shutdown");
+      expect(shutdown, `no shutdown marker. stderr:\n${stderr()}`).toBeDefined();
+      expect(shutdown?.data?.reason).toBe("signal:SIGTERM");
     } finally {
       if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
     }
@@ -130,17 +197,9 @@ describe("http transport lifecycle", () => {
     const { child, stderr } = await startHttpChild(logDir);
 
     try {
-      const exited = new Promise<void>((resolveExit) => child.once("exit", () => resolveExit()));
+      const exited = exitOf(child, stderr);
       child.kill("SIGTERM");
-      await Promise.race([
-        exited,
-        new Promise<never>((_r, rejectRace) =>
-          setTimeout(
-            () => rejectRace(new Error(`no exit within 20s. stderr:\n${stderr()}`)),
-            20_000,
-          ),
-        ),
-      ]);
+      await exited;
 
       const messages = (await readLogEntries(logDir)).map((e) => e.msg);
       expect(messages).toContain("startup");

@@ -77,6 +77,18 @@ async function main(): Promise<void> {
     setTimeout(() => resolveTimeout(), DURATION_S * 1000).unref();
   });
   clearInterval(sampler);
+  // Spawned through the tsx CLI, unlike `stress-mcp.ts` and
+  // `tests/http-lifecycle.test.ts`, which both had to stop doing that.
+  //
+  // tsx relays a signal to its grandchild on a 30ms budget and SIGKILLs it when
+  // the child's IPC ack is late — and this workload is DELIBERATELY lagged, so
+  // it is the likeliest child in the repo to be killed rather than asked. That
+  // is fine here and only here: nothing below reads the child's exit status,
+  // and the report is written by this process from samples already collected.
+  //
+  // ADD AN ASSERTION ON THE CHILD'S EXIT AND THIS BREAKS. Switch to
+  // `node --import <tsx loader> WORKLOAD` first — see the header comment in
+  // `scripts/stress-mcp.ts` for the measurement.
   child.kill("SIGTERM");
 
   const maxRss = samples.reduce((m, s) => Math.max(m, s.rssMb), 0);
