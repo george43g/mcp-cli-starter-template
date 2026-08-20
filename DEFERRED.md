@@ -2059,3 +2059,41 @@ work if any appears first.
 
 **Cost**: ~1h including a test that proves old files are removed, which is the assertion that
 matters — a prune with an off-by-one that keeps everything looks identical to no prune at all.
+
+## 40. "13-assertion stress harness" is wrong in 19 places — it is 15
+
+**Status**: open, measured 2026-08-21. Not a defect; a label that stopped matching the thing it
+labels, in a repo whose whole thesis is that agents trust the docs.
+
+**What it is**: `pnpm stress` prints `15 passed, 0 failed.` Every prose reference says 13. The
+count was correct when written; two cases were added since (`caseShutdownMarker` contributes two
+assertions from one loop, which is also why a naive `grep -c record(` returns 14 rather than 15).
+
+**Where** — `grep -rn "13-assertion\|13 assertions"`, excluding `node_modules`:
+
+| Surface | Files |
+|---|---|
+| repo-facing | `README.md:73`, `AGENTS.md:87`, `AGENTS.md:183`, `DEFERRED.md:858` |
+| workflows | `.github/workflows/ci.yml`, `.github/workflows/release-packages.yml:173` |
+| skills | `skills/mcp-starter-architect/SKILL.md:200`, `:255` |
+| docs | `docs/scaffolder-cli/retrofit-findings.md:145`, `docs/scaffolder-cli/field-notes.md:653` |
+| shipped into every generated repo | `packages/mcp-kit/src/transports/http.test.ts:6`, the `08-app/lib` copies, and their `example/` regenerations |
+
+**One site must NOT be changed**: `docs/PROJECT_STATE.md:287` reads "13 of 13 assertions passed".
+That is a dated record of a run that really did have 13, not a claim about today. Editing it would
+falsify a history entry to fix a label — the opposite of the point.
+
+**Why it was not fixed on sight**: it surfaced while fixing the tsx-CLI signal defect, and sweeping
+19 files across four mirrored surfaces into that PR would have buried a load-bearing change under
+mechanical churn. It is also not the durable fix.
+
+**The durable fix**, which is why this is an entry rather than a one-line `sed`: stop hardcoding the
+number. Either drop the count from prose ("the stress harness") and let `pnpm stress` be the source
+of truth, or have the harness assert its own case count against a constant so the next added case
+fails until the docs move with it. The second buys mechanical enforcement, which is this repo's
+stated preference over documentation discipline.
+
+**Trigger to action**: the next PR that adds or removes a stress case, or any docs sweep that is
+already touching these files.
+
+**Cost**: ~20 min for the sweep; ~40 min if the count becomes mechanically enforced.
