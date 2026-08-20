@@ -1943,7 +1943,28 @@ assuming their compute.
 
 ## 38. The `example/` resync is skipped exactly when a release goes wrong
 
-**Status**: open, observed live 2026-08-16. Raised with the user, who agreed it warrants an entry.
+**Status**: open. **Observed TWICE — 2026-08-16 and again 2026-08-18, the second time with real
+cost.** On 2026-08-18 `robustness@0.9.0` published, then the `cli-kit` job failed at the RUNNER
+level (`steps: []`, `conclusion: failure`, log already expired — not a test failure), skipping
+`tui-kit`, `secret-store` and `mcpsync`. `secret-store` carries the resync, so `example/` kept
+claiming `"@george43g/robustness": "^0.8.1"` against a published `0.9.0`. Fixed by hand in a
+follow-up PR. The 2026-08-16 occurrence was harmless only by luck; this one was not.
+
+**The predicted consequence then happened, to THIS ENTRY'S OWN PR.** The line above originally read
+that it "was avoided only because CI was itself down at the time" — that was wrong within the hour.
+Once CI came back, PR #63 — the docs-only change that adds this very paragraph, touching no code at
+all — failed with:
+
+```
+##[error]example/ is stale vs scaffolder output. Run `pnpm regen:example` and commit.
+```
+
+On both OS legs, for a reason with nothing to do with its diff, blocking it behind an unrelated
+fix. The entry predicted "the next unrelated PR fails CI's sync check and its author debugs someone
+else's release" and then became that PR.
+
+**Three occurrences in three days, the third one actively blocking unrelated work, moves this from
+a design smell to a recurring fault.**
 
 **What happened**: `tui-kit`'s `useDevStats` test flaked on the runner during the release run for
 `8bd953f`. Because the release jobs are a strict chain —
@@ -1988,3 +2009,90 @@ on a failed job skips this one too and nothing changes.
 so it wants its own PR and a real (not simulated) failed-chain observation to confirm the fix.
 
 **Cost**: ~30 min plus one deliberate failed-chain test.
+
+
+---
+
+## 39. The logger rotates but never reaps, so long-lived processes grow $TMPDIR without bound
+
+**Status**: open, found 2026-08-18 while assessing the log volume of the watchdog's new
+observe-only mode. Pre-existing — this is not caused by that feature, but that feature is the
+first thing that makes a process log steadily, forever, unattended.
+
+**The defect**: `packages/robustness/src/logger.ts` rotates at `MCP_LOG_MAX_BYTES` (10MB) by
+**opening a new file** — `ensureLogFile()` builds a fresh `<prefix>-<pid>-<timestamp>.ndjson`
+when the current one is full. Nothing ever deletes the old one. Verified: no `unlink`, no prune,
+and the only `readdirSync` in the file (`:436`) belongs to `getFileLogLines`, a reader.
+
+So rotation bounds FILE size, not DISK usage. A long-lived server accumulates 10MB files
+indefinitely.
+
+**Why it is easy to miss**: the stdio path calls `setStderrMirror(true)`, so an operator sees the
+lines. The HTTP path deliberately does not (a TUI would be garbled by stray stderr), so on an HTTP
+server these accumulate silently in `$TMPDIR` where nobody is watching.
+
+**This repo already knows the pattern it is missing.** `apps/mcpsync/src/core/backup.ts:28`:
+```ts
+export function pruneBackups(path: string, keep = 5): void
+```
+Backups are reaped to the newest 5. Logs are not reaped at all.
+
+**Volume context, measured 2026-08-18** — an observed (non-killed) breach logs one line per
+breaching sample, and the two samplers differ by 12x:
+- memory conditions (`rss_exceeded`, `memory_leak_suspected`) ride `memorySampleMs`, default 60s
+  → ~1,440 lines/day, ~215 KB/day
+- `event_loop_sustained_lag` rides `eventLoopSampleMs`, default 5s → ~17,280 lines/day, ~4 MB/day
+
+**Fix**: a `pruneLogs(dir, keep)` alongside the existing rotation, called from `ensureLogFile()`
+when it rolls. Mirror `pruneBackups`'s shape rather than inventing a second convention. Decide
+deliberately whether the default is a file count or a total-bytes budget — a count is simpler, a
+byte budget is what an operator actually cares about.
+
+**Deliberately NOT bundled** into the observe-only wiring PR that surfaced it: it is unrelated to
+that call site, and smuggling a backlog entry into a wiring PR is the kind of scope creep that
+makes a diff hard to review and a revert hard to scope.
+
+**Trigger to action**: any report of `$TMPDIR` growth, or the first consumer that runs an
+observe-only watchdog on a long-lived HTTP service with file logging on. Bundle with other logger
+work if any appears first.
+
+**Cost**: ~1h including a test that proves old files are removed, which is the assertion that
+matters — a prune with an off-by-one that keeps everything looks identical to no prune at all.
+
+## 40. "13-assertion stress harness" is wrong in 19 places — it is 15
+
+**Status**: open, measured 2026-08-21. Not a defect; a label that stopped matching the thing it
+labels, in a repo whose whole thesis is that agents trust the docs.
+
+**What it is**: `pnpm stress` prints `15 passed, 0 failed.` Every prose reference says 13. The
+count was correct when written; two cases were added since (`caseShutdownMarker` contributes two
+assertions from one loop, which is also why a naive `grep -c record(` returns 14 rather than 15).
+
+**Where** — `grep -rn "13-assertion\|13 assertions"`, excluding `node_modules`:
+
+| Surface | Files |
+|---|---|
+| repo-facing | `README.md:73`, `AGENTS.md:87`, `AGENTS.md:183`, `DEFERRED.md:858` |
+| workflows | `.github/workflows/ci.yml`, `.github/workflows/release-packages.yml:173` |
+| skills | `skills/mcp-starter-architect/SKILL.md:200`, `:255` |
+| docs | `docs/scaffolder-cli/retrofit-findings.md:145`, `docs/scaffolder-cli/field-notes.md:653` |
+| shipped into every generated repo | `packages/mcp-kit/src/transports/http.test.ts:6`, the `08-app/lib` copies, and their `example/` regenerations |
+
+**One site must NOT be changed**: `docs/PROJECT_STATE.md:287` reads "13 of 13 assertions passed".
+That is a dated record of a run that really did have 13, not a claim about today. Editing it would
+falsify a history entry to fix a label — the opposite of the point.
+
+**Why it was not fixed on sight**: it surfaced while fixing the tsx-CLI signal defect, and sweeping
+19 files across four mirrored surfaces into that PR would have buried a load-bearing change under
+mechanical churn. It is also not the durable fix.
+
+**The durable fix**, which is why this is an entry rather than a one-line `sed`: stop hardcoding the
+number. Either drop the count from prose ("the stress harness") and let `pnpm stress` be the source
+of truth, or have the harness assert its own case count against a constant so the next added case
+fails until the docs move with it. The second buys mechanical enforcement, which is this repo's
+stated preference over documentation discipline.
+
+**Trigger to action**: the next PR that adds or removes a stress case, or any docs sweep that is
+already touching these files.
+
+**Cost**: ~20 min for the sweep; ~40 min if the count becomes mechanically enforced.
