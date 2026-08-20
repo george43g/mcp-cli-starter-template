@@ -5,7 +5,7 @@
       "args": ["tsx", "apps/example-mcp/scripts/mcp-dev-proxy.ts"],
       "env": {
         "MCP_DEV": "1",
-        "MCP_DEV_CMD": "pnpm tsx apps/example-mcp/src/index.ts",
+        "MCP_DEV_ENTRY": "apps/example-mcp/src/index.ts",
         "MCP_DEV_WATCH_DIR": "apps/example-mcp/src"
       }
     },

@@ -147,7 +147,7 @@ export async function writePerAppAgentFiles(args: {
       args: ["tsx", `apps/${name}-mcp/scripts/mcp-dev-proxy.ts`],
       env: {
         MCP_DEV: "1",
-        MCP_DEV_CMD: `pnpm tsx apps/${name}-mcp/src/index.ts`,
+        MCP_DEV_ENTRY: `apps/${name}-mcp/src/index.ts`,
         MCP_DEV_WATCH_DIR: `apps/${name}-mcp/src`,
       },
     };

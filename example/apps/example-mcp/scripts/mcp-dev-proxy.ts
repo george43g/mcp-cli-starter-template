@@ -15,15 +15,87 @@
  *   - `nodemon` would add a dev dependency. fs.watch is built into Node.
  *
  * Env:
- *   MCP_DEV_CMD       child command (default: "tsx src/index.ts")
+ *   MCP_DEV_ENTRY     TS entry to run, relative to cwd (default: "src/index.ts")
+ *   MCP_DEV_CMD       full command override; you then own the tsx hazard below
  *   MCP_DEV_WATCH_DIR dir to watch recursively (default: "src")
  */
 
 import { type ChildProcess, spawn } from "node:child_process";
 import { watch } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const MCP_DEV_CMD = process.env.MCP_DEV_CMD || "tsx src/index.ts";
+/**
+ * Run the entry as `node --import <tsx loader> <entry>`, NEVER as
+ * `tsx <entry>`.
+ *
+ * `node_modules/.bin/tsx` is a supervisor, not a runner: it spawns your code as
+ * a GRANDCHILD and relays signals to it on a 30ms budget (tsx 4.22-4.23,
+ * `dist/cli.mjs`, `relaySignalToChild`), then `kill("SIGKILL")`s it when the
+ * child's IPC ack is late. This proxy restarts the child on EVERY source
+ * change, by SIGTERM, and a server that is mid-request is exactly the child
+ * whose ack is late — so the old default killed the dev server uncleanly on a
+ * routine save.
+ *
+ * The consequence is specific to this template: the generated AGENTS.md tells
+ * every agent "log file without a `shutdown` marker = crash", and a SIGKILLed
+ * process cannot write one. Every busy restart manufactured false crash
+ * evidence in the dev log.
+ *
+ * KILLING THE PROCESS GROUP DOES NOT SAVE YOU, which is the part worth writing
+ * down because it is a plausible wrong conclusion — `killChildGroup` below
+ * signals the whole group, so the real server does get the signal directly, but
+ * the tsx wrapper is in that same group, receives it too, and runs its
+ * relay-and-escalate anyway. Measured in this exact shape
+ * (`shell: true` + `detached: true` + `process.kill(-pid, "SIGTERM")`):
+ *
+ *   .bin/tsx    child idle       -> code=0   signal=null · handler ran
+ *   .bin/tsx    child busy 2s    -> code=143 signal=null · handler NEVER ran
+ *   --import    child idle       -> code=0   signal=null · handler ran
+ *   --import    child busy 2s    -> code=0   signal=null · handler ran
+ *
+ * Independently reproduced by the up-bank-mcp and gmail-cli-mcp sessions in
+ * their own copies of this file. Resolved through tsx's `.` export so it
+ * survives tsx upgrades, and quoted because the pnpm store path can contain
+ * characters the shell would otherwise split on (`shell: true` below).
+ *
+ * NOT fixed, and deliberately: THIS PROXY is itself usually launched under the
+ * tsx CLI (`.mcp.json` runs `pnpm tsx …scripts/mcp-dev-proxy.ts`), so the same
+ * hazard applies to the proxy's OWN shutdown, and the child below is
+ * `detached` + `unref`ed — a SIGKILLed proxy leaves the whole child group
+ * orphaned. That case already has a net: the child runs
+ * `enableOrphanWatchdog()`, notices its ppid change and exits on its own. A
+ * config file cannot carry the absolute loader path anyway, since it is
+ * machine-specific and this one holds `${VAR}` placeholders only.
+ */
+const TSX_LOADER = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
+const MCP_DEV_ENTRY = process.env.MCP_DEV_ENTRY || "src/index.ts";
+const MCP_DEV_CMD =
+  process.env.MCP_DEV_CMD || `"${process.execPath}" --import "${TSX_LOADER}" ${MCP_DEV_ENTRY}`;
+
+/**
+ * A SAFER DEFAULT IS NOT A FIX FOR ANYONE WHO ALREADY OVERRIDES IT.
+ *
+ * Every repo scaffolded before this change carries `MCP_DEV_CMD` in its MCP
+ * host config — `.mcp.json`, `.codex/config.toml`, the generated
+ * `opencode.json` — and an explicit override beats the default by
+ * construction. Those repos stay exactly as broken while looking fixed, which
+ * is worse than being obviously broken. Named by the up-bank-mcp session, whose
+ * two config files still pin it.
+ *
+ * A doc line would not reach them; this does, at the moment it matters. Matches
+ * a bare `tsx` invocation only, so a deliberate `node --import` override stays
+ * silent.
+ */
+if (process.env.MCP_DEV_CMD && /(^|[/\s])tsx(\s|$)/.test(process.env.MCP_DEV_CMD)) {
+  console.error(
+    "[dev-proxy] WARNING: MCP_DEV_CMD runs the tsx CLI, which SIGKILLs this " +
+      "server on restart when its event loop is busy — no cleanup, and no " +
+      "`shutdown` marker, so the log reads as a crash. Replace MCP_DEV_CMD " +
+      `with MCP_DEV_ENTRY="${MCP_DEV_ENTRY}" in your MCP host config.`,
+  );
+}
 const WATCH_DIR = resolve(process.cwd(), process.env.MCP_DEV_WATCH_DIR || "src");
 const RESTART_DELAY_MS = 100;
 const RESPAWN_TIMEOUT_MS = 10_000;
@@ -95,17 +167,20 @@ function processStdinChunk(chunk: Buffer): void {
 }
 
 function spawnChild(): void {
-  const parts = MCP_DEV_CMD.split(" ");
-  const cmd = parts[0];
-  const args = parts.slice(1);
-  if (!cmd) {
+  if (!MCP_DEV_CMD.trim()) {
     console.error("[dev-proxy] empty MCP_DEV_CMD");
     process.exit(1);
   }
   childReady = false;
   restartCount++;
 
-  child = spawn(cmd, args, {
+  // The whole command as ONE string, not split into cmd + args. Under
+  // `shell: true` Node concatenates them back together anyway, and passing an
+  // args array alongside it emits DEP0190 on Node 24 ("arguments are not
+  // escaped, only concatenated"). Splitting on spaces was also wrong for the
+  // default above, whose absolute paths are quoted precisely because they can
+  // contain them. Reported by the eqstack session.
+  child = spawn(MCP_DEV_CMD, {
     cwd: process.cwd(),
     env: process.env,
     stdio: ["pipe", "pipe", "pipe"],

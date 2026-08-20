@@ -7,7 +7,7 @@
       "enabled": true,
       "environment": {
         "MCP_DEV": "1",
-        "MCP_DEV_CMD": "pnpm tsx apps/example-repo-mcp/src/index.ts",
+        "MCP_DEV_ENTRY": "apps/example-repo-mcp/src/index.ts",
         "MCP_DEV_WATCH_DIR": "apps/example-repo-mcp/src"
       }
     },

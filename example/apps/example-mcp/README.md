@@ -104,6 +104,36 @@ Two caveats worth knowing:
   without its counterpart, so every clean exit looked like a crash. If you
   scaffolded before then, check that `startStdio` registers the marker.
 
+#### The dev proxy manufactured false crashes, and your config may still
+
+`scripts/mcp-dev-proxy.ts` restarts the server on every source change by
+sending it `SIGTERM`. It used to launch it through `node_modules/.bin/tsx` —
+which is a **supervisor, not a runner**: it runs your code as a grandchild and
+relays signals on a 30ms IPC-ack budget, then `SIGKILL`s it when the ack is
+late. A server mid-request is exactly the child whose ack is late, and a
+`SIGKILL`ed process writes no `shutdown` marker. So a routine save produced a
+log file that, by the rule above, reads as a crash.
+
+Killing the process *group* does not help: the wrapper is in the same group and
+escalates anyway.
+
+The proxy now builds the command itself — `node --import <tsx loader> <entry>`,
+one process — and takes only the entry from you:
+
+```json
+"env": { "MCP_DEV": "1", "MCP_DEV_ENTRY": "apps/example-mcp/src/index.ts" }
+```
+
+**If you scaffolded before this, check your MCP host config for an explicit
+`MCP_DEV_CMD`.** An override beats the safer default by construction, so a repo
+that pins `"MCP_DEV_CMD": "pnpm tsx …"` in `.mcp.json`, `.codex/config.toml` or
+a generated `opencode.json` stays exactly as broken while looking fixed.
+Replace it with `MCP_DEV_ENTRY` and regenerate any derived config. The proxy
+prints a warning on startup when it sees a `tsx`-shaped override, so you do not
+have to remember to look.
+
+`MCP_DEV_CMD` still works as a full command override — you then own the hazard.
+
 ### The watchdog: enforcing on stdio, observe-only on HTTP
 
 stdio serves one client and can safely self-kill on event-loop lag or memory
