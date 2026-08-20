@@ -679,11 +679,20 @@ the two release-pipeline changes in #67 are **merged but not yet exercised.**
   obvious repair `| grep -v node_modules` filters LINES, so it drops every real
   call site, which are all written as path strings CONTAINING `node_modules`
   (`resolve(ROOT, "../../node_modules/.bin/tsx")`). Both forms return a clean
-  bill of health on this very repo. Use `--exclude-dir=node_modules`, which
-  excludes the directory rather than lines mentioning it. **A filter argument is
-  itself a claim about where the answer lives, and a wrong one returns zero
-  rather than an error.** The habit that catches it: when a check returns zero,
-  re-run it in a shape known to return non-zero before believing the zero.
+  bill of health on this very repo, and life-stack then verified that the second
+  form returns zero on THEIRS — the error reproduced inside the correction to
+  the error. Their distinction is the precise one: `--exclude-dir` prunes the
+  SEARCH SPACE before matching, a trailing `grep -v` post-filters RESULT LINES
+  and is therefore defeated by any source line that quotes the path it excludes.
+  Those are not two spellings of one idea.
+
+  **A filter argument is itself a claim about where the answer lives, and a
+  wrong one returns zero rather than an error.** The habit that catches it, and
+  it generalises well past grep: **when a check returns zero, re-run it in a
+  shape known to return non-zero before believing the zero.** Same discipline as
+  reading an effective config back off a running system rather than trusting the
+  source that was supposed to produce it — assert the positive control appears,
+  do not settle for the negative case failing.
 - **NEVER SIGNAL A CHILD SPAWNED THROUGH `node_modules/.bin/tsx`.** It is a
   supervisor, not a runner: it SIGKILLs its grandchild when the child's IPC
   signal-ack misses a 30ms window, which a loaded runner misses routinely and
