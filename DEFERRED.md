@@ -1949,11 +1949,23 @@ cost.** On 2026-08-18 `robustness@0.9.0` published, then the `cli-kit` job faile
 level (`steps: []`, `conclusion: failure`, log already expired — not a test failure), skipping
 `tui-kit`, `secret-store` and `mcpsync`. `secret-store` carries the resync, so `example/` kept
 claiming `"@george43g/robustness": "^0.8.1"` against a published `0.9.0`. Fixed by hand in a
-follow-up PR. The 2026-08-16 occurrence was harmless only by luck; this one was not, and the
-predicted consequence — an unrelated PR failing CI's sync check for a reason with nothing to do
-with its own diff — was avoided only because CI was itself down at the time.
+follow-up PR. The 2026-08-16 occurrence was harmless only by luck; this one was not.
 
-**Two occurrences in two days moves this from a design smell to a recurring fault.**
+**The predicted consequence then happened, to THIS ENTRY'S OWN PR.** The line above originally read
+that it "was avoided only because CI was itself down at the time" — that was wrong within the hour.
+Once CI came back, PR #63 — the docs-only change that adds this very paragraph, touching no code at
+all — failed with:
+
+```
+##[error]example/ is stale vs scaffolder output. Run `pnpm regen:example` and commit.
+```
+
+On both OS legs, for a reason with nothing to do with its diff, blocking it behind an unrelated
+fix. The entry predicted "the next unrelated PR fails CI's sync check and its author debugs someone
+else's release" and then became that PR.
+
+**Three occurrences in three days, the third one actively blocking unrelated work, moves this from
+a design smell to a recurring fault.**
 
 **What happened**: `tui-kit`'s `useDevStats` test flaked on the runner during the release run for
 `8bd953f`. Because the release jobs are a strict chain —
