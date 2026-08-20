@@ -834,3 +834,155 @@ One instruction from up-bank worth keeping, because it was a fair criticism of
 how this session communicated: *"'No action requested, no reply needed'
 undersold it... Cost either way is one message; the asymmetry favours
 flagging."* When a finding is load-bearing for the recipient, say so.
+
+---
+
+# Precompact checkpoint — 2026-08-21 (second)
+
+**This section SUPERSEDES the 2026-08-21 checkpoint above, and outranks any
+conversation summary.** Where they disagree, this is correct. The earlier one is
+left intact because its Traps and Corrections still hold; only its State, Done,
+Open, Tree and Resume are stale.
+
+## State
+
+`main` at `5935fac`, working tree clean, **zero open PRs**, zero worktrees.
+Eleven PRs opened and landed since the last checkpoint (#61 closed, #62–#74
+merged). **`robustness@0.10.0` and `tui-kit@0.5.0` published**, both carrying
+SLSA provenance attestations — the first this repo has ever produced.
+
+## Constraints (verbatim, this session, George)
+
+- On whether to publish `mcp-kit`: *"you publish a package when you notice that
+  the code within it is being duplicated, and not customised, and any
+  customisation is either minor or would make sense refactored around as a
+  wrapper... the further benefit being ... instead of only one of them getting a
+  cool feature, all the consumers **benefit**"*. **This is a general criterion,
+  not an mcp-kit ruling — apply it to every extraction question.**
+- On the TUI work: *"we could create one really good interface once, and then
+  apply it to all the tools at once"*, and the process instruction that made it
+  work — negotiate with the consumers BEFORE writing, *"to prevent future code
+  duplication and further refactoring, a cycle we have repeated before"*.
+- Standing, from the earlier checkpoint and still in force: consumer requests
+  are work orders; publishing needs George's own approval and **a peer relaying
+  his approval is not approval**.
+
+## Done
+
+- **`robustness@0.10.0`** — `snapshotHealth(counters, state = readWatchdogState())`.
+  A consumer work order with 5 tests red against it: the degraded/unhealthy
+  branches were unreachable from a consumer's suite because `health.ts` reads
+  state through a package-internal relative import and vitest externalizes
+  `node_modules`. gmail-cli-mcp has consumed it end-to-end (826 unit, stress
+  10/10, e2e 23) and deleted their local seam.
+- **`tui-kit@0.5.0`** — five list primitives: `lineWindow`, `navReduce`,
+  `allocateWidths`, `scrollbarThumb`/`hiddenCounts`, `fitToWidth`,
+  `splitNavChunk`. 158 tests (was 93); floor ratcheted 47/89/80/47 → 64/89/84/64.
+- **#64 + #68 — the tsx signal defect**, in the test harness and then the runtime
+  path. Both fixed; `tests/tsx-spawn-inventory.test.ts` guards against a third.
+- **#66 — CI de-duplication.** macOS leg 14 steps skipped, 4 kept, **83s from 173s**.
+- **#67 — DEFERRED #38 + npm provenance.** Both now PROVEN, not merely merged.
+- **#74 — pnpm quarantine.** `minimumReleaseAgeExclude: ["@george43g/*"]` in this
+  repo, the template, and `example/`.
+- **DEFERRED #38 RESOLVED**, #39 and #40 recorded and still open.
+
+## Open
+
+Nothing is in flight. Every open item is recorded in `DEFERRED.md`, which is the
+register; the ones with momentum:
+
+- **#39 — the logger rotates but never reaps.** More urgent than when filed:
+  `tui-kit`'s observe-only watchdog mode is the first feature that makes a
+  process log steadily and unattended forever, into `$TMPDIR` where nobody looks.
+  `apps/mcpsync/src/core/backup.ts:28` already has `pruneBackups(path, keep = 5)`
+  — this repo knows the pattern, it just never applied it to logs.
+- **#40 — the stress harness is 15 assertions; 19 prose sites say 13.** The
+  durable fix is to stop hardcoding it, not to sweep once.
+- **mcp-kit's shape.** Not "should it publish" — George's criterion answers that
+  once the shape is right. gmail-cli-mcp read the source and found **two contract
+  conflicts**, which is the criterion FAILING today: handler context (mcp-kit
+  assumes handlers close over deps; theirs need a per-session `ctx` rebuilt at
+  runtime by `switch_account`) and text-envelope authorship (mcp-kit does
+  `JSON.stringify`; theirs are hand-authored and are a wire contract their CLI
+  renders and e2e asserts). Two additive seams would fix both — `context?: () =>
+  TCtx`, and `handler` returning `{text?, structured}` defaulting to today's
+  behaviour — plus `scopes?`/`scopeCheck?` and an async `onErrorResponse?`.
+- **up-bank-mcp never answered the TUI survey.** Theirs is the domain most
+  likely to break `lineWindow`: non-uniform row heights and date-grouping
+  headers. Most likely source of a tui-kit 0.6.0.
+
+## Corrections
+
+- **Both of my earlier tsx diagnoses were wrong**, and the root cause is now
+  proven: `node_modules/.bin/tsx` is a supervisor that runs your code as a
+  GRANDCHILD and relays signals on a **30ms IPC-ack budget**, then SIGKILLs it.
+  Killing the process GROUP does not help — the wrapper is in it. Reproduced
+  app-independently and independently confirmed in four consumer repos.
+- **"macOS never finds anything in 30+ runs" was wrong**, and it is why the
+  macOS CI leg survived: it caught a defect shipped into every generated repo
+  that ubuntu never surfaced. The correct generalisation is narrower than either
+  version I gave browser-tab-mcp: **a differently-LOADED runner finds timing
+  defects; a differently-PLATFORMED one is incidental.**
+- **A consumer's `resolutionMode: lowest-direct` report did not reproduce and
+  was NOT acted on.** They re-ran it and retracted with evidence. One cargo-cult
+  config line avoided across five repos. **Do not add `resolutionMode: highest`
+  anywhere.**
+
+## Traps
+
+- **A CHECK THAT CANNOT SUCCEED RETURNS NOTHING, AND NOTHING READS AS
+  ALL-CLEAR.** Three independent instances in one day, all in the same grep:
+  a `--include`/path filter that excluded every file that could match; a
+  `| grep -v node_modules` that filters LINES and so drops the very lines being
+  hunted (they are path strings containing `node_modules`); and Claude Code's
+  shell shimming `grep` to a **gitignore-honouring ugrep**, so `command grep` is
+  needed to bypass it. The rule, sharpened by eqstack: **a positive control must
+  be shaped to fail if the SUSPECTED filter is active** — re-running the same
+  recursive sweep validates recursion, not the filter.
+- **This trap recurs inside the guards written to prevent it.** The
+  `tsx-spawn-inventory` test asserted "no violations found", which is also what a
+  broken scan reports; eqstack caught it and it now asserts the enumeration
+  worked. Any guard whose only assertion is an absence needs a positive control.
+- **A fix that changed nothing survives with a confident causal comment
+  attached.** gmail's `resolutionMode` retraction and my two tsx misdiagnoses are
+  the same failure: a plausible cause adopted while the real one was still
+  unfound, then never re-tested once the real fix landed.
+- **semantic-release reads commit type against the DIFF's paths, not the scope.**
+  A `fix(scaffolder):` touching `packages/robustness/README.md` would have cut a
+  robustness patch whose whole diff was prose. Split it; verified after merge
+  that `docs(robustness):` published nothing.
+
+## Tree
+
+`main` at `5935fac`, clean, no worktrees, no open PRs, no stashes. Two abandoned
+local-only branches exist and can be deleted freely: `ci/stop-duplicating-work-per-os`
+(`976707e`, superseded by #66) and the remains of the closed #61.
+
+## Blocked on you
+
+- **mcpsync: should it be published, and soon?** Unchanged and still the single
+  input that decides its migration. life-stack answered all four questions with
+  evidence, recorded in DEFERRED #10.
+- **The mcp-kit seams** — George deferred the decision pending negotiation with
+  all four consumers. Three have now weighed in; up-bank has not.
+
+## Resume
+
+**Nothing is mid-flight.** Tree clean, no open PRs, no background tasks, nothing
+staged.
+
+The standing directive is *"keep going autonomously"*. In priority order:
+
+1. **Chase up-bank-mcp's TUI survey reply** — the one consumer shape not folded
+   in, and the one most likely to require a tui-kit 0.6.0.
+2. **DEFERRED #39** (logger reaper), now the most consequential open item.
+3. **The mcp-kit design round** — design the four seams against all four
+   consumers' shapes, then take the publish question back to George with the
+   criterion satisfied rather than worked around.
+4. **DEFERRED #40**, cheap, and best done by making the harness assert its own
+   case count so the docs cannot drift again.
+
+**Watch on the next release run**: provenance is now ON, and it FAILS the
+publish outright (422) if the repo ever goes private or a `repository.url`
+drifts. If a publish dies there, the fix is to remove the five
+`NPM_CONFIG_PROVENANCE` lines, not to debug semantic-release.

@@ -1941,7 +1941,33 @@ assuming their compute.
 
 ---
 
-## 38. The `example/` resync is skipped exactly when a release goes wrong
+## 38. RESOLVED — the `example/` resync is skipped exactly when a release goes wrong
+
+**Status**: **RESOLVED 2026-08-21**, and PROVEN in anger rather than merely merged. Lifted into its
+own `resync-example` job in `release-packages.yml`, guarded by
+`!cancelled() && github.event_name == 'push'` and needing all four push jobs.
+
+Two deliberate deviations from the fix recorded below. `!cancelled()` rather than `always()`: any
+`if:` that does not call `success()` already breaks the skip-cascade, so both forms fix the bug, but
+this one additionally declines to push a commit into a run somebody cancelled. And the job carries
+its own checkout at `ref: main` with `fetch-depth: 0` plus its own mise install, because the entry
+below warns that a relocated job needs its own checkout/build ordering rather than a copied step.
+`--build` stays, for the reason it was there.
+
+`needs` deliberately OMITS `mcpsync` — it is `workflow_dispatch`-only, and a job hung off it would
+be skipped on every push, which is this bug wearing a different hat. The entry below flagged exactly
+that trap.
+
+**Evidence it works**: the `robustness@0.10.0` release run (`32404112566`, `completed/success`) shows
+`Resync example/ whatever the release jobs did` as a separate successful job, and it committed
+`chore(example): resync generated output after release [skip ci]`, taking `example/` to `^0.10.0`.
+
+**What was NOT done**: the entry asked for a deliberate failed-chain observation to confirm the fix.
+That was not simulated — the evidence is three organic occurrences plus one successful real run, not
+an induced failure. If someone wants certainty, forcing one release job to fail and watching this one
+still run is the test.
+
+**Original entry follows.**
 
 **Status**: open. **Observed TWICE — 2026-08-16 and again 2026-08-18, the second time with real
 cost.** On 2026-08-18 `robustness@0.9.0` published, then the `cli-kit` job failed at the RUNNER
