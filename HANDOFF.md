@@ -986,3 +986,25 @@ The standing directive is *"keep going autonomously"*. In priority order:
 publish outright (422) if the repo ever goes private or a `repository.url`
 drifts. If a publish dies there, the fix is to remove the five
 `NPM_CONFIG_PROVENANCE` lines, not to debug semantic-release.
+
+### Addendum, minutes after the above
+
+**The pnpm quarantine fix (#74) is now confirmed by a real consumer, which the
+section above could not claim.** When it was written the evidence was a scratch
+probe here plus the reporter's own bisection; the fix was justified as
+*forward-compatible* rather than as fixing something live, because pnpm 10.29.3
+has the guard off by default.
+
+gmail-cli-mcp then consumed `tui-kit@0.5.0` on pnpm 11 with
+`minimumReleaseAgeExclude` in place, and the range **picked up the fresh publish
+first try** (Gmail-MCP-Server `main` @ `37be062`). That closes the loop: the
+exclude works in a real consumer against a genuinely fresh version, which is the
+exact scenario the quarantine breaks and the one this fleet's
+"report-a-gap-get-a-fix-published" workflow depends on.
+
+Same message confirms the third consumer round-trip in a row completing the way
+they are supposed to: they collapsed both call sites to `fitToWidth` and
+**deleted their local `padToWidth`** — after the health seam and the tsx spawn
+fix, the third time a consumer has deleted their own code rather than wrapping
+ours. That is the criterion George stated for extraction actually being met, and
+it is worth watching as the measure of whether a lift landed.
