@@ -301,6 +301,34 @@ const { rssMb, heapMb, memorySampled } = readWatchdogState();
 The same fill-in applies to the `MCP_WATCHDOG_STATE_PATH` snapshot, which the
 event-loop sampler writes every 5s — twelve times before the first memory sample.
 
+### Testing health branches from a consumer (added in 0.10.0)
+
+`snapshotHealth` takes the watchdog state as an optional second parameter:
+
+```ts
+snapshotHealth(counters: HealthCounters, state?: WatchdogState): HealthSnapshot
+```
+
+Omit it and nothing changes — it defaults to `readWatchdogState()`.
+
+It exists because the default made the degraded/unhealthy branches
+**unreachable from a consumer's test suite**. `health.ts` reads watchdog state
+through a package-internal relative import, and vitest externalizes
+`node_modules`, so neither `vi.mock("@george43g/robustness")` nor mocking the
+subpath file intercepts it. Driving those branches meant `deps.inline` surgery
+in every consumer, or not testing them.
+
+Pass the state explicitly and the barrel import becomes your mock seam:
+
+```ts
+const snap = snapshotHealth(counters, { ...readWatchdogState(), killReason: "rss_exceeded" });
+snap.status; // "unhealthy" — the 503 branch an HTTP /health test needs
+```
+
+Note this replaces an escape hatch that is deliberately gone:
+`readWatchdogState()` returns a **copy**, so mutating its result no longer
+steers the live snapshot.
+
 ## Rate limiting
 
 `TokenBucket` offers a blocking and a non-blocking take:
@@ -369,9 +397,33 @@ Note that `setLogEnvPrefix` and `setLogFilePrefix` are different things and
 neither replaces the other: the first names environment **variables**, the
 second is the slug used for the log **directory, file name and stderr tag**.
 
-## Stability
+## Stability, and what your range opts you into
 
 The package begins at `0.1.0`. Public APIs follow semantic versioning, but
 minor releases in the `0.x` line may contain intentional breaking changes.
 Use a pinned version when lifecycle stability is more important than automatic
 updates.
+
+### Picking a range — the 0.x trap, both directions
+
+**`^0.9.0` locks the MINOR.** It resolves `>=0.9.0 <0.10.0`, so it can never
+reach `0.10.0`. Consumers here have sat a release behind while `npm view`
+cheerfully reported a version they could not install. If you want additive
+releases automatically, a caret on 0.x is not the range you want.
+
+**`>=0.9.0 <1` is what this repo's own packages use** — and it is worth being
+explicit about the other side of that trade, because a consumer named it:
+**it opts you into the 0.x breaking-change channel on any lockfile
+regeneration.** A minor here may carry an intentional break, and you will
+receive it unreviewed the next time your lockfile is rebuilt.
+
+**That range assumes you have a verification gate that would catch it.** This
+repo's own consumers do: a `pnpm verify` (or equivalent) that pins exact
+behaviour — exit codes, log record strings, rendered output — rather than only
+typechecking. Types catch a changed signature; they do not catch a changed
+`shutdown` marker string or a different exit code, and those are what a
+lifecycle package can move in a minor.
+
+If you have no such gate, **pin exactly** and upgrade deliberately. Picking
+`>=0.x <1` without one is choosing automatic delivery of changes nothing on
+your side is checking.
