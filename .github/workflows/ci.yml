@@ -32,6 +32,33 @@ jobs:
   build-test:
     name: ${{ matrix.os }} · node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
+    # ONE FULL RUN, plus a platform-only second leg.
+    #
+    # Every step below that is not marked `platform surface` produces the same
+    # answer on any runner — lint, docs, manifests, registry boundary,
+    # typecheck, usage(1) freshness, npm pack, the scaffolder E2E smoke and the
+    # example/ diff are all pure computation over the same files. Running them
+    # twice bought a duplicate answer, and on a PRIVATE repo it bought it at
+    # 10x: GitHub bills macOS at $0.08/min against $0.008 for Linux. That
+    # multiplier ran this account's balance to ~$70, the card declined the
+    # authorization, and Actions stopped for EVERY repo on 2026-08-18.
+    #
+    # This repo is public, so those minutes are free again and the second leg
+    # costs nothing but wall-clock. What it keeps is the part that genuinely
+    # differs: `apps/rust-accel` compiles a different `.node` per target, and
+    # the test + stress suites spawn processes, signal them, and write under
+    # `tmpdir()`.
+    #
+    # That is not theoretical. The one time the two legs ever disagreed, macOS
+    # was right: it surfaced a defect in the TEST HARNESS shipped into every
+    # generated repo — `node_modules/.bin/tsx` SIGKILLs its grandchild when the
+    # child's IPC signal-ack misses a 30ms window, which happens on a loaded
+    # runner and never on an idle laptop. Ubuntu never surfaced it in 30+ runs.
+    # The lesson is that a second, differently-loaded runner finds timing
+    # defects, so keep the leg but give it only the steps that can differ.
+    #
+    # IF THIS REPO EVER GOES PRIVATE AGAIN, delete the macos-latest entry — at
+    # 10x the finding above is not worth the bill.
     strategy:
       fail-fast: false
       matrix:
@@ -65,28 +92,35 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm lint
 
       - name: Docs integrity (links, agent-file symlinks, index coverage)
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm check:docs
 
       - name: Repo script unit tests (runs before the checks that depend on them)
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm test:scripts
 
       - name: Publish shape (repository metadata, shipped dep specifiers)
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm check:publishable-manifests
 
       - name: Registry boundary (generated-app imports vs the released surface)
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm check:registry-boundary
 
 
       - name: Typecheck
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm typecheck
 
       - name: Build (TS workspace + optional native)
         run: pnpm build
 
       - name: Test + coverage gates (default — native path when built)
+        if: matrix.os == 'ubuntu-latest'
         # `test:coverage`, not `test`: it runs the same suites with v8
         # instrumentation and then enforces each workspace's thresholds.
         # Running plain `test` here as well would just execute everything
@@ -95,34 +129,47 @@ jobs:
         # --coverage — so this step is what makes them real.
         run: pnpm test:coverage
 
+      - name: Test (platform surface — same suites, no coverage instrumentation)
+        if: matrix.os == 'macos-latest'
+        # The thresholds are platform-independent, so the ubuntu leg owns them.
+        # What this leg is for is the suites themselves: process spawns, signal
+        # handling, `tmpdir()` layout and the Darwin `.node` built above.
+        run: pnpm test
+
       - name: Test (TS fallback path)
+        if: matrix.os == 'ubuntu-latest'
         env:
           MCP_DISABLE_NATIVE: "1"
         run: pnpm test:no-native
 
       - name: Install usage(1) via mise
+        if: matrix.os == 'ubuntu-latest'
         # The freshness gate (next step) shells out to usage(1) to
         # regenerate completions + manpage + docs; mise pulls a pinned
         # binary so the check is reproducible across runners.
         uses: jdx/mise-action@v4
 
       - name: Workflow YAML lint (all three surfaces)
+        if: matrix.os == 'ubuntu-latest'
         # After the mise step above: actionlint is pinned in mise.toml, so it is
         # not on PATH until mise has installed it.
         run: pnpm check:workflows
 
       - name: Check usage(1) artifacts are fresh vs .usage.kdl
+        if: matrix.os == 'ubuntu-latest'
         # Covers both the mcp-scaffold CLI and every generated CLI app.
         # Fix locally: `pnpm --filter @george43g/mcp-scaffold artifacts`
         # and/or `pnpm --filter "@george43g/*-mcp" artifacts`.
         run: pnpm check:usage
 
       - name: Verify npm tarball is publishable
+        if: matrix.os == 'ubuntu-latest'
         run: |
           pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run
           pnpm --filter @george43g/cli-kit --filter @george43g/tui-kit exec npm pack --dry-run
 
       - name: Scaffolder E2E smoke (init → install → test)
+        if: matrix.os == 'ubuntu-latest'
         # Asserts the scaffolder's actual OUTPUT is buildable + testable,
         # not just that its own unit tests pass. Catches regressions where
         # the scaffolder lints + tests fine but emits broken workspace.
@@ -154,6 +201,7 @@ jobs:
         run: pnpm --filter "@george43g/*-mcp" stress
 
       - name: Example/ output stays in sync with scaffolder
+        if: matrix.os == 'ubuntu-latest'
         # Regenerate into a tempdir and diff against the committed example/.
         # Catches scaffolder changes (or .usage.kdl changes) that weren't
         # accompanied by `pnpm regen:example`.

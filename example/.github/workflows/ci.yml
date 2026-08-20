@@ -32,6 +32,28 @@ jobs:
   build-test:
     name: ${{ matrix.os }} · node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
+    # ONE FULL RUN, plus a platform-only second leg.
+    #
+    # Every step below that is not marked `platform surface` produces the same
+    # answer on any runner — lint, docs, typecheck, the TS-fallback suite,
+    # usage(1) freshness and npm pack are pure computation over the same files.
+    # Running them twice buys a duplicate answer at 10x the price: GitHub bills
+    # macOS at $0.08/min against $0.008 for Linux, and a NEW REPO FROM THIS
+    # TEMPLATE IS PRIVATE, so those minutes are billed. In the template author's
+    # account that multiplier ran a balance to ~$70, the card declined the
+    # authorization, and Actions stopped for every repo they owned.
+    #
+    # The macOS leg keeps only what genuinely differs: `apps/rust-accel`
+    # compiles a different `.node` per target, and the test + stress suites
+    # spawn processes, signal them, and write under `tmpdir()`. That is where
+    # the one real cross-OS divergence came from — macOS surfaced a defect in
+    # this very harness (the tsx CLI SIGKILLs its grandchild when the child's
+    # IPC signal-ack misses a 30ms window, which happens on a loaded runner and
+    # never on an idle laptop) that Linux never surfaced in 30+ runs.
+    #
+    # ON A PRIVATE REPO, DELETE the macos-latest entry unless you ship
+    # Darwin-only code. On a public repo standard runners are free, so keeping
+    # it costs only wall-clock.
     strategy:
       fail-fast: false
       matrix:
@@ -65,32 +87,40 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm lint
 
       - name: Docs integrity (links, agent-file symlinks, index coverage)
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm check:docs
 
       - name: Typecheck
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm typecheck
 
       - name: Build (TS workspace + optional native)
         run: pnpm build
 
+      # Platform surface: the suites spawn processes, signal them, write under
+      # `tmpdir()`, and load the `.node` built for THIS target.
       - name: Test (default — native path when built)
         run: pnpm test
 
       - name: Test (TS fallback path)
+        if: matrix.os == 'ubuntu-latest'
         env:
           MCP_DISABLE_NATIVE: "1"
         run: pnpm test:no-native
 
       - name: Install usage(1) via mise
+        if: matrix.os == 'ubuntu-latest'
         # The freshness gate (next step) shells out to usage(1) to
         # regenerate completions + manpage + docs; mise pulls a pinned
         # binary so the check is reproducible across runners.
         uses: jdx/mise-action@v4
 
       - name: Check usage(1) artifacts are fresh vs .usage.kdl
+        if: matrix.os == 'ubuntu-latest'
         # Fails the build if completions/, man/, or docs/cli/ drifted
         # since the last regen. Fix locally: `pnpm artifacts && git add
         # completions/ man/ docs/cli/`. Bypass: edit .usage.kdl + this
@@ -98,8 +128,10 @@ jobs:
         run: pnpm --filter "@george43g/*-mcp" check:usage
 
       - name: Verify npm tarball is publishable
+        if: matrix.os == 'ubuntu-latest'
         run: pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run
 
+      # Platform surface: spawns the server, signals it, asserts on exit.
       - name: Stress harness (13 assertions including HTTP)
         run: pnpm --filter "@george43g/*-mcp" stress
 
