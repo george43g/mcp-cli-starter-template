@@ -137,16 +137,29 @@ package that already exists.
 5. Add a job to `release-packages.yml` chained onto the previous one, and add
    the package directory to the workflow's push `paths:`.
 
-### No build provenance
+### Build provenance — ON, and coupled to repo visibility
 
-Provenance is deliberately not requested. npm dropped it for **private** source
-repositories in 2023 and this repo is private; the registry also validates
-`repository.url` against the signing certificate case-sensitively. Requesting
-provenance in either situation returns `422` and fails the publish rather than
-degrading gracefully. Packages still carry npm's registry signature. If the
-repo ever goes public, re-enable by adding `NPM_CONFIG_PROVENANCE: "true"` to
-each release step's `env` — never to `publishConfig`, which would also break
-local publishes.
+`NPM_CONFIG_PROVENANCE: "true"` is set on each release step's `env` in
+`release-packages.yml`, enabled 2026-08-21 when this repo was made public.
+
+**It is not a best-effort flag.** Both of its preconditions are enforced
+registry-side as `422 Unprocessable Entity`, which fails the publish outright
+rather than degrading:
+
+1. **The source repo must be public.** npm dropped provenance for private
+   source repositories in 2023. **If this repo is ever made private again, the
+   five `NPM_CONFIG_PROVENANCE` lines have to come out in the same change**, or
+   the next release dies at the publish step.
+2. **`repository.url` must match the signing certificate's Source Repository
+   URI case-sensitively.** All five manifests were checked against the live
+   repo on enabling, and `scripts/check-publishable-manifests.mjs` asserts the
+   exact string on every CI run, so this half is mechanically held.
+   `repository.directory` is *not* part of that validation — it is monorepo
+   hygiene only.
+
+Never put `provenance` in `publishConfig`. That fires on a local
+`pnpm publish` too, which has no OIDC provider and fails — and a local publish
+is exactly how a new package gets bootstrapped here (step 3 above).
 
 Publishing uses npm OIDC trusted publishing — there is **no `NPM_TOKEN`
 secret**. The workflow requests `id-token: write` and npm exchanges that for

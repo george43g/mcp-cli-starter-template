@@ -17,15 +17,21 @@
 # package needs a one-time manual `pnpm publish` bootstrap, like robustness
 # 0.1.0 and the kits' 0.1.0 were. npm/cli#8544 tracks removing that step.)
 #
-# NO BUILD PROVENANCE. npm dropped provenance for PRIVATE source repositories
-# in 2023, and this repo is private; the registry also validates
-# `repository.url` against the signing certificate case-sensitively. Requesting
-# provenance here returns 422 and fails the publish outright rather than
-# degrading — so NPM_CONFIG_PROVENANCE is deliberately absent (field-note 23).
-# Packages still carry npm's registry signature. To re-enable if this repo ever
-# goes public: add `NPM_CONFIG_PROVENANCE: "true"` to each release step's env.
-# Do NOT put `provenance` in publishConfig — that also fires on local
-# `pnpm publish`, which has no OIDC provider and fails (field-note 10).
+# BUILD PROVENANCE IS ON, as of 2026-08-21, and it is conditional on one fact:
+# THIS REPOSITORY IS PUBLIC. npm dropped provenance for private source repos in
+# 2023, and requesting it from one returns 422 and FAILS THE PUBLISH OUTRIGHT
+# rather than degrading (field-note 23) — so if this repo is ever made private
+# again, every `NPM_CONFIG_PROVENANCE: "true"` below has to come out in the
+# same change or the next release dies at the publish step.
+#
+# The registry also validates `repository.url` against the signing certificate
+# CASE-SENSITIVELY. All five manifests were checked against the live repo on
+# enabling, and `scripts/check-publishable-manifests.mjs` enforces the exact
+# string on every CI run, so that half is mechanically held.
+#
+# Do NOT move this into `publishConfig`. That fires on a local `pnpm publish`
+# too — which has no OIDC provider and fails (field-note 10) — and a local
+# publish is exactly how a NEW package gets bootstrapped here.
 #
 # mcpsync's npm publish is DEFERRED (user decision 2026-08-03): the package is
 # publish-ready but not yet bootstrapped, so its job only runs on manual
@@ -177,8 +183,9 @@ jobs:
         run: pnpm --filter @george43g/robustness exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No NPM_CONFIG_PROVENANCE — see the "NO BUILD PROVENANCE" note in the
-          # header. It is not a no-op here; it would 422 the publish.
+          # Only valid while the repo is public — see the header. This is not a
+          # no-op on a private repo; it 422s the publish.
+          NPM_CONFIG_PROVENANCE: "true"
 
   # Every job below is serialized behind the previous one (`needs`). Each
   # semantic-release pushes a [skip ci] bump commit to main, and concurrent
@@ -232,6 +239,7 @@ jobs:
         run: pnpm --filter @george43g/cli-kit exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
 
   tui-kit:
     runs-on: ubuntu-latest
@@ -278,6 +286,7 @@ jobs:
         run: pnpm --filter @george43g/tui-kit exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
 
   secret-store:
     runs-on: ubuntu-latest
@@ -325,6 +334,7 @@ jobs:
         run: pnpm --filter @george43g/secret-store exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
 
   # ── example/ resync (DEFERRED #22, relocated out of secret-store by #38) ──
   #
@@ -457,3 +467,4 @@ jobs:
         run: pnpm --filter @george43g/mcpsync exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"

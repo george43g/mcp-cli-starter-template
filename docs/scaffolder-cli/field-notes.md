@@ -253,6 +253,12 @@ are ideas, not commitments; none is scheduled unless promoted into
     removed; packages keep npm's registry signature. Re-enable only if the repo
     goes public. Trusted publishing (OIDC) itself is unaffected by repo
     visibility — `0.1.1` published fine from this private repo.
+    **Update 2026-08-21: the repo IS public now and provenance is ON** — five
+    `NPM_CONFIG_PROVENANCE: "true"` entries in `release-packages.yml`, gate (b)
+    re-checked against all five manifests and mechanically held by
+    `check-publishable-manifests.mjs`. Both gates above remain exactly as
+    described; only gate (a)'s input changed. Making the repo private again
+    means removing those five lines in the same change.
 24. **`npm publish` does not rewrite the `workspace:` protocol — only pnpm
     does.** `pnpm pack`/`pnpm publish` run `createExportableManifest()`, which
     substitutes real versions; plain `npm publish` ships the literal string and
