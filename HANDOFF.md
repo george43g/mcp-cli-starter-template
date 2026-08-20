@@ -518,3 +518,133 @@ The older landing decisions below are retained for history:
 The former external plan at
 `/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md` is absent. Do not
 depend on it.
+
+---
+
+# Precompact checkpoint — 2026-08-21
+
+**Where this section and any conversation summary disagree, THIS SECTION IS
+CORRECT.** A summary optimises for narrative and is least reliable about what
+did *not* happen. Check here before acting on a recalled claim.
+
+## State
+
+The repo is **PUBLIC** as of 2026-08-21, `robustness@0.9.0` is published, four
+PRs are open, and one pushed branch has no PR yet.
+
+## Constraints (verbatim, this session, George)
+
+- *"you **work** for the consuming agents when it comes to them requesting
+  updates, improvements etc... you just have to make sure you dont break
+  something for another agent trying to please the requesting agent"* — already
+  promoted into `AGENTS.md` conventions.
+- On losing functionality to satisfy a default: *"you can always just export a
+  method from a lib that **detects** scenario 2 and 3 and simply logs it and
+  fires off a hook function that only the consumer can choose if they wired it
+  up to do anything... so that way you dont have to lose functionality for
+  anyone that may happen to rely on it."* Shipped as `WatchdogOptions.onBreach`.
+- *"its a green light to preventing duplication in any case"* (CI per-OS work).
+- On going public: *"i think its okay to make them public for now... i can
+  always make it private again before I release something big publicly - not
+  perfect, but i dont think the stakes are that high at the moment"* — decided
+  AFTER being shown the disclosure finding below. Do not re-litigate it.
+
+## Done
+
+- **Repo made public.** `gh api repos/george43g/mcp-cli-starter-template --jq
+  .visibility` → `public`. Preceded by a secret scan across all 291 commits /
+  899 files: no `.env`/`.pem`/`.key`/`.npmrc` ever committed; no known-prefix
+  secrets (3 hits were fake fixtures in mcpsync's own secret-*detector* test);
+  `.mcp.json` and `opencode.json` WERE committed historically but every version
+  held only `${VAR}` placeholders; emails are GitHub-noreply and bots only.
+- **Secret scanning + push protection enabled** — API returned
+  `secret_scanning: enabled`, `secret_scanning_push_protection: enabled`.
+- **`robustness@0.9.0` published** (`npm view` confirms). Adds the observe-only
+  watchdog breach hook. Default path measured byte-identical to 0.8.1: no hook →
+  kill as before; `"observe"` → `killReason=null`; throwing hook → fails closed.
+- **CI matrix collapsed to one OS**, commit `976707e` on branch
+  `ci/stop-duplicating-work-per-os`, pushed. **No PR opened yet.**
+
+## Open
+
+- **#61 is superseded by #64** and should be closed, not merged — #64's
+  `regen:example` carries the same resync. Evidence: both modify
+  `example/**/package.json` robustness range.
+- **#62, #63, #64 open**, all need a CI verdict on the now-single-leg matrix.
+  #63 was failing only because `example/` was stale on main; #64 fixes that.
+- **`ci/stop-duplicating-work-per-os` pushed with no PR** — `gh pr list` shows
+  only 61–64.
+- **DEFERRED #38** (release chain skips the `example/` resync on any upstream
+  failure) — observed 3 times, third time it blocked unrelated PR #63. Fix
+  recorded in the entry; not implemented.
+- **DEFERRED #39** (logger rotates but never reaps) — recorded, not implemented.
+- **mcpsync migration** — life-stack answered all four questions with evidence
+  (move-but-unpublished / stop bundling / `apps/mcpsync` / no accumulated bugs).
+  Recorded in #10. Blocked on George; see below.
+
+## Corrections
+
+- **"Wiping `docs/` from history would remove the private-repo references" is
+  FALSE.** They live in `packages/` (39 files), `apps/` (24), `docs/` (19),
+  `scripts/` (4) — mostly field-notes explaining why a fix exists. Worse,
+  `docs/` is byte-mirrored into `10-docs-readme/lib/docs` and shipped into every
+  generated repo, so deleting it would break the product. History rewriting was
+  considered and NOT done.
+- **"macOS and Linux never diverged in 30+ CI runs" was overtaken by events.**
+  One divergence appeared. **macOS was right and the TEST was wrong** — it
+  asserted on a spawned wrapper's exit timing rather than the log marker the app
+  writes. This does not resurrect the macOS leg: the finding is that a second OS
+  surfaces timing races, not platform bugs.
+- **The template's `ci.yml` is NOT mirrored from the root `ci.yml`.**
+  `golden.test.ts:65` maps `12-ci-release/lib/.github/workflows/ci.yml` →
+  `example/.github/workflows/ci.yml`. They are legitimately different (template
+  uses `pnpm test`, not `test:coverage`; a filtered `check:usage`). I clobbered
+  it with `cp` and reverted; do not "sync" them.
+
+## Traps
+
+- **Asserting on a proxy for the event instead of the event — four times in one
+  week**: a fixed 20ms flush (`useDevStats`), a registration position (shutdown
+  marker), a wrapper's exit code, then that wrapper's exit *timing*. Each passed
+  locally and failed on a loaded runner. Poll for the observable the assertion
+  names.
+- **Two agents in one checkout will collide.** A subagent switched branches
+  while this session had uncommitted work; the commit landed on its branch and
+  untangling cost a `reset --hard`. Give subagents a `git worktree`.
+- **`cp` between canonical and `lib/` assumes a mirror that may not exist.**
+  Check `LIB_TO_CANONICAL` before copying; some pairs are deliberately divergent.
+- **`pnpm lint:fix` AFTER mirroring silently desyncs the mirror** — biome
+  excludes `lib/`. Lint first, then copy.
+
+## Tree
+
+`main` at `d7260ce`, working tree **clean**, no dirty paths.
+A second worktree exists at `/private/tmp/wt-robustness-hook` on
+`feat/http-observe-only-watchdog` (PR #62) — it belongs to a finished subagent;
+`git worktree remove` it once #62 lands.
+
+## Blocked on you
+
+- **mcpsync: should it be published, and soon?** This is the single input that
+  decides the migration. If YES → **do not move it**; publishing from here needs
+  only a bootstrap `pnpm publish` + a trusted-publisher entry against a workflow
+  that already exists. If NO/later → move to `apps/mcpsync` in life-stack, which
+  has no release pipeline at all. `@george43g/mcpsync` has **never** been
+  published (E404), so no trusted publisher exists anywhere to migrate.
+- **DEFERRED #38** — implement the `if: always()` resync job? It edits the
+  pipeline that publishes everything.
+- **npm provenance** — now possible since the repo is public. Needs
+  `NPM_CONFIG_PROVENANCE: "true"` per release step, and deliberately NOT in
+  `publishConfig` (that also fires on local `pnpm publish`, which has no OIDC
+  provider). Not done.
+
+## Resume
+
+**Next action: open a PR for `ci/stop-duplicating-work-per-os` (commit
+`976707e`, already pushed), then get CI verdicts on #62/#63/#64 and merge in the
+order #64 → #63 → #62, closing #61 as superseded.**
+
+Mid-flight state: nothing staged, nothing uncommitted, no background task
+running. The subagent that built the watchdog hook and the HTTP wiring has
+finished and reported; its worktree is idle.
+
