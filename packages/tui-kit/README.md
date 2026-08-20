@@ -126,6 +126,118 @@ Two properties are deliberate and should not be "corrected":
 
 There is no padding counterpart on purpose — ink's flexbox handles padding.
 
+## List primitives (added in 0.5.0)
+
+Five pure functions extracted after a design negotiation with four TUI
+consumers — imsg-mcp, gmail-cli-mcp, up-bank-mcp and browser-tab-mcp — all of
+which had written the same machinery separately. Deliberately **not** a
+component: no keys, no state ownership, no render loop.
+
+The brief was a multi-column tree navigator. Two consumers argued against it
+from opposite tree shapes and both were right, so what shipped is the layer
+underneath one. `docs/plans/2026-08-tui-shared-primitives.md` in the
+[template repo](https://github.com/george43g/mcp-cli-starter-template) has the
+full record.
+
+### `lineWindow` — windowing by RENDERED LINES
+
+```ts
+const w = lineWindow({
+  itemCount: messages.length,
+  cursor,                                   // -1 = follow the tail
+  budgetLines: bodyHeight,
+  heightOf: (i) => estimateRows(messages[i], width),
+  anchor: chooseAnchor(cursor, messages.length),
+});
+messages.slice(w.start, w.end);
+```
+
+**Never window by row count when rows have different heights.** Row-count
+windowing is what produces the height-0 overpaint bug family: a yoga-shrunk box
+paints its text over the next row, and diagnosing it costs hexdump archaeology.
+
+`heightOf` is yours because only you know how your content wraps, and it is
+memoised per call — the walk revisits indices, so you do not need `useCallback`
+to make an expensive estimator affordable.
+
+Two contract points worth knowing: **the cursor is always inside the window**,
+even when one item is taller than the whole budget (`usedLines` may then exceed
+`budgetLines` — returning empty would clip the only thing on screen); and
+`cursor: -1` forces `anchor: "end"`, because following the tail *is*
+end-anchoring.
+
+`chooseAnchor(cursor, itemCount, nearEnd = 2)` picks between the two algorithms.
+They are genuinely two: near the tail you want the LAST item pinned to the
+bottom edge while the cursor sits a row or two above it, and no `aboveFraction`
+expresses that, because `aboveFraction` anchors the cursor.
+
+### `navReduce` — cursor transitions, no keys
+
+```ts
+const next = navReduce(nav, { kind: "down" }, { itemCount, pageSize, groupBoundary });
+```
+
+Intents: `up`/`down`/`pageUp`/`pageDown`/`top`/`bottom`, `digit` (vim count
+prefix), `groupJump`, `set`, and `itemsReplaced`.
+
+`itemsReplaced` is the one to read twice. **Item arrays are not stable and
+indices are not durable** — eviction collapses the middle of a long list, lazy
+loading prepends to the front. Hand it the remap you already compute:
+
+```ts
+navReduce(nav, { kind: "itemsReplaced", remap: (old) => old + prepended }, ctx);
+```
+
+The kit clamps the remap's output, so a remap pointing into a removed region
+degrades to the nearest survivor rather than crashing your window — you do not
+have to be defensive about your own eviction maths. And **the `-1` sentinel is
+never remapped**: following the tail is a relationship to the end of a list, not
+to an index.
+
+Count semantics: digits accumulate (`count * 10 + digit`); a movement consumes
+the count as a repeat factor and resets it; anything else resets it.
+
+`applyRestore(policy, prev, itemCount)` decides where the cursor lands when a
+column's contents are replaced wholesale. It is a **parameter** because the
+right default is contested inside a single app — a conversation pane wants
+`snap-end`, a file tree wants `restore`, a log pane wants
+`follow-until-touched`.
+
+### `allocateWidths` — columns, not rows
+
+```ts
+const { widths, collapsed } = allocateWidths(columns, [
+  { id: "list",   min: 24, preferred: 60, priority: 10, collapse: "min" },
+  { id: "detail", min: 30, preferred: 40, priority: 0,  collapse: "drop" },
+]);
+```
+
+Two orthogonal knobs. `priority` says **who** yields first; `collapse` says
+**what yielding means**. Trying to express both with one number is how
+allocators grow config objects.
+
+The rule for choosing `collapse`: **columns whose content is CONTEXT collapse to
+a breadcrumb; columns whose content is ELABORATION drop.** A detail pane whose
+information is already in the selected list row should vanish rather than spend
+ten columns repeating it; an ancestor column that tells you which folder you are
+inside must stay visible or you lose your place. `"min"` is the third case — a
+column that must always exist.
+
+Mode-gated columns are yours: omit a closed column from the array. The allocator
+does not know about modes.
+
+### `fitToWidth` and `splitNavChunk`
+
+`fitToWidth(s, cols)` truncates **and** pads in one call, guaranteeing
+`visualWidth(result) === cols` exactly. See the width section above for why
+exactness matters.
+
+`splitNavChunk(input, owned)` fans a keystroke chunk out per character **only if
+every character is one you own**, else returns `null` so you pass the chunk
+through whole. Ink delivers a paste as one `useInput` call with the whole
+string; all-or-nothing is what stops a paste driving navigation. It is the pure
+half of a router — it knows nothing about modes and cannot quit your app.
+
 ## Nerd Font detection
 
 For TUIs offering a glyph preset that needs a patched font. Without a check the

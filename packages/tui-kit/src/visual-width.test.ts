@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { clusterWidth, truncateToWidth, visualWidth } from "./visual-width.js";
+import { clusterWidth, fitToWidth, truncateToWidth, visualWidth } from "./visual-width.js";
 
 describe("clusterWidth", () => {
   it("is 1 for ASCII letters and digits", () => {
@@ -136,5 +136,50 @@ describe("truncateToWidth", () => {
 
   it("honours a custom multi-cell ellipsis", () => {
     expect(visualWidth(truncateToWidth("Birthday Party", 8, "..."))).toBeLessThanOrEqual(8);
+  });
+});
+
+describe("fitToWidth", () => {
+  const cases = [
+    "hello",
+    "",
+    "a much longer string than the budget allows",
+    "日本語のテキスト",
+    "emoji 👨‍👩‍👧‍👦 family",
+    "🇦🇺🇦🇺🇦🇺",
+    "mixed 日本 and 😀 and ascii",
+  ];
+
+  it("ALWAYS returns exactly the requested width", () => {
+    // The ink wrap law: overflow="hidden" clips boxes, not the extra lines that
+    // Text wrapping manufactures, so one over-wide row corrupts the frame.
+    for (const s of cases) {
+      for (let n = 1; n <= 24; n += 1) {
+        expect(visualWidth(fitToWidth(s, n)), `${JSON.stringify(s)} @ ${n}`).toBe(n);
+      }
+    }
+  });
+
+  it("returns empty for a non-positive width", () => {
+    expect(fitToWidth("anything", 0)).toBe("");
+    expect(fitToWidth("anything", -5)).toBe("");
+  });
+
+  it("pads a short string on the right", () => {
+    expect(fitToWidth("ab", 5)).toBe("ab   ");
+  });
+
+  it("truncates before padding, so the result is never wider", () => {
+    expect(visualWidth(fitToWidth("abcdefghij", 4))).toBe(4);
+  });
+
+  it("upholds the invariant that makes truncate-then-pad safe", () => {
+    // visualWidth(truncateToWidth(s, n)) <= n — if this ever fails, the pad's
+    // repeat count goes negative and fitToWidth throws.
+    for (const s of cases) {
+      for (let n = 1; n <= 24; n += 1) {
+        expect(visualWidth(truncateToWidth(s, n))).toBeLessThanOrEqual(n);
+      }
+    }
   });
 });
