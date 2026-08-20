@@ -73,6 +73,29 @@ const TSX_LOADER = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).
 const MCP_DEV_ENTRY = process.env.MCP_DEV_ENTRY || "src/index.ts";
 const MCP_DEV_CMD =
   process.env.MCP_DEV_CMD || `"${process.execPath}" --import "${TSX_LOADER}" ${MCP_DEV_ENTRY}`;
+
+/**
+ * A SAFER DEFAULT IS NOT A FIX FOR ANYONE WHO ALREADY OVERRIDES IT.
+ *
+ * Every repo scaffolded before this change carries `MCP_DEV_CMD` in its MCP
+ * host config — `.mcp.json`, `.codex/config.toml`, the generated
+ * `opencode.json` — and an explicit override beats the default by
+ * construction. Those repos stay exactly as broken while looking fixed, which
+ * is worse than being obviously broken. Named by the up-bank-mcp session, whose
+ * two config files still pin it.
+ *
+ * A doc line would not reach them; this does, at the moment it matters. Matches
+ * a bare `tsx` invocation only, so a deliberate `node --import` override stays
+ * silent.
+ */
+if (process.env.MCP_DEV_CMD && /(^|[/\s])tsx(\s|$)/.test(process.env.MCP_DEV_CMD)) {
+  console.error(
+    "[dev-proxy] WARNING: MCP_DEV_CMD runs the tsx CLI, which SIGKILLs this " +
+      "server on restart when its event loop is busy — no cleanup, and no " +
+      "`shutdown` marker, so the log reads as a crash. Replace MCP_DEV_CMD " +
+      `with MCP_DEV_ENTRY="${MCP_DEV_ENTRY}" in your MCP host config.`,
+  );
+}
 const WATCH_DIR = resolve(process.cwd(), process.env.MCP_DEV_WATCH_DIR || "src");
 const RESTART_DELAY_MS = 100;
 const RESPAWN_TIMEOUT_MS = 10_000;
