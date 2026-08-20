@@ -1,3 +1,17 @@
 packages:
   - apps/*
   - packages/*
+
+# Fresh releases of the kits must not be quarantined out of RANGE resolution.
+#
+# pnpm's `minimumReleaseAge` refuses to resolve a version published more
+# recently than its threshold. Exact specifiers bypass it; RANGES do not. pnpm
+# 11 turns it on by default, and this repo depends on `@george43g/*` by range —
+# so without this line a freshly published kit fix is invisible for the
+# quarantine window, `pnpm install` reports "up to date", and the natural
+# conclusion is that the publish failed rather than that it is being withheld.
+#
+# Scoped to `@george43g/*` on purpose: the quarantine is a good default for
+# everything you do not publish yourself. Keep it for the rest of the registry.
+minimumReleaseAgeExclude:
+  - "@george43g/*"
