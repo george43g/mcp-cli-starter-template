@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.10.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.9.0...robustness-v0.10.0) (2026-08-20)
+
+
+### Features
+
+* **robustness:** let callers pass watchdog state into snapshotHealth ([adee367](https://github.com/george43g/mcp-cli-starter-template/commit/adee367b0fdc24f516ac063f7384158b3613c503))
+
 # [@george43g/robustness-v0.9.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.8.1...robustness-v0.9.0) (2026-08-18)
 
 
