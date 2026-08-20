@@ -529,9 +529,9 @@ did *not* happen. Check here before acting on a recalled claim.
 
 ## State
 
-Repo **PUBLIC** since 2026-08-21, `robustness@0.9.0` published, **every PR in
-the queue landed** (#62, #63, #64, #66, #67 merged; #61 closed as superseded),
-`main` at `1bb5190`. Nothing new published — no `packages/**` file changed
+Repo **PUBLIC** since 2026-08-21, `robustness@0.9.0` published, **every PR
+landed and none open** (#62, #63, #64, #66, #67, #68 merged; #61 closed as
+superseded), `main` at `2e53d1d`. Nothing new published — no `packages/**` file changed
 since 0.9.0, so the release workflow correctly never fired, which also means
 the two release-pipeline changes in #67 are **merged but not yet exercised.**
 
@@ -595,6 +595,34 @@ the two release-pipeline changes in #67 are **merged but not yet exercised.**
 - **#63 merged** (`4e46ae2`) — DEFERRED #39 (logger reaper), #38 promoted, and
   a new **#40** recording that the stress harness is 15 assertions while 19
   prose sites still say 13.
+- **#68 — the same tsx defect in the RUNTIME path** (merged, `2e53d1d`), which
+  #64 did NOT cover. `scripts/mcp-dev-proxy.ts` — shipped into every generated
+  repo — restarted its child by SIGTERM through the tsx CLI on every source
+  change, so a routine save on a busy server was a SIGKILL, and the generated
+  AGENTS.md rule "file without a `shutdown` marker = crash" turned that into
+  manufactured crash evidence. Found by eqstack, who noticed four repos on this
+  machine running it — including this session's own dev server.
+
+  **Killing the process group does not save you**, which is the finding worth
+  keeping because it is a plausible wrong conclusion that two of us nearly
+  drew: the wrapper is in the same group and escalates anyway. Reproduced here
+  in the exact `shell: true` + `detached: true` + `process.kill(-pid)` shape —
+  `.bin/tsx` busy → `code=143`, handler never ran; `--import` busy → `code=0`,
+  handler ran.
+
+  The runner moved INSIDE the proxy; callers pass `MCP_DEV_ENTRY` only.
+  Propagated to `.mcp.json` (+ regenerated `opencode.json` via `mcpsync sync`),
+  the three `11-agent-files/lib` config templates, and `add-mcp-app`.
+- **A startup warning for the case a default cannot fix.** up-bank-mcp's point,
+  taken as code rather than prose: every repo scaffolded earlier pins
+  `MCP_DEV_CMD` in its host config, an override beats the default by
+  construction, and those repos stay broken *while looking fixed*. The proxy now
+  warns when it sees a tsx-shaped override. Verified it discriminates: warns on
+  `pnpm tsx …`, silent on a `node --import` override, silent when unset.
+- **`tests/tsx-spawn-inventory.test.ts`** — fails on any NEW `.bin/tsx` call
+  site AND on a stale exemption, so the allowlist cannot rot into decoration.
+  Verified red in both directions before being trusted. Two entries remain with
+  reasons: `stress-tui.ts` and `repl-pipe.test.ts`.
 - **Four consumer sessions told about the tsx trap** — eqstack, up-bank-mcp,
   browser-tab-mcp, life-stack — with the de-minified source, the two-row
   reproduction and the one-line fix. **browser-tab-mcp confirmed VERIFIED YES
@@ -686,6 +714,22 @@ the two release-pipeline changes in #67 are **merged but not yet exercised.**
   and is therefore defeated by any source line that quotes the path it excludes.
   Those are not two spellings of one idea.
 
+  **A third flavour, from eqstack, and the nastiest: the tool is not the tool
+  you think it is.** Claude Code sessions install a shell FUNCTION shimming
+  `grep` to an embedded ugrep with `--ignore-files`, which honours
+  `.gitignore` — and generated MCP host configs are both the files people
+  gitignore and the place `.bin/tsx` invocations live. `type grep` confirms the
+  shim in this session; the blast radius here is zero (checked: 18 files either
+  way, nothing relevant is gitignored) but the mechanism is real. Use
+  `command grep` to bypass it.
+
+  Three independent filters, three silent zeros, one day. And eqstack found the
+  hole in the rule itself: **a positive control must be shaped to fail if the
+  SUSPECTED filter is active.** Re-running a second recursive sweep validates
+  recursion, not the filter — it goes through the same shim. Against a
+  gitignore-honouring tool the control is a direct file argument on a known
+  hit, not another `-r`.
+
   **A filter argument is itself a claim about where the answer lives, and a
   wrong one returns zero rather than an error.** The habit that catches it, and
   it generalises well past grep: **when a check returns zero, re-run it in a
@@ -719,7 +763,7 @@ the two release-pipeline changes in #67 are **merged but not yet exercised.**
 
 ## Tree
 
-`main` at `1bb5190`, working tree **clean**, no dirty paths, no worktrees
+`main` at `2e53d1d`, working tree **clean**, no dirty paths, no worktrees
 (`/private/tmp/wt-robustness-hook` removed after #62 landed). Only this
 checkpoint branch is open.
 
@@ -768,6 +812,18 @@ Then, in rough priority order:
 4. `docs/PROJECT_STATE.md` — its registry table and its provenance decision are
    both stale; see Open.
 
-Consumer sessions are current: all four were told about the tsx trap and about
-the broken check that shipped with it. browser-tab-mcp confirmed affected and
-recorded it; life-stack confirmed unaffected and corrected the check.
+Consumer sessions are current and the round is closed out. All four were told
+about the tsx trap and about all three defects in the check that shipped with
+it. Outcomes: browser-tab-mcp affected and fixed (their PR #75); up-bank-mcp
+affected and fixed (their PR #24 merged), and they contributed the group-kill
+row plus confirmation on tsx **4.22.3**; eqstack affected and fixed (their
+PR #113), and they found both the runtime-path exposure and the grep shim;
+life-stack unaffected, verified, and corrected the check twice. gmail-cli-mcp
+introduced itself mid-round and got the shared-package answer plus the trap —
+their `opencode.json` is generated from dotfiles, so their durable fix sits
+outside their repo and is flagged to you.
+
+One instruction from up-bank worth keeping, because it was a fair criticism of
+how this session communicated: *"'No action requested, no reply needed'
+undersold it... Cost either way is one message; the asymmetry favours
+flagging."* When a finding is load-bearing for the recipient, say so.
