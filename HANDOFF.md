@@ -634,7 +634,14 @@ the two release-pipeline changes in #67 are **merged but not yet exercised.**
 
 ## Open
 
-- **The two #67 changes are merged but UNTESTED IN ANGER.** Neither the
+- ~~The two #67 changes are merged but untested in anger.~~ **BOTH PROVEN
+  2026-08-21** on the `robustness@0.10.0` release run (`32404112566`,
+  `completed/success`). npm reports a real attestation —
+  `provenance: { predicateType: "https://slsa.dev/provenance/v1" }` — the first
+  this repo has ever produced. The relocated `resync-example` job ran and
+  committed `chore(example): resync generated output after release`, taking
+  `example/` to `^0.10.0`. DEFERRED #38's fix works. The original entry read:
+- ~~**The two #67 changes are merged but UNTESTED IN ANGER.**~~ Neither the
   `resync-example` job nor provenance runs until a `packages/**` change reaches
   `main`. Provenance is the one with teeth: it 422s and **fails the publish
   outright** if the repo is private or `repository.url` mismatches. Both
