@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.5.0](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.4.1...tui-kit-v0.5.0) (2026-08-20)
+
+
+### Features
+
+* **tui-kit:** list primitives — windowing, cursor, widths, scrollbar, fit ([4ba112b](https://github.com/george43g/mcp-cli-starter-template/commit/4ba112b611abeff87536b8c0fcc27da2a29d49d4))
+
 # [@george43g/tui-kit-v0.4.1](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.4.0...tui-kit-v0.4.1) (2026-08-10)
 
 
