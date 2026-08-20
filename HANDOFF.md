@@ -562,26 +562,32 @@ PRs are open, and one pushed branch has no PR yet.
 - **`robustness@0.9.0` published** (`npm view` confirms). Adds the observe-only
   watchdog breach hook. Default path measured byte-identical to 0.8.1: no hook →
   kill as before; `"observe"` → `killReason=null`; throwing hook → fails closed.
-- **CI matrix collapsed to one OS**, commit `976707e` on branch
-  `ci/stop-duplicating-work-per-os`, pushed. **No PR opened yet.**
+- **#64's macOS failure is diagnosed, fixed and green on macOS.** Cause below
+  under Corrections. Commits `9537198` + `f893167` on
+  `fix/deflake-http-sigterm-test`; `gh pr checks 64` → all four pass, including
+  `macos-latest · node 24`. Verified locally too: `pnpm verify` exit 0,
+  `test:no-native` 27/27, `pnpm stress` 15/15, and both lifecycle tests fail as
+  intended when `installShutdownHandlers()` is removed from the HTTP path.
+- **CI de-duplication rewritten, NOT the version that was pushed.** `976707e`
+  on `ci/stop-duplicating-work-per-os` deletes the macOS leg outright and
+  justifies it with a claim this session disproved ("macOS surfaces timing
+  races rather than real defects"). It is superseded and should not be merged
+  as-is. The replacement keeps a macOS leg carrying ONLY the platform surface
+  (install, build, `pnpm test`, stress) and gates the other fourteen steps to
+  `ubuntu-latest` — the same shape browser-tab-mcp landed in their PR #69, and
+  the same change applied to the template's `ci.yml`, which ships a two-OS
+  matrix into every generated repo where it IS billed at 10x. Held uncommitted
+  as `scratchpad/ci-dedup.patch` (300 lines) because it must branch off a main
+  that already carries #64's `example/` resync, or its sync check fails for
+  #38's reason. `actionlint` clean, `pnpm verify` exit 0 with it applied.
 
 ## Open
 
 - **#61 is superseded by #64** and should be closed, not merged — #64's
   `regen:example` carries the same resync. Evidence: both modify
   `example/**/package.json` robustness range.
-- **#64 is NOT fixed and must NOT be merged.** Verdict arrived after the first
-  draft of this checkpoint. Its macOS leg fails at `d22dfce` — the commit that
-  added polling — with the poll running its FULL 15s timeout (17104ms) and the
-  marker never appearing, while the sibling test passed in 291ms in the same
-  run. **A 15s poll that finds nothing is not a race.** On macOS the shutdown
-  marker is genuinely never written when a `fetch` precedes the SIGTERM.
-  UNVERIFIED hypothesis: the tsx wrapper dies at 143 and macOS tears down the
-  process group, so the child never reaches its `exit` handler, whereas Linux
-  orphans it and it completes. What would settle it: spawn the built `dist/`
-  directly with `node`, removing the wrapper, and see if it survives.
-  Note this may be a HARNESS artifact rather than a product defect — nothing in
-  production wraps the server in tsx.
+- **#64 is fixed and green on both legs** — see Done and Corrections. Awaiting
+  a merge decision only.
 - **#62 and #63 open**, both needing a verdict. #63 was failing only because
   `example/` was stale on main.
 - **`ci/stop-duplicating-work-per-os` pushed with no PR** — `gh pr list` shows
@@ -602,17 +608,33 @@ PRs are open, and one pushed branch has no PR yet.
   `docs/` is byte-mirrored into `10-docs-readme/lib/docs` and shipped into every
   generated repo, so deleting it would break the product. History rewriting was
   considered and NOT done.
-- **"macOS and Linux never diverged in 30+ CI runs" was overtaken by events,
-  and my follow-up diagnosis was ALSO wrong.** A divergence appeared. I called
-  it a timing race and shipped a poll; the poll then ran its full 15s timeout
-  and still found nothing, which disproves the race. macOS is exposing a real
-  behavioural difference, cause unproven — see the #64 entry under Open. So the
-  honest position on the CI matrix is narrower than I first argued: the second
-  leg found something the first did not, and whether that something is a
-  product defect or an artifact of spawning through tsx is **not yet known.**
-  The matrix collapse (`976707e`) was justified on cost and duplication, which
-  still holds; it was NOT justified on "macOS never finds anything", which is
-  now false.
+- **The macOS divergence was real, and BOTH of my earlier diagnoses were
+  wrong. Root cause now proven.** `node_modules/.bin/tsx` does not run your
+  code — it spawns a **grandchild** and relays signals to it on a **30ms
+  budget** (tsx 4.23.1, `dist/cli.mjs`, `relaySignalToChild`): forward the
+  signal, wait 30ms for the child to report over IPC that it arrived, and if
+  that report is late, `kill("SIGKILL")` and `process.exit(128 + signum)`.
+  SIGKILL cannot be trapped, so no handler runs and no marker is ever written.
+  Reproduced app-independently with a 5-line script that traps SIGTERM and
+  writes a file:
+
+  | child event loop | wrapper exit | trap handler |
+  |---|---|---|
+  | idle | `code=0 signal=null` | ran |
+  | busy (200ms blocks) | `code=143 signal=null` | **never ran** |
+
+  The busy row is the CI observation verbatim, including `code=143 signal=null`
+  where a genuinely untrapped signal reports `code=null signal=SIGTERM`. With
+  `node --import <tsx loader>` the same script survives a 600ms-blocked loop.
+  **The app was always correct; the harness was killing it.** Neither earlier
+  "fix" could have worked, because both left tsx in the signal path.
+
+  Two consequences for the CI-matrix argument, in opposite directions: the
+  second leg DID find a real defect — one shipped into every generated repo —
+  which is a point in favour of keeping it; and the defect is load-dependent
+  rather than platform-specific, so what earns its place is a *differently
+  loaded* runner, not a Darwin one. Since the repo is public the leg is free,
+  so it stays, trimmed to the platform surface.
 - **The template's `ci.yml` is NOT mirrored from the root `ci.yml`.**
   `golden.test.ts:65` maps `12-ci-release/lib/.github/workflows/ci.yml` →
   `example/.github/workflows/ci.yml`. They are legitimately different (template
@@ -621,11 +643,22 @@ PRs are open, and one pushed branch has no PR yet.
 
 ## Traps
 
+- **NEVER SIGNAL A CHILD SPAWNED THROUGH `node_modules/.bin/tsx`.** It is a
+  supervisor, not a runner: it SIGKILLs its grandchild when the child's IPC
+  signal-ack misses a 30ms window, which a loaded runner misses routinely and
+  an idle laptop never does. Use `node --import <tsx loader> <entry>` — one
+  process, so the signal reaches your code and the child IS the subject under
+  test. Resolve the loader with `createRequire(import.meta.url).resolve("tsx")`
+  so it depends on neither tsx's internal layout nor the child's cwd. **This
+  applies to every consumer repo that tests signal handling under tsx** —
+  EQStack, up-bank-mcp, browser-tab-mcp and life-stack all spawn MCP servers in
+  tests; none has been told yet.
 - **Asserting on a proxy for the event instead of the event — four times in one
   week**: a fixed 20ms flush (`useDevStats`), a registration position (shutdown
   marker), a wrapper's exit code, then that wrapper's exit *timing*. Each passed
-  locally and failed on a loaded runner. Poll for the observable the assertion
-  names.
+  locally and failed on a loaded runner. The fourth is the instructive one: the
+  proxy was not merely noisy, it was measuring a **different process**. Before
+  polling harder, ask what the thing you are observing actually is.
 - **Two agents in one checkout will collide.** A subagent switched branches
   while this session had uncommitted work; the commit landed on its branch and
   untangling cost a `reset --hard`. Give subagents a `git worktree`.
@@ -636,7 +669,16 @@ PRs are open, and one pushed branch has no PR yet.
 
 ## Tree
 
-`main` at `d7260ce`, working tree **clean**, no dirty paths.
+`main` at `d7260ce` — **unchanged; nothing has been merged.** Five PRs open
+(61–65). `fix/deflake-http-sigterm-test` is at `f893167`, two commits ahead of
+its pushed state at the time of the first checkpoint, both green in CI.
+
+**Dirty paths, all mine, all deliberate:** `.github/workflows/ci.yml`,
+`apps/scaffolder/src/phases/12-ci-release/lib/.github/workflows/ci.yml` and
+`example/.github/workflows/ci.yml` carry the CI de-duplication, held back from
+a commit until #64 lands (see Done). Identical copy saved at
+`scratchpad/ci-dedup.patch`. Nothing else is modified.
+
 A second worktree exists at `/private/tmp/wt-robustness-hook` on
 `feat/http-observe-only-watchdog` (PR #62) — it belongs to a finished subagent;
 `git worktree remove` it once #62 lands.
@@ -658,16 +700,24 @@ A second worktree exists at `/private/tmp/wt-robustness-hook` on
 
 ## Resume
 
-**Next action: diagnose #64's macOS failure by spawning the built `dist/` with
-`node` instead of through the tsx wrapper** — that single change decides whether
-this is a harness artifact or a real macOS shutdown defect, and everything else
-waits on the answer. Do NOT merge #64 until it is understood; do not "fix" it by
-loosening the assertion, which would bury the finding.
+**Next action: merge #64.** It is green on both legs, and everything else is
+queued behind it — #63 fails only on the stale `example/` that #64's
+`regen:example` repairs, and the CI de-duplication branch would fail the same
+way if branched off the current main. Order: **merge #64 → close #61 as
+superseded → re-run #63 → merge #62 → `git worktree remove`
+/private/tmp/wt-robustness-hook → branch the CI de-duplication off the new main
+and open its PR** (apply `scratchpad/ci-dedup.patch`, and **abandon `976707e`**
+on `ci/stop-duplicating-work-per-os`, whose rationale is disproved).
 
-After that: open a PR for `ci/stop-duplicating-work-per-os` (`976707e`, pushed,
-no PR), then #63 and #62, closing #61 as superseded by #64.
+Then, in priority order, the three items under Blocked on you.
 
-Mid-flight state: nothing staged, nothing uncommitted, no background task
-running. The subagent that built the watchdog hook and the HTTP wiring has
-finished and reported; its worktree is idle.
+Worth doing unprompted once the queue is clear: **tell the consumer sessions
+about the tsx trap** (first entry under Traps). Four of them spawn MCP servers
+in tests, and any that signals one through `.bin/tsx` has the same latent
+false-failure generator — including the two stress assertions this repo found
+in its own harness, which had been live and unnoticed for months.
 
+Mid-flight state: nothing staged; the three ci.yml files above are modified in
+the working tree; no background task running. The subagent that built the
+watchdog hook and the HTTP wiring has finished and reported; its worktree is
+idle.
