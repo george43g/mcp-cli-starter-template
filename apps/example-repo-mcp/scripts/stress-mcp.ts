@@ -24,14 +24,38 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const TSX = resolve(ROOT, "../../node_modules/.bin/tsx");
 const ENTRY = resolve(ROOT, "src/index.ts");
+
+/**
+ * Run the TypeScript entry in ONE process: `node --import <tsx loader> ENTRY`,
+ * never `node_modules/.bin/tsx ENTRY`.
+ *
+ * The tsx CLI runs your code in a GRANDCHILD and relays signals to it on a 30ms
+ * budget (tsx 4.23.1, `dist/cli.mjs`, `relaySignalToChild`): forward the signal,
+ * wait 30ms for the child to report over IPC that it arrived, and if that report
+ * is late, `kill("SIGKILL")` and `process.exit(128 + signum)`.
+ *
+ * Cases 7 and the SIGTERM half of the shutdown-marker case both assert on a
+ * GRACEFUL exit, so both are false-failure generators through that wrapper: a
+ * SIGKILLed process runs no handler and writes no marker, and the exit code the
+ * harness reads is the wrapper's 143 rather than the app's 0. The report is late
+ * exactly when the child's event loop is busy — the normal state of a loaded CI
+ * runner, never the state of an idle laptop. Measured against a script that
+ * traps SIGTERM and writes a file: idle → code 0 and the handler runs, busy →
+ * code 143 and it does not.
+ *
+ * Resolved through tsx's `.` export so it does not depend on tsx's internal
+ * layout, and absolutely so it does not depend on the child's cwd.
+ * `tests/http-lifecycle.test.ts` carries the same fix; keep the two in step.
+ */
+const TSX_IMPORT = ["--import", pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href];
 
 interface RpcRequest {
   jsonrpc: "2.0";
@@ -55,7 +79,7 @@ class McpClient {
   public stderr = "";
 
   constructor(env: Record<string, string> = {}) {
-    this.child = spawn(TSX, [ENTRY], {
+    this.child = spawn(process.execPath, [...TSX_IMPORT, ENTRY], {
       env: { ...process.env, ...env },
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -367,7 +391,7 @@ async function caseShutdownMarker(): Promise<void> {
 async function caseHttpTransport(): Promise<void> {
   const token = randomBytes(16).toString("hex");
   const port = 18000 + Math.floor(Math.random() * 1000);
-  const proc = spawn(TSX, [ENTRY, "--http"], {
+  const proc = spawn(process.execPath, [...TSX_IMPORT, ENTRY, "--http"], {
     env: {
       ...process.env,
       MCP_HTTP_TOKEN: token,
