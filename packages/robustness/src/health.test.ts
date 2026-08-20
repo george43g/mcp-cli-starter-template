@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { formatHealthText, snapshotHealth } from "./health.js";
-import { _resetForTests as resetWatchdog } from "./watchdog.js";
+import {
+  readWatchdogState,
+  _resetForTests as resetWatchdog,
+  type WatchdogState,
+} from "./watchdog.js";
 
 beforeEach(() => {
   resetWatchdog();
@@ -30,6 +34,54 @@ describe("snapshotHealth", () => {
     expect(typeof snap.heap_mb).toBe("number");
     expect(typeof snap.rss_mb).toBe("number");
     expect(typeof snap.event_loop_p99_ms).toBe("number");
+  });
+});
+
+/**
+ * The `state` parameter exists so a CONSUMER can reach these branches. Proving
+ * that here needs the same route a consumer has — build a state object and pass
+ * it — rather than reaching into module internals, which is precisely what the
+ * parameter replaces.
+ */
+describe("snapshotHealth(counters, state) — the consumer-drivable seam", () => {
+  const stateWith = (over: Partial<WatchdogState>): WatchdogState => ({
+    ...readWatchdogState(),
+    ...over,
+  });
+
+  it("drives the unhealthy branch on event-loop p99, which the default cannot", () => {
+    const quiet = snapshotHealth({ toolCalls: 0, recentErrors: 0 });
+    expect(quiet.status).toBe("healthy");
+
+    const hot = snapshotHealth(
+      { toolCalls: 0, recentErrors: 0 },
+      stateWith({ eventLoopP99Ms: 5000 }),
+    );
+    expect(hot.status).toBe("unhealthy");
+    expect(hot.issues).toContain("event loop p99 5000ms");
+    expect(hot.event_loop_p99_ms).toBe(5000);
+  });
+
+  it("drives the degraded branch at the 500ms threshold", () => {
+    const s = snapshotHealth({ toolCalls: 0, recentErrors: 0 }, stateWith({ eventLoopP99Ms: 500 }));
+    expect(s.status).toBe("degraded");
+  });
+
+  it("drives the watchdog-kill branch — the 503 case an HTTP /health test needs", () => {
+    const s = snapshotHealth(
+      { toolCalls: 0, recentErrors: 0 },
+      stateWith({ killReason: "rss_exceeded" }),
+    );
+    expect(s.status).toBe("unhealthy");
+    expect(s.issues).toContain("watchdog kill: rss_exceeded");
+  });
+
+  it("leaves one-argument callers on live state — the default is not a behaviour change", () => {
+    const viaDefault = snapshotHealth({ toolCalls: 3, recentErrors: 0 });
+    const viaExplicit = snapshotHealth({ toolCalls: 3, recentErrors: 0 }, readWatchdogState());
+    expect(viaDefault.status).toBe(viaExplicit.status);
+    expect(viaDefault.tool_calls).toBe(3);
+    expect(viaExplicit.tool_calls).toBe(3);
   });
 });
 

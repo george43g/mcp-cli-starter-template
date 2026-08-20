@@ -8,7 +8,7 @@
  * Library-eligible: no project-specific imports.
  */
 
-import { readWatchdogState } from "./watchdog.js";
+import { readWatchdogState, type WatchdogState } from "./watchdog.js";
 
 export type HealthStatus = "healthy" | "degraded" | "unhealthy";
 
@@ -40,8 +40,35 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-export function snapshotHealth(counters: HealthCounters): HealthSnapshot {
-  const w = readWatchdogState();
+/**
+ * Build a health snapshot from watchdog state + caller-supplied counters.
+ *
+ * `state` defaults to `readWatchdogState()`, so every existing one-argument
+ * call site is unchanged. It exists as a parameter because the default made the
+ * degraded/unhealthy branches UNREACHABLE FROM A CONSUMER'S TESTS.
+ *
+ * The import above is package-internal and relative, and vitest externalizes
+ * `node_modules` — so a consumer's `vi.mock("@george43g/robustness")` cannot
+ * intercept it, and neither can mocking the subpath file. Driving these
+ * branches meant `deps.inline` surgery in every consumer, or not testing them.
+ * The gmail-cli-mcp session hit exactly that: 5 tests, no non-brittle route.
+ *
+ * Their previous escape hatch is gone on purpose and is not coming back —
+ * `readWatchdogState()` returns a COPY, so mutating it no longer steers the
+ * live snapshot. That is the better contract; this parameter is what replaces
+ * the hole it left.
+ *
+ * A default parameter rather than a `_setStateForTests` global or a
+ * `createHealthSnapshotter({ readState })` factory: it needs no teardown, so it
+ * cannot leak between tests; it adds no module-level mutable state; and the
+ * seam is visible at the call site, where `snapshotHealth(counters,
+ * readWatchdogState())` reads as ordinary code rather than a test affordance.
+ */
+export function snapshotHealth(
+  counters: HealthCounters,
+  state: WatchdogState = readWatchdogState(),
+): HealthSnapshot {
+  const w = state;
   const now = Date.now();
   const mu = process.memoryUsage();
   const heap = mu.heapUsed / 1024 / 1024;
