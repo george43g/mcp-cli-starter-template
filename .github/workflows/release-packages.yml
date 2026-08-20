@@ -300,11 +300,10 @@ jobs:
           node-version: "24"
           cache: pnpm
 
-      # This job needs mise for TWO things: the example/ resync below runs the
-      # usage(1) tasks (docs, completions, manpage) inside the scaffolded
-      # output, and `pnpm verify` runs check:workflows, whose actionlint is
-      # pinned here too. One step covers both.
-      - name: Setup mise (usage(1) for the example/ resync, actionlint for verify)
+      # `pnpm verify` runs check:workflows, whose actionlint is pinned in
+      # mise.toml and is not on PATH until mise installs it. (This step used to
+      # serve the example/ resync as well; that moved to its own job.)
+      - name: Setup mise (actionlint for verify)
         uses: jdx/mise-action@v4
         with:
           install: true
@@ -327,29 +326,73 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── example/ resync (DEFERRED #22) ──────────────────────────────────
-      #
-      # Every release rewrites the dependency ranges the scaffolder writes into
-      # generated repos, which makes the committed example/ stale — and nothing
-      # caught it until the NEXT pull request failed CI's sync check on a diff
-      # its author did not create. It was paid by hand four times in one
-      # session.
-      #
-      # This runs at the end of the SECRET-STORE job deliberately. It is the
-      # last job to execute on a push (mcpsync is workflow_dispatch-only), so
-      # by this point the tree holds every bump from the run. A new job hung
-      # off mcpsync would be skipped on push, exactly when it is needed.
+  # ── example/ resync (DEFERRED #22, relocated out of secret-store by #38) ──
+  #
+  # Its own job, and the `if:` is the entire point of the relocation.
+  #
+  # These two steps used to sit at the end of the `secret-store` job. `needs:`
+  # skips a job when ANY upstream job fails, so the resync was removed from the
+  # run precisely when a release had gone half-finished — the only time it
+  # matters. Observed three times in three days: 2026-08-16 (harmless by luck,
+  # a PR had regenerated example/ in passing); 2026-08-18, when
+  # `robustness@0.9.0` published and `cli-kit` then failed at the RUNNER level,
+  # leaving example/ claiming `^0.8.1` against a published `0.9.0`; and
+  # 2026-08-20, when that stale output failed CI on a docs-only PR that touched
+  # no code at all and blocked it behind an unrelated fix.
+  #
+  # `!cancelled()` rather than the `always()` DEFERRED #38 specified: ANY `if:`
+  # that does not call `success()` already breaks the skip-cascade, so both
+  # forms fix the bug — but this one additionally declines to push a commit
+  # into a run somebody deliberately cancelled.
+  #
+  # `needs` lists the four PUSH jobs and deliberately omits `mcpsync`, which is
+  # `workflow_dispatch`-only: a job hung off it would be skipped on every push,
+  # which is the original bug wearing a different hat.
+  resync-example:
+    name: Resync example/ whatever the release jobs did
+    needs: [robustness, cli-kit, tui-kit, secret-store]
+    if: ${{ !cancelled() && github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          # Tip of main, so this sees every bump commit the jobs above pushed —
+          # including the ones from a run that failed partway.
+          ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.29.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Setup mise (usage(1) for the resync)
+        # regen-example runs the usage(1) tasks (docs, completions, manpage)
+        # inside the scaffolded output; usage is pinned in mise.toml.
+        uses: jdx/mise-action@v4
+        with:
+          install: true
+          cache: true
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
       - name: Resync example/ against the freshly bumped versions
-        if: github.event_name == 'push'
         run: |
           set -euo pipefail
-          # --build is required, not an optimisation: `pnpm verify` above built
-          # the scaffolder BEFORE semantic-release bumped anything, so that
-          # dist still embeds the old dependency ranges.
+          # --build is required, not an optimisation: the scaffolder must be
+          # rebuilt AFTER semantic-release bumped the versions, or its dist
+          # still embeds the old dependency ranges.
           node scripts/regen-example.mjs example --build
 
       - name: Commit the resync
-        if: github.event_name == 'push'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -361,7 +404,7 @@ jobs:
           git add example/
           git commit -m "chore(example): resync generated output after release [skip ci]"
           # semantic-release pushed its own bump commits to main during this
-          # job, and main is unprotected, so a human merge can land between
+          # run, and main is unprotected, so a human merge can land between
           # this job's checkout and this push. Rebase rather than fail the run.
           git pull --rebase origin main
           git push
