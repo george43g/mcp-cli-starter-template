@@ -104,10 +104,53 @@ Two caveats worth knowing:
   without its counterpart, so every clean exit looked like a crash. If you
   scaffolded before then, check that `startStdio` registers the marker.
 
-**The watchdog is still stdio-only, on purpose.** stdio serves one client and
-can safely self-kill on event-loop lag or memory growth; an HTTP server is
-shared, and the decision to restart it belongs to whatever supervises it. Call
-`installWatchdog()` in `runHttpMcp` yourself if you want it.
+### The watchdog: enforcing on stdio, observe-only on HTTP
+
+stdio serves one client and can safely self-kill on event-loop lag or memory
+growth. An HTTP server is shared, and the decision to restart it belongs to
+whatever supervises it — so `runHttpMcp` installs the watchdog with a hook that
+withholds the kill:
+
+```ts
+installWatchdog({ onBreach: () => "observe" });
+```
+
+It samples and logs exactly as it does on stdio; only the kill is withheld. The
+same `MCP_MAX_RSS_MB=50` that makes the stdio server exit 1 leaves the HTTP
+server serving:
+
+```
+[warn] watchdog_breach_observed: rss_exceeded {"rss_mb":101.4,"threshold_mb":50}
+[warn] watchdog_breach_observed: rss_exceeded {"rss_mb":101.4,"threshold_mb":50}
+```
+
+**To enforce it, delete the `onBreach` line** in `src/commands/http.ts`. The
+watchdog then behaves as it does on stdio — `watchdog_kill: <reason>`, a 5s
+force-exit net, then `shutdown(1)`. Do that only if something will restart the
+process; a shared server that exits and stays down is worse than a slow one.
+Per-condition policy is a verdict, not a flag, so you can enforce some and
+observe others:
+
+```ts
+installWatchdog({ onBreach: ({ reason }) => (reason === "rss_exceeded" ? "observe" : "kill") });
+```
+
+**Know the log volume before you deploy it.** An observed breach is *not*
+latched — it logs one `warn` line per breaching sample, for as long as the
+breach lasts:
+
+| Condition | Sample interval | Lines/day while breaching |
+|---|---|---|
+| `event_loop_blocked`, `event_loop_sustained_lag` | `MCP_EVENT_LOOP_SAMPLE_MS`, default 5s | ~17,300 (~4MB) |
+| `rss_exceeded`, `memory_leak_suspected` | `MCP_MEMORY_SAMPLE_MS`, default 60s | ~1,440 (~215KB) |
+| `idle_restart` | `MCP_IDLE_CHECK_MS`, default 10min | ~144 |
+
+That is deliberate: the values change between lines, so a latch would throw away
+the trend you need to tell "leaking" from "plateaued". If it is too much for
+your deployment, widen the sample interval, raise the threshold, set
+`MCP_LOG_TO_FILE=0`, or point `MCP_LOG_DIR` at a location your platform rotates
+**and reaps** — the logger rotates at 10MB by opening a new file and never
+deletes the old ones.
 
 ## Removing surfaces
 
