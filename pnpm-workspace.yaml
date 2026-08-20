@@ -5,3 +5,25 @@ packages:
   # snapshot for human inspection + CI diff verification. NOT a workspace
   # member (its inner packages would name-collide with the canonical).
   - "!example/**"
+
+# Fresh releases of the kits must not be quarantined out of RANGE resolution.
+#
+# pnpm's `minimumReleaseAge` is a supply-chain guard: it refuses to resolve a
+# version published more recently than the threshold. Exact specifiers bypass
+# it; RANGES do not. pnpm 11 turns it on by default (verified by the
+# gmail-cli-mcp session on 11.0.0 and 11.15.1); pnpm 10.29.3, which this repo
+# pins, leaves it OFF — a `>=0.9.0 <1` range there resolves to the newest
+# version, checked 2026-08-21.
+#
+# It is set here anyway because the failure is SILENT and expensive when it
+# lands: `pnpm install` reports "up to date", the fix you just published is
+# absent, and the natural conclusion is that the publish failed or the range is
+# wrong. That misdiagnosis cost a consumer ~20 minutes with the correct range
+# already in hand.
+#
+# Scoped to `@george43g/*` deliberately: the quarantine is a good default for
+# the rest of the registry, and this account's own accidental-release history
+# argues for keeping it. You are the publisher of these; the guard buys you
+# nothing against yourself.
+minimumReleaseAgeExclude:
+  - "@george43g/*"
