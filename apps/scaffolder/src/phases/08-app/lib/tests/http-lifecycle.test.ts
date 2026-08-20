@@ -73,15 +73,21 @@ async function startHttpChild(logDir: string): Promise<HttpChild> {
   return { child, url, stderr: () => err };
 }
 
+interface LogEntry {
+  msg: string;
+  /** Present on `shutdown`; `reason` is the cause `getShutdownCause()` recorded. */
+  data?: { reason?: string };
+}
+
 /** Every NDJSON entry the child wrote, across whatever file it chose. */
-async function readLogEntries(logDir: string): Promise<Array<{ msg: string }>> {
+async function readLogEntries(logDir: string): Promise<LogEntry[]> {
   const files = (await readdir(logDir)).filter((f) => f.endsWith(".ndjson"));
-  const entries: Array<{ msg: string }> = [];
+  const entries: LogEntry[] = [];
   for (const file of files) {
     const raw = await readFile(join(logDir, file), "utf8");
     for (const line of raw.split("\n")) {
       if (!line.trim()) continue;
-      entries.push(JSON.parse(line) as { msg: string });
+      entries.push(JSON.parse(line) as LogEntry);
     }
   }
   return entries;
@@ -113,13 +119,24 @@ describe("http transport lifecycle", () => {
         ),
       ]);
 
-      // Measured against the unwired version: code 143, i.e. 128 + SIGTERM,
-      // the status a process reaches when the default disposition terminates
-      // it. (`signal` is null rather than "SIGTERM" because the child we spawn
-      // is the tsx wrapper, which forwards the signal and reports the status.)
-      // A trapped SIGTERM runs the cleanup registry and exits 0.
-      expect(result.signal).toBeNull();
-      expect(result.code).toBe(0);
+      // We assert the RECORDED CAUSE, not the exit code, and the distinction is
+      // load-bearing. The child we spawn is the tsx wrapper, not our process:
+      // it forwards the signal and reports its OWN status, so `result.code`
+      // races the wrapper's teardown against ours. That raced green on Linux
+      // and red on macOS with `expected 143 to be +0` — a false failure, since
+      // the app had trapped the signal correctly either way.
+      //
+      // A `shutdown` marker naming `signal:SIGTERM` can only exist if the
+      // handler ran: the default disposition terminates the process without
+      // executing any cleanup, so an untrapped SIGTERM leaves no marker at all.
+      // That is strictly stronger than an exit code AND independent of the
+      // wrapper. The exit status stays in the failure message as a diagnostic.
+      const shutdown = (await readLogEntries(logDir)).find((e) => e.msg === "shutdown");
+      expect(
+        shutdown,
+        `no shutdown marker — SIGTERM was not trapped (wrapper exit code=${result.code} signal=${result.signal})`,
+      ).toBeDefined();
+      expect(shutdown?.data?.reason).toBe("signal:SIGTERM");
     } finally {
       if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
     }
