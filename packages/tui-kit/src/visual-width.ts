@@ -97,8 +97,9 @@ export function visualWidth(str: string): number {
  *     clusters as fit are returned with NO ellipsis — deliberately better than
  *     "" or a clipped ellipsis.
  *
- * There is intentionally no padding counterpart: ink's flexbox handles
- * padding, and a pad helper here would have no call sites.
+ * For the padded counterpart see {@link fitToWidth}. This function alone
+ * deliberately does NOT pad — a caller laying rows out with ink's flexbox wants
+ * the short string short.
  */
 export function truncateToWidth(str: string, maxCols: number, ellipsis = "…"): string {
   if (maxCols <= 0) return "";
@@ -128,4 +129,37 @@ export function truncateToWidth(str: string, maxCols: number, ellipsis = "…"):
     used += w;
   }
   return out + ellipsis;
+}
+
+/**
+ * Truncate to `cols`, then pad to EXACTLY `cols`.
+ *
+ * The post-condition is `visualWidth(fitToWidth(s, n)) === n` — exact, not
+ * `<=`. That strictness exists because of a measured frame-corruption bug, not
+ * for tidiness: **ink WRAPS an overflowing `Text`, and `overflow="hidden"`
+ * clips BOXES rather than the extra lines that wrapping manufactures.** One
+ * over-wide row turns N rows into N+k printed lines and desynchronises ink's
+ * frame bookkeeping, which then bleeds stale cells. browser-tab-mcp reproduced
+ * it below ~156 columns with real data; EQStack's incident was a help bar
+ * wrapping mid-hint under 100 columns and eating a content row.
+ *
+ * Truncate-then-pad is one call because every real call site pairs them —
+ * observed independently in three consumer repos. It is safe because
+ * `visualWidth(truncateToWidth(s, n)) <= n` always holds, so the pad's repeat
+ * count can never go negative.
+ *
+ * Padding is append-only. There are no `center`/`start` variants until a
+ * consumer produces a call site for one, and an ASCII-only column is better
+ * served by `String#padEnd`, which skips the width walk entirely.
+ *
+ * CAVEAT worth knowing before you trust a table border: this guarantees
+ * consistency with `visualWidth`, NOT with every terminal's ambiguous-width
+ * table. East Asian ambiguous characters and some emoji still misalign where
+ * the terminal disagrees with the width model.
+ */
+export function fitToWidth(str: string, cols: number, ellipsis = "…"): string {
+  const width = Math.max(0, Math.floor(cols));
+  if (width === 0) return "";
+  const clipped = truncateToWidth(str, width, ellipsis);
+  return clipped + " ".repeat(Math.max(0, width - visualWidth(clipped)));
 }

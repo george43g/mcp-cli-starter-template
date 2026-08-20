@@ -40,9 +40,20 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * number that moves with the runner is how a green local suite fails in CI —
  * which happened once already this session, on a real-clock test.
  */
+/**
+ * Ratcheted 47/89/80/47 → 64/89/84/64 by the list primitives (line-window,
+ * nav-reduce, nav-chunk, scrollbar, width-alloc). Measured 67.17/91.83/86.15,
+ * floors set just below.
+ *
+ * BRANCHES DELIBERATELY LEFT AT 89 despite measuring 91.83, for the reason the
+ * note above gives: the branch figure moves with the runner because font-detect
+ * takes a different path on macOS than on Linux. The new files are pure and
+ * platform-independent, so they raise the floor safely on the other three axes
+ * while diluting — not removing — that wobble on this one.
+ */
 export default withCoverageFloor(shared, {
-  statements: 47,
+  statements: 64,
   branches: 89,
-  functions: 80,
-  lines: 47,
+  functions: 84,
+  lines: 64,
 });
