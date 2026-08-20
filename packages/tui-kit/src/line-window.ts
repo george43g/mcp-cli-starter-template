@@ -14,6 +14,8 @@
  * eviction.
  */
 
+import { finiteOr, isPositive } from "./finite.js";
+
 export interface LineWindowSpec {
   itemCount: number;
   /** Cursor index. **-1 is the follow-tail sentinel** and forces `anchor: "end"`. */
@@ -62,8 +64,9 @@ export function chooseAnchor(cursor: number, itemCount: number, nearEnd = 2): "c
 }
 
 export function lineWindow(spec: LineWindowSpec): LineWindow {
-  const { itemCount, budgetLines } = spec;
-  if (itemCount <= 0) return { start: 0, end: 0, usedLines: 0 };
+  const itemCount = Math.floor(finiteOr(spec.itemCount, 0));
+  const budgetLines = spec.budgetLines;
+  if (!isPositive(itemCount)) return { start: 0, end: 0, usedLines: 0 };
 
   // Per-invocation memo. The walk visits some indices twice (up, then down,
   // then backfill up) and the item array cannot change mid-call, so this is
@@ -73,19 +76,28 @@ export function lineWindow(spec: LineWindowSpec): LineWindow {
   const h = (i: number): number => {
     const cached = memo.get(i);
     if (cached !== undefined) return cached;
-    const measured = Math.max(0, Math.floor(spec.heightOf(i)));
+    // A NaN height poisons `used`, after which every break condition is false
+    // and the walk never terminates. Treated as 0 rather than propagated: the
+    // `used > 0` admission clause below already copes with a zero-height item,
+    // so a broken estimator costs a mis-sized row instead of the whole list.
+    const measured = Math.max(0, Math.floor(finiteOr(spec.heightOf(i), 0)));
     memo.set(i, measured);
     return measured;
   };
 
-  const followTail = spec.cursor < 0;
-  const cursor = followTail ? itemCount - 1 : Math.min(Math.max(spec.cursor, 0), itemCount - 1);
+  const requested = Math.floor(finiteOr(spec.cursor, -1));
+  const followTail = requested < 0;
+  const cursor = followTail ? itemCount - 1 : Math.min(Math.max(requested, 0), itemCount - 1);
   const anchor = followTail ? "end" : (spec.anchor ?? "cursor");
 
   // Documented degenerate case: no budget still yields the cursor's row, so the
   // "cursor is always visible" invariant holds during a resize transient rather
   // than blinking to empty.
-  if (budgetLines <= 0) return { start: cursor, end: cursor + 1, usedLines: h(cursor) };
+  // POSITIVE predicate, deliberately. `budgetLines <= 0` is false for NaN, so
+  // that spelling admitted it and every subsequent break condition became
+  // false — see `finite.ts` for the incident. This form treats a non-finite
+  // budget as no budget, which fails CLOSED to the cursor's own row.
+  if (!isPositive(budgetLines)) return { start: cursor, end: cursor + 1, usedLines: h(cursor) };
 
   if (anchor === "end") {
     let start = itemCount;
@@ -112,7 +124,7 @@ export function lineWindow(spec: LineWindowSpec): LineWindow {
   let end = cursor + 1;
   let used = h(cursor);
 
-  const aboveBudget = Math.floor(budgetLines * (spec.aboveFraction ?? 0.4));
+  const aboveBudget = Math.floor(budgetLines * finiteOr(spec.aboveFraction ?? 0.4, 0.4));
   let aboveUsed = 0;
   while (start > 0) {
     const next = h(start - 1);

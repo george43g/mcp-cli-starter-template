@@ -6,6 +6,8 @@
  * consumer surveyed had either hand-rolled a "↑ N more" line or gone without.
  */
 
+import { finiteOr } from "./finite.js";
+
 export interface ScrollExtent {
   /** First visible index, inclusive. */
   start: number;
@@ -31,13 +33,16 @@ export interface ScrollThumb {
  * rounds to invisible, which is the same as having no indicator at all.
  */
 export function scrollbarThumb(extent: ScrollExtent, trackRows: number): ScrollThumb {
-  const rows = Math.max(0, Math.floor(trackRows));
-  const total = Math.max(0, Math.floor(extent.total));
-  const start = Math.max(0, Math.floor(extent.start));
-  const end = Math.max(start, Math.floor(extent.end));
+  // Every one of these feeds a comparison below, so all are validated. A NaN
+  // track height produced NaN geometry, which an ink layout renders as garbage
+  // rather than as nothing. See `finite.ts`.
+  const rows = Math.max(0, Math.floor(finiteOr(trackRows, 0)));
+  const total = Math.max(0, Math.floor(finiteOr(extent.total, 0)));
+  const start = Math.max(0, Math.floor(finiteOr(extent.start, 0)));
+  const end = Math.max(start, Math.floor(finiteOr(extent.end, start)));
   const visible = end - start;
 
-  if (rows <= 0 || total <= 0 || visible >= total) return { thumbStart: 0, thumbRows: 0 };
+  if (!(rows > 0) || !(total > 0) || visible >= total) return { thumbStart: 0, thumbRows: 0 };
 
   const thumbRows = Math.max(1, Math.min(rows, Math.round((visible / total) * rows)));
   const maxStart = rows - thumbRows;
@@ -47,8 +52,8 @@ export function scrollbarThumb(extent: ScrollExtent, trackRows: number): ScrollT
 
 /** Items above and below the window — what an "↑ N more" indicator needs. */
 export function hiddenCounts(extent: ScrollExtent): { above: number; below: number } {
-  const total = Math.max(0, Math.floor(extent.total));
-  const start = Math.max(0, Math.floor(extent.start));
-  const end = Math.max(start, Math.min(total, Math.floor(extent.end)));
+  const total = Math.max(0, Math.floor(finiteOr(extent.total, 0)));
+  const start = Math.max(0, Math.floor(finiteOr(extent.start, 0)));
+  const end = Math.max(start, Math.min(total, Math.floor(finiteOr(extent.end, start))));
   return { above: start, below: Math.max(0, total - end) };
 }
