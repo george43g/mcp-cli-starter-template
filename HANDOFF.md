@@ -518,3 +518,256 @@ The older landing decisions below are retained for history:
 The former external plan at
 `/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md` is absent. Do not
 depend on it.
+
+---
+
+# Precompact checkpoint — 2026-08-21
+
+**Where this section and any conversation summary disagree, THIS SECTION IS
+CORRECT.** A summary optimises for narrative and is least reliable about what
+did *not* happen. Check here before acting on a recalled claim.
+
+## State
+
+Repo **PUBLIC** since 2026-08-21, `robustness@0.9.0` published, **every PR in
+the queue landed** (#62, #63, #64, #66, #67 merged; #61 closed as superseded),
+`main` at `1bb5190`. Nothing new published — no `packages/**` file changed
+since 0.9.0, so the release workflow correctly never fired, which also means
+the two release-pipeline changes in #67 are **merged but not yet exercised.**
+
+## Constraints (verbatim, this session, George)
+
+- *"you **work** for the consuming agents when it comes to them requesting
+  updates, improvements etc... you just have to make sure you dont break
+  something for another agent trying to please the requesting agent"* — already
+  promoted into `AGENTS.md` conventions.
+- On losing functionality to satisfy a default: *"you can always just export a
+  method from a lib that **detects** scenario 2 and 3 and simply logs it and
+  fires off a hook function that only the consumer can choose if they wired it
+  up to do anything... so that way you dont have to lose functionality for
+  anyone that may happen to rely on it."* Shipped as `WatchdogOptions.onBreach`.
+- *"its a green light to preventing duplication in any case"* (CI per-OS work).
+- Green light 2026-08-21, in one answer, to: **land the whole merge queue**;
+  build **both** release-pipeline items (DEFERRED #38's `if: always()` resync
+  and npm provenance); and **message the consumer sessions** about the tsx
+  trap. All three are done — see Done.
+- On going public: *"i think its okay to make them public for now... i can
+  always make it private again before I release something big publicly - not
+  perfect, but i dont think the stakes are that high at the moment"* — decided
+  AFTER being shown the disclosure finding below. Do not re-litigate it.
+
+## Done
+
+- **Repo made public.** `gh api repos/george43g/mcp-cli-starter-template --jq
+  .visibility` → `public`. Preceded by a secret scan across all 291 commits /
+  899 files: no `.env`/`.pem`/`.key`/`.npmrc` ever committed; no known-prefix
+  secrets (3 hits were fake fixtures in mcpsync's own secret-*detector* test);
+  `.mcp.json` and `opencode.json` WERE committed historically but every version
+  held only `${VAR}` placeholders; emails are GitHub-noreply and bots only.
+- **Secret scanning + push protection enabled** — API returned
+  `secret_scanning: enabled`, `secret_scanning_push_protection: enabled`.
+- **`robustness@0.9.0` published** (`npm view` confirms). Adds the observe-only
+  watchdog breach hook. Default path measured byte-identical to 0.8.1: no hook →
+  kill as before; `"observe"` → `killReason=null`; throwing hook → fails closed.
+- **#64 — the tsx signal defect, diagnosed and fixed** (merged, `77f4c6b`).
+  Cause under Corrections. Fixed at three spawn sites' worth of surfaces;
+  `scripts/stress-tui.ts` deliberately left on the tsx CLI with a comment
+  saying why, since nothing there reads the child's exit status. Also carried
+  the `example/` resync that made #61 redundant.
+- **#66 — CI de-duplication** (merged, `1f10e02`), applied to BOTH this repo's
+  `ci.yml` and the template's, which ships a two-OS matrix into every generated
+  repo — where it IS billed, because a new repo from the template is private.
+  **Measured on the merge run**, macOS job: 14 steps skipped, 4 run (install,
+  build, `pnpm test`, stress), **83s down from 173s**. `976707e` on
+  `ci/stop-duplicating-work-per-os` — which deleted the leg outright — was
+  ABANDONED, not merged; its rationale is the claim disproved below.
+- **#67 — both release-pipeline items** (merged, `1bb5190`). DEFERRED #38's
+  resync is now its own `resync-example` job guarded by
+  `!cancelled() && github.event_name == 'push'` (not `always()`: any `if:` that
+  omits `success()` breaks the skip-cascade, and this one additionally declines
+  to push into a cancelled run). npm provenance is ON — five
+  `NPM_CONFIG_PROVENANCE: "true"` entries, never `publishConfig`. **Neither is
+  exercised until a real release runs.**
+- **#62 merged** (`29a826a`) after a hand-resolved rebase: it conflicted with
+  #64 in `http-lifecycle.test.ts` on all three surfaces, resolved by re-applying
+  its `extraEnv` + observe-only test onto #64's rewritten file. `pnpm verify`
+  exit 0 in its worktree, 37 app tests. Worktree removed.
+- **#63 merged** (`4e46ae2`) — DEFERRED #39 (logger reaper), #38 promoted, and
+  a new **#40** recording that the stress harness is 15 assertions while 19
+  prose sites still say 13.
+- **Four consumer sessions told about the tsx trap** — eqstack, up-bank-mcp,
+  browser-tab-mcp, life-stack — with the de-minified source, the two-row
+  reproduction and the one-line fix. **browser-tab-mcp confirmed VERIFIED YES
+  in one grep** (`apps/browser-tab-mcp/scripts/stress-tui.ts:29` spawns,
+  `:83` kills) and reported that it retroactively explains a failure they had
+  already written up as "probably a shutdown-trap race": their TUI soak exits
+  143 with no handler at heavy scale and 0 at default scale, which is the 30ms
+  ack window exactly. Recorded in their PR #74.
+
+## Open
+
+- **The two #67 changes are merged but UNTESTED IN ANGER.** Neither the
+  `resync-example` job nor provenance runs until a `packages/**` change reaches
+  `main`. Provenance is the one with teeth: it 422s and **fails the publish
+  outright** if the repo is private or `repository.url` mismatches. Both
+  preconditions verified at merge time — repo public, five manifests
+  case-exact, and `check-publishable-manifests.mjs` holds the second one
+  mechanically — but the first real release is the actual test. DEFERRED #38
+  also asked for a deliberate failed-chain observation; that was **not** done,
+  and the evidence is three organic occurrences rather than an induced one.
+- **DEFERRED #40** — 19 prose sites say the stress harness has 13 assertions;
+  it has 15. Recorded, not swept. `docs/PROJECT_STATE.md:287` must stay at 13:
+  it is a dated record of a run that really did have 13.
+- **DEFERRED #39** (logger rotates but never reaps) — recorded, not implemented.
+- **`docs/PROJECT_STATE.md` is stale in two ways** and was left alone
+  deliberately: its registry table says `robustness@0.8.0` (published is 0.9.0)
+  and it still records provenance as removed. The file warns against trusting
+  its own version numbers; the provenance line is a decision record that is now
+  wrong. Not fixed here to avoid a conflict with this checkpoint's own edits.
+- **mcpsync migration** — life-stack answered all four questions with evidence
+  (move-but-unpublished / stop bundling / `apps/mcpsync` / no accumulated bugs).
+  Recorded in #10. Blocked on George; see below.
+
+## Corrections
+
+- **"Wiping `docs/` from history would remove the private-repo references" is
+  FALSE.** They live in `packages/` (39 files), `apps/` (24), `docs/` (19),
+  `scripts/` (4) — mostly field-notes explaining why a fix exists. Worse,
+  `docs/` is byte-mirrored into `10-docs-readme/lib/docs` and shipped into every
+  generated repo, so deleting it would break the product. History rewriting was
+  considered and NOT done.
+- **The macOS divergence was real, and BOTH of my earlier diagnoses were
+  wrong. Root cause now proven.** `node_modules/.bin/tsx` does not run your
+  code — it spawns a **grandchild** and relays signals to it on a **30ms
+  budget** (tsx 4.23.1, `dist/cli.mjs`, `relaySignalToChild`): forward the
+  signal, wait 30ms for the child to report over IPC that it arrived, and if
+  that report is late, `kill("SIGKILL")` and `process.exit(128 + signum)`.
+  SIGKILL cannot be trapped, so no handler runs and no marker is ever written.
+  Reproduced app-independently with a 5-line script that traps SIGTERM and
+  writes a file:
+
+  | child event loop | wrapper exit | trap handler |
+  |---|---|---|
+  | idle | `code=0 signal=null` | ran |
+  | busy (200ms blocks) | `code=143 signal=null` | **never ran** |
+
+  The busy row is the CI observation verbatim, including `code=143 signal=null`
+  where a genuinely untrapped signal reports `code=null signal=SIGTERM`. With
+  `node --import <tsx loader>` the same script survives a 600ms-blocked loop.
+  **The app was always correct; the harness was killing it.** Neither earlier
+  "fix" could have worked, because both left tsx in the signal path.
+
+  Two consequences for the CI-matrix argument, in opposite directions: the
+  second leg DID find a real defect — one shipped into every generated repo —
+  which is a point in favour of keeping it; and the defect is load-dependent
+  rather than platform-specific, so what earns its place is a *differently
+  loaded* runner, not a Darwin one. Since the repo is public the leg is free,
+  so it stays, trimmed to the platform surface.
+- **The template's `ci.yml` is NOT mirrored from the root `ci.yml`.**
+  `golden.test.ts:65` maps `12-ci-release/lib/.github/workflows/ci.yml` →
+  `example/.github/workflows/ci.yml`. They are legitimately different (template
+  uses `pnpm test`, not `test:coverage`; a filtered `check:usage`). I clobbered
+  it with `cp` and reverted; do not "sync" them.
+
+## Traps
+
+- **A CHECK THAT CANNOT SUCCEED RETURNS NOTHING, AND NOTHING READS AS
+  ALL-CLEAR.** life-stack's framing, earned against a check I wrote and shipped
+  to four sessions: `grep -rn 'bin/tsx' --include='*.ts' tests scripts` returns
+  zero on a repo whose tsx invocations live in `mise.toml` or an extensionless
+  `bin/` wrapper — and zero is exactly what "unaffected" looks like. Worse, the
+  obvious repair `| grep -v node_modules` filters LINES, so it drops every real
+  call site, which are all written as path strings CONTAINING `node_modules`
+  (`resolve(ROOT, "../../node_modules/.bin/tsx")`). Both forms return a clean
+  bill of health on this very repo, and life-stack then verified that the second
+  form returns zero on THEIRS — the error reproduced inside the correction to
+  the error. Their distinction is the precise one: `--exclude-dir` prunes the
+  SEARCH SPACE before matching, a trailing `grep -v` post-filters RESULT LINES
+  and is therefore defeated by any source line that quotes the path it excludes.
+  Those are not two spellings of one idea.
+
+  **A filter argument is itself a claim about where the answer lives, and a
+  wrong one returns zero rather than an error.** The habit that catches it, and
+  it generalises well past grep: **when a check returns zero, re-run it in a
+  shape known to return non-zero before believing the zero.** Same discipline as
+  reading an effective config back off a running system rather than trusting the
+  source that was supposed to produce it — assert the positive control appears,
+  do not settle for the negative case failing.
+- **NEVER SIGNAL A CHILD SPAWNED THROUGH `node_modules/.bin/tsx`.** It is a
+  supervisor, not a runner: it SIGKILLs its grandchild when the child's IPC
+  signal-ack misses a 30ms window, which a loaded runner misses routinely and
+  an idle laptop never does. Use `node --import <tsx loader> <entry>` — one
+  process, so the signal reaches your code and the child IS the subject under
+  test. Resolve the loader with `createRequire(import.meta.url).resolve("tsx")`
+  so it depends on neither tsx's internal layout nor the child's cwd. **This
+  applies to every consumer repo that tests signal handling under tsx** —
+  EQStack, up-bank-mcp, browser-tab-mcp and life-stack all spawn MCP servers in
+  tests; none has been told yet.
+- **Asserting on a proxy for the event instead of the event — four times in one
+  week**: a fixed 20ms flush (`useDevStats`), a registration position (shutdown
+  marker), a wrapper's exit code, then that wrapper's exit *timing*. Each passed
+  locally and failed on a loaded runner. The fourth is the instructive one: the
+  proxy was not merely noisy, it was measuring a **different process**. Before
+  polling harder, ask what the thing you are observing actually is.
+- **Two agents in one checkout will collide.** A subagent switched branches
+  while this session had uncommitted work; the commit landed on its branch and
+  untangling cost a `reset --hard`. Give subagents a `git worktree`.
+- **`cp` between canonical and `lib/` assumes a mirror that may not exist.**
+  Check `LIB_TO_CANONICAL` before copying; some pairs are deliberately divergent.
+- **`pnpm lint:fix` AFTER mirroring silently desyncs the mirror** — biome
+  excludes `lib/`. Lint first, then copy.
+
+## Tree
+
+`main` at `1bb5190`, working tree **clean**, no dirty paths, no worktrees
+(`/private/tmp/wt-robustness-hook` removed after #62 landed). Only this
+checkpoint branch is open.
+
+Two remote branches are dead and can be deleted whenever convenient:
+`ci/stop-duplicating-work-per-os` (`976707e`, superseded by #66 and never
+PR'd) and `fix/resync-example-after-skipped-job` (#61, closed).
+
+## Blocked on you
+
+- **mcpsync: should it be published, and soon?** This is the single input that
+  decides the migration. If YES → **do not move it**; publishing from here needs
+  only a bootstrap `pnpm publish` + a trusted-publisher entry against a workflow
+  that already exists. If NO/later → move to `apps/mcpsync` in life-stack, which
+  has no release pipeline at all. `@george43g/mcpsync` has **never** been
+  published (E404), so no trusted publisher exists anywhere to migrate.
+- **DEFERRED #38** — implement the `if: always()` resync job? It edits the
+  pipeline that publishes everything.
+- **npm provenance** — now possible since the repo is public. Needs
+  `NPM_CONFIG_PROVENANCE: "true"` per release step, and deliberately NOT in
+  `publishConfig` (that also fires on local `pnpm publish`, which has no OIDC
+  provider). Not done.
+
+## Resume
+
+**Nothing is blocked and nothing is mid-flight.** The queue is landed, the tree
+is clean, and every item below is a choice rather than a continuation.
+
+**The one thing to watch, unprompted, is the NEXT RELEASE RUN.** It is the
+first exercise of both #67 changes, and provenance is the one that can fail
+hard — a 422 at the publish step means either the repo went private or a
+`repository.url` drifted. If that happens, the fix is to remove the five
+`NPM_CONFIG_PROVENANCE: "true"` lines, not to debug semantic-release. The
+`resync-example` job failing is comparatively benign: it means `example/` stays
+stale and the next PR trips the sync check, which is the status quo ante.
+
+Then, in rough priority order:
+
+1. The three items under **Blocked on you** — mcpsync is the only one that
+   gates other work.
+2. **DEFERRED #40** (the 13-vs-15 assertion count) — cheap, and the durable
+   version makes the harness assert its own case count so docs cannot drift
+   again.
+3. **DEFERRED #39** (logger rotates but never reaps) — matters more now that
+   #62 shipped observe-only mode, which is the first feature that makes a
+   process log steadily and unattended forever.
+4. `docs/PROJECT_STATE.md` — its registry table and its provenance decision are
+   both stale; see Open.
+
+Consumer sessions are current: all four were told about the tsx trap and about
+the broken check that shipped with it. browser-tab-mcp confirmed affected and
+recorded it; life-stack confirmed unaffected and corrected the check.
