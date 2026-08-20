@@ -37,8 +37,9 @@ repeated.
 - **2026-08-21** — Queried EQStack, browser-tab-mcp, up-bank-mcp. Library survey
   done. Design turned from "a navigator" into "five primitives" on consumer
   evidence (see Decisions). Signature sketch sent to EQStack and browser-tab.
-  browser-tab resolved the collapse-vs-drop question the same day (Decisions).
-  Awaiting: EQStack's signature critique, up-bank's reply (no response yet).
+  browser-tab resolved collapse-vs-drop the same day; EQStack returned a full
+  signature review with amendments and an adoption pledge, and approved the
+  build. Spec below is final. Awaiting only up-bank's reply.
 
 ## Discoveries
 
@@ -185,18 +186,130 @@ spike with a NO-GO branch, not a feature row.** Candidate deps surveyed:
 a technical one. browser-tab's screenshot CAPTURE already ships, so this is
 render-only for them.
 
+## The agreed spec
+
+Signature review by EQStack 2026-08-21: *"the shape is right, I'd adopt 4 of the
+5 primitives on release as specified, and `navReduce` after the ctx amendments
+... Signatures otherwise approved — build it."* Amendments below are theirs and
+are binding; each one they justified from a shipped incident or a real call site.
+
+```ts
+// ── 1. lineWindow ──────────────────────────────────────────────────────
+export interface LineWindowSpec {
+  itemCount: number;
+  cursor: number;                        // -1 = follow-tail sentinel
+  budgetLines: number;
+  heightOf: (index: number) => number;   // pure, caller-supplied
+  anchor?: "cursor" | "end";             // TWO algorithms, not one ratio
+  aboveFraction?: number;                // applies to "cursor" only; default 0.4
+}
+export interface LineWindow { start: number; end: number; usedLines: number }
+export function lineWindow(spec: LineWindowSpec): LineWindow;
+export function chooseAnchor(cursor: number, itemCount: number, nearEnd?: number): "cursor" | "end";
+
+// ── 2. scrollbar ───────────────────────────────────────────────────────
+export function scrollbarThumb(w: { start; end; total }, trackRows: number):
+  { thumbStart: number; thumbRows: number };
+
+// ── 3. navReduce ───────────────────────────────────────────────────────
+export interface NavContext {
+  itemCount: number;
+  pageSize: number;                                        // caller's layout, not derivable
+  groupBoundary?: (from: number, dir: -1 | 1) => number;    // domain knowledge
+}
+export type NavIntent =
+  | { kind: "up" | "down" | "pageUp" | "pageDown" | "top" | "bottom" }
+  | { kind: "digit"; digit: number }
+  | { kind: "groupJump"; dir: -1 | 1 }
+  | { kind: "set"; index: number }
+  | { kind: "itemsReplaced"; remap: (old: number) => number };
+export interface NavState { cursor: number; count: number | null; touched: boolean }
+export function navReduce(s: NavState, i: NavIntent, ctx: NavContext): NavState;
+
+// ── 4. allocateWidths ──────────────────────────────────────────────────
+export interface ColumnSpec {
+  id: string; min: number; preferred: number; max?: number;
+  priority: number;                              // WHO yields first (lowest first)
+  collapse?: "drop" | "breadcrumb" | "min";      // WHAT yielding means; default "drop"
+  collapsedWidth?: number;                       // for "breadcrumb"; default 1
+}
+export function allocateWidths(total: number, cols: ColumnSpec[]):
+  { widths: Record<string, number>; collapsed: string[] };
+
+// ── 5. fitToWidth + splitNavChunk ──────────────────────────────────────
+export function fitToWidth(s: string, cols: number, ellipsis?: string): string;
+export function splitNavChunk(input: string, owned: ReadonlySet<string>): string[] | null;
+```
+
+### Invariants that are tests, not prose
+
+| # | Invariant | Why it exists |
+|---|---|---|
+| 1 | `cursor === -1` ⇒ `itemsReplaced` is **identity** | EQStack shipped the bug this prevents once (eviction-cursor data loss, their #94). The sentinel must never be remapped. |
+| 2 | `remap`'s return is **clamped to `[0, itemCount-1]` by navReduce** | A consumer whose remap points into a removed region degrades to nearest-survivor instead of crashing the window. Callers must not have to be defensive. |
+| 3 | The cursor item is **always inside `[start, end)`**, even when `heightOf(cursor) > budgetLines` — `usedLines` may exceed budget in exactly that case | A window that returns empty for one tall item clips the only thing on screen. |
+| 4 | `cursor === -1` ⇒ `anchor: "end"` | The sentinel and the anchor unify: follow-tail IS end-anchoring. |
+| 5 | `splitNavChunk` non-null ⇒ `result.join("") === input` | Never invents or drops characters. |
+| 6 | any char outside `owned` ⇒ **null** (all-or-nothing) | A partial fan-out is the paste-drives-motion bug reborn. |
+| 7 | `visualWidth(fitToWidth(s, n)) === n` — exact, not `<=` | The ink wrap law. |
+| 8 | `visualWidth(truncateToWidth(s, n)) <= n` | What makes truncate-then-pad safe: the pad's repeat count can never go negative. Currently untested. |
+
+### Count semantics, spelled because EQStack will property-test them
+
+Digit intents accumulate (`count*10 + digit`). Movement intents consume `count`
+as a repeat factor (default 1) and **reset it**. Any other intent resets it.
+`touched` is set by every cursor-moving intent and **not** by `itemsReplaced` —
+`applyRestore("follow-until-touched")` reads it.
+
+### Allocator rules
+
+- Remainder goes to the **highest-priority column not at `max`**.
+- Fractions are the caller's business; allocator is integer-in, integer-out,
+  deterministic.
+- Mode-gated columns: the caller **omits them from the spec** that frame. The
+  allocator must not know about modes.
+
+### `heightOf` memoisation — resolved
+
+Plain function; `lineWindow` keeps a **per-invocation** `Map<number, number>`.
+The walk hits some indices twice (up, down, backfill-up) and the array is
+immutable within a call, so it is free and correct — and it deletes the
+"do I need `useCallback`" question for every consumer. No hooks in the kit.
+Cross-render memoisation stays the consumer's.
+
+### Documented caveat, from a measured EQStack bug
+
+`fitToWidth`'s post-condition guarantees consistency with `visualWidth`, **not
+with every terminal's ambiguous-width table**. East Asian ambiguous characters
+and some emoji still misalign where the terminal disagrees. Consumers should
+find this in the docs rather than in a broken table border.
+
+## Adoption pledge
+
+EQStack, on release: `ThreadPane.tsx:69-128` + `computeSettingsWindow` →
+`lineWindow`; `App.tsx:102-110` → `allocateWidths`; router chunk fan-out →
+`splitNavChunk`; header/row truncation → `fitToWidth`; `navReduce` once ctx
+carries `pageSize`/`groupBoundary`/`set`. Their existing tests for both
+windowing sites come along as consumer-side pins.
+
+browser-tab-mcp: *"ping me when the primitives land and I'll port
+renderRow/viewport onto them as the first consumer, scrollbar included."*
+
 ## Open questions
 
 1. ~~`allocateWidths` collapse semantics.~~ **RESOLVED 2026-08-21** — see
    Decisions. They were two behaviours and browser-tab supplied the rule that
    unifies them.
-2. **`lineWindow`: is `aboveFraction` the right knob**, or is EQStack's
-   bottom-anchor walk-up a distinct mode rather than a ratio?
-3. **`heightOf` memoisation** — plain function, or does the estimator need
-   caching hooks given it is called across a walk?
-4. **`splitNavChunk(input, owned)`** — the pure half of EQStack's chunk law.
-   Offered; awaiting their ruling on whether even that is the thin end of the
-   wedge.
+2. ~~`aboveFraction` vs a distinct mode.~~ **RESOLVED** — two algorithms.
+   Near the tail EQStack anchors the LAST ITEM at the bottom edge while the
+   cursor is up to 2 away, which `aboveFraction: 1.0` cannot express because
+   that anchors the CURSOR. Hence `anchor: "cursor" | "end"` + `chooseAnchor`.
+3. ~~`heightOf` memoisation.~~ **RESOLVED** — per-invocation map inside
+   `lineWindow`. See the spec.
+4. ~~`splitNavChunk`.~~ **RESOLVED — take it.** EQStack: *"The incident hazard
+   was dispatch OWNERSHIP; this is a pure string function with the
+   null-passthrough contract — exactly the leaf-utility class that has stuck
+   5-for-5."*
 5. **up-bank-mcp has not answered.** Their domain is the one that might break
    the abstraction: non-uniform row heights and date-grouping headers. Also
    unanswered: whether they would consume this as a package or vendor it.
