@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { backup } from "../backup.js";
 import { normalize, readRawJson, readRawJsonStrict } from "../canonical.js";
+import { formatJson } from "../json-format.js";
 import type { McpServer } from "../schema.js";
 import type { HostAdapter, WriteResult } from "./types.js";
 
@@ -99,7 +100,7 @@ export function opencodeAdapter(configPath: string, opts: { label?: string } = {
       }
       result.backup = backup(configPath);
       mkdirSync(dirname(configPath), { recursive: true });
-      writeFileSync(configPath, `${JSON.stringify(doc, null, 2)}\n`);
+      writeFileSync(configPath, `${formatJson(doc)}\n`);
       return result;
     },
     remove(name, opts = {}) {
@@ -117,7 +118,7 @@ export function opencodeAdapter(configPath: string, opts: { label?: string } = {
         return result;
       }
       result.backup = backup(configPath);
-      writeFileSync(configPath, `${JSON.stringify(doc, null, 2)}\n`);
+      writeFileSync(configPath, `${formatJson(doc)}\n`);
       return result;
     },
   };

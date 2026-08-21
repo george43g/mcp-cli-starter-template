@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { backup } from "./backup.js";
+import { formatJson } from "./json-format.js";
 import { type McpServer, McpServerSchema } from "./schema.js";
 
 export const CANONICAL_DEFAULT = join(homedir(), ".mcp.json");
@@ -130,6 +131,6 @@ export function writeCanonical(
   if (opts.dryRun || !changed) return { backup: null, changed };
   const b = backup(path);
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`);
+  writeFileSync(path, `${formatJson(doc)}\n`);
   return { backup: b, changed };
 }
