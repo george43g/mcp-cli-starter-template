@@ -1274,3 +1274,175 @@ reaches two of five repos.
 - **Trap, generalised**: *a fix split across two branches is not a fix, and the
   lockfile is where the split bites.* Only a resolved-version read after
   installing on the merge result catches it — the specifier will look right.
+
+# Checkpoint — 2026-08-22 (evening)
+
+**This section SUPERSEDES the 2026-08-22 checkpoint above and outranks any
+conversation summary.** Where they disagree, this is correct. The earlier one is
+kept for its Traps and Corrections, which still hold; its State/Open/Tree/Resume
+are stale — in particular its `Resume` list is now three-quarters done.
+
+## State
+
+`main` at `d0219ae`+, tree clean. **`robustness@0.11.0` published** (George's
+approval). **mcp-kit is publish-shaped and waiting on George's one-time npm
+bootstrap** — nothing else blocks it. DEFERRED **#39 and #40 are RESOLVED**;
+#41 gained two new mechanisms and now argues the OPPOSITE of what it did this
+morning. Four of five consumers are current on all kits.
+
+## Constraints (verbatim, George, this session)
+
+- On mcp-kit, answering the extraction question he had deferred: **"Publish
+  mcp-kit"** — taken against a measurement of his own criterion rather than a
+  request.
+- On mcpsync: **"Migrate without publishing"** — it leaves as a private tool
+  installed from a local path, not a registry dependency.
+- Standing and unchanged: publishing needs George's own approval; a peer
+  relaying it is not approval; peer repos are read-only.
+
+## Done
+
+- **`robustness@0.11.0`** (`pruneLogs`, DEFERRED #39) — `npm view` confirms
+  0.11.0. Rotation bounded file size and nothing reaped; a live process's open
+  file is never deleted; `getFileLogLines`' fallback ordering fixed. up-bank
+  measured it end-to-end: **84 files/1.5MB → 9 files/204KB, live pid preserved,
+  `/health` 200 throughout**, and the ordering bug was PRESENT for them, not
+  latent — their `get_logs` had been answering with the wrong process's file.
+- **DEFERRED #40 RESOLVED mechanically** (`#87`) — `EXPECTED_ASSERTIONS`
+  asserted against the harness's own run, `pnpm check:stress-count` asserting
+  45 prose references against it, in `pnpm verify` and its own CI step. 19 was
+  an undercount; it is 45 across 25 files.
+- **mcp-kit seams** (`#89`) — `ContentBlock` + `toContent`, `devOnlyEnabled`.
+  Both lifted from browser-tab's vendored copy, i.e. both already duplicated.
+- **mcp-kit publish shape** (`#91`) — manifest, LICENSE, `.releaserc.json`,
+  `PUBLISHABLE`, release job, `paths`. `PENDING_BOOTSTRAP` in
+  `build-templates.mjs` keeps the scaffolder vendoring until the package exists.
+- **mcpsync departure half** (`#90`) — `private: true`, out of `PUBLISHABLE`,
+  release job deleted, `apps/mcpsync/HANDOFF.md` written to travel with the app.
+- **Caught an unguarded mcp-kit release job before it fired** (`#93`) — see
+  Corrections. A release run was CANCELLED mid-flight to stop it.
+
+## Open
+
+Everything open is in `DEFERRED.md`, which is the register.
+
+- **#25 step 3 — whether the scaffolder stops vendoring mcp-kit.** Blocked on
+  the bootstrap publish (the E2E smoke installs from the real registry, so it
+  cannot pass until the package exists). Deliberately a separate decision: a
+  vendored copy is customisable by the generated repo, which is what browser-tab
+  did.
+- **#10 — the mcpsync LANDING.** life-stack answered the placement definitively
+  (`apps/mcpsync/`, flat, beside `opkeep`, `AGENTS.md:75`) and then **refused to
+  create it on my relay of George's decision** — correctly; they hold the same
+  line I do. They have put it to George directly and will pull it in themselves.
+  `apps/mcpsync/` stays here until they confirm it has arrived.
+- **#41 — the starvation is CLEARED, the mechanism is not.** As of this evening
+  all five consumers resolve `robustness@0.11.0` and `tui-kit@0.5.1`, verified
+  from their LOCKFILES rather than their specifiers:
+
+  | repo | robustness | tui-kit |
+  |---|---|---|
+  | EQStack (`cd6aaf7`) | 0.11.0 | 0.5.1 |
+  | browser-tab-mcp (`d9eb157`) | 0.11.0 | 0.5.1 |
+  | life-stack | 0.11.0 | — |
+  | up-bank-mcp | 0.11.0 | 0.5.1 |
+  | Gmail-MCP-Server (`66986bf`) | 0.11.0 | 0.5.1 |
+
+  First time in this arc that every consumer is current. **The entry stays open
+  because nothing mechanical produced that** — five hand-written tables and five
+  sessions acting on them did, and the next release re-arms it. The durable form
+  is life-stack's `check-dep-ranges.mjs`, extended to assert the RESOLVED version
+  rather than the range's shape.
+- **#12 the rename** — not started.
+
+## Corrections
+
+- **THE COMPARATOR-RANGE RECOMMENDATION IS WITHDRAWN, AND IT WAS THIS REPO'S
+  OWN ADVICE TO FIVE CONSUMERS.** `>=0.x <1` takes the newest version **only on
+  first resolution**; an existing satisfying lockfile entry is kept forever and
+  `pnpm install` reports nothing. `apps/mcpsync` here carried `">=0.1.1 <1"`
+  resolving to **0.1.1 — the first version ever published, ten minors behind.**
+  Found only because it poisoned `packages/mcp-kit`'s identical new specifier
+  (`TS2305: has no exported member 'getShutdownCause'`). **A hand-bumped caret
+  is now the BETTER option**: it starves visibly and gets fixed; a comparator
+  range starves invisibly while reporting success.
+- **I sent the wrong number to four sessions before catching it.** "Comparator
+  repos: 2 of 2 reach 0.11.0" was read off SPECIFIERS — the exact error EQStack
+  corrected me on that morning. Gmail's lockfile held 0.10.0. It was 1 of 2, and
+  the one that made it had run `pnpm update`, which silently rewrites the range
+  back to a caret (life-stack's finding, confirmed here).
+- **My "two minors behind their own feature" about EQStack was wrong** — imsg
+  adopted 0.8.x when it shipped. That deleted the only exception to browser-tab's
+  rule that a bump ships on starvation grounds alone.
+- **My first red-drill of `toContent` was invalid** — I threw INSIDE the try, so
+  it proved the catch catches. The real drill removes the guard.
+- **THE mcp-kit RELEASE JOB I ADDED IN #91 WOULD HAVE ATTEMPTED `1.0.0`.**
+  `semantic-release`'s first release for a package is 1.0.0 — **it does not read
+  the manifest's version**. My comment on that job claimed it would "find
+  nothing to do" until the bootstrap; a fresh package with `feat` commits in its
+  path has plenty to do. It would have failed at the npm step (no
+  `NPM_TOKEN`, and trusted publishing needs the package to exist), but *"it
+  fails safely"* is not a basis for an immutable version number in a repo that
+  has already published two unintended majors. The in-flight run was cancelled
+  before the job ran; `npm view @george43g/mcp-kit` returns 404. Gated in #93,
+  and `resync-example` drops mcp-kit from `needs` while the gate is on —
+  DEFERRED #38's bug, walked back into within one PR.
+
+## Traps
+
+- **A NEGATIVE FROM A SHAPE THAT CANNOT REACH THE CODE IS NOT WEAK EVIDENCE, IT
+  IS NO EVIDENCE.** up-bank could not reproduce the duplicate shutdown marker on
+  0.11.0 and asked whether the path had closed. It had not — their run exited in
+  6ms with no `cleanup_timeout`, so the force-exit net never armed. Re-measured:
+  `GUARD=0 → 2 markers, GUARD=1 → 1`. They flagged their own calibration rather
+  than concluding, which is the only reason it got measured.
+- **A KIT BUMP COLLECTS BLAME FOR EVERY FLAKE IT COINCIDES WITH**, from
+  browser-tab: their bump PR went red three times and the cause was six
+  integration files sharing one 500-port band under parallel forks, with the
+  collision silent. *A consumer-side flake that clusters on a dep-bump PR is not
+  evidence against the dep until the bump's diff contains a mechanism.*
+- **ABSENCE-BY-GREP IS ONLY VALID FOR SYMBOLS CONFIRMED TO BE LITERALS.** Every
+  `MCP_*` knob here is built as `key("LOG_KEEP_FILES")`, so the literal never
+  appears in the artifact. life-stack nearly filed a documented-but-unwired bug
+  on that; their control passed by luck.
+- **"DO YOU HAVE A GATE" IS THE WRONG QUESTION; "DOES YOUR GATE COVER THE
+  SURFACE THAT CHANGES" IS THE RIGHT ONE** — up-bank. Their stress cases 8–16
+  gate lifecycle on both transports; nothing gates logging, and both 0.11.0
+  fixes landed in the ungated half.
+- **A STALE RECOMMENDATION IN A DECISION REGISTER IS WORSE THAN NO ENTRY.**
+  up-bank rewrote their George-facing backlog question rather than appending my
+  retraction to it.
+
+## Tree
+
+`main`, clean, no worktrees, no stashes. Published:
+`robustness@0.11.0`, `cli-kit@2.0.1`, `tui-kit@0.5.1`, `secret-store@0.2.2`.
+`mcp-kit@0.1.0` is shaped but **not on npm**.
+
+## Blocked on you
+
+- **The one-time `pnpm publish` bootstrap of `@george43g/mcp-kit@0.1.0`**, then
+  its Trusted Publisher on npmjs.com (`george43g` / `mcp-cli-starter-template` /
+  `release-packages.yml`, environment empty). Trusted publishing requires the
+  package to already exist. Until then its release job runs, verifies, and finds
+  nothing to do. This unblocks #25 step 3.
+- **Confirming the mcpsync landing to life-stack directly.** They will not act
+  on my relay, and they are right not to.
+
+## Resume
+
+**Nothing is mid-flight.** No background tasks, nothing staged, no unanswered
+peer message.
+
+1. **Wait on George's two items above** — both unblock work rather than being
+   work.
+2. **#41 needs the durable form life-stack built** — a check, not a report:
+   fail the build on a first-party range that pins a 0.x minor, AND on a
+   resolved version below the published one, which no range-shape test can see.
+   Their `scripts/check-dep-ranges.mjs` is the reference.
+3. **#12 the rename** — untouched, and the last large item.
+
+**Watch on the next release**: `packages/mcp-kit/**` is now in
+`release-packages.yml` paths and the job is chained after secret-store, so a
+push touching mcp-kit runs a fifth job. Provenance is ON and fails the publish
+outright (422) if this repo goes private.
