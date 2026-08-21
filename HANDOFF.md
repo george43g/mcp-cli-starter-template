@@ -1008,3 +1008,45 @@ they are supposed to: they collapsed both call sites to `fitToWidth` and
 fix, the third time a consumer has deleted their own code rather than wrapping
 ours. That is the criterion George stated for extraction actually being met, and
 it is worth watching as the measure of whether a lift landed.
+
+### Second addendum — two more consumer defects, both fixed
+
+**`tui-kit@0.5.1`** — eqstack found a **fail-open** in the primitives within an
+hour of adopting them. `lineWindow`'s guard was `budgetLines <= 0`, and every
+comparison with NaN is FALSE, so that spelling ADMITTED NaN and every subsequent
+break condition was false forever: a NaN row count from a non-TTY render
+environment returned an entire 5,000-item list, costing them 64MB of retained
+React fiber.
+
+Their rule is now `src/finite.ts`: **any numeric parameter feeding a loop's
+break condition must be validated with a POSITIVE predicate.** Three of the five
+affected sites were NOT in their report and were found by writing the tests —
+`allocateWidths` had the identical failure in its growth loop, `scrollbarThumb`
+emitted NaN geometry, and `fitToWidth` THREW on `" ".repeat(Infinity)`.
+
+**The observation worth carrying past this bug**: their hand-rolled predecessor
+failed CLOSED under the same input *by accident* — `x <= NaN` is also always
+false, so its loops never ran and it rendered one item. **Extraction inverted an
+accidental safety into a fail-open.** That is a hazard of lifting in general: an
+original's safety properties may not be properties at all, only consequences of
+a shape the lift did not preserve. It is the sharpest argument available for why
+a lift needs its own adversarial tests rather than inheriting confidence from
+the code it replaces.
+
+**mcpsync** — life-stack reported that generated `opencode.json` fails
+`biome check` on every reconcile, because `JSON.stringify(doc, null, 2)` expands
+every array while Biome and Prettier collapse short primitive ones. They asked
+whether the expansion was DELIBERATE and offered to close the issue if so.
+Reading the writer settled it: four `JSON.stringify(doc, null, 2)` sites, no
+comment, no width awareness — **it was never a decision.** Fixed with a
+width-aware writer at **80 columns, deliberately not this repo's 100**, because
+80 is both Biome's and Prettier's default and an array collapsed at 80 survives
+any formatter set at 80 or wider.
+
+**This repo had the same bug and had not noticed.** Our `opencode.json` passes
+`biome check` only because mcpsync skips the write when nothing changed
+semantically, and the last real write happened to be followed by `lint:fix`. The
+workflow `AGENTS.md` documents produces a file that fails `pnpm lint`.
+
+Five consumer defect reports in two days, every one of them real, and three of
+them finding bugs in this repo that its own suite did not.
