@@ -55,15 +55,27 @@ export type NavIntent =
 
 export type RestorePolicy = "restore" | "snap-end" | "snap-start" | "follow-until-touched";
 
-const clampIndex = (i: number, itemCount: number): number => {
+/**
+ * Clamp to a valid index, or return null when the input is not a number at all.
+ *
+ * `null` rather than 0, because the two cases deserve different answers: an
+ * out-of-range index should land at the nearest end, but a NaN index means the
+ * caller's arithmetic broke, and teleporting the cursor to the top of the list
+ * is the "cursor jumped 3,000 messages" bug report. Callers below preserve the
+ * cursor instead. See `finite.ts` for the rule.
+ */
+const clampIndex = (i: number, itemCount: number): number | null => {
+  if (!Number.isFinite(i)) return null;
   if (itemCount <= 0) return 0;
-  if (!Number.isFinite(i)) return 0;
   return Math.min(Math.max(Math.floor(i), 0), itemCount - 1);
 };
 
+/** Pass finite values through; anything else stays NaN so `moved` holds position. */
+const finiteOrNaN = (n: number): number => (Number.isFinite(n) ? n : Number.NaN);
+
 /** Resolve the follow-tail sentinel to a concrete index for movement. */
 const concrete = (cursor: number, itemCount: number): number =>
-  cursor < 0 ? Math.max(itemCount - 1, 0) : clampIndex(cursor, itemCount);
+  cursor < 0 ? Math.max(itemCount - 1, 0) : (clampIndex(cursor, itemCount) ?? 0);
 
 export function navReduce(state: NavState, intent: NavIntent, ctx: NavContext): NavState {
   const { itemCount } = ctx;
@@ -76,7 +88,10 @@ export function navReduce(state: NavState, intent: NavIntent, ctx: NavContext): 
     // The remap's output is clamped HERE so a consumer whose remap points into
     // a removed region degrades to the nearest survivor. Callers should not
     // have to be defensive about their own eviction maths.
-    return { ...state, cursor: clampIndex(intent.remap(state.cursor), itemCount) };
+    const remapped = clampIndex(intent.remap(state.cursor), itemCount);
+    // A remap that returns NaN is a broken caller, not a removed region. Hold
+    // position rather than teleport.
+    return remapped === null ? state : { ...state, cursor: remapped };
   }
 
   if (intent.kind === "digit") {
@@ -86,18 +101,23 @@ export function navReduce(state: NavState, intent: NavIntent, ctx: NavContext): 
   }
 
   if (intent.kind === "set") {
-    return { cursor: clampIndex(intent.index, itemCount), count: null, touched: true };
+    const target = clampIndex(intent.index, itemCount);
+    return target === null ? state : { cursor: target, count: null, touched: true };
   }
 
   // Every remaining intent is a movement: it consumes the count as a repeat
   // factor, resets it, and marks the cursor touched.
-  const repeat = Math.max(1, state.count ?? 1);
+  const repeat = Math.max(1, Number.isFinite(state.count ?? 1) ? (state.count ?? 1) : 1);
   const from = concrete(state.cursor, itemCount);
-  const moved = (cursor: number): NavState => ({
-    cursor: clampIndex(cursor, itemCount),
-    count: null,
-    touched: true,
-  });
+  // A movement that computes to NaN — a non-finite pageSize is the realistic
+  // source — consumes the count but does not move. Landing on 0 would be a
+  // visible teleport for what is really "this intent could not be evaluated".
+  const moved = (cursor: number): NavState => {
+    const target = clampIndex(cursor, itemCount);
+    return target === null
+      ? { ...state, count: null }
+      : { cursor: target, count: null, touched: true };
+  };
 
   switch (intent.kind) {
     case "up":
@@ -105,9 +125,9 @@ export function navReduce(state: NavState, intent: NavIntent, ctx: NavContext): 
     case "down":
       return moved(from + repeat);
     case "pageUp":
-      return moved(from - ctx.pageSize * repeat);
+      return moved(from - finiteOrNaN(ctx.pageSize) * repeat);
     case "pageDown":
-      return moved(from + ctx.pageSize * repeat);
+      return moved(from + finiteOrNaN(ctx.pageSize) * repeat);
     case "top":
       return moved(0);
     case "bottom":
@@ -136,14 +156,14 @@ export function navReduce(state: NavState, intent: NavIntent, ctx: NavContext): 
 export function applyRestore(policy: RestorePolicy, prev: NavState, itemCount: number): NavState {
   switch (policy) {
     case "restore":
-      return { ...prev, cursor: clampIndex(prev.cursor, itemCount), count: null };
+      return { ...prev, cursor: clampIndex(prev.cursor, itemCount) ?? 0, count: null };
     case "snap-end":
-      return { cursor: clampIndex(itemCount - 1, itemCount), count: null, touched: false };
+      return { cursor: clampIndex(itemCount - 1, itemCount) ?? 0, count: null, touched: false };
     case "snap-start":
       return { cursor: 0, count: null, touched: false };
     case "follow-until-touched":
       return prev.touched
-        ? { ...prev, cursor: clampIndex(prev.cursor, itemCount), count: null }
+        ? { ...prev, cursor: clampIndex(prev.cursor, itemCount) ?? 0, count: null }
         : { cursor: -1, count: null, touched: false };
   }
 }

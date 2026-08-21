@@ -8,6 +8,8 @@
  * mode-gated existence. Different problem, different function.
  */
 
+import { finiteOr } from "./finite.js";
+
 export interface ColumnSpec {
   id: string;
   /** Never allocated less than this while present. */
@@ -63,8 +65,15 @@ export interface Allocation {
  * this frame is simply OMITTED from `cols`. The allocator must not know about
  * modes, or it grows a mode model.
  */
+/** Priority, defaulting a non-finite one to 0 so sorting stays total. */
+const rank = (c: ColumnSpec): number => finiteOr(c.priority, 0);
+
 export function allocateWidths(total: number, cols: readonly ColumnSpec[]): Allocation {
-  const budget = Math.max(0, Math.floor(total));
+  // A non-finite total made `floorSum() <= budget` false, so every droppable
+  // column was shed and then growth handed out nothing — failing OPEN in the
+  // opposite direction to `lineWindow`'s. Zero is the honest fallback: no
+  // budget means floors only. See `finite.ts`.
+  const budget = Math.max(0, Math.floor(finiteOr(total, 0)));
   // Ascending priority = the order in which columns are sacrificed.
   const byYieldOrder = [...cols].sort(
     (a, b) => a.priority - b.priority || a.id.localeCompare(b.id),
@@ -74,13 +83,15 @@ export function allocateWidths(total: number, cols: readonly ColumnSpec[]): Allo
   for (const spec of cols) {
     present.set(spec.id, {
       spec,
-      floor: Math.max(0, Math.floor(spec.min)),
+      floor: Math.max(0, Math.floor(finiteOr(spec.min, 0))),
       // Omitting `max` means UNBOUNDED, per the ColumnSpec contract. Defaulting
       // it to `preferred` instead silently capped growth, so the remainder had
       // nowhere to go and landed on a lower-priority column — the exact
       // inversion of the rule this function is supposed to implement.
       ceiling:
-        spec.max === undefined ? Number.POSITIVE_INFINITY : Math.max(0, Math.floor(spec.max)),
+        spec.max === undefined
+          ? Number.POSITIVE_INFINITY
+          : Math.max(0, Math.floor(finiteOr(spec.max, 0))),
     });
   }
 
@@ -96,7 +107,7 @@ export function allocateWidths(total: number, cols: readonly ColumnSpec[]): Allo
     const entry = present.get(spec.id);
     if (!entry) continue;
     if (behaviour === "breadcrumb") {
-      const crumb = Math.max(0, Math.floor(spec.collapsedWidth ?? 1));
+      const crumb = Math.max(0, Math.floor(finiteOr(spec.collapsedWidth ?? 1, 1)));
       if (entry.floor <= crumb) continue;
       entry.floor = crumb;
       entry.ceiling = crumb;
@@ -118,15 +129,22 @@ export function allocateWidths(total: number, cols: readonly ColumnSpec[]): Allo
   // its ceiling takes the slack. Two passes so nobody reaches `max` before
   // everybody has reached `preferred`.
   const byImportance = [...present.values()].sort(
-    (a, b) => b.spec.priority - a.spec.priority || a.spec.id.localeCompare(b.spec.id),
+    (a, b) => rank(b.spec) - rank(a.spec) || a.spec.id.localeCompare(b.spec.id),
   );
   for (const target of ["preferred", "ceiling"] as const) {
     for (const c of byImportance) {
-      if (remaining <= 0) break;
+      // POSITIVE predicates on both. `remaining <= 0` and `room <= 0` are FALSE
+      // for NaN, so a single non-finite spec field poisoned `remaining` and then
+      // every column after it received a NaN width — the same
+      // NaN-turns-a-bounded-loop-unbounded failure as `lineWindow`'s, in a
+      // second place. See `finite.ts`.
+      if (!(remaining > 0)) break;
       const cap =
-        target === "preferred" ? Math.min(Math.floor(c.spec.preferred), c.ceiling) : c.ceiling;
+        target === "preferred"
+          ? Math.min(Math.floor(finiteOr(c.spec.preferred, 0)), c.ceiling)
+          : c.ceiling;
       const room = cap - (widths[c.spec.id] ?? 0);
-      if (room <= 0) continue;
+      if (!(room > 0)) continue;
       const give = Math.min(room, remaining);
       widths[c.spec.id] = (widths[c.spec.id] ?? 0) + give;
       remaining -= give;

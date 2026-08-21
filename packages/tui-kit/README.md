@@ -238,6 +238,32 @@ through whole. Ink delivers a paste as one `useInput` call with the whole
 string; all-or-nothing is what stops a paste driving navigation. It is the pure
 half of a router — it knows nothing about modes and cannot quit your app.
 
+### Non-finite input fails closed (fixed in 0.5.1)
+
+Every numeric parameter that feeds a loop's break condition is validated with a
+**positive** predicate — `Number.isFinite(x) && x > 0`, never `x <= 0`.
+
+The difference is not stylistic. **Every comparison with NaN is false**, so
+`x <= 0` silently ADMITS NaN, and once NaN reaches an accumulator every
+`used + next > budget` is false forever — a bounded walk becomes an unbounded
+one. In 0.5.0 that made `lineWindow` return an entire 5,000-item list when a
+non-TTY render environment produced a NaN row count, costing a consumer 64MB of
+retained React fiber in a memory test.
+
+The detail worth carrying: their hand-rolled predecessor failed *closed* under
+the same input **by accident** — `x <= NaN` is also always false, so its loops
+never ran and it rendered one item. Extracting it into a shared primitive
+inverted an accidental safety into a fail-open. That is a hazard of lifting in
+general, not of this lift.
+
+So: a non-finite budget yields the cursor's own row; a `heightOf` returning NaN
+counts as 0; a non-finite allocator total yields floors only; `navReduce` holds
+the cursor rather than teleporting it to index 0; and `fitToWidth` returns `""`
+rather than throwing `RangeError` from `" ".repeat(Infinity)`.
+
+Reported by the eqstack session within an hour of adopting 0.5.0, along with the
+rule above.
+
 ## Nerd Font detection
 
 For TUIs offering a glyph preset that needs a patched font. Without a check the

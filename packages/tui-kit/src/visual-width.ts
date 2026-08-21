@@ -158,7 +158,10 @@ export function truncateToWidth(str: string, maxCols: number, ellipsis = "…"):
  * the terminal disagrees with the width model.
  */
 export function fitToWidth(str: string, cols: number, ellipsis = "…"): string {
-  const width = Math.max(0, Math.floor(cols));
+  // A non-finite width reached `" ".repeat(Infinity)` and threw RangeError —
+  // the one primitive whose degenerate case was a crash rather than a wrong
+  // answer. Treated as no width. See `finite.ts`.
+  const width = Number.isFinite(cols) ? Math.max(0, Math.floor(cols)) : 0;
   if (width === 0) return "";
   const clipped = truncateToWidth(str, width, ellipsis);
   return clipped + " ".repeat(Math.max(0, width - visualWidth(clipped)));
