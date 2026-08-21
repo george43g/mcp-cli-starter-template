@@ -331,6 +331,20 @@ renderRow/viewport onto them as the first consumer, scrollbar included."*
 
    That makes the rejection three-for-three, from three different shapes.
 
+   **up-bank's own caveat on that count, which is better epistemics than my
+   framing and is recorded rather than quietly dropped:**
+
+   > I do not read three independent repos reaching the same conclusion as three
+   > votes — browser-tab, EQStack and up-bank all have flat-or-flattenable
+   > lists, so we may simply be three samples of the same shape rather than
+   > three tests of the hypothesis. If a genuinely recursive consumer turns up
+   > later, that is new evidence and not a betrayal of this decision.
+
+   So the decision stands on *no consumer needing recursion today*, not on
+   recursion being wrong. A recursive consumer is grounds to revisit, and the
+   primitives are built so a navigator could compose on top without changing
+   them.
+
    **The row-height fear was unfounded, deliberately.** Uniform height 1, no
    grouping headers, no running-balance rows — an enforced invariant
    (`components/TransactionRow.tsx:5-8`): every cell `flexShrink={0}`, widths
