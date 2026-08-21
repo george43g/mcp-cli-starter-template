@@ -83,17 +83,22 @@ describe("noop", () => {
   });
 });
 
+/** The content union has no catch-all member, so reads narrow on `type`. */
+function textOf(block: { type: string; text?: string } | undefined): string {
+  return block?.type === "text" ? (block.text ?? "") : "";
+}
+
 describe("error paths", () => {
   it("rejects unknown tool with isError", async () => {
     const r = await callMcpTool("ghost_tool", {});
     expect(r.isError).toBe(true);
-    expect(r.content[0]?.text).toMatch(/Unknown tool/);
+    expect(textOf(r.content[0])).toMatch(/Unknown tool/);
   });
 
   it("rejects malformed args with usable error", async () => {
     const r = await callMcpTool("noop", { input: 42 });
     expect(r.isError).toBe(true);
-    expect(r.content[0]?.text).toMatch(/Invalid arguments/);
+    expect(textOf(r.content[0])).toMatch(/Invalid arguments/);
   });
 });
 

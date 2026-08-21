@@ -14,6 +14,23 @@ import type { Tool, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodTypeAny, z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+/**
+ * A single MCP content block a tool may emit.
+ *
+ * Deliberately the same two members as `@george43g/cli-kit`'s `ContentBlock`,
+ * and deliberately WITHOUT a catch-all `{ type: string; ... }` member. A
+ * catch-all overlaps `type: "text"`, so every narrowing site needs a cast — and
+ * a future compile error is wanted here: it lands exactly at the render site
+ * where a decision about the new block type has to be made.
+ *
+ * `resource` and `audio` blocks are not modelled because no caller emits them.
+ * Add them when one does, not from a reading of the spec.
+ */
+export type ContentBlock =
+  | { type: "text"; text: string }
+  /** `data` is RAW base64 — no `data:` URI prefix, and not a path. */
+  | { type: "image"; data: string; mimeType: string };
+
 export interface ToolDefinition<
   TInput extends ZodTypeAny = ZodTypeAny,
   TOutput extends ZodTypeAny = ZodTypeAny,
@@ -37,6 +54,19 @@ export interface ToolDefinition<
   devOnly?: boolean;
   /** Handler: receives parsed input + AbortSignal, returns structured output. */
   handler: (input: z.infer<TInput>, signal?: AbortSignal) => Promise<z.infer<TOutput>>;
+  /**
+   * Optional: derive extra content blocks (typically an image) from the result.
+   * The dispatcher emits them AHEAD of the default JSON text block, so a
+   * screenshot tool returns `[image, text]`.
+   *
+   * Runs synchronously at dispatch time and may read a file the handler just
+   * wrote. It must not throw on the happy path; a throw is caught, logged as
+   * `to_content_failed`, and degrades to the text block alone — a tool that
+   * cannot render its picture still returns its answer.
+   *
+   * From browser-tab-mcp, which carried this in a vendored copy of this file.
+   */
+  toContent?: (result: z.infer<TOutput>) => ContentBlock[];
 }
 
 // AnyToolDefinition widens both Zod generic params so the registry can hold

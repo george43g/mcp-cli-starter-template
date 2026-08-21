@@ -30,7 +30,16 @@ async function printResult(result: Awaited<ReturnType<typeof callMcpTool>>, json
     return;
   }
   for (const item of result.content ?? []) {
-    process.stdout.write(`${item.text}\n`);
+    // Narrow on `type`: since mcp-kit 0.2.0 a tool may emit an image block
+    // ahead of the JSON summary, and the union has no catch-all member on
+    // purpose — a new block type should fail HERE, where the decision about
+    // rendering it belongs, rather than print `undefined`.
+    if (item.type === "text") {
+      process.stdout.write(`${item.text}\n`);
+    } else {
+      const bytes = Math.floor((item.data.length * 3) / 4);
+      process.stdout.write(`[${item.type} ${item.mimeType}, ${(bytes / 1024).toFixed(1)} KB]\n`);
+    }
   }
   if (result.isError) process.exit(1);
 }
