@@ -45,6 +45,27 @@ const VERSIONS_OUT_FILE = resolve(APP_ROOT, "src/generated/published-versions.ts
  * on a 0.x pins the MINOR — so registry mode would have installed 0.1.x and
  * silently missed every fix in 0.2.x.
  */
+
+/**
+ * Publish-shaped, but NOT YET ON NPM — so generated repos must keep vendoring
+ * the source instead of depending on a version that would 404 at install.
+ *
+ * This exists because the two facts arrive in the wrong order. A package needs
+ * `publishConfig` in its manifest BEFORE the one-time manual bootstrap publish
+ * can happen, and this file keys on `publishConfig` alone. Without the gate,
+ * adding it flips `applyPublishedRanges()` into rewriting
+ * `"@george43g/mcp-kit": "workspace:*"` to a registry range in every generated
+ * repo, while phase 06 still copies the source in — a repo that both vendors
+ * the package AND declares a dependency on a version that does not exist. The
+ * E2E smoke installs from the real registry, so it would fail on the 404.
+ *
+ * REMOVE A NAME FROM HERE the moment its first version is on npm, in the same
+ * change that stops the scaffolder vendoring it. That is a separate, deliberate
+ * decision (a vendored copy is customisable by the generated repo; a dependency
+ * is not), which is exactly why it is not bundled into the manifest change.
+ */
+const PENDING_BOOTSTRAP = new Set(["@george43g/mcp-kit"]);
+
 async function collectPublishedPackages() {
   let dirs;
   try {
@@ -67,6 +88,7 @@ async function collectPublishedPackages() {
     }
     if (pkg?.publishConfig?.access !== "public") continue;
     if (typeof pkg.name !== "string" || typeof pkg.version !== "string") continue;
+    if (PENDING_BOOTSTRAP.has(pkg.name)) continue;
     out.push({ dir, name: pkg.name, version: pkg.version });
   }
   return out;
