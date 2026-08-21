@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.11.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.10.0...robustness-v0.11.0) (2026-08-21)
+
+
+### Features
+
+* **robustness:** reap rotated log files so $TMPDIR stops growing without bound ([#85](https://github.com/george43g/mcp-cli-starter-template/issues/85)) ([bdf576b](https://github.com/george43g/mcp-cli-starter-template/commit/bdf576b99f13ae724e3140a09ef09237261bc56d))
+
 # [@george43g/robustness-v0.10.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.9.0...robustness-v0.10.0) (2026-08-20)
 
 
