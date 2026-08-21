@@ -98,7 +98,7 @@ export default class AppPortMigration extends Migration {
         `5. If I have separate \`${name}-mcp\` / \`${name}-cli\` / \`${name}-tui\` binaries, ` +
         `collapse them to ONE bin with subcommands sharing a dispatcher. Build with Vite library ` +
         `mode, 3 entries (index/cli/tui), shebang banner via rollup-plugin-banner.\n` +
-        `6. Port the 13-assertion stress harness from \`apps/example-repo-mcp/scripts/stress-mcp.ts\` ` +
+        `6. Port the 15-assertion stress harness from \`apps/example-repo-mcp/scripts/stress-mcp.ts\` ` +
         `(handshake, health, parallel, unknown-tool, malformed-input, timeout, SIGTERM, ` +
         `RSS-watchdog, HTTP) into my repo and run it in CI.\n` +
         `\n` +

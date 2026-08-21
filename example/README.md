@@ -153,7 +153,7 @@ apps/
       native-bridge.ts      tryLoadNative() with MCP_DISABLE_NATIVE escape
     scripts/
       mcp-dev-proxy.ts      handshake-replay proxy for live source-reload
-      stress-mcp.ts         13-assertion robustness harness
+      stress-mcp.ts         15-assertion robustness harness
       screenshots/          VHS .tape files driving docs/screenshots/*.gif
     .usage.kdl              CLI spec → completions + manpage + markdown docs
   rust-accel/               napi-rs crate (optional acceleration)

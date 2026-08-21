@@ -79,12 +79,13 @@ packages/
 | `pnpm typecheck` | `tsc --noEmit` per package |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm check:docs` | Docs integrity: relative links, agent-file symlinks, docs index coverage |
+| `pnpm check:stress-count` | The stress harness's `EXPECTED_ASSERTIONS` vs every prose site that quotes it. The harness asserts the constant against its own run, so the chain is `results.length` → constant → docs |
 | `pnpm check:publishable-manifests` | Publish shape of the npm-published packages: repository metadata, `files`, no `workspace:` in shipped deps |
 | `pnpm test:scripts` | Node's built-in runner over `scripts/**/*.test.mjs` — the repo scripts' own tests |
 | `pnpm check:registry-boundary` | A generated-app import of a kit API that is not in the RELEASED surface. Compares against each package's git release tag, so it needs no network — `pnpm verify` cannot catch this otherwise, because pnpm links the workspace copy |
 | `pnpm check:workflows` | `actionlint` (pinned in `mise.toml`) over all three workflow surfaces. Requires `mise install` first |
-| `pnpm verify` | lint + script tests + docs + manifests + registry boundary + workflows + typecheck + test:coverage + build (the CI shape) |
-| `pnpm stress` | 13-assertion MCP stress harness against `apps/example-repo-mcp/` |
+| `pnpm verify` | lint + script tests + docs + stress count + manifests + registry boundary + workflows + typecheck + test:coverage + build (the CI shape) |
+| `pnpm stress` | 15-assertion MCP stress harness against `apps/example-repo-mcp/` |
 | `pnpm regen:example` | Rebuild the tracked `example/` output from the scaffolder |
 
 Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
@@ -180,7 +181,7 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
 `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, node 24:
 install → lint → docs check → manifest check → typecheck → build →
 test + coverage gates → test:no-native → usage(1) artifact freshness →
-npm pack dry-run → scaffolder E2E smoke → 13-assertion stress harness →
+npm pack dry-run → scaffolder E2E smoke → 15-assertion stress harness →
 example/ sync check.
 
 Other workflows: `release.yml` (semantic-release, disabled by default — see

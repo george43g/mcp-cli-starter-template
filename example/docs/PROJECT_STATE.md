@@ -51,7 +51,7 @@ same set on ubuntu + macos):
 - `pnpm verify` — lint + docs integrity + typecheck + tests + build (the CI shape).
 - `pnpm test` / `pnpm test:no-native` — unit + integration, native and
   TS-fallback paths.
-- `pnpm stress` — a 13-assertion lifecycle harness (handshake, health, timeout,
+- `pnpm stress` — a 15-assertion lifecycle harness (handshake, health, timeout,
   watchdog kill, HTTP auth + session roundtrip).
 - `pnpm check:docs` — this doc, the index, the relative links, and the
   agent-file symlinks stay honest.

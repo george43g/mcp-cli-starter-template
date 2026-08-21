@@ -160,7 +160,7 @@ describe("02-toolchain/m1-mise", () => {
     expect(mise).toContain('node = "24"');
     expect(mise).toContain('pnpm = "10.29.3"');
     expect(mise).toContain('usage = "3.3.0"');
-    expect(mise).toContain("13-assertion MCP stress harness");
+    expect(mise).toContain("15-assertion MCP stress harness");
     expect(mise).toContain("wm-stack"); // substituted
     expect(mise).not.toContain("example-repo");
   });
@@ -191,7 +191,7 @@ describe("12-ci-release/m1-ci-release", () => {
     expect(ci).toContain("Test (TS fallback path)");
     expect(ci).toContain("Check usage(1) artifacts are fresh");
     expect(ci).toContain("Verify npm tarball is publishable");
-    expect(ci).toContain("Stress harness (13 assertions including HTTP)");
+    expect(ci).toContain("Stress harness (15 assertions including HTTP)");
     expect(ci).toContain("Upload stress report");
   });
 });
