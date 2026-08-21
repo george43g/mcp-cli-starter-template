@@ -2,6 +2,7 @@ import { existsSync, lstatSync, mkdirSync, realpathSync, writeFileSync } from "n
 import { dirname } from "node:path";
 import { backup } from "../backup.js";
 import { normalize, readRawJson, readRawJsonStrict } from "../canonical.js";
+import { formatJson } from "../json-format.js";
 import type { McpServer } from "../schema.js";
 import { shdq } from "../shell-quote.js";
 import type { HostAdapter, HostCapabilities, WriteResult } from "./types.js";
@@ -109,7 +110,7 @@ export function jsonMcpServersAdapter(cfg: JsonAdapterConfig): HostAdapter {
   const persist = (doc: Record<string, unknown>): string | null => {
     const b = backup(configPath);
     mkdirSync(dirname(configPath), { recursive: true });
-    writeFileSync(configPath, `${JSON.stringify(doc, null, 2)}\n`);
+    writeFileSync(configPath, `${formatJson(doc)}\n`);
     return b;
   };
 

@@ -134,6 +134,34 @@ codex server defined outside the managed block).
   live — mcpsync never copies them into a host config. `doctor` scans for any that
   leaked in anyway (redacted).
 
+## Generated JSON is formatter-compatible
+
+Config files are written with a small width-aware serialiser, not
+`JSON.stringify(doc, null, 2)`. Arrays of primitives that fit on one line stay
+on one line:
+
+```json
+"command": ["/opt/homebrew/bin/tmux-mcp-rs", "--shell-type", "zsh"]
+```
+
+`JSON.stringify` expands every array, one element per line, while Biome and
+Prettier both collapse short primitive arrays — so a generated config was
+re-expanded on every reconcile and re-collapsed by the repo's formatter,
+forever. A consumer had to exclude the file from `biome check` to keep their
+build green.
+
+**The width is 80, deliberately, and not any particular repo's setting.** It is
+both Biome's and Prettier's default, so an array collapsed at 80 is left alone
+by a formatter configured at 80 *or wider*.
+
+**It narrows the conflict rather than eliminating it.** An array longer than 80
+columns is still expanded here and would be collapsed by a formatter set wider
+than that. For `command` and `args` arrays this is vanishingly rare — the
+longest in any config surveyed was 55 columns — but two tools owning the same
+bytes cannot be fully reconciled by one of them. If you hit it, exclude the
+generated file from your formatter; that is the honest resolution, not a
+workaround.
+
 ## Library
 
 ```ts
