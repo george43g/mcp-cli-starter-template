@@ -58,7 +58,7 @@ description = "lint + typecheck + test + build (CI shape)"
 run = "pnpm verify"
 
 [tasks.stress]
-description = "Run the 13-assertion MCP stress harness"
+description = "Run the 15-assertion MCP stress harness"
 depends = ["build"]
 run = "pnpm stress"
 

@@ -132,7 +132,7 @@ jobs:
         run: pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run
 
       # Platform surface: spawns the server, signals it, asserts on exit.
-      - name: Stress harness (13 assertions including HTTP)
+      - name: Stress harness (15 assertions including HTTP)
         run: pnpm --filter "@george43g/*-mcp" stress
 
       - name: Upload stress report

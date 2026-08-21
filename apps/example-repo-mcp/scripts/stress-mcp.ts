@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Stress harness — 13-assertion robustness suite.
+ * Stress harness — 15-assertion robustness suite.
  *
  * Lifted from Gmail-MCP-Server/scripts/stress-mcp.ts (~430 LOC, 9 cases),
  * generalized to use the starter's domain-agnostic tool surface
@@ -18,7 +18,12 @@
  *   6. MCP_TOOL_TIMEOUT_FORCE_MS=1 produces clean timeout
  *   7. SIGTERM exits code 0 (handler intercepted)
  *   8. MCP_MAX_RSS_MB=50 triggers watchdog kill
- *   9. HTTP /health 200; /mcp 401 without bearer; session roundtrip with bearer
+ *   9. shutdown marker names the real cause (SIGTERM, then stdin EOF)
+ *  10. HTTP /health 200; /mcp 401 without bearer; session roundtrip with bearer
+ *
+ * Ten cases, 15 assertions: case 9 records one per path, and case 10 records
+ * five. `EXPECTED_ASSERTIONS` below is asserted against the actual run, so the
+ * count in this comment cannot drift from the harness the way it did before.
  */
 
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
@@ -179,6 +184,17 @@ interface CaseResult {
   detail?: string;
 }
 const results: CaseResult[] = [];
+
+/**
+ * How many assertions a full run records. Asserted against `results.length` at
+ * the end of `main()`, and read by `scripts/check-stress-count.mjs`, which
+ * fails the build when prose quotes a different number.
+ *
+ * NOT derivable by counting `record(` call sites: `caseShutdownMarker` records
+ * twice from one loop and `caseHttpTransport` records five times, so a naive
+ * grep returns 14.
+ */
+const EXPECTED_ASSERTIONS = 15;
 
 function record(name: string, pass: boolean, detail?: string) {
   results.push({ name, pass, ...(detail !== undefined ? { detail } : {}) });
@@ -532,6 +548,21 @@ async function main(): Promise<void> {
   const failed = results.filter((r) => !r.pass);
   const passed = results.length - failed.length;
   console.log(`\n${passed} passed, ${failed.length} failed.`);
+
+  // The count is quoted in ~20 places across four mirrored surfaces. It drifted
+  // once — two cases were added, the harness printed 15, every doc still said
+  // 13, and nothing caught it. This is the link that makes the number
+  // mechanical: the harness asserts its own count, `pnpm check:stress-count`
+  // asserts the prose against this constant.
+  if (results.length !== EXPECTED_ASSERTIONS) {
+    console.error(
+      `\n✗ ran ${results.length} assertions, but EXPECTED_ASSERTIONS says ${EXPECTED_ASSERTIONS}.` +
+        `\n  A case was added or removed: update the constant, then \`pnpm check:stress-count\`` +
+        `\n  will name every prose site that still quotes the old number.`,
+    );
+    process.exit(1);
+  }
+
   process.exit(failed.length > 0 ? 1 : 0);
 }
 

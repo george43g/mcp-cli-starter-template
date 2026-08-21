@@ -103,6 +103,13 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm test:scripts
 
+      - name: Stress assertion count matches every place that quotes it
+        if: matrix.os == 'ubuntu-latest'
+        # The harness prints its own count and ~45 prose sites across four
+        # mirrored surfaces quote it. That number drifted once (two cases added,
+        # every doc still said 13) and nothing caught it.
+        run: pnpm check:stress-count
+
       - name: Publish shape (repository metadata, shipped dep specifiers)
         if: matrix.os == 'ubuntu-latest'
         run: pnpm check:publishable-manifests
@@ -197,7 +204,7 @@ jobs:
           # this run so all 13 must pass.
           pnpm --filter "@george43g/*-mcp" stress
 
-      - name: Stress harness (13 assertions including HTTP)
+      - name: Stress harness (15 assertions including HTTP)
         run: pnpm --filter "@george43g/*-mcp" stress
 
       - name: Example/ output stays in sync with scaffolder

@@ -197,7 +197,7 @@ Lays down:
 - `src/dispatcher.ts` — invariants block at top; `getDispatcher()` and `callMcpTool()` exports.
 - `src/native-bridge.ts` — `tryLoadNative()` with `MCP_DISABLE_NATIVE` escape hatch + `engineLabel()` so the TUI can show which path is active.
 - `scripts/mcp-dev-proxy.ts` — handshake-replay proxy. Cursor/Claude/Warp keep their session across `src/**` changes; the proxy restarts the child and replays the initialize roundtrip.
-- `scripts/stress-mcp.ts` — 13-assertion stress harness (handshake, health, 20× parallel, unknown tool, malformed schema, forced timeout, SIGTERM clean exit, RSS watchdog kill, HTTP /health 200, HTTP /mcp 401 without bearer, initialize with bearer, initialized notification, and session-scoped tools/list).
+- `scripts/stress-mcp.ts` — 15-assertion stress harness (handshake, health, 20× parallel, unknown tool, malformed schema, forced timeout, SIGTERM clean exit, RSS watchdog kill, shutdown marker names the real cause on SIGTERM and on stdin EOF, HTTP /health 200, HTTP /mcp 401 without bearer, initialize with bearer, initialized notification, and session-scoped tools/list).
 - `scripts/stress-tui.ts` — external `ps` sampler + headless TUI workload.
 - `.env.example` — exhaustive list of every recognized env var.
 - `.usage.kdl` — CLI spec for usage(1) → bash/zsh/fish completions + manpage + markdown docs.
@@ -252,7 +252,7 @@ Manual retrofit: AGENTS.md + symlinks is the cheapest agent-friendly upgrade. Re
 
 ### 12-ci-release — workflows + .releaserc + .npmignore
 
-- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`. Steps: pnpm install → lint → typecheck → test → test:no-native → build → install usage(1) via `jdx/mise-action` → `pnpm check:usage` (completions/manpage/docs freshness gate) → npm pack --dry-run → 13-assertion stress harness. The HTTP case uses a generated bearer token (`openssl rand -hex 32`) bound to a random high port.
+- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`. Steps: pnpm install → lint → typecheck → test → test:no-native → build → install usage(1) via `jdx/mise-action` → `pnpm check:usage` (completions/manpage/docs freshness gate) → npm pack --dry-run → 15-assertion stress harness. The HTTP case uses a generated bearer token (`openssl rand -hex 32`) bound to a random high port.
 - `.github/workflows/release.yml` — semantic-release pipeline with the Keep-a-Changelog plugin chain (`@semantic-release/{commit-analyzer,release-notes-generator,changelog,npm,github,git}`). **Ships disabled** (the `on:` trigger is commented). Enable: uncomment + add `NPM_TOKEN` secret.
 - `.github/workflows/readme-check.yml` — fails CI if `src/**` changed without a `README.md` update. Bypass with `[skip-readme]` in commit/PR title.
 - `.github/workflows/screenshots.yml` — installs vhs + ttyd, regenerates all `*.tape` files, commits `docs/screenshots/*.gif` back with `[skip ci]`. Only GIFs are committed; `docs/screenshots/*.png` is gitignored.

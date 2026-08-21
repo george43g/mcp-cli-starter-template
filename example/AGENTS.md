@@ -63,7 +63,7 @@ packages/
 | `pnpm typecheck` | Turbo: `tsc --noEmit` per package |
 | `pnpm lint` | Biome check |
 | `pnpm lint:fix` | Biome write |
-| `pnpm stress` | Run 13-assertion stress harness against the built MCP |
+| `pnpm stress` | Run 15-assertion stress harness against the built MCP |
 | `pnpm verify` | lint + docs check + typecheck + test + build (CI shape) |
 | `pnpm check:docs` | Docs integrity: index coverage + relative links + agent-file symlinks |
 | `pnpm --filter example-mcp artifacts` | Regenerate CLI help docs, completions, and manpage |
@@ -195,7 +195,7 @@ Types are hand-mirrored between `packages/shared-types/src/index.ts` (Zod) and `
 
 ## CI / Release
 
-- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, runs lint + docs integrity (`pnpm check:docs`) + typecheck + test + test:no-native + build + `pnpm check:usage` (completions/manpage/docs freshness gate) + `npm pack --dry-run` + stress (all 13 assertions).
+- `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, runs lint + docs integrity (`pnpm check:docs`) + typecheck + test + test:no-native + build + `pnpm check:usage` (completions/manpage/docs freshness gate) + `npm pack --dry-run` + stress (all 15 assertions).
 - `.github/workflows/release.yml` — semantic-release with `@semantic-release/{commit-analyzer,release-notes-generator,changelog,npm,github,git}`. **Disabled by default** — `on:` trigger is commented. To enable: uncomment + add `NPM_TOKEN` secret. See `docs/RELEASE.md`.
 - `.github/workflows/readme-check.yml` — fails CI if `src/**` changed without a `README.md` update. Bypass with `[skip-readme]` in commit/PR title.
 

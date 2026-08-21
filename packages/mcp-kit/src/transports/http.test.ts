@@ -3,7 +3,7 @@
  *
  * Only the token-selection contract is covered here: which value the server
  * ends up trusting, and what it does when there isn't one. The request/response
- * path (401s, /health, MCP roundtrip) is covered end-to-end by the 13-assertion
+ * path (401s, /health, MCP roundtrip) is covered end-to-end by the 15-assertion
  * stress harness, which runs a real server over a real socket.
  *
  * Every case binds port 0 (ephemeral) on 127.0.0.1 and closes in a finally, so

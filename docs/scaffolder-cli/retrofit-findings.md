@@ -142,7 +142,7 @@ repo, not the target repo.
 `apps/scaffolder/src/phases/11-agent-files/lib/AGENTS.md` describes a Turborepo
 monorepo with: pnpm 10.x, 4 CLI surfaces (mcp/tui/doctor/repl), `packages/robustness`
 watchdog, `packages/mcp-kit`, `packages/cli-kit`, `packages/tui-kit`, `apps/rust-accel`
-native acceleration, HTTP transport, a 13-assertion stress harness, semantic-release,
+native acceleration, HTTP transport, a 15-assertion stress harness, semantic-release,
 etc.
 
 When phase 11 is applied to a **non-starter-derived repo** (like `openwrt-mcp`,

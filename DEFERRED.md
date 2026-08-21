@@ -2111,10 +2111,41 @@ work if any appears first.
 **Cost**: ~1h including a test that proves old files are removed, which is the assertion that
 matters — a prune with an off-by-one that keeps everything looks identical to no prune at all.
 
-## 40. "13-assertion stress harness" is wrong in 19 places — it is 15
+## 40. RESOLVED — "13-assertion stress harness" is wrong in 19 places — it is 15
 
-**Status**: open, measured 2026-08-21. Not a defect; a label that stopped matching the thing it
-labels, in a repo whose whole thesis is that agents trust the docs.
+**Status**: RESOLVED 2026-08-22, and mechanically, which is why it took the durable route rather
+than a `sed`. Measured 2026-08-21. Not a defect; a label that stopped matching the thing it labels,
+in a repo whose whole thesis is that agents trust the docs.
+
+**What shipped — a three-link chain, so breaking any link fails a check:**
+
+1. `EXPECTED_ASSERTIONS = 15` in `apps/example-repo-mcp/scripts/stress-mcp.ts`, asserted against
+   `results.length` at the end of `main()`. Add or remove a case and `pnpm stress` fails with the
+   count, naming the next step.
+2. `scripts/check-stress-count.mjs` (`pnpm check:stress-count`, in `pnpm verify` and its own CI
+   step) reads that constant and scans the tree for `N-assertion` / `N assertions`, failing with
+   `file:line` for each that disagrees.
+3. The sweep itself — 45 references now agree, across canonical, the scaffolder `lib/` copies,
+   `example/`, the workflows, `mise.toml` and the skills.
+
+**19 was an undercount**: 45 references across 25 files, once the generated `templates.ts` and the
+symlinked `CLAUDE.md`/`.cursorrules` are resolved. The entry's own number was measured with a grep
+that missed the mirrored surfaces — the same class of error as the label it was reporting.
+
+**The exemption is BY FILE and it is the interesting decision.** `docs/PROJECT_STATE.md` is exempt
+because "13 of 13 assertions passed" is a true statement about a run that really had 13; rewriting
+it would falsify history to fix a label. But the PROJECT_STATE **template** under
+`10-docs-readme/lib/` and its `example/` regeneration are NOT exempt — same filename, opposite
+meaning, because a generated repo reads them as a live label. That distinction is tested.
+
+**Two floors guard the checker against the trap this repo keeps meeting** — an operation that
+reports success because it had nothing to do. It fails if the walk reaches fewer than 50 files, or
+finds fewer than 10 references. Both are asserted in `scripts/check-stress-count.test.mjs` (11 new
+cases) by scanning a fixture tree small enough to trip them.
+
+**Red-drilled**: setting the constant to 14 made `pnpm stress` exit 1 with the count message, and
+made `check:stress-count` name 59 sites — proving the prose is checked against the constant rather
+than against a literal 15 hidden in the checker.
 
 **What it is**: `pnpm stress` prints `15 passed, 0 failed.` Every prose reference says 13. The
 count was correct when written; two cases were added since (`caseShutdownMarker` contributes two
