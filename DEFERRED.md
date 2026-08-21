@@ -2039,11 +2039,37 @@ so it wants its own PR and a real (not simulated) failed-chain observation to co
 
 ---
 
-## 39. The logger rotates but never reaps, so long-lived processes grow $TMPDIR without bound
+## 39. RESOLVED — the logger rotates but never reaps, so long-lived processes grow $TMPDIR without bound
 
-**Status**: open, found 2026-08-18 while assessing the log volume of the watchdog's new
-observe-only mode. Pre-existing — this is not caused by that feature, but that feature is the
-first thing that makes a process log steadily, forever, unattended.
+**Status**: RESOLVED 2026-08-22 in `packages/robustness/src/logger.ts` — `pruneLogs(dir, keep)`,
+exported, called from `ensureLogFile()` on every open. Found 2026-08-18 while assessing the log
+volume of the watchdog's new observe-only mode. Pre-existing — not caused by that feature, but that
+feature is the first thing that makes a process log steadily, forever, unattended.
+
+**What shipped, and the two decisions the entry asked to be made deliberately:**
+
+1. **A file count (`MCP_LOG_KEEP_FILES`, default 5), not a byte budget.** Rotation already caps
+   every file at `MCP_LOG_MAX_BYTES`, so `keep x maxBytes` IS the byte budget (~50MB at the
+   defaults), and a count needs no `stat()` — matching the name-only ordering the module already
+   relies on. `pruneBackups`'s shape was mirrored as the entry asked, including its best-effort
+   never-throw posture.
+2. **A live process's open file is never deleted**, which the entry did not anticipate and which a
+   naive newest-N prune gets wrong. One directory is shared by every instance with the same prefix
+   — the exact server-plus-TUI case `getFileLogLines` already documents — and a peer whose log is
+   deleted does not even crash, because `appendFileSync` reopens by path. It silently loses its
+   history. Only the newest file per live pid is protected, so that process's own rotated files are
+   still reapable; the effective cap is `keep` + one file per live instance.
+
+**A second defect found while writing it**: ordering by a reverse lexical sort of the whole filename
+orders by **pid first** — `mcp-9999-<old>` sorts ahead of `mcp-101-<new>` — so "newest" meant
+"highest pid" whenever two instances shared the directory. `getFileLogLines`'s fallback branch had
+this too and its docblock asserted the opposite. Both now use `listLogFiles`, which orders by the
+timestamp segment. Fixed in the same release; noted in the README because it changes which file
+`get_logs` answers with.
+
+**Red-drilled**, per the entry's own warning that a prune with an off-by-one looks identical to no
+prune: four deliberate breakages (prune call removed, lexical sort restored, live-pid protection
+removed, `slice(keep + 1)`), each observed failing the specific test that names it, then reverted.
 
 **The defect**: `packages/robustness/src/logger.ts` rotates at `MCP_LOG_MAX_BYTES` (10MB) by
 **opening a new file** — `ensureLogFile()` builds a fresh `<prefix>-<pid>-<timestamp>.ndjson`

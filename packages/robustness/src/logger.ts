@@ -26,6 +26,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -100,6 +101,7 @@ const key = (suffix: string): string => `${envPrefix}_${suffix}`;
  */
 const maxLogLines = () => envNum(key("LOG_RING_SIZE"), 500);
 const maxFileBytes = () => envNum(key("LOG_MAX_BYTES"), 10 * 1024 * 1024);
+const keepLogFiles = () => envNum(key("LOG_KEEP_FILES"), 5);
 const heapWarnMb = () => envNum(key("HEAP_WARN_MB"), 150);
 const heapCheckIntervalMs = () => envNum(key("HEAP_CHECK_MS"), 60_000);
 
@@ -225,6 +227,105 @@ function getLogDir(): string {
   return envStr(key("LOG_DIR"), join(tmpdir(), logFilePrefix()));
 }
 
+interface LogFileEntry {
+  name: string;
+  /** The pid embedded in the filename, or null when it does not parse. */
+  pid: number | null;
+  /** The ISO-ish stamp after the pid, used for ordering. */
+  stamp: string;
+}
+
+/**
+ * List this prefix's log files, NEWEST FIRST.
+ *
+ * Ordering is by the timestamp segment, not by the whole filename. A plain
+ * reverse lexical sort orders by PID first — `mcp-9999-<old>.ndjson` sorts
+ * ahead of `mcp-101-<new>.ndjson` — so "newest" would mean "highest pid"
+ * whenever two instances share the directory. Still no `stat()`: the stamp is
+ * in the name.
+ */
+function listLogFiles(dir: string): LogFileEntry[] {
+  let names: string[];
+  const prefix = `${logFilePrefix()}-`;
+  try {
+    names = readdirSync(dir).filter((f) => f.startsWith(prefix) && f.endsWith(".ndjson"));
+  } catch {
+    return []; // no directory yet, or unreadable
+  }
+  return names
+    .map((name) => {
+      const rest = name.slice(prefix.length, -".ndjson".length);
+      const dash = rest.indexOf("-");
+      const pidPart = dash === -1 ? rest : rest.slice(0, dash);
+      const pid = /^\d+$/.test(pidPart) ? Number(pidPart) : null;
+      return { name, pid, stamp: dash === -1 ? "" : rest.slice(dash + 1) };
+    })
+    .sort((a, b) => (a.stamp < b.stamp ? 1 : a.stamp > b.stamp ? -1 : a.name < b.name ? 1 : -1));
+}
+
+/**
+ * Is `pid` a process that still exists?
+ *
+ * `kill(pid, 0)` sends no signal and only checks existence. `EPERM` means the
+ * process EXISTS but belongs to another user, so it counts as alive — treating
+ * it as dead is what would delete a running instance's log. `pid > 0` matters
+ * on POSIX, where pid 0 addresses the whole process group.
+ */
+function pidIsAlive(pid: number): boolean {
+  if (!(pid > 0)) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/**
+ * Delete old rotated log files, keeping the `keep` newest.
+ *
+ * Rotation bounds FILE size; without this, disk usage was unbounded — a
+ * long-lived server rolls a new 10MB file forever and nothing ever removed the
+ * previous ones. On the HTTP transport that happens silently, because it
+ * deliberately does not mirror to stderr (stray stderr garbles a TUI), so the
+ * files pile up in `$TMPDIR` where nobody is watching.
+ *
+ * **A count, not a byte budget, and deliberately so**: rotation already caps
+ * every file at `<PREFIX>_LOG_MAX_BYTES`, so `keep x maxBytes` IS the byte
+ * budget (~50MB at the defaults) — and a count needs no `stat()`, matching the
+ * name-only ordering `getFileLogLines` already relies on.
+ *
+ * **Files belonging to a LIVE process are never deleted**, only its newest one
+ * (the file it is appending to). One log directory is shared by every instance
+ * with the same prefix — an MCP server plus a TUI, or a host that respawned the
+ * server — so a plain newest-N prune would silently destroy a running peer's
+ * log. `appendFileSync` reopens by path, so that peer would not crash; it would
+ * just lose its history with no signal, which is worse.
+ *
+ * Best-effort throughout: an unreadable directory or an undeletable file is
+ * ignored. Pruning must never break the write that follows it.
+ */
+export function pruneLogs(dir: string = getLogDir(), keep: number = keepLogFiles()): void {
+  const files = listLogFiles(dir);
+
+  const seenPid = new Set<number>();
+  const deletable: string[] = [];
+  for (const f of files) {
+    const isNewestForPid = f.pid !== null && !seenPid.has(f.pid);
+    if (f.pid !== null) seenPid.add(f.pid);
+    if (isNewestForPid && f.pid !== null && pidIsAlive(f.pid)) continue; // a live instance's open file
+    deletable.push(f.name);
+  }
+
+  for (const name of deletable.slice(Math.max(0, keep))) {
+    try {
+      rmSync(join(dir, name));
+    } catch {
+      // best-effort: leave a file we could not remove
+    }
+  }
+}
+
 function ensureLogFile(): string | null {
   if (logFilePath && logFileBytes < maxFileBytes()) return logFilePath;
 
@@ -235,6 +336,10 @@ function ensureLogFile(): string | null {
     const date = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     logFilePath = join(dir, `${logFilePrefix()}-${process.pid}-${date}.ndjson`);
     logFileBytes = 0;
+    // Only reached on first open or on a roll, never on the hot append path.
+    // First open matters as much as rotation: it reaps what previous runs left
+    // behind, which is the other way this directory grows.
+    pruneLogs(dir);
     return logFilePath;
   } catch {
     return null;
@@ -421,22 +526,21 @@ export interface FileLogOptions {
  * Read an NDJSON log file from disk. Returns the last N lines.
  * Used by the dev-only `get_logs` MCP tool.
  *
- * Prefers the CURRENT process's file, falling back to newest-by-name. It used
- * to take the newest unconditionally, which is wrong whenever two instances
- * share a machine — an MCP server plus a TUI, or a host that respawned the
- * server — because `get_logs` then answers with the *other* process's log.
- * Reported by a downstream consumer who had to keep a local implementation for
- * exactly this reason.
+ * Prefers the CURRENT process's file, falling back to the newest. It used to
+ * take the newest unconditionally, which is wrong whenever two instances share
+ * a machine — an MCP server plus a TUI, or a host that respawned the server —
+ * because `get_logs` then answers with the *other* process's log. Reported by a
+ * downstream consumer who had to keep a local implementation for exactly this
+ * reason.
+ *
+ * The fallback now orders by the timestamp segment (`listLogFiles`) instead of
+ * by the whole filename, which ordered by PID first — so "newest" used to mean
+ * "highest pid" whenever the preferred process had no file of its own.
  */
 export function getFileLogLines(tail = 50, options: FileLogOptions = {}): string[] {
   try {
     const dir = getLogDir();
-    // Names embed an ISO timestamp after the pid, so a reverse lexical sort is
-    // newest-first without stat()ing every file.
-    const files = readdirSync(dir)
-      .filter((f) => f.endsWith(".ndjson"))
-      .sort()
-      .reverse();
+    const files = listLogFiles(dir).map((f) => f.name);
     if (files.length === 0) return [];
 
     const preferPid = options.preferPid ?? process.pid;
