@@ -2268,12 +2268,54 @@ kit at the old version:
 | `feat/tui-primitives-port` | robustness `^0.7.0`, tui-kit `^0.5.1` | `robustness@0.7.0`, `tui-kit@0.5.1` |
 
 Whichever merges second hits a `pnpm-lock.yaml` conflict, and resolving it by taking one side
-wholesale — the ordinary reflex for a generated file — silently reverts the other kit to the starved
-version **while both manifests still read correctly**. This is mechanism 3 again (a lockfile below a
-correct specifier), except manufactured by the merge rather than inherited. The catch is the one
-EQStack used and it is the only one that works: read the resolved version out of
-`node_modules/@george43g/<kit>/package.json` after installing **on the merge result**, not the
-specifier out of the manifest. Reported to browser-tab-mcp 2026-08-22; peer repos are read-only, so
-the fix is theirs.
+wholesale — the ordinary reflex for a generated file — reverts the other kit to the starved version
+**while both manifests still read correctly**. This is mechanism 3 again (a lockfile below a correct
+specifier), except manufactured by the merge rather than inherited.
+
+**REFINED by browser-tab-mcp the same day, and the refinement moves where the silence actually is.**
+They confirmed the table verbatim against both refs and then supplied two properties not visible
+from outside their repo. Both verified here rather than taken on their word:
+
+1. **Both bumps raise the specifier FLOOR above the old resolution** — `^0.10.0` rejects `0.7.0`,
+   `^0.5.1` rejects both `0.4.1` and `0.5.0`. So on the LOCKFILE side the wholesale take is *not*
+   silent: a plain `pnpm install` re-resolves upward because the old resolution no longer satisfies
+   the spec, and skipping the install fails loudly — their `.github/workflows/ci.yml:70` and `:185`
+   both run `pnpm install --frozen-lockfile`, which refuses a lockfile out of sync with the
+   manifests (a third site, `screenshots.yml:40`, does too).
+2. **The silent path is the `package.json` hunk, not the lockfile.** The two lines sit four apart
+   (`apps/browser-tab-mcp/package.json:65` robustness, `:69` tui-kit, on `main`), so one conflict
+   hunk can span both, and taking a side there reverts a bump **consistently** — manifest and
+   lockfile agree, install green, `--frozen-lockfile` green.
+
+**So the accurate rule, and it keeps the general form on purpose**: a wholesale lockfile take is
+silent **only when the surviving specifier still ADMITS the old version**. A floor bump plus
+frozen-lockfile CI closes that side — *when both are true*. The manifest-hunk path stays open
+regardless. And per their own counter-argument to their own refinement, which is why the general
+form stays: **the floor-bump property is an accident of this pair, not a policy anyone recorded.** A
+future pair where one side is a lockfile-only refresh under an unchanged caret reproduces the
+original hazard exactly as first written.
+
+**The catch that covers both paths** is the one EQStack used: read the resolved version out of
+`node_modules/@george43g/<kit>/package.json` after installing **on the merge result**, for every
+kit — not the specifier out of the manifest. Adopted downstream: their PR #88 now carries a
+"Merge-order procedure" section with that check, and #87 a cross-link, so it is visible whichever
+merges first.
+
+**Why the fix was split, since the answer changes the advice** (asked, answered, deliberate — with
+one honest unknown they volunteered): tui-kit rides the port branch because *the port is what
+consumes 0.5.x*, and whether 0.4.1-era code runs against 0.5.x unmodified is **unknown, never
+tested** — the port was written against the 0.5.0 API rather than migrated incrementally, and that
+uncertainty is itself why the bump could not land on `main` alone. robustness got its own branch
+because it arrived after the feature branch had finished review, and folding a three-minor
+lifecycle-dep change into an already-reviewed PR widens its review surface retroactively. So the
+rule is not "never split a dep bump":
+
+> a dep bump rides the branch whose code requires it; an unrelated bump gets its own branch; the
+> second merge REGENERATES the lockfile from the merged manifests and verifies both resolved
+> versions.
+
+The cost of the road not taken (one combined branch) is theirs, and it is real: the robustness bump
+would then be gated behind George's TUI live-drive, and a tui-kit-only revert would drag robustness
+with it. Peer repos are read-only — the fix is theirs.
 
 **Cost**: ~15 min per release to sweep and report; unbounded if it keeps not happening.
