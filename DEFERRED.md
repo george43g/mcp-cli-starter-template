@@ -273,10 +273,43 @@ completion of it — the move itself is still to do.
   is no reinstall" fact about the global bin, DEFERRED #9's TUI editing gap in full, and the
   secrets invariant.
 
-**Still to do, and it needs coordination rather than a commit here**: the receiving half. life-stack
-is a peer repo and **peer repos are read-only** — the placement is theirs to make, or George's to
-authorise. The origin-side removals above are deliberately kept in a separate change from the
-deletion of `apps/mcpsync/`, so the app is never gone from here before it exists there.
+**LANDED at the new home 2026-08-22** — life-stack `3441550`, `feat(mcpsync): migrate from
+mcp-cli-starter-template into apps/mcpsync`, 61 files, under George's approval given **directly to
+that session, not relayed through this one**. They verified before reporting: 170/170 tests,
+`tsc --noEmit` clean, biome clean over 56 files, `mise run verify` rc=0, and `mcpsync doctor`
+read-only against the real host set. `src/` and `tests/` are byte-identical to ours — no source
+edits. Their manifest delta is repository URL, the four `workspace:*` devDeps rewritten
+(`cli-kit ^2.0.1`, `tui-kit >=0.5.1 <1`), and the semantic-release devDeps plus `pack:check` dropped.
+
+**The deletion here is NOT done and is deliberately held**: `3441550` is committed on their local
+`main` and **not yet pushed** (pushing needs separate authority there). Deleting against a commit
+nobody can fetch would mean mcpsync exists in no pushed tree if that push is refused or reset. Same
+trade as splitting the departure half: two copies for a day beats none for an hour. **Trigger to
+finish: they confirm the push.**
+
+**A CORRECTION TO OUR OWN HANDOFF NOTE, from them.** `apps/mcpsync/HANDOFF.md` says "there is no
+reinstall — the pnpm shim is PATH-based". Right conclusion, wrong mechanism: the shim at
+`~/Library/pnpm/mcpsync` was an **orphan**, its `NODE_PATH` naming `global/5/.pnpm/node_modules`
+against a live `global/v11`, and absent from `pnpm ls -g --depth 0` entirely. **`pnpm rm -g
+@george43g/mcpsync` would have found nothing and exited 0** — the fifth sighting in two days of *an
+operation that succeeded because it had nothing to do*. They retired the file by hand instead.
+
+**A DEFECT IN THE FILE WE WROTE**: `apps/mcpsync/HANDOFF.md`'s sibling README carried
+`../../docs/plans/2026-08-mcpsync-overview.md`, correct here and dead the moment the app moved. The
+generalisable form: **a relative link inside a file designed to MOVE is a defect at authoring time,
+not at move time.** Neither repo's docs check covers it — ours excludes `apps/*/README.md`, and
+life-stack's `harness:check` passed with the dead link in place. Open on both sides.
+
+**A CONSEQUENCE OF THE VITE BUNDLING THEY KEPT** (they declined step 2 with sound reasoning —
+`private: true`, installed from the working tree, never resolved by npm, so nothing observes the
+difference on the publish axis; verified here that `robustness`/`ink`/`react` are external, so the
+duplicate-React hazard does not exist). What it does create: **cli-kit and tui-kit are resolved at
+BUILD time, not run time**, so their three version checks — `check-dep-ranges.mjs`, the
+resolved-version-from-disk read, and `mise run verify` — all read `node_modules` and none describes
+what `dist/cli.js` executes. A kit bump without a rebuild reports current while the binary on PATH
+runs the inlined old code. **Mechanism 5 wearing a build step instead of a lockfile.** Cheapest fix
+offered: keep bundling, and make the dep-range check's failure message require a rebuild, since it
+already fires exactly when a kit moves.
 
 **Original entry (2026-08-08 → 2026-08-18), kept for the checklist and the corrections it records:**
 
@@ -2665,3 +2698,109 @@ so it collects blame for every flake it coincides with. If a consumer reports a 
 first question is which line of the diff could produce that symptom — and "none" is an answer.
 
 **Cost**: ~15 min per release to sweep and report; unbounded if it keeps not happening.
+
+---
+
+## 42. Email redaction in robustness — TAKEN AMENDED; the `handle` primitive — REJECTED
+
+**Status**: negotiated 2026-08-22 with the EQStack session, same shape as the TUI-primitives round.
+Two kit-shaped items came out of their contacts-factorisation survey. One passes the extraction
+criterion, one stopped passing it the same evening. Every claim below was verified against source
+before answering — all of theirs held.
+
+### Item 1 — `handle` micro-primitive (`normalizeEmail`/`isLikelyEmail`/`parseAddress`): REJECTED
+
+Not because the duplication is imaginary. It is real and was confirmed:
+`apps/imsg-mcp/src/identity.ts:37` (`trim().toLowerCase()`) against
+`apps/imsg-mcp/src/contacts-db.ts:92` (`toLowerCase().trim()`), and the byte-identical
+`/^[^\s@]+@[^\s@]+\.[^\s@]+$/` in `apps/imsg-mcp/src/recipient.ts:194` and
+`apps/gmail-mcp/src/utl.ts:37`.
+
+**It is rejected because the cross-repo case disappeared while the survey was being written.**
+`apps/gmail-mcp/` is now INSIDE EQStack — the migration landed the same evening — so imsg and gmail
+are one tree. And no other consumer touches email at all; swept read-only for
+`normalizeEmail|isLikelyEmail|parseOneAddress|email-addresses` plus email-shaped regexes:
+
+| repo | hits |
+|---|---|
+| browser-tab-mcp | none |
+| up-bank-mcp | none |
+| life-stack | none |
+| this template's golden output | none — it ships `health_check`/`noop` |
+
+One consumer. George's criterion — *"instead of only one of them getting a cool feature, all the
+consumers benefit"* — is not met, and a kit would put an RFC-5322 parser into every scaffolded repo
+that will never call it.
+
+**The argument that actually decided it is about THEIR speed, not our charter**: extraction would
+make their fix slower and add a failure mode they do not have. Locally, one PR deletes six
+implementations. As a kit, it is publish-then-adopt across two PRs a release apart (#23's rule), and
+they inherit #41's starvation surface for code only they run — paying the coordination cost of
+sharing with nobody.
+
+**A real correctness bug rides along and should be fixed locally today, not blocked on this.**
+`apps/gmail-mcp/src/reply-all-helpers.ts:25` unwraps with `/<([^>]+)>/`; run rather than read:
+
+```
+input:           "a <b" <c@d.com>
+/<([^>]+)>/  →   "b\" <c@d.com"
+expected     →   "c@d.com"
+```
+
+That value is pushed into a reply-all recipient list. The `parseAddress` SHAPE they proposed —
+RFC-first with a never-fail `{name:"", email: raw.trim()}` fallback — is the right fix; it just
+belongs in their tree.
+
+**Trigger to reopen**: a second repo growing email handling. Then it is two consumers and the answer
+flips. Cost of being wrong in this direction is one duplicate implementation — cheap, and reversible
+the easy way.
+
+### Item 2 — an email rule for `redact`: TAKEN, AMENDED, and the amendment is a defect in the proposal
+
+**Their claim is confirmed at source.** `packages/robustness/src/redact.ts:13-18` carries exactly
+two rules — `PHONE_RE` (E.164-ish) and `SECRET_RE` (bearer/API-key shapes). Emails are not covered,
+so redaction-on does not protect them. Unlike Item 1 this passes cleanly: **all five consumers use
+this logger**, and the exposure class (error text quoting an address) is reachable by any of them.
+
+**But the proposed shape would corrupt logs, and it is not a close call.** A redaction rule must be
+UNANCHORED to find addresses inside text. Run against realistic lines:
+
+```
+MATCH "sending to george.x@gmail.com failed"          -> ["george.x@gmail.com"]        <- the one true positive
+MATCH "clone git@github.com:george43g/mcp-cli-...git" -> [whole clone URL]
+MATCH "resolved lodash@4.17.21 from registry"         -> ["lodash@4.17.21"]
+MATCH "specifier @george43g/robustness@0.11.0"        -> ["george43g/robustness@0.11.0"]
+MATCH "postgres://svc@db.internal.corp/main"          -> [whole URL]
+clean "image sha256:abc123 pulled"
+```
+
+**Five of six match; one is an email.** Default-on would mangle package specifiers and git remotes in
+every generated repo's logs — including this one's, where `@george43g/robustness@0.11.0` appears
+constantly. **The phone rule earns default-on because `+` then 7–15 digits is unambiguous; `x@y.z` is
+also the shape of a version specifier and an SSH remote.** That asymmetry is the whole design.
+
+**Agreed shape, pending their confirmation, as `robustness@0.12.0` (additive, no call-site changes):**
+
+1. `redactEmail(s)` exported — the shared tested rule. `george.x@gmail.com` → `g…x@gmail.com`;
+   single-char local part → `g…@gmail.com`; **domain preserved**, being the diagnostically useful
+   half and rarely the identifying one.
+2. An opt-in global toggle (`MCP_LOG_REDACT_EMAILS` / `setEmailRedaction`), **default OFF**,
+   documented with the table above so the default reads as a measurement rather than timidity.
+3. **Not in `redactString` by default** — applied at the boundary the consumer knows carries
+   addresses (a Gmail API error object), which is a known boundary rather than arbitrary text.
+
+**The counter-argument against our own amendment, recorded because it is strong**: an opt-in
+redaction rule is a footgun the other way — "redaction is on" while emails leak is false confidence,
+the same class this fleet spent two days on. The judgement is that corrupting five consumers' logs to
+protect one is worse, and that a default-on exclusion list would need to cover at minimum `git@`,
+`scheme://user@host` and `name@semver` and could not be argued closed. **If EQStack makes the
+exclusion-list case, take it seriously.**
+
+**An empirical note from them worth more than either item.** Both gmail and imsg have had phone
+redaction all along, purely by using this logger — and **two sessions independently inferred they
+had not adopted it, from a missing import.** Default-on design did the work silently and the silence
+read as absence. Pair it with life-stack's constructed-env-name near-miss and the rule is:
+**inferring behaviour from the absence of a call site is only valid when the behaviour requires a
+call site.**
+
+**Sequencing warning already sent**: their explicit-pin policy means `^0.11.0` will not reach 0.12.0.
