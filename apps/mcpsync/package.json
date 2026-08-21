@@ -1,6 +1,7 @@
 {
   "name": "@george43g/mcpsync",
   "version": "0.1.0",
+  "private": true,
   "description": "Cross-host MCP config sync + drift TUI \u2014 one canonical ~/.mcp.json applied to every MCP host (Claude Code, Codex, Claude Desktop, Cursor, Warp, opencode) with dry-run previews, timestamped backups, a 0600 secrets vault, redacted secret scanning, and Claude Desktop extension hot-deploy.",
   "type": "module",
   "license": "MIT",
@@ -8,9 +9,6 @@
     "type": "git",
     "url": "git+https://github.com/george43g/mcp-cli-starter-template.git",
     "directory": "apps/mcpsync"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
