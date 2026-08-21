@@ -2150,8 +2150,26 @@ publishing is FOR.
 Current: up-bank-mcp (all four, after fixing it the same day) and Gmail-MCP-Server (both, via
 `">=0.x <1"`).
 
-**Mechanism**: a caret on a 0.x package locks the MINOR. `^0.7.0` is `>=0.7.0 <0.8.0` and can never
-reach 0.8, 0.9 or 0.10, however often you install. `pnpm install` reports "up to date" throughout.
+**THREE INDEPENDENT MECHANISMS, and fixing one leaves the others.** All three were found in one
+day, each in a different consumer, and each would have been "fixed" by the wrong check:
+
+1. **A caret on 0.x locks the MINOR.** `^0.7.0` is `>=0.7.0 <0.8.0` and can never reach 0.8, 0.9 or
+   0.10, however often you install. `pnpm install` reports "up to date" throughout. (All three
+   starved repos.)
+2. **A version-PINNED `minimumReleaseAgeExclude`.** life-stack's read
+   `'@george43g/robustness@0.5.2 || 0.6.0 || 0.7.0'` and **stopped covering robustness the day 0.8.0
+   shipped**. They had this stacked on top of mechanism 1, so correcting the caret alone would have
+   let the range reach 0.10.0 while the release-age quarantine still refused it. Verified live rather
+   than assumed: 0.7.0 was 11 days old, 0.10.0 was 0 days old. **A caret and a hand-maintained
+   version allow-list fail identically — both silently stop covering the next release. A wildcard
+   cannot go stale; a version list provably does.**
+3. **A LOCKFILE pinned below a correct specifier.** browser-tab-mcp's `pnpm-lock.yaml` held
+   `'@george43g/tui-kit@0.5.0'` under a `specifier: ^0.5.0` that permitted 0.5.1. The manifest was
+   already right and they were still on the fail-open. This is the one that survives fixing both
+   others, because a lockfile holding a version steady is what a lockfile is FOR — nothing about it
+   looks wrong.
+
+**So the check is: specifier, quarantine allow-list, AND resolved version in the lockfile.**
 
 **What is not being received**: `getShutdownCause`/`noteShutdownCause` and
 `WatchdogState.memorySampled` (0.8.0, built at EQStack's request — *they* are two minors behind
@@ -2186,5 +2204,27 @@ gets scaffolded elsewhere. The honest options are (a) a local, uncommitted sweep
 release time, or (b) accept the manual sweep and keep the guidance in each kit's README, where it
 now is. Neither is mechanical enforcement, which is this repo's stated preference — so this entry is
 the record that the preference could not be satisfied here, not an oversight.
+
+**Verification the consumers used, worth copying** — three of them independently refused to trust a
+green build, because this is the fourth costume of a trap collected four times in one day (an
+operation that reports success because it had nothing to do):
+
+- life-stack ran `turbo --force typecheck` and `--force test`, because **turbo caches and a cache hit
+  is indistinguishable from a passing build**, then confirmed the five APIs were present in the
+  shipped `.d.ts`. Three minors of a pre-1.0 package is a real API risk.
+- browser-tab-mcp ran `pnpm verify` fully uncached in a fresh worktree.
+- up-bank-mcp ran their PTY check, capturing the pane and grepping for the accent background, because
+  a unit test would not have shown the cursor scrolling out of view.
+
+**A framing correction I owe, from browser-tab-mcp**: an earlier version of this entry said "what
+you are not receiving", which reads as a pitch to ADOPT those APIs.
+
+> adopting an API to justify a bump inverts the dependency. The bump ships on starvation grounds
+> alone; adoption is a separate, future decision.
+
+Right. Being three minors behind is itself the defect — it means the next fix you actually need is
+also unreachable, and you discover that on the day you need it. Whether any given API earns a call
+site is unrelated. The one genuine exception is EQStack, who are two minors behind
+`getShutdownCause`/`memorySampled` — **features built from their own brief, at their request.**
 
 **Cost**: ~15 min per release to sweep and report; unbounded if it keeps not happening.
