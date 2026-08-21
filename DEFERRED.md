@@ -1390,11 +1390,63 @@ DEFERRED #41's starvation problem in structural form, and unlike #41 no version 
 
    **up-bank's `stdio.ts` request is already satisfied, and by a stronger version.** They asked that
    the shutdown-marker `registerCleanup` be in the published copy or every consumer inherits the bug
-   they fixed. Ours has it plus a write-once guard theirs lacks — without which the controller's
-   synchronous `exit` sweep writes the marker TWICE when a later cleanup hangs and trips the
-   force-exit net (measured on robustness 0.8.1: 2 lines unguarded, 1 guarded). Their fork is one
-   guard behind the shared copy, not ahead of it. Their `transports/http.ts` is zero commits past
-   baseline, so nothing of theirs is at risk there.
+   they fixed. Ours has it plus a write-once guard theirs lacks. Their fork is one guard behind the
+   shared copy, not ahead of it — they withdrew the request on reading ours. Their
+   `transports/http.ts` is zero commits past baseline, so nothing of theirs is at risk there.
+
+   **The guard is STILL LOAD-BEARING on robustness 0.11.0 — re-measured 2026-08-22, because up-bank
+   challenged the 0.8.1 number rather than absorbing it into a green build.** They could not
+   reproduce the duplicate and asked, correctly, whether something between 0.8.1 and 0.11.0 had
+   closed the path. It has not:
+
+   ```
+   GUARD=0 -> 2 shutdown marker(s), cleanup_timeout seen: 1
+   GUARD=1 -> 1 shutdown marker(s), cleanup_timeout seen: 1
+   ```
+
+   **Their negative was correct and consistent with this: they never armed the net.** Their run
+   exited in 6ms with no `cleanup_timeout`, because `handle.close()` on a live keep-alive socket
+   returns promptly. The duplicate is a property of the FORCE-EXIT path, not of shutdown — it needs a
+   cleanup registered AFTER the marker that hangs past `forceExitAfterMs` (3s) and **never settles**.
+   A slow-but-settling cleanup does not do it: `runCleanup()` reaches `registry.clear()` and the
+   sweep finds an empty registry.
+
+   The mechanism is unchanged and is documented in `packages/robustness/src/shutdown.ts:64-67` as a
+   corollary rather than an accident — `runCleanup()` clears the registry only after the loop, so a
+   hang leaves it populated for `syncCleanup()` to re-run on `exit`.
+
+   **CONFIRMED INDEPENDENTLY** by up-bank on a second machine and workspace once they had the shape:
+   `GUARD=0 -> 2 markers, exit after 3007ms; GUARD=1 -> 1 marker, exit after 3002ms`. **The ~3s is
+   the tell** — it is `forceExitAfterMs` arming, and its absence is what made their first attempt a
+   null result. They corrected the "NOT reproduced on 0.11.0" comment in their own source rather than
+   annotating it, on the grounds that a wrong claim in the source is worse than no claim: the next
+   reader takes it as evidence the guard is unnecessary and deletes it.
+
+   **The transferable part is about evidence, not shutdown**: a negative result from a shape that
+   cannot reach the code under test is not weak evidence, **it is no evidence**. up-bank's own
+   sharpening of this, which is better than the original: hedging such a result as "weak" is still an
+   overclaim, because it invites someone to average it against a positive.
+
+   **AND THE PROBE ITSELF FAILS SILENTLY TOWARD A CLEAN-LOOKING NULL.** Both of us hit this before
+   getting a number. A probe placed outside the workspace produces:
+
+   ```
+   GUARD=0 -> 0 shutdown marker(s), exit=TIMEOUT
+   GUARD=1 -> 0 shutdown marker(s), exit=TIMEOUT
+   ```
+
+   Symmetric zeros, which read as "the handlers never installed on this version". The real cause is
+   that **Node resolves ESM bare specifiers from the SCRIPT's location, not cwd**, so
+   `import ... from "@george43g/robustness"` throws `ERR_MODULE_NOT_FOUND` before anything runs — and
+   a harness that counts lines in a log directory that was never written to cannot distinguish that
+   from a genuine null. **If a reproduction reports symmetric zeros, read stderr before concluding
+   anything about the version.** Keep the probe inside the workspace, or import via an absolute
+   `file://` URL to the resolved package.
+
+   That is the second time in one session a wrong answer came from the harness rather than the code
+   under test — the other being the tsx-CLI SIGKILL — and both times the harness failed silently
+   toward a result that looked clean. Same family as the standing trap: *an operation that succeeded
+   because it had nothing to do.*
 3. **Whether the SCAFFOLDER should stop vendoring** and emit an npm dependency instead. NOT decided
    here, and not implied by publishing: a vendored copy is customisable by the generated repo, which
    is exactly what browser-tab did. Publishing gives consumers the choice; changing what `init`
@@ -2412,6 +2464,12 @@ surface — and both 0.11.0 fixes landed in the ungated half. Record their lag a
 gate covers lifecycle only, logging surface ungated"*, never as "starved by design", which loses the
 reason.
 
+**MECHANISM 5 IS NOT PNPM-SPECIFIC.** gmail-cli-mcp measured the same retained-entry behaviour from
+npm under `npm install --package-lock-only`: a comparator range kept 0.10.0/0.5.0 exactly as pnpm
+did. One asymmetry, and it matters for the fix: **`npm update` does NOT rewrite the manifest range
+to a caret; `pnpm update` does.** So a dual-lockfile repo needs the two-step on both sides, and the
+hand-restore on pnpm's side only. Measured in their tree, not by us.
+
 **So the check is: specifier, quarantine allow-list, AND resolved version in the lockfile — and the
 last one is not a merge-time check, it is the ONLY valid check, always.** The stable fix is two
 steps and reverts if either is skipped: `pnpm update <pkg>`, then restore the range by hand, then
@@ -2501,7 +2559,7 @@ site is unrelated. The one genuine exception is EQStack, who are two minors behi
 | EQStack | `main` @ `594d23f` | `^0.10.0` (both apps) | `^0.5.1` | **current** |
 | up-bank-mcp | `main` | `^0.10.0` (app + vendored mcp-kit) | `^0.5.1` | **current** |
 | life-stack | `main` | `>=0.10.0 <1` (×3) | — | **current** |
-| Gmail-MCP-Server | `main` | `>=0.9.0 <1` | `>=0.4.1 <1` | **current** |
+| Gmail-MCP-Server | `main` @ `66986bf` | `>=0.9.0 <1` | `>=0.4.1 <1` | **current** — was lockfile-stale at 0.10.0/0.5.0; fixed 2026-08-22 |
 | browser-tab-mcp | `main` @ `d9eb157` | `^0.11.0` (app + `packages/mcp-kit`) | `^0.5.1` | **current** (was starved; PRs #87 + #88 landed 2026-08-22) |
 
 EQStack verified resolution **from disk** rather than from the specifier, and their lockfile agrees
