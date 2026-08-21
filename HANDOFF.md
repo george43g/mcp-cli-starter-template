@@ -1243,3 +1243,34 @@ The standing directive is *"keep going autonomously"*. In priority order:
 there, remove the five `NPM_CONFIG_PROVENANCE` lines rather than debugging
 semantic-release. And sweep the consumer manifests per #41, or the release
 reaches two of five repos.
+
+### Addendum — 2026-08-22, EQStack's reply (closes `Resume` item 3, not #41)
+
+- **EQStack is current; the chase is closed.** `main` @ `594d23f` — robustness
+  `^0.10.0` in both apps, tui-kit `^0.5.1`, and the lockfile resolving `0.10.0`
+  / `0.5.1` (`pnpm-lock.yaml:650,654`), so all three starvation mechanisms are
+  clear there. They verified from disk, not from the specifier.
+- **Correction, theirs, and it deletes an exception I was carrying.** "You are
+  two minors behind your own feature" was WRONG: imsg adopted
+  `getShutdownCause` / `noteShutdownCause` / `memorySampled` **at `^0.8.1`**,
+  when they shipped, and has been a thin delegate over the kit since
+  (`apps/imsg-mcp/src/shutdown.ts:29`, `src/watchdog.ts:28`,
+  `src/tui/App.tsx:709` — verified in their tree, not taken on their word). The
+  caret starved them of 0.9/0.10 only, neither from their brief. So
+  browser-tab's *"adopting an API to justify a bump inverts the dependency"*
+  holds **with no carve-out**; the pure-starvation argument was the whole
+  argument. Also: `voice-mcp`'s `^0.7.0` was not deliberate, it predated the
+  0.8.x arc.
+- **#41 STAYS OPEN — browser-tab-mcp's `main` is still starved on both kits**
+  (`^0.7.0` in the app and `packages/mcp-kit`, tui-kit `^0.4.1` @ `dc6e068`).
+  Four of five consumers are current; that one is not.
+- **A fourth hazard, and it is the merge that creates it.** browser-tab's fix
+  exists as two unmerged branches, and each branch's lockfile pins the OTHER kit
+  at the old version. Whichever merges second hits a `pnpm-lock.yaml` conflict,
+  and resolving it by taking one side wholesale — the ordinary reflex for a
+  generated file — silently reverts the other kit **while both manifests still
+  read correctly**. Recorded in `DEFERRED.md` #41 with the branch/lockfile table
+  and sent to them.
+- **Trap, generalised**: *a fix split across two branches is not a fix, and the
+  lockfile is where the split bites.* Only a resolved-version read after
+  installing on the merge result catches it — the specifier will look right.

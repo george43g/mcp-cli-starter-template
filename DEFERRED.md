@@ -2125,8 +2125,10 @@ already touching these files.
 
 ## 41. Three of five consumers are frozen on old kits, so the extraction's whole benefit is not reaching them
 
-**Status**: open, measured 2026-08-22. Not a bug in any package — a systemic failure of the thing
-publishing is FOR.
+**Status**: OPEN but nearly closed — re-measured 2026-08-22 (evening). Four of five consumers are
+now current; **browser-tab-mcp's `main` is the only starved tree left**, and its fix already exists,
+split across two unmerged branches (see "Where it stands now"). Not a bug in any package — a
+systemic failure of the thing publishing is FOR.
 
 **The premise this violates** is George's own, and it is the reason these packages exist at all:
 
@@ -2134,7 +2136,8 @@ publishing is FOR.
 > wouldnt have bothered writing a vim style navigation (for example) just for the up-bank-mcp alone,
 > but since we share the libs - everyone benefits from it
 
-**Measured, by reading every consumer manifest on this machine against `npm view`:**
+**Measured 2026-08-22 (morning), by reading every consumer manifest on this machine against
+`npm view`. Kept as the dated measurement; the current state is the second table below.**
 
 | repo | manifest | declares | reaches | behind |
 |---|---|---|---|---|
@@ -2171,10 +2174,22 @@ day, each in a different consumer, and each would have been "fixed" by the wrong
 
 **So the check is: specifier, quarantine allow-list, AND resolved version in the lockfile.**
 
-**What is not being received**: `getShutdownCause`/`noteShutdownCause` and
-`WatchdogState.memorySampled` (0.8.0, built at EQStack's request — *they* are two minors behind
-their own feature), the observe-only `WatchdogOptions.onBreach` (0.9.0), and the `snapshotHealth`
-test seam (0.10.0).
+**What is not being received**: the observe-only `WatchdogOptions.onBreach` (0.9.0) and the
+`snapshotHealth` test seam (0.10.0).
+
+**CORRECTED 2026-08-22 by EQStack, and the correction deletes the only exception in this entry.**
+This paragraph used to also list `getShutdownCause`/`noteShutdownCause` and
+`WatchdogState.memorySampled` (0.8.0/0.8.1) and call EQStack "two minors behind their own feature".
+They were not. imsg adopted those APIs **at `^0.8.1`**, during the adoption arc that shipped them,
+and its `shutdown.ts` / `watchdog.ts` have been thin delegates over the kit ever since — verified in
+their tree rather than taken on their word: `apps/imsg-mcp/src/shutdown.ts:29` imports
+`createShutdownController`, `src/watchdog.ts:28` imports `createWatchdog`, `src/tui/App.tsx:709`
+calls `noteShutdownCause`, and `src/watchdog.ts:65` documents the `memorySampled` lift. The caret
+starved them of 0.9/0.10 only — neither of which came from their brief. So browser-tab's *"adopting
+an API to justify a bump inverts the dependency"* applies **uniformly, with no carve-out**: the
+pure-starvation argument was the whole argument, and the exception I kept for EQStack never existed.
+They also asked that `voice-mcp`'s `^0.7.0` stop being described as deliberate — it simply predated
+the 0.8.x arc, which only ever touched imsg.
 
 **The reporting lesson, from up-bank-mcp, and it is the transferable part.** I told them they were
 starved on tui-kit. They checked all four kits rather than the one named, and found robustness
@@ -2226,5 +2241,39 @@ Right. Being three minors behind is itself the defect — it means the next fix 
 also unreachable, and you discover that on the day you need it. Whether any given API earns a call
 site is unrelated. The one genuine exception is EQStack, who are two minors behind
 `getShutdownCause`/`memorySampled` — **features built from their own brief, at their request.**
+
+**Where it stands now — re-read from every consumer tree on this machine, 2026-08-22 evening:**
+
+| repo | tree read | robustness | tui-kit | state |
+|---|---|---|---|---|
+| EQStack | `main` @ `594d23f` | `^0.10.0` (both apps) | `^0.5.1` | **current** |
+| up-bank-mcp | `main` | `^0.10.0` (app + vendored mcp-kit) | `^0.5.1` | **current** |
+| life-stack | `main` | `>=0.10.0 <1` (×3) | — | **current** |
+| Gmail-MCP-Server | `main` | `>=0.9.0 <1` | `>=0.4.1 <1` | **current** |
+| browser-tab-mcp | `main` @ `dc6e068` | `^0.7.0` (app + `packages/mcp-kit`) | `^0.4.1` | **STARVED** |
+
+EQStack verified resolution **from disk** rather than from the specifier, and their lockfile agrees
+(`pnpm-lock.yaml:650,654` → `robustness@0.10.0`, `tui-kit@0.5.1`), so all three mechanisms are clear
+there. Their `minimumReleaseAgeExclude` was already the wildcard `@george43g/*` form — mechanism 2
+never applied — on pnpm 11.1.1, where the quarantine is live and the config therefore load-bearing.
+
+**A FOURTH HAZARD, found by reading browser-tab's tree rather than by being told: a fix split across
+two branches, with the lockfile as the conflict surface.** Their `main` is starved on both kits and
+both halves of the fix exist — but on different branches, and each branch's lockfile pins the OTHER
+kit at the old version:
+
+| branch | manifest says | lockfile holds |
+|---|---|---|
+| `chore/deps-robustness-010` | robustness `^0.10.0`, tui-kit `^0.4.1` | `robustness@0.10.0`, `tui-kit@0.4.1` |
+| `feat/tui-primitives-port` | robustness `^0.7.0`, tui-kit `^0.5.1` | `robustness@0.7.0`, `tui-kit@0.5.1` |
+
+Whichever merges second hits a `pnpm-lock.yaml` conflict, and resolving it by taking one side
+wholesale — the ordinary reflex for a generated file — silently reverts the other kit to the starved
+version **while both manifests still read correctly**. This is mechanism 3 again (a lockfile below a
+correct specifier), except manufactured by the merge rather than inherited. The catch is the one
+EQStack used and it is the only one that works: read the resolved version out of
+`node_modules/@george43g/<kit>/package.json` after installing **on the merge result**, not the
+specifier out of the manifest. Reported to browser-tab-mcp 2026-08-22; peer repos are read-only, so
+the fix is theirs.
 
 **Cost**: ~15 min per release to sweep and report; unbounded if it keeps not happening.
