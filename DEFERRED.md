@@ -307,9 +307,48 @@ duplicate-React hazard does not exist). What it does create: **cli-kit and tui-k
 BUILD time, not run time**, so their three version checks — `check-dep-ranges.mjs`, the
 resolved-version-from-disk read, and `mise run verify` — all read `node_modules` and none describes
 what `dist/cli.js` executes. A kit bump without a rebuild reports current while the binary on PATH
-runs the inlined old code. **Mechanism 5 wearing a build step instead of a lockfile.** Cheapest fix
-offered: keep bundling, and make the dep-range check's failure message require a rebuild, since it
-already fires exactly when a kit moves.
+runs the inlined old code. **Mechanism 5 wearing a build step instead of a lockfile.**
+
+**RESOLVED at their end, and by the option we priced as the expensive one** — life-stack `230914f`,
+`refactor(mcpsync): externalise cli-kit and tui-kit so the version checks tell the truth`. 66 modules
+transformed → 32; `dist/cli.js` 30.3 kB → 27.7 kB.
+
+**THE COST WE QUOTED FOR EXTERNALISING DOES NOT EXIST, AND IT TOOK THREE PASSES TO NOTICE.** Our
+`apps/mcpsync/HANDOFF.md` said externalising "means moving `cli-table3`/`picocolors`/`ink`/`react`
+back out of its own `dependencies`". life-stack repeated it back; we then re-priced option (1) with
+the same cost and recommended option (2) partly because of it. It is checkable in one command
+against the manifest **in our own tree**:
+
+| package | where | range |
+|---|---|---|
+| `cli-table3` | dependencies | `^0.6.5` |
+| `picocolors` | dependencies | `^1.1.0` |
+| `commander` | dependencies | `^14.0.0` |
+| `fullscreen-ink` | dependencies | `^0.1.0` |
+| `@george43g/robustness` | dependencies | `>=0.11.0 <1` |
+| `ink` | dependencies | `^7.1.1` |
+| `react` | dependencies | `^19.2.8` |
+
+All seven were **already** direct dependencies — we had externalised them long ago. The entire change
+is the two kits moving `devDependencies` → `dependencies` plus two lines in `rollupOptions.external`.
+**A cost that travels through three hands without anyone checking it is not a measurement, it is
+folklore** — and this one originated in a file we wrote, which is why nobody downstream questioned it.
+
+**A SIXTH SIGHTING, and it is the sharpest variant yet.** Their first check for leftover inlining was
+`grep -rl "useVimKeys|allocateWidths|scrollbarThumb" dist/*.js`. It matched — and **would have
+matched either way**, because it hits the import binding as readily as inlined source:
+
+```
+3:import { useTheme, useVimKeys, HelpBar, StatusBar, renderFullScreen, ThemeProvider } from "@george43g/tui-kit";
+87:  useVimKeys({
+```
+
+They caught it before recording the result, and settled it by reading the chunk's import statements
+and executing both paths instead. This is not "an operation that succeeded because it had nothing to
+do" — it is one step worse: **a check whose pass and fail cases are indistinguishable, i.e. a test
+with no discriminating power.** It is the same discipline this repo already writes into its own
+plans (*every fix observed FAILING before it is trusted*), arriving from the other direction: **a
+check you have not watched fail is not a check.**
 
 **Original entry (2026-08-08 → 2026-08-18), kept for the checklist and the corrections it records:**
 
