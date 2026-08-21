@@ -21,6 +21,7 @@
 import {
   envNum,
   error as logError,
+  warn as logWarn,
   noteActivity,
   perf,
   ToolTimeoutError,
@@ -28,10 +29,10 @@ import {
 } from "@george43g/robustness";
 import type { ZodError } from "zod";
 import { wrapToolError } from "./prompt-injection.js";
-import type { ToolRegistry } from "./tool-registry.js";
+import type { ContentBlock, ToolRegistry } from "./tool-registry.js";
 
 export interface ToolResult {
-  content: Array<{ type: "text"; text: string }>;
+  content: ContentBlock[];
   structuredContent?: unknown;
   isError?: boolean;
   _meta?: Record<string, unknown>;
@@ -52,6 +53,20 @@ export interface BuildDispatcherOptions {
   onCall?: (toolName: string) => void;
   /** Engine label, e.g. "rust" or "ts". Surfaced in `_meta` and dev stats. */
   engineLabel?: () => string;
+  /**
+   * Whether `devOnly` tools are callable. Evaluated PER DISPATCH, not once at
+   * construction, so flipping the env in a test takes effect immediately.
+   *
+   * Omitted, dev-only tools stay callable — which is what this dispatcher did
+   * before the option existed, so adding it changes nothing until you pass it.
+   *
+   * The gap it closes: `devOnly` was honoured only by `toMcpTools()`, so the
+   * tool was hidden from `tools/list` and still executed if you named it
+   * anyway, and every non-MCP caller (a CLI, a REPL tool list) bypassed the
+   * filter entirely. **Hiding a tool is not disabling it.** Found and fixed in
+   * browser-tab-mcp's vendored copy of this file.
+   */
+  devOnlyEnabled?: () => boolean;
 }
 
 export type Dispatch = (name: string, args: unknown, signal?: AbortSignal) => Promise<ToolResult>;
@@ -71,7 +86,13 @@ export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
     opts.onCall?.(name);
     const def = opts.registry.get(name);
 
-    if (!def) {
+    // A dev-only tool that is not enabled must be INDISTINGUISHABLE from one
+    // that does not exist. A distinct "disabled" error confirms the tool is
+    // there, which is the thing a gate exists to avoid.
+    const devGated =
+      def?.devOnly === true && opts.devOnlyEnabled !== undefined ? !opts.devOnlyEnabled() : false;
+
+    if (!def || devGated) {
       opts.onError?.(name, new Error("unknown_tool"));
       return {
         content: [
@@ -108,13 +129,23 @@ export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
     try {
       const result = await withTimeout(name, () => def.handler(parsed.data, signal), timeoutMs);
       const dur = span.end({ engine: opts.engineLabel?.() ?? "ts" });
+      const textBlock: ContentBlock = {
+        type: "text",
+        text: typeof result === "string" ? result : JSON.stringify(result, null, 2),
+      };
+      // Media blocks lead, the JSON summary follows: a screenshot tool returns
+      // `[image, text]`. Renderers depend on that order — cli-kit's prints the
+      // image line above the payload — so it is a contract, not a detail.
+      let extra: ContentBlock[] = [];
+      if (def.toContent) {
+        try {
+          extra = def.toContent(result);
+        } catch (err) {
+          logWarn(`to_content_failed: ${name}`, { message: (err as Error)?.message });
+        }
+      }
       return {
-        content: [
-          {
-            type: "text",
-            text: typeof result === "string" ? result : JSON.stringify(result, null, 2),
-          },
-        ],
+        content: [...extra, textBlock],
         structuredContent: result,
         _meta: {
           engine: opts.engineLabel?.() ?? "ts",

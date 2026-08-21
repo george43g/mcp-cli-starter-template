@@ -21,7 +21,12 @@ export type {
 } from "./resources.js";
 export { buildResourcesHandler } from "./resources.js";
 export { sanitize } from "./sanitize.js";
-export type { AnyToolDefinition, ToolDefinition, ToolRegistry } from "./tool-registry.js";
+export type {
+  AnyToolDefinition,
+  ContentBlock,
+  ToolDefinition,
+  ToolRegistry,
+} from "./tool-registry.js";
 export { makeRegistry } from "./tool-registry.js";
 export type { HttpServerHandle, HttpServerOptions } from "./transports/http.js";
 export { startHttpServer } from "./transports/http.js";

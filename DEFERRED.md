@@ -1289,7 +1289,73 @@ then never resolves.
 
 ---
 
-## 25. Publishing `mcp-kit` and `shared-types` — requested, deferred, with reasons
+## 25. `mcp-kit` IS BEING PUBLISHED (decided 2026-08-22); `shared-types` stays deferred
+
+**Status**: **mcp-kit — DECIDED to publish**, by George on 2026-08-22, against a measurement rather
+than a request. `shared-types` — still deferred, reasons unchanged and below.
+
+**What changed is that the criterion was MEASURED instead of argued.** George's rule for when a
+package earns extraction:
+
+> you publish a package when you notice that the code within it is being duplicated, and not
+> customised, and any customisation is either minor or would make sense refactored around as a
+> wrapper
+
+Three copies of the same ~840 LOC exist on this machine — here, `up-bank-mcp/packages/mcp-kit`,
+`browser-tab-mcp/packages/mcp-kit`. Per-file changed-line counts, `diff` against ours 2026-08-22:
+
+| file | ours (LOC) | up-bank Δ | browser-tab Δ |
+|---|---|---|---|
+| `dispatch.ts` | 141 | 2 | 40 |
+| `tool-registry.ts` | 81 | 1 | 17 |
+| `sanitize.ts` | 37 | 1 | 15 |
+| `prompt-injection.ts` | 56 | **0** | **0** |
+| `resources.ts` | 120 | **0** | **0** |
+| `index.ts` | 29 | 0 | 11 |
+| `transports/http.ts` | 188 | 25 | **0** |
+| `transports/stdio.ts` | 70 | 28 | 31 |
+| `transports/http.test.ts` | 116 | **0** | **0** |
+
+Duplicated, and barely customised: two files are byte-identical in all three trees, and up-bank's
+core is 0–2 lines off. Where browser-tab does differ it is **two additive features**, not local
+policy — `ContentBlock`/`toContent` (image blocks ahead of the JSON summary) and `devOnlyEnabled`
+(a per-dispatch dev gate). Both are now in the shared surface.
+
+**The argument the measurement produced that nobody had made**: our `transports/stdio.ts` carries a
+shutdown-marker block that NEITHER vendored copy has. Vendoring does not merely duplicate — it
+**guarantees** the copies miss our fixes, with no mechanism that could ever tell them. That is
+DEFERRED #41's starvation problem in structural form, and unlike #41 no version range can fix it.
+
+**Sequenced deliberately into three PRs, because they are three different decisions:**
+
+1. **Fold the two seams in** (done 2026-08-22) — canonical + `06-mcp-kit/lib/` + `example/`, with
+   the generated app's three `content[0].text` read sites narrowed. That is the compile error
+   browser-tab explicitly asked for: no catch-all union member, so a new block type fails at the
+   render site where the decision belongs.
+2. **Publish shape** — manifest (`private` off, real version, repository metadata, `publishConfig`),
+   `PUBLISHABLE` in `check-publishable-manifests.mjs`, a release job, a README. mcp-kit's only
+   workspace runtime dep is `@george43g/robustness`, which is already published, so it needs no
+   companion release — `shared-types` is NOT a dependency of it. **The one-time npm bootstrap
+   publish is George's own manual step.**
+3. **Whether the SCAFFOLDER should stop vendoring** and emit an npm dependency instead. NOT decided
+   here, and not implied by publishing: a vendored copy is customisable by the generated repo, which
+   is exactly what browser-tab did. Publishing gives consumers the choice; changing what `init`
+   emits takes it away.
+
+**TWO SEAMS WERE DESIGNED AND DELIBERATELY NOT BUILT**: `ToolDefinition.scopes?` +
+`BuildDispatcherOptions.scopeCheck?`, and an async `onErrorResponse?`. They came out of the design
+round, not out of any consumer's code — **neither is duplicated anywhere**, which is the same
+criterion that justified publishing failing in the other direction. Shipping unused public API in a
+first release means that if the shape is wrong, correcting it is a breaking change on a package just
+published, and on a 0.x package a breaking marker cuts 1.0.0 (#34). **Trigger**: the first consumer
+with a real call site. Additive later costs nothing; wrong-and-published costs a major.
+
+**The `against` case below is now the cost being accepted, not a reason not to.** It is kept
+verbatim because it remains true and someone will hit it.
+
+---
+
+**Original entry (2026-08-09), kept for its reasoning:**
 
 **Status**: deferred 2026-08-09 by explicit decision. Requested by the up-bank-mcp agent, who
 forked both to consume them. Recorded because the request will come back and the reasons are

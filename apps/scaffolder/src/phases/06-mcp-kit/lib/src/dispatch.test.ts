@@ -106,3 +106,105 @@ describe("buildDispatcher", () => {
     expect(errors).toEqual(["ghost"]);
   });
 });
+
+describe("toContent — media blocks lead the JSON summary", () => {
+  const shot: ToolDefinition = {
+    name: "shot",
+    description: "Returns a picture",
+    input: z.object({}),
+    output: z.object({ path: z.string() }),
+    annotations: { readOnlyHint: true },
+    handler: async () => ({ path: "/tmp/a.png" }),
+    toContent: () => [{ type: "image", data: "QUJD", mimeType: "image/png" }],
+  };
+
+  it("emits [image, text] — the order renderers depend on", async () => {
+    const dispatch = buildDispatcher({ registry: makeRegistry([shot]) });
+    const res = await dispatch("shot", {});
+    expect(res.content.map((b) => b.type)).toEqual(["image", "text"]);
+    expect(res.content[0]).toEqual({ type: "image", data: "QUJD", mimeType: "image/png" });
+  });
+
+  it("still carries the structured result and the text block", async () => {
+    const dispatch = buildDispatcher({ registry: makeRegistry([shot]) });
+    const res = await dispatch("shot", {});
+    expect(res.structuredContent).toEqual({ path: "/tmp/a.png" });
+    const text = res.content.find((b) => b.type === "text");
+    expect(text && "text" in text ? JSON.parse(text.text) : null).toEqual({ path: "/tmp/a.png" });
+  });
+
+  it("a throwing toContent degrades to text — the answer survives a broken picture", async () => {
+    const broken: ToolDefinition = {
+      ...shot,
+      name: "broken",
+      toContent: () => {
+        throw new Error("file vanished");
+      },
+    };
+    const dispatch = buildDispatcher({ registry: makeRegistry([broken]) });
+    const res = await dispatch("broken", {});
+    expect(res.content.map((b) => b.type)).toEqual(["text"]);
+    expect(res.isError).toBeUndefined();
+    expect(res.structuredContent).toEqual({ path: "/tmp/a.png" });
+  });
+
+  it("a tool without toContent is unchanged — one text block", async () => {
+    const dispatch = buildDispatcher({ registry });
+    const res = await dispatch("echo", { input: "hi" });
+    expect(res.content.map((b) => b.type)).toEqual(["text"]);
+  });
+});
+
+describe("devOnlyEnabled — hiding a tool is not disabling it", () => {
+  const secret: ToolDefinition = {
+    name: "get_logs",
+    description: "Dev only",
+    input: z.object({}),
+    output: z.object({ ok: z.boolean() }),
+    annotations: { readOnlyHint: true },
+    devOnly: true,
+    handler: async () => ({ ok: true }),
+  };
+  const devRegistry = makeRegistry([secret]);
+
+  it("runs the tool when the gate is open", async () => {
+    const dispatch = buildDispatcher({ registry: devRegistry, devOnlyEnabled: () => true });
+    const res = await dispatch("get_logs", {});
+    expect(res.isError).toBeUndefined();
+    expect(res.structuredContent).toEqual({ ok: true });
+  });
+
+  it("refuses when the gate is closed, and does NOT confirm the tool exists", async () => {
+    // A distinct "disabled" error tells a caller the tool is there, which is
+    // what the gate exists to avoid. The response must be byte-identical to an
+    // unknown name.
+    const dispatch = buildDispatcher({ registry: devRegistry, devOnlyEnabled: () => false });
+    const gated = await dispatch("get_logs", {});
+    const unknown = await dispatch("no_such_tool", {});
+    expect(gated.isError).toBe(true);
+    const gatedText = gated.content[0];
+    const unknownText = unknown.content[0];
+    const strip = (b: typeof gatedText) =>
+      b && "text" in b ? b.text.replace(/no_such_tool|get_logs/g, "<name>") : null;
+    expect(strip(gatedText)).toEqual(strip(unknownText));
+  });
+
+  it("is read PER DISPATCH, so flipping it mid-suite takes effect", async () => {
+    let open = true;
+    const dispatch = buildDispatcher({ registry: devRegistry, devOnlyEnabled: () => open });
+    expect((await dispatch("get_logs", {})).isError).toBeUndefined();
+    open = false;
+    expect((await dispatch("get_logs", {})).isError).toBe(true);
+  });
+
+  it("omitting the option leaves dev-only tools callable — today's behaviour", async () => {
+    // The seam is additive: a consumer that does not pass it sees no change.
+    const dispatch = buildDispatcher({ registry: devRegistry });
+    expect((await dispatch("get_logs", {})).isError).toBeUndefined();
+  });
+
+  it("never gates a tool that is not devOnly", async () => {
+    const dispatch = buildDispatcher({ registry, devOnlyEnabled: () => false });
+    expect((await dispatch("echo", { input: "x" })).isError).toBeUndefined();
+  });
+});
