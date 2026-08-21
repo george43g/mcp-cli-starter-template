@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.5.1](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.5.0...tui-kit-v0.5.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **tui-kit:** non-finite input must fail closed, not walk the whole list ([6a69391](https://github.com/george43g/mcp-cli-starter-template/commit/6a69391d12347d741c88ba7381c38420489c13c5))
+
 # [@george43g/tui-kit-v0.5.0](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.4.1...tui-kit-v0.5.0) (2026-08-20)
 
 
