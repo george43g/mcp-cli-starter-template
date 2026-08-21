@@ -1050,3 +1050,41 @@ workflow `AGENTS.md` documents produces a file that fails `pnpm lint`.
 
 Five consumer defect reports in two days, every one of them real, and three of
 them finding bugs in this repo that its own suite did not.
+
+### Third addendum — two corrections to me, and a deployment fact
+
+**I gave life-stack wrong remediation advice and they caught it.** I told them to
+reinstall the global `mcpsync` bin to pick up the fix. **No reinstall is needed
+or possible**: the pnpm shim at `~/Library/pnpm/mcpsync` is PATH-BASED —
+
+    exec node "$basedir/../../repos/mcp-cli-starter-template/apps/mcpsync/dist/cli.js"
+
+— so it runs this repo's `dist/` in place. Verified here. Two consequences worth
+knowing before telling any consumer to "reinstall":
+
+1. The advice sends them after a **no-op**, and worse, gives them a reason to
+   believe they are done when the real dependency is *this repo's build step*.
+2. **`apps/mcpsync/dist/` is GITIGNORED.** Every consumer on this machine shares
+   one binary whose contents are whatever was last built locally. There is no
+   deploy step for mcpsync other than someone running `pnpm --filter
+   @george43g/mcpsync build` here. That is undocumented and fragile.
+
+**My "longest array is 55 columns" was wrong for their file.** They measured all
+13 primitive arrays rather than taking the number: 11 collapse under 80, 2
+exceed 100, **0 in the 81-100 gap**, longest collapsed line 160 columns. The
+conclusion held, but via a case neither of us had in view — the two long ones
+are safe because BOTH tools expand them, not because they are short.
+
+**A trap in the same family as the false-all-clear one, and it is now three
+sightings across three sessions in one day: AN OPERATION THAT SUCCEEDED BECAUSE
+IT HAD NOTHING TO DO.** life-stack's `mcpsync apply` reported "unchanged 16
+server(s)" and never wrote, so the new formatter never ran and a green result
+proved nothing. A peer hit the same shape with `docker compose up --dry-run`
+against an already-converged stack — clean "Running" for seven services, code
+path under test never executed. And it is exactly why this repo's own
+`opencode.json` looked fine.
+
+The defence is the same one: **make the operation actually do the work before
+believing its success.** They verified in a scratch project with no existing
+output file, so the write path had to run. A no-op success and a real success
+are indistinguishable from the exit code.

@@ -32,7 +32,7 @@ repeated.
 
 ## Status
 
-`active` — design agreed in outline, signatures under review by the consumers.
+**`complete`** — shipped as `tui-kit@0.5.0`, hardened to `0.5.1`, all four consumers surveyed.
 
 - **2026-08-21** — Queried EQStack, browser-tab-mcp, up-bank-mcp. Library survey
   done. Design turned from "a navigator" into "five primitives" on consumer
@@ -125,6 +125,15 @@ EQStack set the burden as *"name the imsg surface that becomes BETTER as column
 3 of a tree than as the modal drawer it is today."* **No such surface was
 found, and none was invented.** A shell composes on top of the primitives later
 if up-bank or gmail produce a shape that needs N>2; it does not gate them.
+
+### The key-handling boundary is four-for-four
+
+Every consumer chose "fully controlled, no keys in the kit" independently, and
+each gave a different reason with an incident behind it. up-bank's is the most
+concrete: `resolveKey` returning `null` is how they **fail closed** against
+pasted multi-character chunks reaching confirm-gated destructive keys (`d`,
+`D`). A component that swallowed keys before their dispatch saw them could
+resurrect that, silently.
 
 ### ACCEPTED: five pure primitives
 
@@ -310,13 +319,60 @@ renderRow/viewport onto them as the first consumer, scrollbar included."*
    was dispatch OWNERSHIP; this is a pure string function with the
    null-passthrough contract — exactly the leaf-utility class that has stuck
    5-for-5."*
-5. **up-bank-mcp has not answered.** Their domain is the one that might break
-   the abstraction: non-uniform row heights and date-grouping headers. Also
-   unanswered: whether they would consume this as a package or vendor it.
+5. ~~up-bank-mcp has not answered.~~ **CLOSED 2026-08-22 — and their answer was
+   the most useful in the survey, because it was a PARTIAL NEGATIVE.**
+
+   **They are master-detail, not Miller columns**, and they said so explicitly
+   rather than letting me count them as a third N-column consumer. Their sidebar
+   is a flat account list acting as a FILTER — selecting an account narrows the
+   list in place, it does not navigate INTO it producing a new column. Three
+   fixed panes, no recursion, no Nth column. *"A true tree-navigator would be a
+   rewrite, not an adoption."*
+
+   That makes the rejection three-for-three, from three different shapes.
+
+   **The row-height fear was unfounded, deliberately.** Uniform height 1, no
+   grouping headers, no running-balance rows — an enforced invariant
+   (`components/TransactionRow.tsx:5-8`): every cell `flexShrink={0}`, widths
+   summing to exactly `width`, `wrap="truncate"`. Date grouping and running
+   balances live in the analytics and detail panes, never as rows in the
+   scrollable list. So `heightOf: () => 1` is their case and the line-budget
+   generality costs them nothing.
+
+   **The single most load-bearing sentence in the whole survey**: their category
+   picker IS a real tree (Up categories are exactly 2 levels) and they
+   **flatten it to uniform rows before rendering** —
+   `src/tui/data/categoryTree.ts` emits `CategoryRow { id, name, depth, parentName? }`.
+   *"Flatten-then-window was sufficient. We never needed tree-aware windowing."*
+   An existence proof that the tree case degenerates, from the only consumer who
+   actually had one.
+
+   Also: **only 1 of their 3 panes windows at all** — the account sidebar
+   renders every row.
+
+   **Package, not vendored**, and the reason matters for DEFERRED #25: they
+   already consume `@george43g/tui-kit` as a dependency, and they vendor mcp-kit
+   and shared-types *only because those are unpublished*. *"It was never a
+   preference."*
+
+   **Prior art: they evaluated NOTHING** and asked explicitly not to be recorded
+   as having considered and rejected anything. Recorded as asked.
 
 ## Validation
 
-Nothing built yet — this is the pre-build negotiation record.
+**Shipped.** `tui-kit@0.5.0` (2026-08-21), hardened to `0.5.1` after eqstack
+found a fail-open within the hour — `lineWindow`'s `budgetLines <= 0` guard is
+FALSE for NaN, so it admitted NaN and returned an entire 5,000-item list. Three
+of the five affected sites were not in their report and were found by writing
+the tests. See `packages/tui-kit/src/finite.ts` for the rule that came out of it.
+
+Adoption: EQStack replaced both windowing sites, their width block and their
+router's chunk fan-out (EQStack#115); gmail-cli-mcp collapsed two call sites to
+`fitToWidth` and deleted their local `padToWidth`; browser-tab-mcp pledged to
+port `renderRow` and `viewport`. **up-bank-mcp is currently starved on `^0.4.1`,
+which cannot reach 0.5.x — a caret on 0.x locks the minor.**
+
+Original pre-build survey commands, re-runnable:
 
 Survey commands, re-runnable:
 
