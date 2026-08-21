@@ -2122,3 +2122,69 @@ stated preference over documentation discipline.
 already touching these files.
 
 **Cost**: ~20 min for the sweep; ~40 min if the count becomes mechanically enforced.
+
+## 41. Three of five consumers are frozen on old kits, so the extraction's whole benefit is not reaching them
+
+**Status**: open, measured 2026-08-22. Not a bug in any package — a systemic failure of the thing
+publishing is FOR.
+
+**The premise this violates** is George's own, and it is the reason these packages exist at all:
+
+> instead of only one of them getting a cool feature, all the consumers *benefit* because ... we
+> wouldnt have bothered writing a vim style navigation (for example) just for the up-bank-mcp alone,
+> but since we share the libs - everyone benefits from it
+
+**Measured, by reading every consumer manifest on this machine against `npm view`:**
+
+| repo | manifest | declares | reaches | behind |
+|---|---|---|---|---|
+| EQStack | `apps/voice-mcp/package.json` | robustness `^0.7.0` | `<0.8.0` | **3 minors** |
+| EQStack | `apps/imsg-mcp/package.json` | robustness `^0.8.1` | `<0.9.0` | **2 minors** |
+| browser-tab-mcp | `apps/browser-tab-mcp/package.json` | robustness `^0.7.0` | `<0.8.0` | **3 minors** |
+| browser-tab-mcp | `packages/mcp-kit/package.json` | robustness `^0.7.0` | `<0.8.0` | **3 minors** |
+| browser-tab-mcp | `apps/browser-tab-mcp/package.json` | tui-kit `^0.4.1` | `<0.5.0` | **1 minor** |
+| life-stack | `packages/os-fork-core/package.json` | robustness `^0.7.0` | `<0.8.0` | **3 minors** |
+| life-stack | `apps/os-fork-control/package.json` | robustness `^0.7.0` | `<0.8.0` | **3 minors** |
+| life-stack | `apps/os-fork-ctl/package.json` | robustness `^0.7.0` | `<0.8.0` | **3 minors** |
+
+Current: up-bank-mcp (all four, after fixing it the same day) and Gmail-MCP-Server (both, via
+`">=0.x <1"`).
+
+**Mechanism**: a caret on a 0.x package locks the MINOR. `^0.7.0` is `>=0.7.0 <0.8.0` and can never
+reach 0.8, 0.9 or 0.10, however often you install. `pnpm install` reports "up to date" throughout.
+
+**What is not being received**: `getShutdownCause`/`noteShutdownCause` and
+`WatchdogState.memorySampled` (0.8.0, built at EQStack's request — *they* are two minors behind
+their own feature), the observe-only `WatchdogOptions.onBreach` (0.9.0), and the `snapshotHealth`
+test seam (0.10.0).
+
+**The reporting lesson, from up-bank-mcp, and it is the transferable part.** I told them they were
+starved on tui-kit. They checked all four kits rather than the one named, and found robustness
+starved in **two** manifests — the worse problem, which I had missed:
+
+> a starvation report scoped to one package teaches the recipient to check that package. The failure
+> is per-range, so the check has to be per-package across every manifest.
+
+EQStack is the exact case they predicted: bumped tui-kit, left robustness frozen.
+
+**What was done**: each affected session was sent its own per-package table with file paths, rather
+than a package name. Not fixed by us — **peer repos are read-only.**
+
+**Not proposed: a blanket "use `>=0.x <1`" mandate.** up-bank declined it with a good reason —
+it conflicts with a policy they recorded after an accidental major, and reversing a recorded
+decision silently because an upstream README changed is how two sessions start fighting through a
+document. They bumped carets explicitly instead. Either resolution is fine; the frozen state is not.
+Their second point is sharper still: floating ranges assume a gate pinning **exact behaviour**, and
+their PTY check covers tui-kit while nothing equivalent watches robustness.
+
+**Trigger to action**: the next kit release. Sweep the consumer manifests and send tables, or accept
+that a release reaches two of five repos.
+
+**The durable fix, if someone wants one**: this cannot be a CI check here — the consumers are other
+repos on one developer machine, and a script that greps `~/repos/*` has no place in a template that
+gets scaffolded elsewhere. The honest options are (a) a local, uncommitted sweep script run at
+release time, or (b) accept the manual sweep and keep the guidance in each kit's README, where it
+now is. Neither is mechanical enforcement, which is this repo's stated preference — so this entry is
+the record that the preference could not be satisfied here, not an oversight.
+
+**Cost**: ~15 min per release to sweep and report; unbounded if it keeps not happening.
