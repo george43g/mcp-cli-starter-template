@@ -44,7 +44,11 @@ const PUBLISHABLE = new Set([
   "packages/cli-kit",
   "packages/tui-kit",
   "packages/secret-store",
-  "apps/mcpsync",
+  // apps/mcpsync was here until 2026-08-22. George decided it MIGRATES WITHOUT
+  // PUBLISHING (DEFERRED #10), so it is `private: true` and carries no
+  // publishConfig — it leaves as a private tool installed from a local path,
+  // not as a registry dependency. It was never published (npm view returned
+  // E404 throughout), so nothing on npm is orphaned by the change.
 ]);
 
 const failures = [];

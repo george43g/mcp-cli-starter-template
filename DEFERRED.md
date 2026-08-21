@@ -244,7 +244,41 @@ edit the focused server's env/args, write back to canonical via a new `core` hel
 
 ---
 
-## 10. Relocate mcpsync out of this repo (to life-stack), after publishing its kits
+## 10. Relocate mcpsync out of this repo (to life-stack) — DECIDED: migrate WITHOUT publishing
+
+**DECISION 2026-08-22, George**: **migrate without publishing.** mcpsync leaves as a private tool
+installed from a local path, not as a registry dependency. That is a narrowing of this entry, not a
+completion of it — the move itself is still to do.
+
+**Three planned work items are dissolved rather than solved by it:**
+
+- **The npm bootstrap is not needed.** `@george43g/mcpsync` was never published (`npm view` returned
+  E404 every time it was checked), so there is no orphaned version, no trusted publisher to
+  configure, and no name to defend.
+- **"life-stack has no release pipeline" stops being the blocker.** It was recorded as this
+  migration's hard blocker on 2026-08-18. Not publishing removes the requirement entirely.
+- **`semantic-release` + `.releaserc.json` in `apps/mcpsync/` are now dead weight** and can be
+  dropped at the new home. Nothing reads them any more.
+
+**Done in this repo 2026-08-22 (the departure half):**
+
+- `apps/mcpsync/package.json` → `private: true`, `publishConfig` removed.
+- Removed from `PUBLISHABLE` in `scripts/check-publishable-manifests.mjs` (now 4 packages).
+- Its `workflow_dispatch`-only release job deleted from `release-packages.yml`, plus the header
+  paragraph explaining the deferral. **Nothing needed re-chaining** — it was already the tail and
+  nothing had `needs: mcpsync`, exactly as the life-stack session established by reading the
+  workflow rather than this checklist.
+- `apps/mcpsync/HANDOFF.md` written so the knowledge TRAVELS WITH THE APP: destination and terms,
+  the four `workspace:*` devDeps that still need rewriting, the Vite bundling decision, the "there
+  is no reinstall" fact about the global bin, DEFERRED #9's TUI editing gap in full, and the
+  secrets invariant.
+
+**Still to do, and it needs coordination rather than a commit here**: the receiving half. life-stack
+is a peer repo and **peer repos are read-only** — the placement is theirs to make, or George's to
+authorise. The origin-side removals above are deliberately kept in a separate change from the
+deletion of `apps/mcpsync/`, so the app is never gone from here before it exists there.
+
+**Original entry (2026-08-08 → 2026-08-18), kept for the checklist and the corrections it records:**
 
 **Status**: not started. **This SUPERSEDES the earlier same-session "stay + publish + import"
 home decision** (see `docs/plans/2026-08-mcpsync-overview.md`). Governing **inclusion rule**:
