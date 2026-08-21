@@ -264,6 +264,31 @@ rather than throwing `RangeError` from `" ".repeat(Infinity)`.
 Reported by the eqstack session within an hour of adopting 0.5.0, along with the
 rule above.
 
+**How to check whether YOUR app was ever exposed**, contributed by the
+browser-tab-mcp session after auditing its own tree for this class:
+
+> a consumer that floors its root width with a positive fallback is immune to
+> the extraction-inverts-safety class regardless of what the kit does
+
+Terminal size enters an app at one or two places. If every downstream width is
+arithmetic over a root that cannot be non-finite, nothing further downstream can
+be — so the audit is one grep for where terminal size enters, not a pass over
+every call site. Two walls, either sufficient:
+
+```ts
+// kit side, 0.5.1 useTerminalSize — NaN > 0 is false, so NaN falls back
+rows !== undefined && rows > 0 ? rows : FALLBACK.rows
+
+// app side — NaN is falsy, so this holds even if the hook regressed
+const usableCols = Math.max(20, (termColumns || 80) - 2);
+```
+
+Their audit found no non-finite path and produced no code change, which is the
+point: the check is cheap enough to run before assuming a lift carried the old
+behaviour's safety with it. What it does *not* cover is negative-but-finite
+geometry — a viewport that goes negative on a terminal shorter than the chrome —
+which is the positive-predicate rule above, not this one.
+
 ## Nerd Font detection
 
 For TUIs offering a glyph preset that needs a patched font. Without a check the
