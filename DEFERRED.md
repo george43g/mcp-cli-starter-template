@@ -2502,12 +2502,19 @@ site is unrelated. The one genuine exception is EQStack, who are two minors behi
 | up-bank-mcp | `main` | `^0.10.0` (app + vendored mcp-kit) | `^0.5.1` | **current** |
 | life-stack | `main` | `>=0.10.0 <1` (×3) | — | **current** |
 | Gmail-MCP-Server | `main` | `>=0.9.0 <1` | `>=0.4.1 <1` | **current** |
-| browser-tab-mcp | `main` @ `dc6e068` | `^0.7.0` (app + `packages/mcp-kit`) | `^0.4.1` | **STARVED** |
+| browser-tab-mcp | `main` @ `d9eb157` | `^0.11.0` (app + `packages/mcp-kit`) | `^0.5.1` | **current** (was starved; PRs #87 + #88 landed 2026-08-22) |
 
 EQStack verified resolution **from disk** rather than from the specifier, and their lockfile agrees
 (`pnpm-lock.yaml:650,654` → `robustness@0.10.0`, `tui-kit@0.5.1`), so all three mechanisms are clear
 there. Their `minimumReleaseAgeExclude` was already the wildcard `@george43g/*` form — mechanism 2
 never applied — on pnpm 11.1.1, where the quarantine is live and the config therefore load-bearing.
+
+**RESOLVED 2026-08-22 — both browser-tab PRs landed and the split-branch hazard was navigated.**
+Verified from their `origin/main` rather than taken on their word: both manifests read `^0.11.0`,
+tui-kit `^0.5.1`, and `pnpm-lock.yaml:718,722` resolve `robustness@0.11.0` and `tui-kit@0.5.1`. The
+floor-bump property they identified is what made the merge safe — `^0.11.0` cannot admit 0.10.0, so
+a wholesale lockfile take would have failed `--frozen-lockfile` loudly. **The hazard below stays
+recorded, because the property that saved them is an accident of that pair, not a policy.**
 
 **A FOURTH HAZARD, found by reading browser-tab's tree rather than by being told: a fix split across
 two branches, with the lockfile as the conflict surface.** Their `main` is starved on both kits and
@@ -2569,5 +2576,22 @@ rule is not "never split a dep bump":
 The cost of the road not taken (one combined branch) is theirs, and it is real: the robustness bump
 would then be gated behind George's TUI live-drive, and a tui-kit-only revert would drag robustness
 with it. Peer repos are read-only — the fix is theirs.
+
+**A DIAGNOSTIC TRAP worth more than the starvation itself, from browser-tab 2026-08-22.** Their
+`^0.11.0` PR went red three times, and the obvious story — a three-minor robustness jump broke
+something — was wrong. They cleared the dep by reading the 0.7.0→0.10.0 source diff for a MECHANISM
+(shutdown/watchdog/health/index, all additive, all inert for sockets) and by observing the same
+failures on 0.7.0 trees. The real cause was six integration files drawing ports from one 500-port
+band under parallel forks, with the collision SILENT: a swallowed `EADDRINUSE`, then a foreign
+WebSocket server answering an HTTP fetch with `426 Upgrade Required`. Fixed structurally with a
+disjoint band per file — 2 of 6 targeted parallel runs failed before, 8 of 8 after, collision
+impossible by construction.
+
+> a consumer-side flake that clusters on a dep-bump PR is not evidence against the dep until the
+> bump's diff contains a mechanism
+
+This matters to THIS repo specifically: a kit bump is the most conspicuous change in any consumer PR,
+so it collects blame for every flake it coincides with. If a consumer reports a kit regression, the
+first question is which line of the diff could produce that symptom — and "none" is an answer.
 
 **Cost**: ~15 min per release to sweep and report; unbounded if it keeps not happening.
