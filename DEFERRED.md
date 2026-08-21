@@ -1415,10 +1415,38 @@ DEFERRED #41's starvation problem in structural form, and unlike #41 no version 
    corollary rather than an accident — `runCleanup()` clears the registry only after the loop, so a
    hang leaves it populated for `syncCleanup()` to re-run on `exit`.
 
+   **CONFIRMED INDEPENDENTLY** by up-bank on a second machine and workspace once they had the shape:
+   `GUARD=0 -> 2 markers, exit after 3007ms; GUARD=1 -> 1 marker, exit after 3002ms`. **The ~3s is
+   the tell** — it is `forceExitAfterMs` arming, and its absence is what made their first attempt a
+   null result. They corrected the "NOT reproduced on 0.11.0" comment in their own source rather than
+   annotating it, on the grounds that a wrong claim in the source is worse than no claim: the next
+   reader takes it as evidence the guard is unnecessary and deletes it.
+
    **The transferable part is about evidence, not shutdown**: a negative result from a shape that
-   cannot reach the code under test is not weak evidence, it is no evidence. up-bank flagged their
-   own calibration ("one shape, one machine") rather than concluding, which is why this got measured
-   instead of quietly diverging.
+   cannot reach the code under test is not weak evidence, **it is no evidence**. up-bank's own
+   sharpening of this, which is better than the original: hedging such a result as "weak" is still an
+   overclaim, because it invites someone to average it against a positive.
+
+   **AND THE PROBE ITSELF FAILS SILENTLY TOWARD A CLEAN-LOOKING NULL.** Both of us hit this before
+   getting a number. A probe placed outside the workspace produces:
+
+   ```
+   GUARD=0 -> 0 shutdown marker(s), exit=TIMEOUT
+   GUARD=1 -> 0 shutdown marker(s), exit=TIMEOUT
+   ```
+
+   Symmetric zeros, which read as "the handlers never installed on this version". The real cause is
+   that **Node resolves ESM bare specifiers from the SCRIPT's location, not cwd**, so
+   `import ... from "@george43g/robustness"` throws `ERR_MODULE_NOT_FOUND` before anything runs — and
+   a harness that counts lines in a log directory that was never written to cannot distinguish that
+   from a genuine null. **If a reproduction reports symmetric zeros, read stderr before concluding
+   anything about the version.** Keep the probe inside the workspace, or import via an absolute
+   `file://` URL to the resolved package.
+
+   That is the second time in one session a wrong answer came from the harness rather than the code
+   under test — the other being the tsx-CLI SIGKILL — and both times the harness failed silently
+   toward a result that looked clean. Same family as the standing trap: *an operation that succeeded
+   because it had nothing to do.*
 3. **Whether the SCAFFOLDER should stop vendoring** and emit an npm dependency instead. NOT decided
    here, and not implied by publishing: a vendored copy is customisable by the generated repo, which
    is exactly what browser-tab did. Publishing gives consumers the choice; changing what `init`
