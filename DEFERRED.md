@@ -1366,11 +1366,35 @@ DEFERRED #41's starvation problem in structural form, and unlike #41 no version 
    the generated app's three `content[0].text` read sites narrowed. That is the compile error
    browser-tab explicitly asked for: no catch-all union member, so a new block type fails at the
    render site where the decision belongs.
-2. **Publish shape** — manifest (`private` off, real version, repository metadata, `publishConfig`),
-   `PUBLISHABLE` in `check-publishable-manifests.mjs`, a release job, a README. mcp-kit's only
-   workspace runtime dep is `@george43g/robustness`, which is already published, so it needs no
-   companion release — `shared-types` is NOT a dependency of it. **The one-time npm bootstrap
-   publish is George's own manual step.**
+2. **Publish shape** (done 2026-08-22) — manifest (`private` off, 0.1.0, repository metadata,
+   `publishConfig`, `engines`, `files`, LICENSE), `PUBLISHABLE` in `check-publishable-manifests.mjs`,
+   a `.releaserc.json`, a release job chained after secret-store, and `packages/mcp-kit/**` in the
+   workflow's `paths`. mcp-kit's only workspace runtime dep is `@george43g/robustness`, already
+   published, so it needs no companion release — `shared-types` is NOT a dependency of it. **The
+   one-time npm bootstrap publish is George's own manual step**, and until it happens the release
+   job runs, verifies, and finds nothing to do (trusted publishing requires the package to exist).
+
+   **The `publishConfig` trap this entry predicted fired immediately, and needed a real gate.**
+   `build-templates.mjs` selects published packages by `publishConfig.access` alone, so merely adding
+   it flips `applyPublishedRanges()` into rewriting `"@george43g/mcp-kit": "workspace:*"` to a
+   registry range in every generated repo — **while phase 06 still copies the source in**. That is a
+   repo which both vendors the package and depends on a version that 404s, and the E2E smoke installs
+   from the real registry, so it fails. The two facts arrive in the wrong order: the manifest needs
+   `publishConfig` BEFORE the bootstrap publish can happen. Gated with `PENDING_BOOTSTRAP` in
+   `build-templates.mjs`, one name, with the removal trigger written next to it.
+
+   **It also surfaced mechanism 5 in #41**: switching robustness from `workspace:*` to `>=0.1.1 <1`
+   resolved **0.1.1**, because `apps/mcpsync` had that exact stale entry in the lockfile and pnpm
+   reused it. `TS2305: has no exported member 'getShutdownCause'`. Both are fixed to `>=0.11.0 <1`
+   with the resolved version verified in the lockfile.
+
+   **up-bank's `stdio.ts` request is already satisfied, and by a stronger version.** They asked that
+   the shutdown-marker `registerCleanup` be in the published copy or every consumer inherits the bug
+   they fixed. Ours has it plus a write-once guard theirs lacks — without which the controller's
+   synchronous `exit` sweep writes the marker TWICE when a later cleanup hangs and trips the
+   force-exit net (measured on robustness 0.8.1: 2 lines unguarded, 1 guarded). Their fork is one
+   guard behind the shared copy, not ahead of it. Their `transports/http.ts` is zero commits past
+   baseline, so nothing of theirs is at risk there.
 3. **Whether the SCAFFOLDER should stop vendoring** and emit an npm dependency instead. NOT decided
    here, and not implied by publishing: a vendored copy is customisable by the generated repo, which
    is exactly what browser-tab did. Publishing gives consumers the choice; changing what `init`
@@ -2329,7 +2353,78 @@ day, each in a different consumer, and each would have been "fixed" by the wrong
    others, because a lockfile holding a version steady is what a lockfile is FOR — nothing about it
    looks wrong.
 
-**So the check is: specifier, quarantine allow-list, AND resolved version in the lockfile.**
+**MECHANISM 5, found 2026-08-22 in THIS repo, and it inverts the recommendation this entry made.**
+**A comparator range takes the newest version only on FIRST resolution.** An existing lockfile entry
+that still satisfies the range is retained indefinitely, and `pnpm install` reports nothing.
+Reproduced from scratch, twice:
+
+```
+A) existing satisfying entry, plain `pnpm install`:
+     specifier: '>=0.1.1 <1'
+     version: 0.1.1          <-- stays. forever.
+B) then `pnpm update`:
+     specifier: ^0.11.0      <-- MANIFEST REWRITTEN
+     version: 0.11.0
+```
+
+**MECHANISM 6, found the same hour by life-stack and confirmed here: `pnpm update` silently
+normalises a comparator range into a caret.** So 5 and 6 are locked together — `pnpm update` is the
+only escape from 5 and is exactly what causes 6, re-arming mechanism 1.
+
+**The proof is in this repo, which is the damning part.** `apps/mcpsync/package.json` carried
+`">=0.1.1 <1"` for months. From the committed lockfile before the fix:
+
+```
+  apps/mcpsync:
+    dependencies:
+      '@george43g/robustness':
+        specifier: '>=0.1.1 <1'
+        version: 0.1.1
+```
+
+**0.1.1 — the first version ever published. Ten minors behind, in the PUBLISHER'S OWN TREE, on the
+range this entry recommended to five consumers.** It was found only because it poisoned a new
+package: pnpm reused that stale entry for `packages/mcp-kit`'s identical new specifier, and the
+typecheck failed `TS2305: has no exported member 'getShutdownCause'`.
+
+**Corrected scoreboard for 0.11.0, from LOCKFILES rather than manifests** — the earlier
+"comparator repos: 2 of 2" in this entry was read off specifiers and was wrong:
+
+| repo | specifier | lockfile holds | current? |
+|---|---|---|---|
+| life-stack | `>=0.10.0 <1`, now `^0.11.0` | 0.11.0 | yes — via `pnpm update`, which destroyed the range |
+| Gmail-MCP-Server | `>=0.9.0 <1` | **0.10.0** | **no** |
+| this repo (mcpsync) | `>=0.1.1 <1` | **0.1.1** | **no, by ten minors** |
+
+**So the recommendation flips: a hand-bumped caret is the BETTER option, not merely the defensible
+one.** A caret starves **visibly** — the manifest says `^0.10.0`, anyone can read it, and it gets
+fixed. A comparator range starves **invisibly**, with a manifest that looks correct and an install
+that reports success. up-bank and EQStack both declined the floating range on gate-coverage grounds
+and were right for a reason neither of them needed.
+
+**up-bank's generalisation, in their words, and it is better than the one this entry had:**
+
+> "do you have a gate" is the wrong question; "does your gate cover the surface that changes" is the
+> right one
+
+Their stress cases 8–16 gate the lifecycle surface on both transports; **nothing** gates the logging
+surface — and both 0.11.0 fixes landed in the ungated half. Record their lag as *"explicit bumps;
+gate covers lifecycle only, logging surface ungated"*, never as "starved by design", which loses the
+reason.
+
+**So the check is: specifier, quarantine allow-list, AND resolved version in the lockfile — and the
+last one is not a merge-time check, it is the ONLY valid check, always.** The stable fix is two
+steps and reverts if either is skipped: `pnpm update <pkg>`, then restore the range by hand, then
+`pnpm install`, then confirm with `--frozen-lockfile`.
+
+**life-stack built the durable form** — `scripts/check-dep-ranges.mjs`, failing the build on any
+first-party range that pins a 0.x minor, naming `pnpm update` as the likely cause, tested against a
+real violation, and failing loudly on scanning zero manifests. It immediately caught a manifest this
+entry's table called current: `apps/tapo` on `secret-store ^0.2.2` — correct today, armed to starve
+the day 0.3.0 ships. **That gap between "is current" and "will stay current" is the argument for a
+check over a report**, and it extends up-bank's rule: per-package beats per-name, per-mechanism beats
+per-package. A check here must also catch mechanism 5, which no range-shape test can see: assert the
+RESOLVED version, not the range.
 
 **What is not being received**: the observe-only `WatchdogOptions.onBreach` (0.9.0) and the
 `snapshotHealth` test seam (0.10.0).

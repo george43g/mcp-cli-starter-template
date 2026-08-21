@@ -1,10 +1,20 @@
 {
   "name": "@george43g/mcp-kit",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "MCP server building blocks: tool registry types, dispatcher with timeout/perf/abort/error-wrap baked in, stdio + Streamable HTTP transports, sanitize() for user content, UUID-gated prompt-injection helpers.",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/george43g/mcp-cli-starter-template.git",
+    "directory": "packages/mcp-kit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -26,17 +36,22 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "pack:check": "pnpm build && npm pack --dry-run --json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "clean": "rm -rf dist coverage",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@george43g/robustness": "workspace:*",
+    "@george43g/robustness": ">=0.11.0 <1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.25.0"
@@ -44,8 +59,13 @@
   "devDependencies": {
     "@george43g/tsconfig": "workspace:*",
     "@george43g/vitest-config": "workspace:*",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/npm": "^13.1.5",
     "@types/node": "^24.13.3",
     "@vitest/coverage-v8": "^3.2.7",
+    "semantic-release": "^24.2.0",
+    "semantic-release-monorepo": "^8.0.2",
     "typescript": "^5.7.0",
     "vitest": "^3.2.7"
   }

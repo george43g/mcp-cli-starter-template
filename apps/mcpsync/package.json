@@ -2,7 +2,7 @@
   "name": "@george43g/mcpsync",
   "version": "0.1.0",
   "private": true,
-  "description": "Cross-host MCP config sync + drift TUI \u2014 one canonical ~/.mcp.json applied to every MCP host (Claude Code, Codex, Claude Desktop, Cursor, Warp, opencode) with dry-run previews, timestamped backups, a 0600 secrets vault, redacted secret scanning, and Claude Desktop extension hot-deploy.",
+  "description": "Cross-host MCP config sync + drift TUI — one canonical ~/.mcp.json applied to every MCP host (Claude Code, Codex, Claude Desktop, Cursor, Warp, opencode) with dry-run previews, timestamped backups, a 0600 secrets vault, redacted secret scanning, and Claude Desktop extension hot-deploy.",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -48,7 +48,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@george43g/robustness": ">=0.1.1 <1",
+    "@george43g/robustness": ">=0.11.0 <1",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.0",
     "fullscreen-ink": "^0.1.0",
