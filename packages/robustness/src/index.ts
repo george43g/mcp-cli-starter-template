@@ -18,6 +18,7 @@ export {
   logShutdown,
   logStartup,
   perf,
+  pruneLogs,
   setFileLogging,
   setLogEnvPrefix,
   setLogFilePrefix,

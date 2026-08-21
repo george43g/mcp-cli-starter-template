@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, writeFileSync, writeSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ import {
   getLogs,
   info,
   perf,
+  pruneLogs,
   _resetForTests as resetLogger,
   setFileLogging,
   setLogEnvPrefix,
@@ -345,5 +346,109 @@ describe("getFileLogLines", () => {
   it("returns [] rather than throwing when the directory does not exist", () => {
     vi.stubEnv("MCP_LOG_DIR", join(tmpdir(), "definitely-not-a-log-dir-9f3a"));
     expect(getFileLogLines()).toEqual([]);
+  });
+});
+
+describe("pruneLogs", () => {
+  const DEAD_PID = 999_999_999; // above every platform's pid_max, so ESRCH
+  const stamp = (n: number) => `2020-01-0${n}T00-00-00`;
+
+  it("deletes the oldest files and KEEPS the newest, by timestamp", () => {
+    // The assertion that matters: a prune with an off-by-one that keeps
+    // everything looks identical to no prune at all, so name the survivors AND
+    // the casualties.
+    const dir = mkdtempSync(join(tmpdir(), "logger-prune-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    for (const n of [1, 2, 3, 4]) {
+      writeFileSync(join(dir, `mcp-${DEAD_PID}-${stamp(n)}.ndjson`), "{}\n");
+    }
+
+    pruneLogs(dir, 2);
+
+    expect(readdirSync(dir).sort()).toEqual([
+      `mcp-${DEAD_PID}-${stamp(3)}.ndjson`,
+      `mcp-${DEAD_PID}-${stamp(4)}.ndjson`,
+    ]);
+  });
+
+  it("orders by the timestamp, not by the pid — a higher pid does not outrank a newer file", () => {
+    // A plain reverse-lexical sort puts `mcp-9999999-<old>` ahead of
+    // `mcp-101-<new>`, which would reap the newer file and keep the stale one.
+    const dir = mkdtempSync(join(tmpdir(), "logger-prune-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    writeFileSync(join(dir, `mcp-${DEAD_PID}-${stamp(1)}.ndjson`), "{}\n");
+    writeFileSync(join(dir, `mcp-101-${stamp(9)}.ndjson`), "{}\n");
+
+    pruneLogs(dir, 1);
+
+    expect(readdirSync(dir)).toEqual([`mcp-101-${stamp(9)}.ndjson`]);
+  });
+
+  it("never deletes the file a LIVE process is appending to, even when it is the oldest", () => {
+    // One directory is shared by every instance with the same prefix. A plain
+    // newest-N prune destroys a running peer's log silently — appendFileSync
+    // reopens by path, so the peer does not even crash.
+    const dir = mkdtempSync(join(tmpdir(), "logger-prune-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    const mine = `mcp-${process.pid}-${stamp(1)}.ndjson`;
+    writeFileSync(join(dir, mine), "{}\n");
+    for (const n of [2, 3, 4]) {
+      writeFileSync(join(dir, `mcp-${DEAD_PID}-${stamp(n)}.ndjson`), "{}\n");
+    }
+
+    pruneLogs(dir, 1);
+
+    const left = readdirSync(dir).sort();
+    expect(left).toContain(mine);
+    expect(left).toEqual([`mcp-${DEAD_PID}-${stamp(4)}.ndjson`, mine].sort());
+  });
+
+  it("protects only the NEWEST file of a live process — its rotated ones are reapable", () => {
+    const dir = mkdtempSync(join(tmpdir(), "logger-prune-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    for (const n of [1, 2, 3]) {
+      writeFileSync(join(dir, `mcp-${process.pid}-${stamp(n)}.ndjson`), "{}\n");
+    }
+
+    pruneLogs(dir, 1);
+
+    expect(readdirSync(dir).sort()).toEqual([
+      `mcp-${process.pid}-${stamp(2)}.ndjson`,
+      `mcp-${process.pid}-${stamp(3)}.ndjson`,
+    ]);
+  });
+
+  it("leaves another prefix's files alone", () => {
+    const dir = mkdtempSync(join(tmpdir(), "logger-prune-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    writeFileSync(join(dir, `imsg-${DEAD_PID}-${stamp(1)}.ndjson`), "{}\n");
+    writeFileSync(join(dir, `mcp-${DEAD_PID}-${stamp(1)}.ndjson`), "{}\n");
+
+    pruneLogs(dir, 0);
+
+    expect(readdirSync(dir)).toEqual([`imsg-${DEAD_PID}-${stamp(1)}.ndjson`]);
+  });
+
+  it("does not throw when the directory does not exist", () => {
+    expect(() => pruneLogs(join(tmpdir(), "definitely-not-a-log-dir-9f3a"), 1)).not.toThrow();
+  });
+
+  it("reaps on rotation, through the public logging path", () => {
+    const dir = mkdtempSync(join(tmpdir(), "logger-prune-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    vi.stubEnv("MCP_LOG_MAX_BYTES", "200");
+    vi.stubEnv("MCP_LOG_KEEP_FILES", "1");
+    // Leftovers from previous runs: reaped on FIRST open, before any rotation.
+    for (const n of [1, 2, 3]) {
+      writeFileSync(join(dir, `mcp-${DEAD_PID}-${stamp(n)}.ndjson`), "{}\n");
+    }
+
+    for (let i = 0; i < 40; i++) info(`rotate_${i}`, { pad: "x".repeat(64) });
+
+    const left = readdirSync(dir);
+    // 1 kept + this live process's open file. Without the prune, 40 lines at
+    // ~200 bytes per file would leave a file per roll and all three leftovers.
+    expect(left.length).toBeLessThanOrEqual(2);
+    expect(left).toContain(getLogFilePath()?.split("/").pop());
   });
 });

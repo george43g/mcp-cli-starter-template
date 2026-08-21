@@ -193,11 +193,47 @@ analysis.
   file, falling back to newest. "Newest file" returns the *other* process's log
   whenever two instances share a machine — an MCP server plus a TUI, or a
   respawned host.
+- **Old files are reaped (new in 0.11.0)** — `MCP_LOG_KEEP_FILES`, default 5.
+  See below; before 0.11.0 rotation bounded file size and nothing bounded disk.
 
 Programmatic setters beat their env knobs; all are read at call time, so flags
 parsed into `process.env` after import still take effect. That claim was not
 quite true before 0.6.0: `MCP_LOG_PREFIX` was read once at module load, so the
 `--log-prefix` flag set the variable and changed nothing.
+
+### Rotation bounds file size; `pruneLogs` bounds DISK (new in 0.11.0)
+
+Rotation opens a new file at `MCP_LOG_MAX_BYTES`. Until 0.11.0 nothing ever
+deleted the old one, so a long-lived server accumulated 10MB files forever. On
+the HTTP transport that happened silently — it deliberately does not mirror to
+stderr (stray stderr garbles a TUI), so the files piled up in `$TMPDIR` where
+nobody was watching.
+
+`ensureLogFile()` now calls `pruneLogs()` whenever it opens a file: on rotation,
+and on the FIRST open, which is what reaps whatever previous runs left behind.
+
+```ts
+import { pruneLogs } from "@george43g/robustness";
+
+pruneLogs();              // the configured dir, MCP_LOG_KEEP_FILES (default 5)
+pruneLogs(dir, 10);       // or explicitly, e.g. from a maintenance command
+```
+
+**A file count, not a byte budget, deliberately.** Rotation already caps every
+file at `MCP_LOG_MAX_BYTES`, so `keep x maxBytes` *is* the byte budget — ~50MB
+at the defaults — and a count needs no `stat()` call per file.
+
+**A live process's open file is never deleted.** One directory is shared by
+every instance with the same prefix, so a plain newest-N prune would destroy a
+running peer's log. It would not even crash the peer — `appendFileSync` reopens
+by path — it would silently lose its history, which is worse. Only the newest
+file per live pid is protected; that process's own rotated files are reapable.
+The effective cap is therefore `keep` + one file per live instance.
+
+Ordering is by the **timestamp** segment of the filename, not the whole name: a
+plain reverse-lexical sort orders by pid first, so `mcp-9999-<old>` would sort
+ahead of `mcp-101-<new>` and "newest" would mean "highest pid". `getFileLogLines`
+shared that flaw in its fallback branch and is fixed in the same release.
 
 ### `_resetForTests()` also resets the prefixes (changed in 0.6.0)
 
@@ -381,7 +417,7 @@ independently:
 - `MCP_LOG_DIR`, `MCP_LOG_PREFIX`
 - `MCP_LOG_LEVEL`
 - `MCP_LOG_TO_FILE`, `MCP_LOG_REDACT`
-- `MCP_LOG_RING_SIZE`, `MCP_LOG_MAX_BYTES`
+- `MCP_LOG_RING_SIZE`, `MCP_LOG_MAX_BYTES`, `MCP_LOG_KEEP_FILES`
 - `MCP_HEAP_WARN_MB`, `MCP_HEAP_CHECK_MS`
 
 ```ts
