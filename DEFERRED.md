@@ -1371,8 +1371,20 @@ DEFERRED #41's starvation problem in structural form, and unlike #41 no version 
    a `.releaserc.json`, a release job chained after secret-store, and `packages/mcp-kit/**` in the
    workflow's `paths`. mcp-kit's only workspace runtime dep is `@george43g/robustness`, already
    published, so it needs no companion release — `shared-types` is NOT a dependency of it. **The
-   one-time npm bootstrap publish is George's own manual step**, and until it happens the release
-   job runs, verifies, and finds nothing to do (trusted publishing requires the package to exist).
+   one-time npm bootstrap publish is George's own manual step**, and until it happens the job is
+   `workflow_dispatch`-gated.
+
+   **The gate is not cosmetic, and the first version of this entry got it wrong.** It said the job
+   would "run, verify, and find nothing to do". False: **semantic-release's first release for a
+   package is 1.0.0** — it does not read the manifest's version — so an unguarded job on a
+   never-published package would try to publish `mcp-kit@1.0.0` off the `feat(mcp-kit)` commits, not
+   the declared 0.1.0. It would fail at the npm step (trusted publishing requires the package to
+   already exist, and there is no `NPM_TOKEN` here by design), but *"it fails safely"* is not
+   something to rely on for a version number that is immutable once taken — this repo has published
+   two unintended majors already. The in-flight release run was CANCELLED before the job reached it
+   and the gate added; `npm view @george43g/mcp-kit` still returns 404, confirming nothing escaped.
+   `resync-example` deliberately does NOT list mcp-kit in `needs` while the gate is on, because a job
+   hung off a `workflow_dispatch`-only job is skipped on every push — DEFERRED #38's original bug.
 
    **The `publishConfig` trap this entry predicted fired immediately, and needed a real gate.**
    `build-templates.mjs` selects published packages by `publishConfig.access` alone, so merely adding

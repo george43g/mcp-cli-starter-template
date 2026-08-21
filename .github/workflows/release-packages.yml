@@ -337,6 +337,24 @@ jobs:
           NPM_CONFIG_PROVENANCE: "true"
 
   mcp-kit:
+    # BOOTSTRAP-GATED, and the guard is not cosmetic.
+    #
+    # semantic-release's FIRST release for a package is 1.0.0 — it does not read
+    # the manifest's version. So an unguarded job on a package that has never
+    # published would try to publish `mcp-kit@1.0.0` off the `feat(mcp-kit)`
+    # commits, not the 0.1.0 the manifest declares. It would fail at the npm
+    # step (trusted publishing requires the package to already exist, and there
+    # is no NPM_TOKEN here by design) — but "it fails safely" is not a thing to
+    # rely on for a version number that is immutable once taken. This repo has
+    # published two unintended majors already; that is enough.
+    #
+    # An earlier comment on this job claimed semantic-release "finds nothing to
+    # do" until the bootstrap. That was wrong: a fresh package with feat commits
+    # in its path has plenty to do. Same shape as mcpsync's old guard.
+    #
+    # TO ENABLE: after the manual `pnpm publish` of 0.1.0 and the Trusted
+    # Publisher config on npmjs.com, delete this `if:` and the comment above it.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: secret-store
     steps:
@@ -377,10 +395,6 @@ jobs:
       - name: Pack sanity (dist + src + types + README/LICENSE in the tarball)
         run: pnpm --filter @george43g/mcp-kit pack:check
 
-      # NOTE: this job cannot publish until the one-time manual bootstrap of
-      # 0.1.0 exists on npm and its Trusted Publisher is configured — trusted
-      # publishing requires the package to already exist. Until then the job
-      # runs, verifies, and semantic-release finds nothing to do.
       - name: Release (semantic-release → npm via OIDC + GitHub release)
         run: pnpm --filter @george43g/mcp-kit exec semantic-release
         env:
@@ -412,7 +426,11 @@ jobs:
   # 2026-08-22, so the list is now simply "every job above".
   resync-example:
     name: Resync example/ whatever the release jobs did
-    needs: [robustness, cli-kit, tui-kit, secret-store, mcp-kit]
+    # mcp-kit is deliberately ABSENT: it is `workflow_dispatch`-only until its
+    # bootstrap, and a job hung off it would be skipped on every push — DEFERRED
+    # #38's original bug wearing a different hat. Restore it here when the
+    # bootstrap gate comes off.
+    needs: [robustness, cli-kit, tui-kit, secret-store]
     if: ${{ !cancelled() && github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
