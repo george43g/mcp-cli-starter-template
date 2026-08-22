@@ -2776,6 +2776,23 @@ This matters to THIS repo specifically: a kit bump is the most conspicuous chang
 so it collects blame for every flake it coincides with. If a consumer reports a kit regression, the
 first question is which line of the diff could produce that symptom — and "none" is an answer.
 
+**RE-OPENED WITHIN THE HOUR BY 0.12.0, which is the argument for a check over a report.** All five
+consumers reached `robustness@0.11.0` on 2026-08-22 — the first time in this arc — after five
+hand-written tables and five sessions acting on them. `0.12.0` published the same evening. Resolved
+versions read from consumer lockfiles that night:
+
+| repo | resolves |
+|---|---|
+| EQStack | **0.12.0** |
+| browser-tab-mcp | 0.11.0 |
+| life-stack | 0.11.0 |
+| up-bank-mcp | 0.11.0 |
+
+One of four current, hours after four of four were. **A state that takes five agents a day to reach
+and one publish to undo is not fixed, it is being manually held.** The durable form is life-stack's
+`scripts/check-dep-ranges.mjs`, extended to assert the **resolved** version rather than the range's
+shape — mechanism 5 is invisible to any test that only reads a manifest.
+
 **Cost**: ~15 min per release to sweep and report; unbounded if it keeps not happening.
 
 ---

@@ -1446,3 +1446,143 @@ peer message.
 `release-packages.yml` paths and the job is chained after secret-store, so a
 push touching mcp-kit runs a fifth job. Provenance is ON and fails the publish
 outright (422) if this repo goes private.
+
+# Checkpoint — 2026-08-22 (night)
+
+**This section SUPERSEDES both 2026-08-22 checkpoints above and outranks any
+conversation summary.** Where they disagree, this is correct. Their Traps and
+Corrections still hold; their State / Open / Tree / Resume are stale — the
+evening one's `Blocked on you` is now empty, and its `Resume` is done.
+
+## State
+
+**All five packages published and tagged**, mcpsync gone, `main` clean. The
+release pipeline is fully armed for the first time: `mcp-kit@0.1.0` shipped and
+its job ungated. Telemetry is **parked by George mid-design**, pending his own
+proposal.
+
+## Constraints (verbatim, George, this session)
+
+- On telemetry, stopping the design: *"actually no. stop. you assumptions are
+  wrong. I will propose a way forward for you, so just park this for now."*
+  **Do not resume that design from DEFERRED #43** — it holds facts, not a plan.
+- On the spool location, his position, recorded unadopted and **contradicting**
+  g-home-server's measurement: *"the logs SHOULD get stored in the TMP directory
+  - this guarantees that they'll eventually get deleted rather than piling up or
+  if they contain sensetive info."*
+- On the npm token he pasted: *"that token will expire after 7 days, so dont
+  worry about exposing it. i will disable it right after the publish is done."*
+  It is `npm_qjKpHAd…` — **treat as live until he confirms revocation**; it was
+  never written to a repo file and never added to GitHub Actions.
+
+## Done
+
+- **`@george43g/mcp-kit@0.1.0` is on npm**, tagged `mcp-kit-v0.1.0` → `d0219ae`,
+  Trusted Publisher `id: 8bf00f47-fb66-47e6-a0d5-ba99ee4b4df2`, release job
+  ungated (`3171d53`). George ran the publish; I ran `npm trust` and the tag.
+- **`robustness@0.12.0`** (`68cb5c7`) — opt-in email redaction, `redactEmail()`,
+  `redactionCoverage()`, coverage printed in the startup line.
+- **`apps/mcpsync/` removed** (`11b9914`), 74 files, −7067 lines. Verified from
+  GitHub before deleting: 5 commits ancestors of life-stack `origin/main`,
+  `src/`+`tests/` byte-identical across 51 files.
+- All five verified live: robustness 0.12.0, cli-kit 2.0.1, tui-kit 0.5.1,
+  secret-store 0.2.2, mcp-kit 0.1.0 — each with a matching remote tag.
+
+## Open
+
+Every open item is in `DEFERRED.md`, the register. Evidence each is still open:
+
+- **#25 step 3 — does the scaffolder stop vendoring mcp-kit?** Unblocked (it is
+  on npm) and deliberately not done. `PENDING_BOOTSTRAP` at
+  `build-templates.mjs:67` still names it, and `06-mcp-kit/lib/src/` +
+  `example/packages/mcp-kit/` still exist. **A real trade, not an oversight**: a
+  vendored copy is customisable by the generated repo, which is what browser-tab
+  did.
+- **#43 telemetry** — parked by George, above.
+- **#12 the rename** — never attempted. Touches published `repository.url`.
+- **#3 MCPB bundle is broken**, reframed 2026-08-x, not fixed.
+- **#41 starvation** — all five consumers were current at 0.11.0; **0.12.0 has
+  already re-opened the gap**: EQStack resolves 0.12.0, browser-tab / life-stack
+  / up-bank resolve **0.11.0** (read from their lockfiles tonight). Nothing
+  mechanical holds it — five hand-written tables did.
+- **#11 `packages/secrets` / `env-loader`** — retire or justify. Dormant.
+- **#36 / #37** — release-please for generated repos; consumer-side canary.
+
+## Corrections
+
+- **"The publish didn't land" was WRONG.** After George's successful publish,
+  `npm view` and a direct registry GET both 404'd for minutes and I told him it
+  had failed. **My negative control was mis-specified**: `robustness` answering
+  200 proves the QUERY works, not that a BRAND-NEW name propagates instantly.
+  `npm trust` succeeding while reads still 404'd is what settled it. *A control
+  must vary the thing under test.*
+- **Publishing 0.1.0 did NOT close the 1.0.0 hazard.** semantic-release resolves
+  `lastRelease` from **git tags**, not the registry. Every other package had a
+  tag; mcp-kit had none. Without `mcp-kit-v0.1.0` the first automated run would
+  have cut **1.0.0**. **Bootstrapping needs three things, not two.**
+- **`imsg-mcp` IS published, at 1.25.1, under its UNSCOPED name.** I queried
+  `@george43g/imsg-mcp`, found 404, and told EQStack to add `private: true` as
+  "cheap insurance". That would have **silently ended their releases** —
+  `semantic-release-monorepo`'s `ignorePrivate` skips private packages. Worse
+  than a lookup error: **my own tool output printed `name='imsg-mcp'` three
+  lines above the query that used the scoped form.** The probe saw it; I
+  overrode it with an expectation.
+- **The externalise cost I quoted three times did not exist.** My own
+  `apps/mcpsync/HANDOFF.md` claimed externalising the kits meant moving
+  `cli-table3`/`picocolors`/`ink`/`react` out of `dependencies`. All seven were
+  already direct deps. *A cost that travels through three hands unchecked is
+  folklore, not a measurement* — hardest to question when it came from the
+  upstream doc.
+
+## Traps
+
+- **A CHECK YOU HAVE NOT WATCHED FAIL IS NOT A CHECK.** life-stack's grep for
+  leftover inlining matched the *import binding* as readily as inlined source —
+  it would have passed either way. Distinct from, and worse than, the
+  succeeded-because-empty family: a test with no discriminating power.
+- **A NEGATIVE FROM A SHAPE THAT CANNOT REACH THE CODE IS NO EVIDENCE, NOT WEAK
+  EVIDENCE.** up-bank could not reproduce the duplicate shutdown marker because
+  their cleanup returned in 6ms and never armed the 3s force-exit net. Hedging
+  such a null as "weak" invites averaging it against a positive.
+- **A RETENTION POLICY RIGHT FOR DISK IS NOT RIGHT FOR DELIVERY.** `pruneLogs`
+  reaps by count (`MCP_LOG_KEEP_FILES=5`) and reaps **silently**. Five files is
+  five *rotations*, minutes under burst. Correct for the problem it solved;
+  wrong the moment a shipping requirement appeared under it.
+- **INFERRING BEHAVIOUR FROM A MISSING CALL SITE IS ONLY VALID WHEN THE
+  BEHAVIOUR REQUIRES ONE.** Two sessions concluded their apps had not adopted
+  phone redaction, from a missing import; the default-on logger had been doing
+  it all along. Pairs with: absence-by-grep is valid only for symbols confirmed
+  to be literals (`key("LOG_KEEP_FILES")` never appears as `MCP_LOG_KEEP_FILES`).
+- **A RELATIVE LINK IN A FILE DESIGNED TO MOVE is a defect at authoring time.**
+  Neither repo's docs check covers `apps/*/README.md`.
+
+## Tree
+
+`main` at `3171d53`, level with origin, clean. On branch
+`docs/park-telemetry`, clean, **PR #99 open** (docs-only, CI running). One
+worktree, no stashes. Peer repos untouched.
+
+## Blocked on you
+
+- **PR #99** — merge when green (docs only).
+- **#25 step 3** — the de-vendoring decision. Yours; it changes what every
+  future `mcp-scaffold init` emits.
+- **The telemetry proposal** you said you would bring.
+- **Revoking the npm token** you pasted, once you are satisfied.
+
+## Resume
+
+**Nothing is mid-flight** beyond PR #99 awaiting CI. No background tasks, nothing
+staged, no unanswered peer message — eqstack, up-bank, browser-tab, life-stack
+and gmail all closed their threads.
+
+1. **Merge #99.**
+2. **Wait for George's telemetry proposal.** Do not design against #43.
+3. **#25 step 3** when he decides; it is the only kit item left with momentum.
+4. **#41's durable fix** — life-stack's `check-dep-ranges.mjs` extended to assert
+   the RESOLVED version, since mechanism 5 is invisible to any range-shape test.
+   0.12.0 re-opened the gap within the hour, which is the argument for it.
+
+**Watch on the next release**: the mcp-kit job is now ungated and in
+`resync-example`'s `needs`, so a push touching `packages/mcp-kit/**` runs a
+fifth publishing job for the first time. It has never run live.
