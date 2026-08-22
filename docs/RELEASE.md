@@ -91,8 +91,14 @@ Semantic-release in its default config publishes one root package. If you need t
 > section — it only applies to maintainers of the template repository itself.
 
 Published packages: `@george43g/robustness`, `@george43g/cli-kit`,
-`@george43g/tui-kit`, `@george43g/secret-store`, and `@george43g/mcpsync` (the
-last still `workflow_dispatch`-only, pending its bootstrap).
+`@george43g/tui-kit`, `@george43g/secret-store`, and `@george43g/mcp-kit` (the
+last still `workflow_dispatch`-only, pending its one-time bootstrap publish —
+semantic-release's first release for a package is 1.0.0, not the manifest's
+version, which is why the gate is not cosmetic).
+
+`@george43g/mcpsync` was on this list until 2026-08-22. It migrated to
+`life-stack/apps/mcpsync` **without publishing** (DEFERRED #10), and was never
+on npm at any point.
 
 They publish via `.github/workflows/release-packages.yml` on every push to
 `main` touching one of their directories (also `workflow_dispatch`-able for a

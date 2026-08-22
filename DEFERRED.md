@@ -226,21 +226,20 @@ read has a fallback, a silently-dropped write is data loss. Cross-platform CI is
 
 ---
 
-## 9. mcpsync — TUI env/args editing
+## 9. MOVED — mcpsync TUI env/args editing is life-stack's now
 
-**Status**: not built. The TUI (`apps/mcpsync/src/tui/App.tsx`) applies servers to hosts
-but can't edit a server's `env`/`args` in place.
+**Status**: transferred with the app 2026-08-22. Not closed and not abandoned — it stopped being
+ours the moment mcpsync left. Kept as a pointer rather than deleted so the number is never reused
+and the trail survives.
 
-**Why deferred**: `packages/tui-kit` has no text-input primitive (only `useVimKeys` /
-`useMouse` / `StatusBar` / `HelpBar`), so this needs a new ink text-edit surface plus a
-canonical `.mcp.json` write-back path — a real feature, not a quick win.
+**Where it lives now**: `life-stack/apps/mcpsync/HANDOFF.md`, under "Known gap: TUI env/args
+editing", carried in full — the two blockers (no text-input primitive in `@george43g/tui-kit`; no
+canonical `.mcp.json` write-back path plus `reload()`), the sketch (an `e` edit mode over ink's
+`useInput`, or adopt `ink-text-input`), and the ~half-day estimate.
 
-**Trigger to action**: when editing servers from the grid (vs. `mcpsync add` or an editor)
-is wanted often enough to justify it.
-
-**Cost**: ~half a day. Add an `e` edit mode over ink's `useInput` (or add `ink-text-input`),
-edit the focused server's env/args, write back to canonical via a new `core` helper, then
-`reload()`. Needs its own plan.
+**The half that is still OURS**: tui-kit ships `useVimKeys`, `useMouse`, `StatusBar`, `HelpBar` and,
+since 0.5.x, the list primitives — but **no text-input primitive**. If a second consumer ever wants
+one, that is a tui-kit item and belongs in a new entry, not this one.
 
 ---
 
@@ -273,6 +272,13 @@ completion of it — the move itself is still to do.
   is no reinstall" fact about the global bin, DEFERRED #9's TUI editing gap in full, and the
   secrets invariant.
 
+**RESOLVED 2026-08-22 — landed, PUSHED, and `apps/mcpsync/` is now removed from this repo.**
+Verified from GitHub rather than from their report: all five commits are ancestors of `origin/main`
+on `github.com/george43g/life-stack`, with 60 files under `apps/mcpsync/`. File-set diff against our
+tracked copy: **the only file not carried is `.releaserc.json`** (deliberate — no publishing), and
+their only addition is `bin/mcpsync` (their PATH convention). `src/` + `tests/` are byte-identical
+across all 51 files — `git archive` both sides into a scratch dir, `diff -r`, empty.
+
 **LANDED at the new home 2026-08-22** — life-stack `3441550`, `feat(mcpsync): migrate from
 mcp-cli-starter-template into apps/mcpsync`, 61 files, under George's approval given **directly to
 that session, not relayed through this one**. They verified before reporting: 170/170 tests,
@@ -281,11 +287,17 @@ read-only against the real host set. `src/` and `tests/` are byte-identical to o
 edits. Their manifest delta is repository URL, the four `workspace:*` devDeps rewritten
 (`cli-kit ^2.0.1`, `tui-kit >=0.5.1 <1`), and the semantic-release devDeps plus `pack:check` dropped.
 
-**The deletion here is NOT done and is deliberately held**: `3441550` is committed on their local
-`main` and **not yet pushed** (pushing needs separate authority there). Deleting against a commit
-nobody can fetch would mean mcpsync exists in no pushed tree if that push is refused or reset. Same
-trade as splitting the departure half: two copies for a day beats none for an hour. **Trigger to
-finish: they confirm the push.**
+**The deletion was held until the push, deliberately** — `3441550` sat on their local `main`
+unpushed, and deleting against a commit nobody can fetch would have meant mcpsync existed in no
+pushed tree if that push were refused or reset. Same trade as splitting the departure half: two
+copies for a day beats none for an hour. George pushed it himself; the hold cost one evening and
+bought the guarantee.
+
+**What the removal touched here**, beyond `apps/mcpsync/` itself: six `docs/plans/2026-08-mcpsync-*`
+plans, the `AGENTS.md` "MCP servers (project scope)" section (**the workflow is unchanged** — the
+`mcpsync` bin still runs against this repo's `.mcp.json`, only its source moved), `docs/RELEASE.md`'s
+published-package list, and a comment in `check-publishable-manifests.mjs`. **`.gitignore`'s
+`*.bak.[0-9]*` pattern STAYS** — the bin still writes timestamped backups here.
 
 **A CORRECTION TO OUR OWN HANDOFF NOTE, from them.** `apps/mcpsync/HANDOFF.md` says "there is no
 reinstall — the pnpm shim is PATH-based". Right conclusion, wrong mechanism: the shim at

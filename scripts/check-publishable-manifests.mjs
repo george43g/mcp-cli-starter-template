@@ -163,7 +163,8 @@ function checkExportsResolvable(dir, pkg) {
  * current version. A caret on a 0.x release pins the MINOR (`^0.1.1` means
  * `>=0.1.1 <0.2.0`), so bumping a sibling to 0.2.0 silently strands every
  * consumer still on `^0.1.x` — they ERESOLVE (field-note 34). This caught
- * apps/mcpsync, which the first round of that fix missed.
+ * the old `apps/mcpsync` (since migrated to life-stack), which the first round
+ * of that fix missed.
  */
 function checkSiblingRanges(dir, pkg, versions) {
   for (const field of ["dependencies", "peerDependencies"]) {
