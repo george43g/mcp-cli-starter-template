@@ -117,7 +117,7 @@ cmd "plan" help="Dry-run preview of which migrations would apply" {
 }
 
 cmd "migrate" help="Run a single migration or one whole phase" {
-    arg "<id>" help="e.g. 06-mcp-kit/m1-mcp-kit, or just 06-mcp-kit"
+    arg "<id>" help="e.g. 07-shared-types/m1-shared-types, or just 07-shared-types"
     flag "--target" help="Path to target repo" {
         arg "<dir>"
     }

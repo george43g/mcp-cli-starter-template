@@ -155,7 +155,7 @@ cmd migrate help="Run a single migration or one whole phase" {
     flag --cli-dir help="Repo-relative directory receiving the usage(1) artifacts pipeline (default: .)" {
         arg <dir>
     }
-    arg <id> help="e.g. 06-mcp-kit/m1-mcp-kit, or just 06-mcp-kit"
+    arg <id> help="e.g. 07-shared-types/m1-shared-types, or just 07-shared-types"
 }
 cmd add-mcp-app help="Add a second MCP app to apps/<name>-mcp/ inside an existing scaffolded repo" {
     flag --target help="Path to the scaffolded repo" {
