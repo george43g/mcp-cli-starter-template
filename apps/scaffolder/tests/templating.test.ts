@@ -88,13 +88,16 @@ describe("substitute", () => {
 
   it("protects every published package from project-scope substitution", () => {
     // robustness AND cli-kit are both published, so both keep the scope they
-    // are published under. Only locally-generated packages (mcp-kit here) take
-    // the target's scope — rewriting a published name yields @myorg/cli-kit,
-    // which resolves to nothing on npm.
+    // are published under. Only locally-generated packages (shared-types here)
+    // take the target's scope — rewriting a published name yields
+    // @myorg/cli-kit, which resolves to nothing on npm.
+    //
+    // shared-types is the last vendored package; mcp-kit held this role until
+    // it published (0.1.0, 2026-08-22) and moved to the shielded side.
     expect(
       substitute(
         'import { installWatchdog } from "@george43g/robustness"; ' +
-          'import x from "@george43g/cli-kit"; import y from "@george43g/mcp-kit";',
+          'import x from "@george43g/cli-kit"; import y from "@george43g/shared-types";',
         {
           name: "foo",
           nameUpper: "FOO",
@@ -103,7 +106,7 @@ describe("substitute", () => {
       ),
     ).toBe(
       'import { installWatchdog } from "@george43g/robustness"; ' +
-        'import x from "@george43g/cli-kit"; import y from "@myorg/mcp-kit";',
+        'import x from "@george43g/cli-kit"; import y from "@myorg/shared-types";',
     );
   });
 

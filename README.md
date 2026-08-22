@@ -59,16 +59,13 @@ variant, so a green local verify means the gates passed.
 
 ## What the scaffolder produces
 
-Ten phases applied in order. Each phase has 1–5 migrations. See `mcp-scaffold list` for the full ordered list, or `skills/mcp-starter-architect/SKILL.md` for the canonical AI-readable guide describing every rule + how to apply it manually.
+Nine phases applied in order. Each phase has 1–5 migrations. Phases 04-robustness, 05-utility-pkgs and 06-mcp-kit are gone, not renumbered — those packages are published, so generated repos take a registry dependency instead of a vendored copy. See `mcp-scaffold list` for the full ordered list, or `skills/mcp-starter-architect/SKILL.md` for the canonical AI-readable guide describing every rule + how to apply it manually.
 
 | Phase | Scope |
 |-------|-------|
 | 01-bootstrap | Mode, package manager, name, monorepo skeleton |
 | 02-toolchain | mise, node version, git, .gitignore (with LFS anti-footgun), .gitattributes |
 | 03-configs | Shared tsconfig + biome + vitest packages + full turbo.json (30+ env vars) |
-| 04-robustness | env + NDJSON logger + watchdog (event-loop + memory + idle) + shutdown registry + withTimeout + health + retry + rate-limit |
-| 05-utility-pkgs | cli-kit, tui-kit |
-| 06-mcp-kit | tool-registry, dispatcher (6 invariants), stdio + Streamable HTTP transports, sanitize, prompt-injection guardrails |
 | 07-shared-types | Zod schemas + Rust drift-check |
 | 08-app | The user-facing tool — single bin, MCP/CLI/TUI/REPL surfaces, dev MCP proxy, 15-assertion stress harness, MCP Resources demo (`health://`, `logs://recent/{n}`), MCPB Desktop bundle |
 | 09-rust-accel | Optional napi-rs v3 crate with hand-mirrored types |

@@ -95,33 +95,3 @@ export async function portPackage(
   if (filesDivergent.length > 0) result.filesDivergent = filesDivergent;
   return result;
 }
-
-/** Standard tsconfig.json for a node-target package (most common). */
-export const standardNodeTsconfig = (scope: string): string => `{
-  "extends": "${scope}/tsconfig/node.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "noEmit": false
-  },
-  "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts", "node_modules", "dist"]
-}
-`;
-
-/** Standard tsconfig.json for a react/JSX package. */
-export const standardReactTsconfig = (scope: string): string => `{
-  "extends": "${scope}/tsconfig/react.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "noEmit": false
-  },
-  "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "node_modules", "dist"]
-}
-`;
-
-/** Standard vitest.config.ts (re-exports the shared preset). */
-export const standardVitestConfig = (scope: string): string =>
-  `import shared from "${scope}/vitest-config/vitest.shared";\n\nexport default shared;\n`;

@@ -1571,10 +1571,25 @@ DEFERRED #41's starvation problem in structural form, and unlike #41 no version 
    under test — the other being the tsx-CLI SIGKILL — and both times the harness failed silently
    toward a result that looked clean. Same family as the standing trap: *an operation that succeeded
    because it had nothing to do.*
-3. **Whether the SCAFFOLDER should stop vendoring** and emit an npm dependency instead. NOT decided
-   here, and not implied by publishing: a vendored copy is customisable by the generated repo, which
-   is exactly what browser-tab did. Publishing gives consumers the choice; changing what `init`
-   emits takes it away.
+3. **Whether the SCAFFOLDER should stop vendoring** and emit an npm dependency instead.
+   **DECIDED 2026-08-22 by George — verbatim: *"yes stop vendoring mcp-kit - repos move to depending
+   on the npm lib."*** Phase `06-mcp-kit` is deleted (gone, not renumbered, matching how
+   04-robustness and 05-utility-pkgs went), `PENDING_BOOTSTRAP` is emptied, and generated repos now
+   resolve `@george43g/mcp-kit` from the registry via `applyPublishedRanges()` exactly as robustness
+   does. `shared-types` stays vendored: still unpublished, and meant to be edited alongside the
+   consuming repo's Rust structs.
+
+   The cost recorded above is real and is now being paid: a vendored copy is customisable and a
+   dependency is not. **Measured at the moment of the change**, both vendoring consumers had already
+   diverged, in opposite directions — up-bank purely stale (no `ContentBlock`, no `toContent`),
+   browser-tab carrying one addition of its own (`sanitizeContent`) plus a stricter dev gate. So
+   de-vendoring is a pure upgrade for one and a blocked migration for the other. See #44.
+
+   **Blast radius that only the deletion revealed**: phase 06 was the last caller of
+   `standardNodeTsconfig` and `standardVitestConfig` in `core/package-port.ts`, and
+   `standardReactTsconfig` had had no caller for longer. All three were removed as dead code — which
+   is also what restored the scaffolder's function-coverage floor, since deleting a fully-covered
+   file had dropped the average to 84.33% against an 85% gate.
 
 **TWO SEAMS WERE DESIGNED AND DELIBERATELY NOT BUILT**: `ToolDefinition.scopes?` +
 `BuildDispatcherOptions.scopeCheck?`, and an async `onErrorResponse?`. They came out of the design
@@ -2972,3 +2987,58 @@ different units.** Whatever ships, this needs revisiting.
   deletion — no unbounded growth, no sensitive data lingering on a stranger's disk — with Vector
   picking files up promptly into its own cache. **Both positions are recorded; neither is adopted.**
 - Whether an agent is configured (Vector) or written, and where it lives.
+
+---
+
+## 44. De-vendoring mcp-kit is blocked for browser-tab and free for up-bank — measured, opposite directions
+
+Opened 2026-08-22, when the scaffolder stopped vendoring `mcp-kit` (#25 item 3). Both consumers that
+carry `packages/mcp-kit/` had already diverged from the published `0.1.0`, and **the divergence runs
+in opposite directions**, so one generic "please migrate" message would have been wrong for both.
+
+Measured by diffing each tree against `packages/mcp-kit/src/` at the `mcp-kit-v0.1.0` tag, which is
+byte-identical to what is on npm (`git log mcp-kit-v0.1.0..HEAD -- packages/mcp-kit` is empty).
+
+### up-bank-mcp — purely stale, migration is a pure upgrade
+
+Their copy predates the fold-in. It lacks `ContentBlock`, `ToolDefinition.toContent?` and
+`BuildDispatcherOptions.devOnlyEnabled?`; every other difference is the older text of the same file.
+Nothing of theirs would be lost. **Recommend de-vendoring now** against `^0.1.0`.
+
+### browser-tab-mcp — two blockers, one of them security-relevant
+
+1. **`sanitizeContent()` exists only in their copy.** Not in published mcp-kit, so de-vendoring
+   deletes it. It is a real API, not a tweak: null-safe, returns `""` rather than `null`, strips the
+   same ANSI/C0 set as `sanitize` but caps at a 1 MB budget with a `…[truncated]` marker instead of
+   truncating to a small default. **Upstreaming it is a mcp-kit minor**, and it is the same shape as
+   every other lift: their vendored addition is the work order.
+
+2. **The dev gate's default is inverted between the two copies.** Published `dispatch.ts:92-93`:
+
+   ```ts
+   const devGated =
+     def?.devOnly === true && opts.devOnlyEnabled !== undefined ? !opts.devOnlyEnabled() : false;
+   ```
+
+   `&&` binds tighter than `?:`, so a `devOnly` tool with **no** `devOnlyEnabled` predicate yields
+   `false` — **not gated, callable**. Their copy reads
+   `def.devOnly && !(opts.devOnlyEnabled?.() ?? false)`, which gates it — **not callable**.
+
+   So published mcp-kit **fails open** and their vendored copy **fails closed**. A browser-tab
+   migration that does not also pass `devOnlyEnabled` makes their dev-only tools callable over MCP,
+   silently, with no type error and no test failure to catch it.
+
+   **The published default is arguably the wrong one**, and the comment directly above it argues
+   against itself: *"A dev-only tool that is not enabled must be INDISTINGUISHABLE from one that does
+   not exist."* A gate that defaults to open does nothing unless the caller remembers it — which is
+   the failure mode the comment exists to prevent.
+
+   **NOT changed here, deliberately.** Flipping the default is a behaviour change on a 0.x package,
+   and per #34 a breaking marker on a 0.x cuts 1.0.0. It also needs checking against the generated
+   app, which registers dev-only tools and passes no predicate today — so the flip would change the
+   golden output's behaviour too. **Trigger**: decide it with George alongside the `sanitizeContent`
+   lift, since both land in the same mcp-kit release.
+
+**Neither consumer was told to migrate before this was measured.** The standing rule is that a
+request is usually right about the symptom and often wrong about the mechanism; here the *sender*
+would have been wrong about the mechanism, in a way that would have silently opened a tool gate.

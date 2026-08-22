@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildProgram } from "../src/core/program.js";
 import { rangeFor } from "../src/core/runtime-source.js";
+import { PUBLISHED_PACKAGES } from "../src/generated/published-versions.js";
 
 const cleanup: string[] = [];
 
@@ -90,18 +91,23 @@ describe("migrate command safety defaults", () => {
       },
     );
 
-    expect(existsSync(join(cwd, "packages", "robustness"))).toBe(false);
+    // EVERY published package, not just robustness — mcp-kit shipped as
+    // vendored source until 0.1.0 (2026-08-22), and the only thing that made
+    // that visible was the E2E smoke. Enumerating the list means the next
+    // package to publish cannot be half-de-vendored without this failing.
+    expect(PUBLISHED_PACKAGES.length).toBeGreaterThanOrEqual(5);
+    for (const { dir } of PUBLISHED_PACKAGES) {
+      expect(existsSync(join(cwd, "packages", dir))).toBe(false);
+    }
     const pkg = JSON.parse(
       await readFile(join(cwd, "apps", "fresh-tool-mcp", "package.json"), "utf8"),
     );
     // Derived, not literal — a hardcoded range here is what let the scaffolder
     // ship "^0.1.0" while robustness was on 0.2.1.
-    const expected = rangeFor("@george43g/robustness");
-    expect(pkg.dependencies["@george43g/robustness"]).toBe(expected);
-    const mcpKit = JSON.parse(
-      await readFile(join(cwd, "packages", "mcp-kit", "package.json"), "utf8"),
-    );
-    expect(mcpKit.dependencies["@george43g/robustness"]).toBe(expected);
+    for (const { name } of PUBLISHED_PACKAGES) {
+      expect(pkg.dependencies[name]).toBe(rangeFor(name));
+      expect(pkg.dependencies[name]).not.toContain("workspace:");
+    }
   });
 
   it("ships a named CLI artifact baseline and portable workspace skills", async () => {
@@ -175,7 +181,8 @@ describe("existing target strategies and reports", () => {
             phase.migrations,
         )
         .find(
-          (migration: { migrationId: string }) => migration.migrationId === "06-mcp-kit/m1-mcp-kit",
+          (migration: { migrationId: string }) =>
+            migration.migrationId === "07-shared-types/m1-shared-types",
         )?.status,
     ).toBe("skipped");
   });
@@ -196,7 +203,7 @@ describe("existing target strategies and reports", () => {
     );
 
     expect(existsSync(join(cwd, "mise.toml"))).toBe(true);
-    expect(existsSync(join(cwd, "packages", "mcp-kit", "package.json"))).toBe(true);
+    expect(existsSync(join(cwd, "packages", "shared-types", "package.json"))).toBe(true);
   });
 
   it("lets full strategy opt a generic target into starter infrastructure", async () => {
@@ -215,6 +222,6 @@ describe("existing target strategies and reports", () => {
       ],
       { from: "user" },
     );
-    expect(existsSync(join(cwd, "packages", "mcp-kit", "package.json"))).toBe(true);
+    expect(existsSync(join(cwd, "packages", "shared-types", "package.json"))).toBe(true);
   });
 });

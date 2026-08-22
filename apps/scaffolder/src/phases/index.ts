@@ -12,7 +12,6 @@ import type { Phase } from "../core/migration.js";
 import { phase as p01Bootstrap } from "./01-bootstrap/index.js";
 import { phase as p02Toolchain } from "./02-toolchain/index.js";
 import { phase as p03Configs } from "./03-configs/index.js";
-import { phase as p06McpKit } from "./06-mcp-kit/index.js";
 import { phase as p07SharedTypes } from "./07-shared-types/index.js";
 import { phase as p08App } from "./08-app/index.js";
 import { phase as p09RustAccel } from "./09-rust-accel/index.js";
@@ -21,12 +20,17 @@ import { phase as p11AgentFiles } from "./11-agent-files/index.js";
 import { phase as p12CiRelease } from "./12-ci-release/index.js";
 
 /**
- * Phases 04-robustness and 05-utility-pkgs are gone, not renumbered. They
- * existed to vendor byte-identical copies of robustness / cli-kit / tui-kit
- * into every generated repo; those packages are published, so generated repos
- * take a registry dependency instead (see core/runtime-source.ts). Renumbering
- * the survivors would churn every migration id, and migration ids are
- * user-facing via `mcp-scaffold migrate <id>`.
+ * Phases 04-robustness, 05-utility-pkgs and 06-mcp-kit are gone, not
+ * renumbered. They existed to vendor byte-identical copies of robustness /
+ * cli-kit / tui-kit / mcp-kit into every generated repo; those packages are
+ * published, so generated repos take a registry dependency instead (see
+ * core/runtime-source.ts). Renumbering the survivors would churn every
+ * migration id, and migration ids are user-facing via
+ * `mcp-scaffold migrate <id>`.
+ *
+ * 06-mcp-kit left last, on 2026-08-22, once `@george43g/mcp-kit@0.1.0` was on
+ * npm. `shared-types` stays vendored on purpose: it is unpublished, and it is
+ * meant to be edited alongside the consuming repo's Rust structs.
  *
  * Phase 13-cli-completions and 14-screenshots from the original plan are
  * intentionally absent — they're already covered by earlier phases:
@@ -42,7 +46,6 @@ export const PHASES: readonly Phase[] = [
   p01Bootstrap,
   p02Toolchain,
   p03Configs,
-  p06McpKit,
   p07SharedTypes,
   p08App,
   p09RustAccel,

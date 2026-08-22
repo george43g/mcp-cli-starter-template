@@ -77,16 +77,13 @@ Existing-target policy:
 
 ## What gets generated
 
-10 phases applied in order, 21 migrations, 123 generated template entries:
+9 phases applied in order, 21 migrations, 120 generated template entries. Phases 04-robustness, 05-utility-pkgs and 06-mcp-kit are gone, not renumbered — those packages are published, so generated repos take a registry dependency instead of a vendored copy:
 
 | Phase | Scope |
 |-------|-------|
 | 01-bootstrap | mode, package manager, name, monorepo skeleton |
 | 02-toolchain | mise, node, git, .gitignore (LFS anti-footgun), .gitattributes |
 | 03-configs | shared tsconfig + biome + vitest + full turbo.json |
-| 04-robustness | env + NDJSON logger + watchdog + shutdown + withTimeout + health + retry + rate-limit |
-| 05-utility-pkgs | cli-kit, tui-kit |
-| 06-mcp-kit | tool-registry, dispatcher (6 invariants), stdio + HTTP transports, sanitize, guardrails |
 | 07-shared-types | Zod schemas + Rust drift-check |
 | 08-app | the user-facing tool — single bin, MCP/CLI/TUI/REPL, dev MCP proxy, stress harness |
 | 09-rust-accel | optional napi-rs v3 crate with hand-mirrored types |
