@@ -110,7 +110,7 @@ describe("portPackage", () => {
 
     // Locally-generated packages take the target's scope...
     const pkg = JSON.parse(await readFile(join(cwd, "apps/foo-mcp/package.json"), "utf8"));
-    expect(pkg.dependencies["@myorg/mcp-kit"]).toBe("workspace:*");
+    expect(pkg.dependencies["@myorg/shared-types"]).toBe("workspace:*");
     // ...while PUBLISHED packages keep the scope they are published under.
     // Rewriting those to @myorg would point at packages that do not exist.
     expect(pkg.dependencies["@myorg/robustness"]).toBeUndefined();
@@ -140,7 +140,7 @@ describe("portPackage", () => {
     }
     expect(pkg.dependencies["@george43g/robustness"]).toBe(rangeFor("@george43g/robustness"));
     expect(pkg.dependencies["@myorg/robustness"]).toBeUndefined();
-    expect(pkg.dependencies["@myorg/mcp-kit"]).toBe("workspace:*");
+    expect(pkg.dependencies["@myorg/shared-types"]).toBe("workspace:*");
     const entry = await readFile(join(cwd, "apps/foo-mcp/src/index.ts"), "utf8");
     expect(entry).toContain('from "@george43g/robustness"');
   });

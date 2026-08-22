@@ -54,17 +54,24 @@ const VERSIONS_OUT_FILE = resolve(APP_ROOT, "src/generated/published-versions.ts
  * `publishConfig` in its manifest BEFORE the one-time manual bootstrap publish
  * can happen, and this file keys on `publishConfig` alone. Without the gate,
  * adding it flips `applyPublishedRanges()` into rewriting
- * `"@george43g/mcp-kit": "workspace:*"` to a registry range in every generated
- * repo, while phase 06 still copies the source in — a repo that both vendors
+ * `"<scope>/<pkg>": "workspace:*"` to a registry range in every generated
+ * repo, while its phase still copies the source in — a repo that both vendors
  * the package AND declares a dependency on a version that does not exist. The
  * E2E smoke installs from the real registry, so it would fail on the 404.
  *
- * REMOVE A NAME FROM HERE the moment its first version is on npm, in the same
- * change that stops the scaffolder vendoring it. That is a separate, deliberate
- * decision (a vendored copy is customisable by the generated repo; a dependency
- * is not), which is exactly why it is not bundled into the manifest change.
+ * EMPTY IS THE STEADY STATE. `@george43g/mcp-kit` sat here between its manifest
+ * gaining `publishConfig` and its bootstrap publish landing on npm (0.1.0,
+ * 2026-08-22); it left in the same change that deleted phase 06 and stopped the
+ * scaffolder vendoring it. The gate stays because `shared-types` is the next
+ * candidate and the ordering trap recurs verbatim.
+ *
+ * ADD A NAME the moment a manifest gains `publishConfig`; REMOVE it the moment
+ * that package's first version is on npm, in the same change that stops the
+ * scaffolder vendoring it. The second half is a separate, deliberate decision
+ * (a vendored copy is customisable by the generated repo; a dependency is not),
+ * which is exactly why it is not bundled into the manifest change.
  */
-const PENDING_BOOTSTRAP = new Set(["@george43g/mcp-kit"]);
+const PENDING_BOOTSTRAP = new Set();
 
 async function collectPublishedPackages() {
   let dirs;

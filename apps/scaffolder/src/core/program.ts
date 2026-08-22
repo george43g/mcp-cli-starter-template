@@ -132,7 +132,7 @@ export function buildProgram(): Command {
     program
       .command("migrate <id>")
       .description(
-        "Run a single migration (e.g. 06-mcp-kit/m1-mcp-kit) or a whole phase (e.g. 06-mcp-kit)",
+        "Run a single migration (e.g. 07-shared-types/m1-shared-types) or a whole phase (e.g. 07-shared-types)",
       )
       .option("--target <dir>", "Path to target repo", process.cwd())
       .option("--mode <mode>", "'new' or 'existing' (default: existing)", "existing")
@@ -360,8 +360,8 @@ function parseExistingStrategy(value: unknown): ExistingStrategy {
 /**
  * Narrow the phase list to a single migration (or a single phase). The filter
  * accepts either:
- *   - "06-mcp-kit/m1-mcp-kit" — exact migration id
- *   - "06-mcp-kit"              — whole phase
+ *   - "07-shared-types/m1-shared-types" — exact migration id
+ *   - "07-shared-types"                — whole phase
  */
 function filterPhases(
   phases: ReturnType<typeof loadPhases> extends Promise<infer T> ? T : never,

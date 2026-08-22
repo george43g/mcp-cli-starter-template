@@ -9,7 +9,7 @@ Run a single migration or one whole phase
 
 ### `<id>`
 
-e.g. 06-mcp-kit/m1-mcp-kit, or just 06-mcp-kit
+e.g. 07-shared-types/m1-shared-types, or just 07-shared-types
 
 ## Flags
 

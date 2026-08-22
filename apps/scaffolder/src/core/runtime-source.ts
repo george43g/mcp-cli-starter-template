@@ -12,10 +12,10 @@
  *
  * Not everything is de-vendored. `tsconfig`, `vitest-config` and `biome-config`
  * are per-monorepo shared config that is deliberately never published, so a
- * generated repo needs its own copies rather than a dependency. `mcp-kit` and
- * `shared-types` are still shipped as source because they are unpublished —
- * `shared-types` in particular is meant to be edited alongside the consuming
- * repo's Rust structs, so it may never be a sensible dependency.
+ * generated repo needs its own copies rather than a dependency. `shared-types`
+ * is still shipped as source because it is unpublished, and because it is meant
+ * to be edited alongside the consuming repo's Rust structs — so it may never be
+ * a sensible dependency.
  */
 
 import { PUBLISHED_PACKAGES } from "../generated/published-versions.js";
