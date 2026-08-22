@@ -1586,3 +1586,65 @@ and gmail all closed their threads.
 **Watch on the next release**: the mcp-kit job is now ungated and in
 `resync-example`'s `needs`, so a push touching `packages/mcp-kit/**` runs a
 fifth publishing job for the first time. It has never run live.
+
+---
+
+# 2026-08-23 — mcp-kit de-vendored; five generated-app decisions queued on George
+
+**Where this file and any summary disagree, this file is correct.**
+
+## State
+
+`main` at `2c75633`, clean, all workflows green. mcp-kit is de-vendored and
+merged (#100). PR **#101** is open and unmerged — docs only, the record for
+everything below. **Five decisions are queued on George; nothing else is in
+flight and no peer thread is open.**
+
+## Constraints (new this session, verbatim)
+
+- *"yes stop vendoring mcp-kit - repos move to depending on the npm lib."* — done, #100.
+- *"3. you have my merge word"* — applied to #100 only. **#101 has no merge word.**
+
+## Done
+
+| | anchor |
+|---|---|
+| mcp-kit de-vendored; phase 06 deleted, `PENDING_BOOTSTRAP` emptied | `2c75633`, E2E smoke rc=0 |
+| Dead code the deletion orphaned removed; coverage 84.33% → **85.88%**, floor NOT lowered | `apps/scaffolder/src/core/package-port.ts` |
+| `check:usage` wired into `verify` — it was absent, so a usage drift was green locally and red in CI | red-drilled by injecting drift |
+| up-bank migrated to `@george43g/mcp-kit@^0.1.0` | their PR #33 |
+
+## Open — the five, all George's
+
+1. **`devOnlyEnabled` unwired** in `apps/example-repo-mcp/src/dispatcher.ts` — `get_logs` is hidden from `tools/list` but still **callable by name**, in every generated repo. up-bank demonstrated the identical shape returning a real payload with `MCP_DEV` unset. One line, no release. #44.
+2. **Log prefix — two call sites.** `index.ts` brands too late; **`cli.ts` never brands at all** (`grep -c` → 0, both here and in browser-tab). Reproduced: `TMPDIR=… node dist/cli.js health` → `mcp/mcp-97487-….ndjson`. One line each, no release. #45.
+3. **`devOnly` semantics** — flip the default to fail-closed, rename the field, or throw at construction. **Only item that cuts a release, and on a 0.x it is 1.0.0, not 0.2.0.** browser-tab's `sanitizeContent` lift rides the same release. #44.
+4. **Behavioural test in the template** — spawn every subcommand the bin dispatches under an isolated `TMPDIR`, assert no default-prefix dir appears; subcommand set from the bin's own command table. Catches both of (2) without distinguishing them. #45.
+5. **Port life-stack's `check-deps-stale.mjs`** (138 lines, no deps, `exit 2` on unreachable registry). `verify` never touches the network, so **nothing here detects a stale lockfile**. #41.
+
+## Corrections (claims now void)
+
+- **#41's caret flip is WITHDRAWN.** "A hand-bumped caret is the better option" was given to four sessions and is wrong. `scripts/check-publishable-manifests.mjs:170-200` reads sibling floors, runs in `verify`, and its own error text says *"Prefer a comparator range"* — the repo held the answer executably the whole time.
+- **The scaffolder-caret "finding" is WITHDRAWN, before it was built.** `README.md:25` is `npx @george43g/mcp-scaffold …` and the repo is PUBLIC, so generated repos go to strangers; a comparator there would promise forward-compat across every future 0.x to people with none of our conventions. `build-templates.mjs:207` is **correct**.
+- **"De-vendoring is a free upgrade"** — wrong. Loss-free ≠ free: 29 type errors across 9 files for up-bank.
+- **mcpsync is NOT a third instance** of the missing-brand defect — nothing outside its `src/tui/` imports robustness, so its CLI never logs. Two instances, not three.
+
+## Traps
+
+- **An anchor inherited from another tree is not an anchor.** Worst case is byte-identical code at a different offset — every check except the line number passes.
+- **A rule correct in its own scope reads as universal the moment you go hunting for instances of it.** The hunt supplies surfaces; the scope does not travel with them.
+- **Having the means to check is not checking** — life-stack's staleness check existed, worked, and had never once been run.
+- **`pruneLogs` is a measurement hazard, not just retention.** A `$TMPDIR` inventory went stale within hours.
+- **Enumerate from the system, not from a list someone wrote once.** Hit three times: entry points, log prefixes, subcommands.
+
+## Tree
+
+`main` `2c75633` clean. Branch `docs/record-log-prefix-findings` = PR #101, 6 commits ahead, nothing staged, no background work.
+
+## Blocked on you
+
+The five above, plus Vector: **the ingest password** (`INGEST_BASIC_AUTH_GHOMESERVER` in `key-vault`, George-only) and **plan approval**. dotfiles holds the full record at `~/dotfiles/docs/vector-rollout.md`; nothing installed, tapped or configured.
+
+## Resume
+
+Merge #101 or say what to change. Then (1), (2) and (4) are one sitting and need no release; (3) is a release decision; (5) is a port.
