@@ -205,6 +205,11 @@ repo. Continuation state for the current thread lives in
 Canonical set: `.mcp.json` (standard MCP schema, `${VAR}` placeholders only —
 never literal secrets). `.cursor/mcp.json` and `.warp/.mcp.json` are symlinks
 to it. `opencode.json`'s `mcp` key is GENERATED — after editing `.mcp.json`,
-run: `mcpsync sync --scope project --yes` (the `mcpsync` bin from
-`apps/mcpsync`, installed globally; it replaced `~/dotfiles/mcp/render.js`).
-Global servers and scope decisions: `~/dotfiles/docs/mcp-registry.md`.
+run: `mcpsync sync --scope project --yes`.
+
+**`mcpsync` no longer lives here.** It moved to `life-stack/apps/mcpsync` on
+2026-08-22 (DEFERRED #10) — it is a standalone product that merely *consumes*
+the kits, not scaffolding machinery or framework code, which is the inclusion
+rule this repo goes by. The `mcpsync` bin stays on PATH from there, so the
+workflow above is unchanged; only its source moved. Global servers and scope
+decisions: `~/dotfiles/docs/mcp-registry.md`.

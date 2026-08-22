@@ -22,7 +22,9 @@ apps/rust-accel/target/
 # MCP host overrides (each developer's own)
 .mcp.local.json
 
-# mcpsync config backups (timestamped .bak.<epoch> siblings from apply/sync)
+# mcpsync config backups (timestamped .bak.<epoch> siblings from apply/sync).
+# mcpsync's SOURCE moved to life-stack, but its bin still runs against this
+# repo's .mcp.json, so the pattern stays.
 *.bak.[0-9]*
 
 # Codex project-local MCP configuration
