@@ -1595,15 +1595,15 @@ fifth publishing job for the first time. It has never run live.
 
 ## State
 
-`main` at `2c75633`, clean, all workflows green. mcp-kit is de-vendored and
-merged (#100). PR **#101** is open and unmerged — docs only, the record for
-everything below. **Five decisions are queued on George; nothing else is in
-flight and no peer thread is open.**
+`main` at `7237982`, clean. mcp-kit is de-vendored (#100) and the record for
+everything below is merged (#101). **Five decisions are queued on George;
+nothing else is in flight, nothing is staged, and no peer thread is open.**
 
 ## Constraints (new this session, verbatim)
 
 - *"yes stop vendoring mcp-kit - repos move to depending on the npm lib."* — done, #100.
-- *"3. you have my merge word"* — applied to #100 only. **#101 has no merge word.**
+- *"3. you have my merge word"* (#100) and *"yes to merge 101"* — both applied.
+  Neither extends to anything else; the five below are unauthorised.
 
 ## Done
 
@@ -1639,7 +1639,7 @@ flight and no peer thread is open.**
 
 ## Tree
 
-`main` `2c75633` clean. Branch `docs/record-log-prefix-findings` = PR #101, 6 commits ahead, nothing staged, no background work.
+`main` `7237982`, clean, level with origin. `docs/record-log-prefix-findings` merged and deleted. Nothing staged, no background work, no worktrees.
 
 ## Blocked on you
 
@@ -1647,4 +1647,8 @@ The five above, plus Vector: **the ingest password** (`INGEST_BASIC_AUTH_GHOMESE
 
 ## Resume
 
-Merge #101 or say what to change. Then (1), (2) and (4) are one sitting and need no release; (3) is a release decision; (5) is a port.
+**Nothing is mid-flight.** #100 and #101 are merged; no branch, no staged edit, no background task, no unanswered peer message.
+
+Next action is George's answer on the five. (1), (2) and (4) are one sitting and need no release. (3) is the only release decision, and on a 0.x it cuts **1.0.0**, not 0.2.0 — browser-tab's `sanitizeContent` lift rides the same release. (5) is a port of a file that already exists in life-stack.
+
+**Do not start any of them without his word.** Each changes what generated repos do, and the two recommendations withdrawn above were both stopped by asking a peer to argue against them, not by review.
