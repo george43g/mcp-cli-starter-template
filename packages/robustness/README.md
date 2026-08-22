@@ -177,6 +177,9 @@ analysis.
   ring buffer, file, and stderr mirror. Opt out with `MCP_LOG_REDACT=0` or
   `setLogRedaction(false)`. The underlying `redactString`/`redactValue` are
   exported for redacting your own payloads before they reach any boundary.
+- **Emails are NOT redacted by default (new in 0.12.0)** — `redactEmail()` for
+  known boundaries, `MCP_LOG_REDACT_EMAILS=1` for the global rule. The default
+  is a measurement, not caution; see below.
 - **File output is opt-out**: `MCP_LOG_TO_FILE=0` or `setFileLogging(false)`
   for bins whose end users should not accumulate `$TMPDIR` logs by default.
 - **Stderr mirror**: `setStderrMirror(true)` mirrors info/warn/error (never
@@ -200,6 +203,62 @@ Programmatic setters beat their env knobs; all are read at call time, so flags
 parsed into `process.env` after import still take effect. That claim was not
 quite true before 0.6.0: `MCP_LOG_PREFIX` was read once at module load, so the
 `--log-prefix` flag set the variable and changed nothing.
+
+### Email redaction is opt-in, and the default is a measurement (new in 0.12.0)
+
+A redaction rule has to be **unanchored** to find addresses inside prose — and
+unanchored, an email pattern matches far more than mail. Against realistic log
+lines, five of six matches are not addresses:
+
+```
+"sending to george.x@gmail.com failed"     → george.x@gmail.com          ← the only true positive
+"clone git@github.com:george43g/x.git"     → the whole clone URL
+"resolved lodash@4.17.21 from registry"    → lodash@4.17.21
+"specifier @george43g/robustness@0.11.0"   → george43g/robustness@0.11.0
+"postgres://svc@db.internal.corp/main"     → the whole URL
+```
+
+The phone rule earns default-on because `+` then 7–15 digits is unambiguous.
+`x@y.z` is also the shape of a **version specifier** and an **SSH remote**, so a
+default-on rule would corrupt every consumer's logs to protect the ones that
+handle mail. An exclusion list was considered and rejected — `git@`,
+`scheme://user@host`, `name@semver` already show it is a treadmill.
+
+**So apply it where you know there are addresses:**
+
+```ts
+import { redactEmail } from "@george43g/robustness";
+
+logger.error("send_failed", { to: redactEmail(recipient) });
+// george.x@gmail.com → g…@gmail.com
+```
+
+Or turn on the global rule with `MCP_LOG_REDACT_EMAILS=1` /
+`setEmailRedaction(true)` if your logs are mostly mail and mostly not specifiers.
+
+**The mask keeps the first character and the whole domain**, and hides the local
+part entirely at 2 characters or fewer. It is deliberately not the `lastFour`
+shape: `lastFour` shows 4 of a phone's 7–15 digits and can never disclose the
+whole number, but first+last of a two-character local part *is* the whole local
+part — `al@x.com` → `a…l@x.com` discloses the address it was asked to hide. The
+domain is preserved because it is the half that makes a line diagnostic and
+rarely the half that identifies a person.
+
+### Coverage is printed, not implied
+
+Opt-in coverage is a false-confidence hazard: "redaction is on" would otherwise
+silently imply emails too. So `logStartup()` carries what is actually covered,
+and `redactionCoverage()` returns it:
+
+```json
+{"msg":"startup","data":{"pid":123,"redact":{"phones":true,"secrets":true,"emails":false}}}
+```
+
+This exists because of a measured failure, not a hypothetical one: **two
+consumer sessions independently concluded their apps had not adopted phone
+redaction, inferring it from a missing import** — the default-on design had been
+doing the work all along, and the silence read as absence. Absence should be a
+printed `false`, not an unasked question.
 
 ### Rotation bounds file size; `pruneLogs` bounds DISK (new in 0.11.0)
 
@@ -418,6 +477,7 @@ independently:
 - `MCP_LOG_LEVEL`
 - `MCP_LOG_TO_FILE`, `MCP_LOG_REDACT`
 - `MCP_LOG_RING_SIZE`, `MCP_LOG_MAX_BYTES`, `MCP_LOG_KEEP_FILES`
+- `MCP_LOG_REDACT`, `MCP_LOG_REDACT_EMAILS`
 - `MCP_HEAP_WARN_MB`, `MCP_HEAP_CHECK_MS`
 
 ```ts

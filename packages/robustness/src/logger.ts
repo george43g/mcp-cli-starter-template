@@ -144,6 +144,36 @@ export function setLogRedaction(enabled: boolean): void {
 
 const redactionEnabled = () => redactionOverride ?? envBool(key("LOG_REDACT"), true);
 
+let emailRedactionOverride: boolean | null = null;
+
+/**
+ * Also mask email addresses in every sink. **Off by default** — see
+ * `RedactOptions.emails` in `redact.ts` for the measurement behind that, and
+ * prefer `redactEmail()` at a boundary you know carries addresses.
+ */
+export function setEmailRedaction(enabled: boolean): void {
+  emailRedactionOverride = enabled;
+}
+
+const emailRedactionEnabled = () =>
+  emailRedactionOverride ?? envBool(key("LOG_REDACT_EMAILS"), false);
+
+/**
+ * What the redactor is actually covering, right now.
+ *
+ * Exists because opt-in coverage is a false-confidence hazard: "redaction is
+ * on" would otherwise silently imply emails too. Two sessions independently
+ * inferred that consumers had NOT adopted phone redaction, from a missing
+ * import — the logger's default-on design had been doing the work all along and
+ * the silence read as absence. **Absence should be a printed `false`, not an
+ * unasked question.** Proposed by the EQStack session as the answer to exactly
+ * that objection, and it is a better answer than widening the default.
+ */
+export function redactionCoverage(): Record<string, boolean> {
+  const on = redactionEnabled();
+  return { phones: on, secrets: on, emails: on && emailRedactionEnabled() };
+}
+
 /**
  * Severity ranks for the threshold gate.
  *
@@ -390,12 +420,13 @@ function emit(entry: LogEntry): void {
   if (LEVEL_RANK[entry.level] < minLevelRank()) return;
 
   // Redact before ANY sink — ring buffer, file, and mirror must agree.
+  const redactOpts = { emails: emailRedactionEnabled() };
   const safe: LogEntry = redactionEnabled()
     ? {
         ...entry,
-        msg: redactString(entry.msg),
+        msg: redactString(entry.msg, redactOpts),
         ...(entry.data !== undefined
-          ? { data: redactValue(entry.data) as Record<string, unknown> }
+          ? { data: redactValue(entry.data, redactOpts) as Record<string, unknown> }
           : {}),
       }
     : entry;
@@ -503,6 +534,8 @@ export function logStartup(entrypoint: string): void {
     ppid: process.ppid,
     entrypoint,
     node: process.version,
+    // Printed, not implied. See `redactionCoverage`.
+    redact: redactionCoverage(),
   });
 }
 
@@ -609,6 +642,7 @@ export function _resetForTests(): void {
   logFileBytes = 0;
   fileLoggingOverride = null;
   redactionOverride = null;
+  emailRedactionOverride = null;
   logFilePrefixOverride = null;
   logLevelOverride = null;
   envPrefix = "MCP";
