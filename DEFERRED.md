@@ -3152,10 +3152,42 @@ return envStr(key("LOG_DIR"), join(tmpdir(), logFilePrefix()));
 Which entry path logs first is **unknown — not reconstructed.** The `mcp-*` file's own records show
 `watchdog_installed` landing before `startup`, which is the symptom, not the cause.
 
+### CORRECTION 2026-08-23 — there are TWO root causes, and one of them is not this one
+
+The first draft of this entry said both emitters "call `setLogFilePrefix` correctly and both also have
+their own correctly-named directories", so excluding `$TMPDIR/mcp/` would lose only a partial
+duplicate. **Both halves are wrong**, corrected by browser-tab and then reproduced here.
+
+Two distinct defects reach the same bucket:
+
+1. **Late call — the ordering trap described below.** `src/index.ts` sets the prefix, but not before
+   something else logs. Real, and the diagnosis stands.
+2. **No call at all.** `apps/example-repo-mcp/src/cli.ts` never calls `setLogFilePrefix` on **any**
+   path — `grep -c` returns 0 — and neither does browser-tab's `src/cli.ts`. Every CLI subcommand
+   that routes the dispatcher logs a perf span, so `$TMPDIR/mcp/` is the CLI's **only** destination,
+   not a duplicate of a branded one.
+
+Measured here against the built bin with an isolated `TMPDIR`:
+
+```
+$ TMPDIR=/tmp/prefix-drill-w1hhxj node dist/cli.js health
+$ find /tmp/prefix-drill-w1hhxj -name '*.ndjson'
+  mcp/mcp-97487-2026-08-22T14-05-05.ndjson
+  {"ts":"…","level":"perf","msg":"dispatch.health_check","dur_ms":6.14,"data":{"engine":"rust"}}
+```
+
+Entry-point audit, `apps/example-repo-mcp/src/`: `index.ts` ✓, `tui/index.tsx` ✓, **`cli.ts` ✗**,
+`commands/http.ts` ✗ (harmless — reached via `runMcpServer`, which brands first).
+
+**So excluding `mcp` from telemetry collection is not free: it drops the CLI stream entirely.** The
+exclusion is still right — one perf span per invocation, versus a directory nothing can attribute —
+but the reason is "loses the CLI stream until the call site is added", never "loses a duplicate". A
+future reader who believes the latter will conclude the exclusion costs nothing and leave it.
+
 ### The measurement
 
-`$TMPDIR/mcp/` is a **shared sink for at least two applications**, both of which call
-`setLogFilePrefix` correctly and both of which also have their own correctly-named directories:
+`$TMPDIR/mcp/` is a **shared sink for at least two applications**, reaching it by the two different
+routes above:
 
 ```
 mcp-9256-2026-08-22T13-57-52.ndjson   {ws_listening, ipc_listening, ws_extension_connected}   browser-tab-mcp
@@ -3195,8 +3227,24 @@ the only version that outlives the current list of tools. Two independent instan
 argument for the kit making it impossible rather than two call-site patches: e.g. `logStartup()`
 warning when it finds the file already opened under the default prefix.
 
-**No design for that yet, and it is not proposed as work.** Trigger: George's call, alongside #44's
-two items — all three are defects in the same generated app found by doing unrelated work.
+**The runtime-warning idea is dead — browser-tab killed it and the argument is decisive.** A warning
+emitted by `logStartup()` when it finds the file already open under the default prefix would be
+*written into the mis-located file itself* — `$TMPDIR/mcp/`, the one directory nothing collects — and
+for the six files above it would never fire at all, because those processes emit no `startup` record.
+**A diagnostic that fails in exactly the configuration it diagnoses is not a diagnostic.**
+
+The surviving shape is the **test-time assertion**: enumerate the process entry points and assert each
+brands before anything can log. It fails on a developer's machine and in CI, with no dependence on the
+log stream being readable. Unbuilt, by them or by me.
+
+**Not proposed as work.** Trigger: George's call, alongside #44's two items — all three are defects in
+the same generated app found by doing unrelated work.
+
+**Confirmed, not inferred:** the 13:57:52 burst was browser-tab's own test suite (67 files, 648 tests,
+start 23:57:48 AEST = 13:57:48Z, six vitest workers inside 1.6s). The `EADDRINUSE` is their real
+launchd daemon holding the extension port; the five `dispatch_error`s are deliberate assertions that
+extension-only tools fail cleanly under a fake adapter. My "reads like a suite" was a guess; theirs is
+a clock.
 
 ### Also owed, from the 0.12.0 round (eqstack, 2026-08-22)
 
