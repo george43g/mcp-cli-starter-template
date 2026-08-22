@@ -2669,7 +2669,7 @@ The residual is an **accidentally** breaking minor — which is already the reco
 which carets would not fix either. A caret merely defers the same break to whoever bumps next, and
 buys that delay by erasing the floor signal permanently.
 
-### THE LIVE INSTANCE IS NOT IN `packages/*` — IT IS WHAT THE SCAFFOLDER MINTS
+### ~~THE LIVE INSTANCE IS NOT IN `packages/*` — IT IS WHAT THE SCAFFOLDER MINTS~~ — WITHDRAWN, see below
 
 Both published sibling ranges are already comparator, verified 2026-08-23:
 `packages/mcp-kit` → `@george43g/robustness: >=0.11.0 <1`, `packages/tui-kit` → `>=0.1.1 <1`. **There
@@ -2697,10 +2697,40 @@ the exact defect that starved three of four consumers — permanently unreachabl
 a floor assertion nobody chose. This is #41's own mechanism, generated at scale, by the tool this repo
 exists to ship.
 
-**Not changed here.** It is a one-line change to a generated surface (`build-templates.mjs`, then
-`pnpm regen:example`), touches no published package, and cuts no release — but it changes what every
-future generated repo resolves, which is George's call, not a docs correction. **Trigger:** George's
-word, alongside the other generated-app defects in #44 and #45.
+**WITHDRAWN 2026-08-23, before it was built — the scaffolder's carets are CORRECT.** Cancelled by
+life-stack's invited counter-argument, on a question of fact about this repo I had not asked:
+**who are the generated repos for?**
+
+Measured: `README.md:25` is `npx @george43g/mcp-scaffold init my-tool --name foo`, and the GitHub repo
+is **PUBLIC** (`gh repo view` → `visibility=PUBLIC private=false`). **Generated repos leave the
+fleet.** Anyone can produce one.
+
+That inverts the rule, and for exactly the reason the first-party scoping exists. A comparator range
+in generated output would make George promise forward-compatibility across **every future 0.x** of
+five packages, to strangers who have none of what makes that promise keepable here: no
+`check-publishable-manifests`, no shared release tooling, no 1.0.0 convention, no lockfile discipline
+anyone can see. `>=0.12.0 <1` handed to a third party is a promise nobody can keep.
+
+**For a stranger a caret on a 0.x is the right default, and it is what caret semantics are for**:
+patches arrive automatically, a minor is a deliberate reviewed act. The starvation documented in this
+entry is a **first-party** problem — *we* want our own consumers tracking our minors — and that
+expectation does not transfer to someone who merely installed our template.
+
+**So the rule is two-sided, and `build-templates.mjs:207` already implements the correct half:**
+
+| range site | correct form | why |
+|---|---|---|
+| first-party siblings + fleet consumers | **comparator** `>=X <NEXT_MAJOR` | one party controls both ends, releases them together, and a check reads the floors |
+| **generated output for third parties** | **caret** `^X` | recipient controls neither end, inherits no convention, and a 0.x minor from a stranger should be an opt-in |
+
+**Nothing to change.** The one-line "fix" would have converted a correct default into a promise this
+repo cannot honour, in the output of the tool it exists to ship — and it would have looked like a
+tidy mechanical improvement in review.
+
+**The generalisable lesson, which outranks the range decision:** the withdrawn finding was produced by
+applying a rule that was correct in its own scope to a surface outside that scope, one message after
+scoping it. The counter-argument that killed it was invited, not volunteered, and it turned on a fact
+about my own repo that neither of us had looked up.
 
 **Deferred, not done:** life-stack's `scripts/check-deps-stale.mjs` (138 lines, no dependencies,
 `npm view` per package, **exit 2** on an unreachable registry because an unanswered question is not a
