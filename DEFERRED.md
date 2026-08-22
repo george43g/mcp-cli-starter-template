@@ -2587,8 +2587,12 @@ typecheck failed `TS2305: has no exported member 'getShutdownCause'`.
 | Gmail-MCP-Server | `>=0.9.0 <1` | **0.10.0** | **no** |
 | this repo (mcpsync) | `>=0.1.1 <1` | **0.1.1** | **no, by ten minors** |
 
-**So the recommendation flips: a hand-bumped caret is the BETTER option, not merely the defensible
-one.** A caret starves **visibly** — the manifest says `^0.10.0`, anyone can read it, and it gets
+**THAT FLIP IS WITHDRAWN — see the correction at the end of this entry.** It stood for one day, was
+given to four consumer sessions, and was wrong. The observation below is accurate; the conclusion
+drawn from it is not.
+
+~~So the recommendation flips: a hand-bumped caret is the BETTER option, not merely the defensible
+one.~~ A caret starves **visibly** — the manifest says `^0.10.0`, anyone can read it, and it gets
 fixed. A comparator range starves **invisibly**, with a manifest that looks correct and an install
 that reports success. up-bank and EQStack both declined the floating range on gate-coverage grounds
 and were right for a reason neither of them needed.
@@ -2602,6 +2606,138 @@ Their stress cases 8–16 gate the lifecycle surface on both transports; **nothi
 surface — and both 0.11.0 fixes landed in the ungated half. Record their lag as *"explicit bumps;
 gate covers lifecycle only, logging surface ungated"*, never as "starved by design", which loses the
 reason.
+
+### CORRECTION 2026-08-23 — the caret flip is withdrawn, and this repo already knew
+
+Rejected by **life-stack**, and the deciding evidence is in this repo's own `verify` chain.
+
+**Their argument, which is not a cost trade but a category difference:**
+
+> Starvation is a **recoverable** state — one command, at any later date, from any version, once
+> anything notices; what's published is still on the registry. A forced floor assertion is an
+> **irrecoverable erasure** — once a manifest reads `^0.12.0`, the fact that the consumer never
+> needed 0.12.0 is gone, with no registry to re-derive it from and no way for the next reader to
+> distinguish "we require this" from "this is how you move a caret".
+
+A staleness check can restore a stale version. **Nothing restores a distinction every manifest has
+been forced to erase.** So it dominates rather than trades, regardless of whether a check runs.
+
+**The related trap:** a caret on a 0.x pins the MINOR, so `^0.11.0` resolves `>=0.11.0 <0.12.0` and
+**no `pnpm update` can ever cross it**. Every bump is therefore a manual edit that asserts a floor
+nobody chose. A comparator bump is a pure lockfile fact — life-stack's fix for four consumers touched
+**no `package.json` at all**. Hence their refinement to the two-step above: **restore the range that
+was there; do not raise the floor.** The bump is a lockfile fact; the floor is a statement of need.
+
+**And this repo had already settled it, executably.** `scripts/check-publishable-manifests.mjs:170-200`
+reads every published package's declared sibling range and fails the build when it stops admitting the
+sibling's current version — so **floors here are load-bearing, not decorative**. Its own remediation
+text, verbatim:
+
+```
+Fix: widen it. A caret on a 0.x pins the MINOR, so a sibling bump strands this consumer with
+ERESOLVE. Prefer a comparator range that survives future bumps — ">=<current> <<nextMajor>" —
+over appending another "|| ^<current>" clause, which has to be re-edited every release.
+```
+
+`check:publishable-manifests` runs inside `pnpm verify`. **The repo has been telling every reader to
+prefer comparator ranges, in a message that fails the build, throughout the day this entry
+recommended the opposite.** Same failure family as the mis-relayed anchors: the evidence was present,
+local, and load-bearing, and a fresh inference was substituted for it.
+
+Under carets that rule would keep **passing while reading floors that are artefacts of the last
+bump** — a check that passes on noise, which is worse than no check.
+
+**Standing recommendation, restored and now grounded — scoped to FIRST-PARTY SIBLINGS, deliberately:**
+comparator ranges (`>=X <NEXT_MAJOR`) between packages this repo publishes and for the consumers it
+serves, with currency enforced at the **lockfile**, never at the specifier. The narrow cell where a
+caret is genuinely free — a single consumer with nothing reading floors — does not describe this repo,
+which publishes five packages with sibling ranges among them and has four external consumers.
+
+**It does NOT generalise to a third-party 0.x dependency**, and life-stack's reason for the scoping is
+the right one: `>=0.11.0 <1` in a published manifest is a forward-compatibility *promise* — every
+future 0.x of that sibling will work with me — which is exactly the promise 0.x semver exists to
+decline. It is enforceable here only because **one party controls both ends**: both sides of every
+sibling range are released together by tooling that checks them against each other, which is why
+`check-publishable-manifests.mjs` can exist at all. Stated as a universal range policy it would
+replace one over-general rule with another.
+
+**Why `<1` is safe here, and precisely where it isn't.** `rangeAdmits` is a *version-range* check; it
+is blind to semantic breakage and cannot tell that a sibling's new minor broke a consumer. The reason
+`<1` still contains the damage is a convention, not the check: **a breaking marker on a 0.x publishes
+1.0.0, not the next minor** (#34), so a deliberate breaking change lands outside `<1` by construction.
+The residual is an **accidentally** breaking minor — which is already the recorded open gap (#37), and
+which carets would not fix either. A caret merely defers the same break to whoever bumps next, and
+buys that delay by erasing the floor signal permanently.
+
+### ~~THE LIVE INSTANCE IS NOT IN `packages/*` — IT IS WHAT THE SCAFFOLDER MINTS~~ — WITHDRAWN, see below
+
+Both published sibling ranges are already comparator, verified 2026-08-23:
+`packages/mcp-kit` → `@george43g/robustness: >=0.11.0 <1`, `packages/tui-kit` → `>=0.1.1 <1`. **There
+are no carets left to convert here.**
+
+But `apps/scaffolder/scripts/build-templates.mjs:207` computes every generated repo's dependency range
+as a caret:
+
+```js
+`version: ${JSON.stringify(p.version)}, range: ${JSON.stringify(`^${p.version}`)} },`,
+```
+
+so the tracked example — and therefore **every repo the scaffolder has ever produced** — is born with:
+
+```
+@george43g/cli-kit      ^2.0.1
+@george43g/mcp-kit      ^0.1.0     ← cannot reach 0.2.0
+@george43g/robustness   ^0.12.0    ← cannot reach 0.13.0
+@george43g/secret-store ^0.2.2     ← cannot reach 0.3.0
+@george43g/tui-kit      ^0.5.1     ← cannot reach 0.6.0
+```
+
+**Four of five are 0.x, where a caret pins the MINOR.** So the scaffolder mints, into every new repo,
+the exact defect that starved three of four consumers — permanently unreachable by `pnpm update`, with
+a floor assertion nobody chose. This is #41's own mechanism, generated at scale, by the tool this repo
+exists to ship.
+
+**WITHDRAWN 2026-08-23, before it was built — the scaffolder's carets are CORRECT.** Cancelled by
+life-stack's invited counter-argument, on a question of fact about this repo I had not asked:
+**who are the generated repos for?**
+
+Measured: `README.md:25` is `npx @george43g/mcp-scaffold init my-tool --name foo`, and the GitHub repo
+is **PUBLIC** (`gh repo view` → `visibility=PUBLIC private=false`). **Generated repos leave the
+fleet.** Anyone can produce one.
+
+That inverts the rule, and for exactly the reason the first-party scoping exists. A comparator range
+in generated output would make George promise forward-compatibility across **every future 0.x** of
+five packages, to strangers who have none of what makes that promise keepable here: no
+`check-publishable-manifests`, no shared release tooling, no 1.0.0 convention, no lockfile discipline
+anyone can see. `>=0.12.0 <1` handed to a third party is a promise nobody can keep.
+
+**For a stranger a caret on a 0.x is the right default, and it is what caret semantics are for**:
+patches arrive automatically, a minor is a deliberate reviewed act. The starvation documented in this
+entry is a **first-party** problem — *we* want our own consumers tracking our minors — and that
+expectation does not transfer to someone who merely installed our template.
+
+**So the rule is two-sided, and `build-templates.mjs:207` already implements the correct half:**
+
+| range site | correct form | why |
+|---|---|---|
+| first-party siblings + fleet consumers | **comparator** `>=X <NEXT_MAJOR` | one party controls both ends, releases them together, and a check reads the floors |
+| **generated output for third parties** | **caret** `^X` | recipient controls neither end, inherits no convention, and a 0.x minor from a stranger should be an opt-in |
+
+**Nothing to change.** The one-line "fix" would have converted a correct default into a promise this
+repo cannot honour, in the output of the tool it exists to ship — and it would have looked like a
+tidy mechanical improvement in review.
+
+**The generalisable lesson, which outranks the range decision:** the withdrawn finding was produced by
+applying a rule that was correct in its own scope to a surface outside that scope, one message after
+scoping it. The counter-argument that killed it was invited, not volunteered, and it turned on a fact
+about my own repo that neither of us had looked up.
+
+**Deferred, not done:** life-stack's `scripts/check-deps-stale.mjs` (138 lines, no dependencies,
+`npm view` per package, **exit 2** on an unreachable registry because an unanswered question is not a
+clean answer) is the missing piece — `verify` deliberately never touches the network, so nothing here
+detects a stale lockfile. **Trigger:** George's call. If taken, port theirs rather than write a second.
+Their own caveat applies: it had never once been executed before the day it caught this, and *a
+correct check nobody runs fails exactly like a broken one*.
 
 **MECHANISM 5 IS NOT PNPM-SPECIFIC.** gmail-cli-mcp measured the same retained-entry behaviour from
 npm under `npm install --package-lock-only`: a comparator range kept 0.10.0/0.5.0 exactly as pnpm
@@ -3121,3 +3257,177 @@ exists in published 0.1.0, and `tests/integration.test.ts:39-40` asserts only th
 so nothing depends on the current behaviour. Acceptance test to copy: browser-tab's
 `stress-mcp.ts:596-597` — assert the tool answers "Unknown tool name" **by direct name with dev off**,
 not merely that it is absent from `tools/list`.
+
+---
+
+## 45. `setLogFilePrefix` runs after the log file is already open, so two apps share `$TMPDIR/mcp/`
+
+Found 2026-08-22/23 while inventorying log directories for the Vector telemetry design, not by looking
+for it. **Two independent instances, in two repos, from one kit-level trap.**
+
+### The mechanism
+
+`packages/robustness/src/logger.ts:360-367` fixes `logFilePath` at the **first write**, using whatever
+`logFilePrefix()` returns at that instant:
+
+```js
+logFilePath = join(dir, `${logFilePrefix()}-${process.pid}-${date}.ndjson`);
+```
+
+and the directory is derived from the same value (`logger.ts:257`):
+
+```js
+return envStr(key("LOG_DIR"), join(tmpdir(), logFilePrefix()));
+```
+
+`apps/example-repo-mcp/src/index.ts:37-38` calls `setLogFilePrefix(slug)` as the first statement
+*inside* `runMcpServer()`. **Anything that logs before that line opens the file under the default
+`mcp` prefix, and it stays there for the process's lifetime** — the comment on that line reads
+*"Brand the log directory so different tools' logs don't collide"*, and the branding is defeated.
+
+Which entry path logs first is **unknown — not reconstructed.** The `mcp-*` file's own records show
+`watchdog_installed` landing before `startup`, which is the symptom, not the cause.
+
+### CORRECTION 2026-08-23 — there are TWO root causes, and one of them is not this one
+
+The first draft of this entry said both emitters "call `setLogFilePrefix` correctly and both also have
+their own correctly-named directories", so excluding `$TMPDIR/mcp/` would lose only a partial
+duplicate. **Both halves are wrong**, corrected by browser-tab and then reproduced here.
+
+Two distinct defects reach the same bucket:
+
+1. **Late call — the ordering trap described below.** `src/index.ts` sets the prefix, but not before
+   something else logs. Real, and the diagnosis stands.
+2. **No call at all.** `apps/example-repo-mcp/src/cli.ts` never calls `setLogFilePrefix` on **any**
+   path — `grep -c` returns 0 — and neither does browser-tab's `src/cli.ts`. Every CLI subcommand
+   that routes the dispatcher logs a perf span, so `$TMPDIR/mcp/` is the CLI's **only** destination,
+   not a duplicate of a branded one.
+
+Measured here against the built bin with an isolated `TMPDIR`:
+
+```
+$ TMPDIR=/tmp/prefix-drill-w1hhxj node dist/cli.js health
+$ find /tmp/prefix-drill-w1hhxj -name '*.ndjson'
+  mcp/mcp-97487-2026-08-22T14-05-05.ndjson
+  {"ts":"…","level":"perf","msg":"dispatch.health_check","dur_ms":6.14,"data":{"engine":"rust"}}
+```
+
+Entry-point audit, `apps/example-repo-mcp/src/`: `index.ts` ✓, `tui/index.tsx` ✓, **`cli.ts` ✗**,
+`commands/http.ts` ✗ (harmless — reached via `runMcpServer`, which brands first).
+
+**So excluding `mcp` from telemetry collection is not free: it drops the CLI stream entirely.** The
+exclusion is still right — one perf span per invocation, versus a directory nothing can attribute —
+but the reason is "loses the CLI stream until the call site is added", never "loses a duplicate". A
+future reader who believes the latter will conclude the exclusion costs nothing and leave it.
+
+### The measurement
+
+`$TMPDIR/mcp/` is a **shared sink for at least two applications**, reaching it by the two different
+routes above:
+
+```
+mcp-9256-2026-08-22T13-57-52.ndjson   {ws_listening, ipc_listening, ws_extension_connected}   browser-tab-mcp
+mcp-9811-2026-08-22T13-57-52.ndjson   {ws_disabled, ipc_listening} EADDRINUSE 127.0.0.1:8790  browser-tab-mcp
+mcp-11545-2026-08-22T13-57-53.ndjson  {dispatch.list_tabs, dispatch.screenshot, …}            browser-tab-mcp
+mcp-12382-2026-08-22T13-57-53.ndjson  {daemon_unreachable_falling_back}                       browser-tab-mcp
+mcp-10677-2026-08-22T06-38-00.ndjson  entrypoint: @george43g/example-repo-mcp                 ours
+```
+
+browser-tab's four are attributed **by content** — their tool and lifecycle names. **Six of the seven
+files carry no `startup` record at all**, so there is no `entrypoint` field to attribute them by.
+
+browser-tab's TUI path gets the ordering right (`src/tui/index.tsx:26-27` sets the prefix before
+`installWatchdog` at `:30`), so this is a per-entry-path split, not a misconfiguration.
+
+### Why it matters beyond tidiness
+
+A telemetry shipper deriving `service` from the log path is **categorically unable** to label that
+directory: several apps interleaved, and no per-event field identifying the emitter. It cost the
+Vector rollout a directory — `$TMPDIR/mcp/` is excluded from collection precisely because nothing
+downstream can attribute it (dotfiles `docs/vector-rollout.md` S27, 2026-08-23).
+
+**A measurement hazard worth generalising:** `pruneLogs` churns these directories, so any file count
+or attribution for one is a **point-in-time sample, not a standing fact**. My own inventory of
+`$TMPDIR/mcp/` went stale within hours — seven files attributed to `example-repo-mcp` on the first
+read, six of them browser-tab's on the second.
+
+### The fix, and why the one-liner is the lesser half
+
+Wiring order in `index.ts` is a one-line change. But **an allow-list of entry points is a snapshot of
+a runtime decision** — `cli.ts` reached the shared bucket with nothing in either repo to say so.
+browser-tab's proposal, which this entry adopts: **a test asserting that every process entry point
+sets the prefix before anything can log.**
+
+It belongs in the **template**, not per-repo, so it covers emitters that do not exist yet — that is
+the only version that outlives the current list of tools. Two independent instances of one trap is an
+argument for the kit making it impossible rather than two call-site patches: e.g. `logStartup()`
+warning when it finds the file already opened under the default prefix.
+
+**The runtime-warning idea is dead — browser-tab killed it and the argument is decisive.** A warning
+emitted by `logStartup()` when it finds the file already open under the default prefix would be
+*written into the mis-located file itself* — `$TMPDIR/mcp/`, the one directory nothing collects — and
+for the six files above it would never fire at all, because those processes emit no `startup` record.
+**A diagnostic that fails in exactly the configuration it diagnoses is not a diagnostic.**
+
+**The static test-time assertion is dead too — browser-tab withdrew their own proposal.** "Assert every
+process entry point calls `setLogFilePrefix`" inherits the exact defect of the prefix allow-list it
+replaces: enumerating entry points is a judgement call, and it would have caught `cli.ts` only if
+someone had listed `cli.ts` — which is precisely what nobody did. `commands/http.ts` is the same shape
+inverted: **0** calls and nonetheless correct, because `runMcpServer` brands before delegating. A
+static list has to reason correctly about that false positive to stay useful.
+
+**SETTLED DESIGN, three sessions, 2026-08-23.** Four parts, two of them rejections with reasons:
+
+1. **BUILD — a behavioural test.** Spawn every subcommand the bin dispatches under an isolated
+   `TMPDIR`; assert no default-prefix directory appears. The subcommand set comes from the bin's own
+   command table, never a hand-written list, so a new subcommand is covered the day it is registered.
+   It asserts the **observable outcome**, so it catches the late-call and never-called defects without
+   needing to tell them apart. **Belongs in the template, not per-repo.** Accepted gap: library entry
+   points imported in-process (vitest workers) are uncovered — **how to cover them is unknown**, and
+   was deliberately not invented. The `prefix-drill` reproduction above is this test, run by hand.
+
+2. **REJECTED — runtime warning written through the logger, from an entry-point hook.** Mine,
+   rejected by me on browser-tab's argument (above).
+
+3. **REJECTED — a hook at the logger's first file open (`ensureLogFile`, `logger.ts:359`).**
+   browser-tab's steelman, rejected on kit evidence: `logFilePrefix()` is
+   `logFilePrefixOverride ?? envStr(key("LOG_PREFIX"), "mcp")` (`logger.ts:122`), so **a default nobody
+   overrode is indistinguishable from a default nobody meant to override.** It false-positives on
+   100% of tools that never brand deliberately, and the signal needed to suppress that does not exist
+   in the process. Reopen only if the kit gains a way to *declare* an intent to brand.
+
+4. **OPEN, unbuilt — a late-brand detector at `setLogFilePrefix` (`logger.ts:118`).** Warn via
+   `writeStderrLine` (`logger.ts:239`, documented never to throw) when `logFilePath` (`logger.ts:250`)
+   is non-null at call time. Both halves are affirmative facts rather than absences, so it is
+   **zero-false-positive**, and it survives both failure modes that killed (2) — stderr escapes the
+   quarantine, and the trigger *is* the call, so there is no separate site to forget. browser-tab
+   attacked it with the one plausible case (a suite that logs, then re-brands, emitting noise every
+   run until someone switches the detector off) and it holds: `_resetForTests()` (`logger.ts:639`)
+   sets `logFilePath = null`, so an ordinary reset clears the condition the detector reads, and
+   module-scope branding never trips it either.
+
+   **Covers the late-call defect only.** Never-called is undetectable in-kit for the same reason (3)
+   fails. **A complement to (1), never a substitute** — if only one is built, build (1).
+
+**Anchor note:** line numbers here are this repo's `packages/robustness/src/logger.ts`. browser-tab
+cites the published artifact, `@george43g/robustness@0.11.0` `dist/logger.js`, where the same symbols
+sit at `setLogFilePrefix` 77-79, `writeStderrLine` 156, `logFilePath` 166, `ensureLogFile` 264,
+`_resetForTests` 520-522. Both correct, different trees — a reader with one checkout would otherwise
+conclude one of us mis-cited.
+
+**Not proposed as work.** Trigger: George's call, alongside #44's two items — all three are defects in
+the same generated app found by doing unrelated work.
+
+**Confirmed, not inferred:** the 13:57:52 burst was browser-tab's own test suite (67 files, 648 tests,
+start 23:57:48 AEST = 13:57:48Z, six vitest workers inside 1.6s). The `EADDRINUSE` is their real
+launchd daemon holding the extension port; the five `dispatch_error`s are deliberate assertions that
+extension-only tools fail cleanly under a fake adapter. My "reads like a suite" was a guess; theirs is
+a clock.
+
+### Also owed, from the 0.12.0 round (eqstack, 2026-08-22)
+
+`packages/robustness/README.md` should record that the **per-boundary opt-in is the recommended shape
+for email redaction and the global switch is the exception**, because only the consumer knows which of
+its surfaces carry addresses. There is already a home for it — `## Logging` at `:169`, the
+`MCP_LOG_REDACT_EMAILS` note at `:181`, and `### Email redaction is opt-in…` at `:207`. A `docs:`
+change to a published package; unstarted.
