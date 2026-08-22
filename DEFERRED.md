@@ -3121,3 +3121,87 @@ exists in published 0.1.0, and `tests/integration.test.ts:39-40` asserts only th
 so nothing depends on the current behaviour. Acceptance test to copy: browser-tab's
 `stress-mcp.ts:596-597` — assert the tool answers "Unknown tool name" **by direct name with dev off**,
 not merely that it is absent from `tools/list`.
+
+---
+
+## 45. `setLogFilePrefix` runs after the log file is already open, so two apps share `$TMPDIR/mcp/`
+
+Found 2026-08-22/23 while inventorying log directories for the Vector telemetry design, not by looking
+for it. **Two independent instances, in two repos, from one kit-level trap.**
+
+### The mechanism
+
+`packages/robustness/src/logger.ts:360-367` fixes `logFilePath` at the **first write**, using whatever
+`logFilePrefix()` returns at that instant:
+
+```js
+logFilePath = join(dir, `${logFilePrefix()}-${process.pid}-${date}.ndjson`);
+```
+
+and the directory is derived from the same value (`logger.ts:257`):
+
+```js
+return envStr(key("LOG_DIR"), join(tmpdir(), logFilePrefix()));
+```
+
+`apps/example-repo-mcp/src/index.ts:37-38` calls `setLogFilePrefix(slug)` as the first statement
+*inside* `runMcpServer()`. **Anything that logs before that line opens the file under the default
+`mcp` prefix, and it stays there for the process's lifetime** — the comment on that line reads
+*"Brand the log directory so different tools' logs don't collide"*, and the branding is defeated.
+
+Which entry path logs first is **unknown — not reconstructed.** The `mcp-*` file's own records show
+`watchdog_installed` landing before `startup`, which is the symptom, not the cause.
+
+### The measurement
+
+`$TMPDIR/mcp/` is a **shared sink for at least two applications**, both of which call
+`setLogFilePrefix` correctly and both of which also have their own correctly-named directories:
+
+```
+mcp-9256-2026-08-22T13-57-52.ndjson   {ws_listening, ipc_listening, ws_extension_connected}   browser-tab-mcp
+mcp-9811-2026-08-22T13-57-52.ndjson   {ws_disabled, ipc_listening} EADDRINUSE 127.0.0.1:8790  browser-tab-mcp
+mcp-11545-2026-08-22T13-57-53.ndjson  {dispatch.list_tabs, dispatch.screenshot, …}            browser-tab-mcp
+mcp-12382-2026-08-22T13-57-53.ndjson  {daemon_unreachable_falling_back}                       browser-tab-mcp
+mcp-10677-2026-08-22T06-38-00.ndjson  entrypoint: @george43g/example-repo-mcp                 ours
+```
+
+browser-tab's four are attributed **by content** — their tool and lifecycle names. **Six of the seven
+files carry no `startup` record at all**, so there is no `entrypoint` field to attribute them by.
+
+browser-tab's TUI path gets the ordering right (`src/tui/index.tsx:26-27` sets the prefix before
+`installWatchdog` at `:30`), so this is a per-entry-path split, not a misconfiguration.
+
+### Why it matters beyond tidiness
+
+A telemetry shipper deriving `service` from the log path is **categorically unable** to label that
+directory: several apps interleaved, and no per-event field identifying the emitter. It cost the
+Vector rollout a directory — `$TMPDIR/mcp/` is excluded from collection precisely because nothing
+downstream can attribute it (dotfiles `docs/vector-rollout.md` S27, 2026-08-23).
+
+**A measurement hazard worth generalising:** `pruneLogs` churns these directories, so any file count
+or attribution for one is a **point-in-time sample, not a standing fact**. My own inventory of
+`$TMPDIR/mcp/` went stale within hours — seven files attributed to `example-repo-mcp` on the first
+read, six of them browser-tab's on the second.
+
+### The fix, and why the one-liner is the lesser half
+
+Wiring order in `index.ts` is a one-line change. But **an allow-list of entry points is a snapshot of
+a runtime decision** — `cli.ts` reached the shared bucket with nothing in either repo to say so.
+browser-tab's proposal, which this entry adopts: **a test asserting that every process entry point
+sets the prefix before anything can log.**
+
+It belongs in the **template**, not per-repo, so it covers emitters that do not exist yet — that is
+the only version that outlives the current list of tools. Two independent instances of one trap is an
+argument for the kit making it impossible rather than two call-site patches: e.g. `logStartup()`
+warning when it finds the file already opened under the default prefix.
+
+**No design for that yet, and it is not proposed as work.** Trigger: George's call, alongside #44's
+two items — all three are defects in the same generated app found by doing unrelated work.
+
+### Also owed, from the 0.12.0 round (eqstack, 2026-08-22)
+
+`packages/robustness/README.md` should record that the **per-boundary opt-in is the recommended shape
+for email redaction and the global switch is the exception**, because only the consumer knows which of
+its surfaces carry addresses. There is already a home for it — `## Logging` at `:169`, the
+`MCP_LOG_REDACT_EMAILS` note at `:181`, and `### Email redaction is opt-in…` at `:207`. A `docs:`
+change to a published package; unstarted.
