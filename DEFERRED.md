@@ -2647,11 +2647,60 @@ local, and load-bearing, and a fresh inference was substituted for it.
 Under carets that rule would keep **passing while reading floors that are artefacts of the last
 bump** — a check that passes on noise, which is worse than no check.
 
-**Standing recommendation, restored and now grounded:** comparator ranges (`>=X <NEXT_MAJOR`) for
-published siblings and for consumers, with currency enforced at the **lockfile**, never at the
-specifier. The narrow cell where a caret is genuinely free — a single consumer with nothing reading
-floors — does not describe this repo, which publishes five packages with sibling ranges among them
-and has four external consumers.
+**Standing recommendation, restored and now grounded — scoped to FIRST-PARTY SIBLINGS, deliberately:**
+comparator ranges (`>=X <NEXT_MAJOR`) between packages this repo publishes and for the consumers it
+serves, with currency enforced at the **lockfile**, never at the specifier. The narrow cell where a
+caret is genuinely free — a single consumer with nothing reading floors — does not describe this repo,
+which publishes five packages with sibling ranges among them and has four external consumers.
+
+**It does NOT generalise to a third-party 0.x dependency**, and life-stack's reason for the scoping is
+the right one: `>=0.11.0 <1` in a published manifest is a forward-compatibility *promise* — every
+future 0.x of that sibling will work with me — which is exactly the promise 0.x semver exists to
+decline. It is enforceable here only because **one party controls both ends**: both sides of every
+sibling range are released together by tooling that checks them against each other, which is why
+`check-publishable-manifests.mjs` can exist at all. Stated as a universal range policy it would
+replace one over-general rule with another.
+
+**Why `<1` is safe here, and precisely where it isn't.** `rangeAdmits` is a *version-range* check; it
+is blind to semantic breakage and cannot tell that a sibling's new minor broke a consumer. The reason
+`<1` still contains the damage is a convention, not the check: **a breaking marker on a 0.x publishes
+1.0.0, not the next minor** (#34), so a deliberate breaking change lands outside `<1` by construction.
+The residual is an **accidentally** breaking minor — which is already the recorded open gap (#37), and
+which carets would not fix either. A caret merely defers the same break to whoever bumps next, and
+buys that delay by erasing the floor signal permanently.
+
+### THE LIVE INSTANCE IS NOT IN `packages/*` — IT IS WHAT THE SCAFFOLDER MINTS
+
+Both published sibling ranges are already comparator, verified 2026-08-23:
+`packages/mcp-kit` → `@george43g/robustness: >=0.11.0 <1`, `packages/tui-kit` → `>=0.1.1 <1`. **There
+are no carets left to convert here.**
+
+But `apps/scaffolder/scripts/build-templates.mjs:207` computes every generated repo's dependency range
+as a caret:
+
+```js
+`version: ${JSON.stringify(p.version)}, range: ${JSON.stringify(`^${p.version}`)} },`,
+```
+
+so the tracked example — and therefore **every repo the scaffolder has ever produced** — is born with:
+
+```
+@george43g/cli-kit      ^2.0.1
+@george43g/mcp-kit      ^0.1.0     ← cannot reach 0.2.0
+@george43g/robustness   ^0.12.0    ← cannot reach 0.13.0
+@george43g/secret-store ^0.2.2     ← cannot reach 0.3.0
+@george43g/tui-kit      ^0.5.1     ← cannot reach 0.6.0
+```
+
+**Four of five are 0.x, where a caret pins the MINOR.** So the scaffolder mints, into every new repo,
+the exact defect that starved three of four consumers — permanently unreachable by `pnpm update`, with
+a floor assertion nobody chose. This is #41's own mechanism, generated at scale, by the tool this repo
+exists to ship.
+
+**Not changed here.** It is a one-line change to a generated surface (`build-templates.mjs`, then
+`pnpm regen:example`), touches no published package, and cuts no release — but it changes what every
+future generated repo resolves, which is George's call, not a docs correction. **Trigger:** George's
+word, alongside the other generated-app defects in #44 and #45.
 
 **Deferred, not done:** life-stack's `scripts/check-deps-stale.mjs` (138 lines, no dependencies,
 `npm view` per package, **exit 2** on an unreachable registry because an unanswered question is not a
