@@ -3233,9 +3233,51 @@ emitted by `logStartup()` when it finds the file already open under the default 
 for the six files above it would never fire at all, because those processes emit no `startup` record.
 **A diagnostic that fails in exactly the configuration it diagnoses is not a diagnostic.**
 
-The surviving shape is the **test-time assertion**: enumerate the process entry points and assert each
-brands before anything can log. It fails on a developer's machine and in CI, with no dependence on the
-log stream being readable. Unbuilt, by them or by me.
+**The static test-time assertion is dead too — browser-tab withdrew their own proposal.** "Assert every
+process entry point calls `setLogFilePrefix`" inherits the exact defect of the prefix allow-list it
+replaces: enumerating entry points is a judgement call, and it would have caught `cli.ts` only if
+someone had listed `cli.ts` — which is precisely what nobody did. `commands/http.ts` is the same shape
+inverted: **0** calls and nonetheless correct, because `runMcpServer` brands before delegating. A
+static list has to reason correctly about that false positive to stay useful.
+
+**SETTLED DESIGN, three sessions, 2026-08-23.** Four parts, two of them rejections with reasons:
+
+1. **BUILD — a behavioural test.** Spawn every subcommand the bin dispatches under an isolated
+   `TMPDIR`; assert no default-prefix directory appears. The subcommand set comes from the bin's own
+   command table, never a hand-written list, so a new subcommand is covered the day it is registered.
+   It asserts the **observable outcome**, so it catches the late-call and never-called defects without
+   needing to tell them apart. **Belongs in the template, not per-repo.** Accepted gap: library entry
+   points imported in-process (vitest workers) are uncovered — **how to cover them is unknown**, and
+   was deliberately not invented. The `prefix-drill` reproduction above is this test, run by hand.
+
+2. **REJECTED — runtime warning written through the logger, from an entry-point hook.** Mine,
+   rejected by me on browser-tab's argument (above).
+
+3. **REJECTED — a hook at the logger's first file open (`ensureLogFile`, `logger.ts:359`).**
+   browser-tab's steelman, rejected on kit evidence: `logFilePrefix()` is
+   `logFilePrefixOverride ?? envStr(key("LOG_PREFIX"), "mcp")` (`logger.ts:122`), so **a default nobody
+   overrode is indistinguishable from a default nobody meant to override.** It false-positives on
+   100% of tools that never brand deliberately, and the signal needed to suppress that does not exist
+   in the process. Reopen only if the kit gains a way to *declare* an intent to brand.
+
+4. **OPEN, unbuilt — a late-brand detector at `setLogFilePrefix` (`logger.ts:118`).** Warn via
+   `writeStderrLine` (`logger.ts:239`, documented never to throw) when `logFilePath` (`logger.ts:250`)
+   is non-null at call time. Both halves are affirmative facts rather than absences, so it is
+   **zero-false-positive**, and it survives both failure modes that killed (2) — stderr escapes the
+   quarantine, and the trigger *is* the call, so there is no separate site to forget. browser-tab
+   attacked it with the one plausible case (a suite that logs, then re-brands, emitting noise every
+   run until someone switches the detector off) and it holds: `_resetForTests()` (`logger.ts:639`)
+   sets `logFilePath = null`, so an ordinary reset clears the condition the detector reads, and
+   module-scope branding never trips it either.
+
+   **Covers the late-call defect only.** Never-called is undetectable in-kit for the same reason (3)
+   fails. **A complement to (1), never a substitute** — if only one is built, build (1).
+
+**Anchor note:** line numbers here are this repo's `packages/robustness/src/logger.ts`. browser-tab
+cites the published artifact, `@george43g/robustness@0.11.0` `dist/logger.js`, where the same symbols
+sit at `setLogFilePrefix` 77-79, `writeStderrLine` 156, `logFilePath` 166, `ensureLogFile` 264,
+`_resetForTests` 520-522. Both correct, different trees — a reader with one checkout would otherwise
+conclude one of us mis-cited.
 
 **Not proposed as work.** Trigger: George's call, alongside #44's two items — all three are defects in
 the same generated app found by doing unrelated work.
