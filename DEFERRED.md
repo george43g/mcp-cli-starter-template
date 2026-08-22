@@ -2587,8 +2587,12 @@ typecheck failed `TS2305: has no exported member 'getShutdownCause'`.
 | Gmail-MCP-Server | `>=0.9.0 <1` | **0.10.0** | **no** |
 | this repo (mcpsync) | `>=0.1.1 <1` | **0.1.1** | **no, by ten minors** |
 
-**So the recommendation flips: a hand-bumped caret is the BETTER option, not merely the defensible
-one.** A caret starves **visibly** — the manifest says `^0.10.0`, anyone can read it, and it gets
+**THAT FLIP IS WITHDRAWN — see the correction at the end of this entry.** It stood for one day, was
+given to four consumer sessions, and was wrong. The observation below is accurate; the conclusion
+drawn from it is not.
+
+~~So the recommendation flips: a hand-bumped caret is the BETTER option, not merely the defensible
+one.~~ A caret starves **visibly** — the manifest says `^0.10.0`, anyone can read it, and it gets
 fixed. A comparator range starves **invisibly**, with a manifest that looks correct and an install
 that reports success. up-bank and EQStack both declined the floating range on gate-coverage grounds
 and were right for a reason neither of them needed.
@@ -2602,6 +2606,59 @@ Their stress cases 8–16 gate the lifecycle surface on both transports; **nothi
 surface — and both 0.11.0 fixes landed in the ungated half. Record their lag as *"explicit bumps;
 gate covers lifecycle only, logging surface ungated"*, never as "starved by design", which loses the
 reason.
+
+### CORRECTION 2026-08-23 — the caret flip is withdrawn, and this repo already knew
+
+Rejected by **life-stack**, and the deciding evidence is in this repo's own `verify` chain.
+
+**Their argument, which is not a cost trade but a category difference:**
+
+> Starvation is a **recoverable** state — one command, at any later date, from any version, once
+> anything notices; what's published is still on the registry. A forced floor assertion is an
+> **irrecoverable erasure** — once a manifest reads `^0.12.0`, the fact that the consumer never
+> needed 0.12.0 is gone, with no registry to re-derive it from and no way for the next reader to
+> distinguish "we require this" from "this is how you move a caret".
+
+A staleness check can restore a stale version. **Nothing restores a distinction every manifest has
+been forced to erase.** So it dominates rather than trades, regardless of whether a check runs.
+
+**The related trap:** a caret on a 0.x pins the MINOR, so `^0.11.0` resolves `>=0.11.0 <0.12.0` and
+**no `pnpm update` can ever cross it**. Every bump is therefore a manual edit that asserts a floor
+nobody chose. A comparator bump is a pure lockfile fact — life-stack's fix for four consumers touched
+**no `package.json` at all**. Hence their refinement to the two-step above: **restore the range that
+was there; do not raise the floor.** The bump is a lockfile fact; the floor is a statement of need.
+
+**And this repo had already settled it, executably.** `scripts/check-publishable-manifests.mjs:170-200`
+reads every published package's declared sibling range and fails the build when it stops admitting the
+sibling's current version — so **floors here are load-bearing, not decorative**. Its own remediation
+text, verbatim:
+
+```
+Fix: widen it. A caret on a 0.x pins the MINOR, so a sibling bump strands this consumer with
+ERESOLVE. Prefer a comparator range that survives future bumps — ">=<current> <<nextMajor>" —
+over appending another "|| ^<current>" clause, which has to be re-edited every release.
+```
+
+`check:publishable-manifests` runs inside `pnpm verify`. **The repo has been telling every reader to
+prefer comparator ranges, in a message that fails the build, throughout the day this entry
+recommended the opposite.** Same failure family as the mis-relayed anchors: the evidence was present,
+local, and load-bearing, and a fresh inference was substituted for it.
+
+Under carets that rule would keep **passing while reading floors that are artefacts of the last
+bump** — a check that passes on noise, which is worse than no check.
+
+**Standing recommendation, restored and now grounded:** comparator ranges (`>=X <NEXT_MAJOR`) for
+published siblings and for consumers, with currency enforced at the **lockfile**, never at the
+specifier. The narrow cell where a caret is genuinely free — a single consumer with nothing reading
+floors — does not describe this repo, which publishes five packages with sibling ranges among them
+and has four external consumers.
+
+**Deferred, not done:** life-stack's `scripts/check-deps-stale.mjs` (138 lines, no dependencies,
+`npm view` per package, **exit 2** on an unreachable registry because an unanswered question is not a
+clean answer) is the missing piece — `verify` deliberately never touches the network, so nothing here
+detects a stale lockfile. **Trigger:** George's call. If taken, port theirs rather than write a second.
+Their own caveat applies: it had never once been executed before the day it caught this, and *a
+correct check nobody runs fails exactly like a broken one*.
 
 **MECHANISM 5 IS NOT PNPM-SPECIFIC.** gmail-cli-mcp measured the same retained-entry behaviour from
 npm under `npm install --package-lock-only`: a comparator range kept 0.10.0/0.5.0 exactly as pnpm
