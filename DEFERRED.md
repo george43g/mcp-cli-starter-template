@@ -2999,11 +2999,31 @@ in opposite directions**, so one generic "please migrate" message would have bee
 Measured by diffing each tree against `packages/mcp-kit/src/` at the `mcp-kit-v0.1.0` tag, which is
 byte-identical to what is on npm (`git log mcp-kit-v0.1.0..HEAD -- packages/mcp-kit` is empty).
 
-### up-bank-mcp — purely stale, migration is a pure upgrade
+### up-bank-mcp — purely stale; loss-free, but NOT free. ADOPTED 2026-08-22 (their PR #33)
 
 Their copy predates the fold-in. It lacks `ContentBlock`, `ToolDefinition.toContent?` and
 `BuildDispatcherOptions.devOnlyEnabled?`; every other difference is the older text of the same file.
-Nothing of theirs would be lost. **Recommend de-vendoring now** against `^0.1.0`.
+They verified rather than trusting the diff, and confirmed it: every "ours-only" line was a comment,
+a `biome-ignore` pragma, or reformatting — no unique functionality. Pinned `^0.1.0` off `npm view`.
+
+**CORRECTION TO THIS ENTRY'S OWN ADVICE — "pure upgrade" was wrong, and it was my word.** Nothing of
+theirs was lost, which is what I measured; I then reported that as a *free* upgrade, which I had not
+measured. Narrowing `content[]` from `{type:"text";text:string}[]` to the `text | image` union is
+**not additive at the call site**: it broke **29 type errors across 9 files** in their tree,
+including `src/cli.ts` and `src/tui/data/source.ts` — application code, not just tests. About twenty
+minutes, resolved once in a `src/tool-content.ts` helper (`firstText`/`textBlocks`) rather than
+scattering casts.
+
+That cost is *intended* — this repo's own docblock says the compile error "is wanted here… it lands
+exactly at the render site where a decision about the new block type has to be made" — but a
+consumer told "free" who then sees their typecheck go red across their app will either revert or
+start casting. **Quote the number, not the adjective: ~29 errors, one helper module, one sitting.**
+The obvious way to read a tool result is `content[0].text`, so assume every consumer does.
+
+**Second-order effect worth pre-announcing:** the published tarball ships no tests, so de-vendoring
+removed mcp-kit's 27 tests from their suite (209 → 184). Correct — one does not run a dependency's
+suite — but a repo that treats test count as a regression signal will read it as one. It cost them a
+second look to confirm it was the deletion and not a silent skip.
 
 ### browser-tab-mcp — two blockers, one of them security-relevant
 
@@ -3042,3 +3062,62 @@ Nothing of theirs would be lost. **Recommend de-vendoring now** against `^0.1.0`
 **Neither consumer was told to migrate before this was measured.** The standing rule is that a
 request is usually right about the symptom and often wrong about the mechanism; here the *sender*
 would have been wrong about the mechanism, in a way that would have silently opened a tool gate.
+
+---
+
+## The dev gate, after both consumers replied — 2026-08-22
+
+**The exposure is confirmed empirically, not just by reading.** up-bank measured it on their vendored
+copy before adopting:
+
+```
+MCP_DEV unset -> callMcpTool("get_logs") -> isError: false, real log payload returned
+```
+
+Hidden from `tools/list`, executing anyway — **in a repo that fronts a real bank account**. Not
+remotely exploitable (a caller already needs the MCP host or the bearer-token HTTP service), but a
+dev-only log inspector that runs in production is a defence-in-depth hole, and the vendored copy gave
+them no way to close it.
+
+**Our own `apps/example-repo-mcp` is the same shape and still unfixed** — `index.ts:55` filters the
+listing, `dispatcher.ts:26-31` passes no `devOnlyEnabled`. So the golden output that ships into every
+scaffolded repo has the hole. **browser-tab is the working counter-example**: `index.ts:48` filters
+AND `dispatcher.ts:36` passes `devOnlyEnabled: devModeEnabled`, with `scripts/stress-mcp.ts:596-597`
+asserting over the real stdio transport, on three OSes, every PR, that `get_logs` answers "unknown
+tool name" by direct name with dev off.
+
+So: **the mcp-kit-side option was upstreamed; the app-side wiring was not.** Published
+`dispatch.ts:63` carries the rationale verbatim, and the golden app never passes it.
+
+**Both consumers independently asked for the default to be flipped, and both are unaffected by the
+flip** (each already passes the predicate) — so neither is arguing self-interest.
+
+up-bank's ordering of the argument, which is better than mine:
+
+1. The failure is **silent and reads as safe**. `devOnly: true` is a declaration of intent; a kit that
+   accepts it and ignores it produces a consumer who believes they are gated and is not.
+2. The safe default is **cheap** — one predicate at wiring time, and you find out immediately because
+   your dev tool stops working. The unsafe one costs nothing at wiring time and everything later.
+3. **We already chose fail-closed for every analogous case** — `resolveKey` returning `null`, the
+   write-once guard, the tsx `--import` fix. This is the odd one out.
+
+**browser-tab's counter-proposal (D), carried in their name: neither default — validate at
+construction.** If the registry contains a `devOnly` tool and no predicate was passed, `buildDispatcher`
+**throws**, naming the offending tools. Consumers with no `devOnly` tools are untouched; consumers
+with them get a loud startup failure and a one-line fix instead of silent exposure; the ambiguous
+state becomes unrepresentable. Their honest statement of the cost: D is breaking for the same set A
+breaks, so under #34 it **cuts mcp-kit 1.0.0**, not 0.2.0.
+
+**up-bank's counter-argument, which is the real fork and must be answered first:** the current
+default is defensible *if* `devOnly` means "hidden from the listing" and was never an authorisation
+boundary. If that is the intent, the bug is the **name**, not the default — `hiddenFromList` would
+have told them the truth and they would never have assumed a gate. **So the question to settle is
+what `devOnly` MEANS. Flip the default, or rename the field — doing neither is what shipped the
+hole.**
+
+**One-line template fix, correct under A, B and D alike, needing no release:** wire
+`devOnlyEnabled: devModeEnabled` into `apps/example-repo-mcp/src/dispatcher.ts`. The option already
+exists in published 0.1.0, and `tests/integration.test.ts:39-40` asserts only the `tools/list` filter,
+so nothing depends on the current behaviour. Acceptance test to copy: browser-tab's
+`stress-mcp.ts:596-597` — assert the tool answers "Unknown tool name" **by direct name with dev off**,
+not merely that it is absent from `tools/list`.
