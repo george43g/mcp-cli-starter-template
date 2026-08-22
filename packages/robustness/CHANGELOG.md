@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.12.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.11.0...robustness-v0.12.0) (2026-08-22)
+
+
+### Features
+
+* **robustness:** opt-in email redaction, and print what redaction covers ([#97](https://github.com/george43g/mcp-cli-starter-template/issues/97)) ([68cb5c7](https://github.com/george43g/mcp-cli-starter-template/commit/68cb5c74ad0ba7fc9322cd23bc8a65c995021918)), closes [#42](https://github.com/george43g/mcp-cli-starter-template/issues/42)
+
 # [@george43g/robustness-v0.11.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.10.0...robustness-v0.11.0) (2026-08-21)
 
 
