@@ -11,9 +11,12 @@ import {
   getLogFilePath,
   getLogs,
   info,
+  logStartup,
   perf,
   pruneLogs,
+  redactionCoverage,
   _resetForTests as resetLogger,
+  setEmailRedaction,
   setFileLogging,
   setLogEnvPrefix,
   setLogFilePrefix,
@@ -450,5 +453,51 @@ describe("pruneLogs", () => {
     // ~200 bytes per file would leave a file per roll and all three leftovers.
     expect(left.length).toBeLessThanOrEqual(2);
     expect(left).toContain(getLogFilePath()?.split("/").pop());
+  });
+});
+
+describe("redaction coverage is printed, not implied", () => {
+  it("reports emails: false at the default, so absence is visible", () => {
+    // The false-confidence hazard this closes: "redaction is on" would
+    // otherwise silently imply emails too.
+    expect(redactionCoverage()).toEqual({ phones: true, secrets: true, emails: false });
+  });
+
+  it("reports emails: true once enabled", () => {
+    setEmailRedaction(true);
+    expect(redactionCoverage()).toEqual({ phones: true, secrets: true, emails: true });
+  });
+
+  it("reports everything false when redaction is off entirely", () => {
+    setLogRedaction(false);
+    setEmailRedaction(true);
+    expect(redactionCoverage()).toEqual({ phones: false, secrets: false, emails: false });
+  });
+
+  it("logStartup carries the coverage object", () => {
+    const dir = mkdtempSync(join(tmpdir(), "logger-cov-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    logStartup("mcp");
+    const line = getFileLogLines(1)[0];
+    expect(JSON.parse(line ?? "{}").data.redact).toEqual({
+      phones: true,
+      secrets: true,
+      emails: false,
+    });
+  });
+
+  it("the email rule reaches the file sink when enabled", () => {
+    const dir = mkdtempSync(join(tmpdir(), "logger-cov-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    setEmailRedaction(true);
+    info("mail_failed", { to: "george.x@gmail.com" });
+    expect(getFileLogLines(1)[0]).toContain("g…@gmail.com");
+  });
+
+  it("and does not, by default", () => {
+    const dir = mkdtempSync(join(tmpdir(), "logger-cov-"));
+    vi.stubEnv("MCP_LOG_DIR", dir);
+    info("mail_failed", { to: "george.x@gmail.com" });
+    expect(getFileLogLines(1)[0]).toContain("george.x@gmail.com");
   });
 });
