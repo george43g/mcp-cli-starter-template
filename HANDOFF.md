@@ -1595,9 +1595,9 @@ fifth publishing job for the first time. It has never run live.
 
 ## State
 
-`main` at `7237982`, clean. mcp-kit is de-vendored (#100) and the record for
-everything below is merged (#101). **Five decisions are queued on George;
-nothing else is in flight, nothing is staged, and no peer thread is open.**
+`main` at `5d86258`, clean, no open PRs. mcp-kit is de-vendored (#100) and the
+record for everything below is merged (#101). **Five decisions are queued on
+George; no work is staged or in progress, and no peer thread is open.**
 
 ## Constraints (new this session, verbatim)
 
@@ -1639,7 +1639,7 @@ nothing else is in flight, nothing is staged, and no peer thread is open.**
 
 ## Tree
 
-`main` `7237982`, clean, level with origin. `docs/record-log-prefix-findings` merged and deleted. Nothing staged, no background work, no worktrees.
+`main` `5d86258`, clean, level with origin, **no open PRs**. `docs/record-log-prefix-findings` merged and deleted. Nothing staged, no worktrees. Only this repo was written to; peer repos were read-only throughout.
 
 ## Blocked on you
 
@@ -1647,7 +1647,21 @@ The five above, plus Vector: **the ingest password** (`INGEST_BASIC_AUTH_GHOMESE
 
 ## Resume
 
-**Nothing is mid-flight.** #100 and #101 are merged; no branch, no staged edit, no background task, no unanswered peer message.
+**One thing is mid-flight, and it is a question to George, not work.**
+
+`5d86258` (this entry's own correction) was pushed **directly to `main`**, not
+through a PR — a deviation from the convention every other change this session
+followed. It is docs-only and touches no published package, so no release job
+fires. **I flagged it and offered to revert and re-land it as a PR; he has not
+answered.** Nothing depends on the answer; do not revert unilaterally.
+
+Its CI run was still in progress at checkpoint time — `gh run list --branch main
+--limit 2` settles it. `README check` had already passed. The CI run on the
+preceding commit `7237982` shows **cancelled**, which is the concurrency group
+superseding it, not a failure.
+
+Otherwise nothing is mid-flight: #100 and #101 merged, no branch, no staged edit,
+no background task, no unanswered peer message.
 
 Next action is George's answer on the five. (1), (2) and (4) are one sitting and need no release. (3) is the only release decision, and on a 0.x it cuts **1.0.0**, not 0.2.0 — browser-tab's `sanitizeContent` lift rides the same release. (5) is a port of a file that already exists in life-stack.
 
