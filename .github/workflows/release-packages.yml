@@ -337,24 +337,26 @@ jobs:
           NPM_CONFIG_PROVENANCE: "true"
 
   mcp-kit:
-    # BOOTSTRAP-GATED, and the guard is not cosmetic.
+    # ENABLED 2026-08-22. It was `workflow_dispatch`-gated until three things
+    # existed, and the third is the one that is easy to miss:
     #
-    # semantic-release's FIRST release for a package is 1.0.0 — it does not read
-    # the manifest's version. So an unguarded job on a package that has never
-    # published would try to publish `mcp-kit@1.0.0` off the `feat(mcp-kit)`
-    # commits, not the 0.1.0 the manifest declares. It would fail at the npm
-    # step (trusted publishing requires the package to already exist, and there
-    # is no NPM_TOKEN here by design) — but "it fails safely" is not a thing to
-    # rely on for a version number that is immutable once taken. This repo has
-    # published two unintended majors already; that is enough.
+    #   1. `@george43g/mcp-kit@0.1.0` on npm — a manual publish, because trusted
+    #      publishing requires the package to already exist.
+    #   2. Its Trusted Publisher, created with `npm trust github` (npm >= 11.19
+    #      has a CLI for this; it is no longer a website-only step):
+    #        npm trust github @george43g/mcp-kit --file release-packages.yml \
+    #          --repo george43g/mcp-cli-starter-template --allow-publish
+    #      Verify with `npm trust list @george43g/mcp-kit`.
+    #   3. **The git tag `mcp-kit-v0.1.0`.** semantic-release resolves
+    #      `lastRelease` from GIT TAGS matching `tagFormat`, NOT from the
+    #      registry — so publishing 0.1.0 to npm did not, by itself, stop the
+    #      first automated run from being a FIRST RELEASE and cutting 1.0.0.
+    #      Every other package here has such a tag; mcp-kit had none, which is
+    #      how the gap was found. If you bootstrap another package, tag it.
     #
-    # An earlier comment on this job claimed semantic-release "finds nothing to
-    # do" until the bootstrap. That was wrong: a fresh package with feat commits
-    # in its path has plenty to do. Same shape as mcpsync's old guard.
-    #
-    # TO ENABLE: after the manual `pnpm publish` of 0.1.0 and the Trusted
-    # Publisher config on npmjs.com, delete this `if:` and the comment above it.
-    if: github.event_name == 'workflow_dispatch'
+    # The hazard this guarded against was never "the publish fails safely" —
+    # npm version numbers are immutable once taken, and this repo has published
+    # two unintended majors already.
     runs-on: ubuntu-latest
     needs: secret-store
     steps:
@@ -426,11 +428,11 @@ jobs:
   # 2026-08-22, so the list is now simply "every job above".
   resync-example:
     name: Resync example/ whatever the release jobs did
-    # mcp-kit is deliberately ABSENT: it is `workflow_dispatch`-only until its
-    # bootstrap, and a job hung off it would be skipped on every push — DEFERRED
-    # #38's original bug wearing a different hat. Restore it here when the
-    # bootstrap gate comes off.
-    needs: [robustness, cli-kit, tui-kit, secret-store]
+    # All five publishing jobs. mcp-kit was absent while it was
+    # `workflow_dispatch`-only — a job hung off a dispatch-only job is skipped
+    # on every push, which is DEFERRED #38's original bug wearing a different
+    # hat. Its gate came off 2026-08-22, so it belongs here again.
+    needs: [robustness, cli-kit, tui-kit, secret-store, mcp-kit]
     if: ${{ !cancelled() && github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:

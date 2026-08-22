@@ -1407,7 +1407,7 @@ then never resolves.
 
 ---
 
-## 25. `mcp-kit` IS BEING PUBLISHED (decided 2026-08-22); `shared-types` stays deferred
+## 25. `mcp-kit` IS PUBLISHED at 0.1.0 (2026-08-22); `shared-types` stays deferred
 
 **Status**: **mcp-kit — DECIDED to publish**, by George on 2026-08-22, against a measurement rather
 than a request. `shared-types` — still deferred, reasons unchanged and below.
@@ -1455,8 +1455,36 @@ DEFERRED #41's starvation problem in structural form, and unlike #41 no version 
    a `.releaserc.json`, a release job chained after secret-store, and `packages/mcp-kit/**` in the
    workflow's `paths`. mcp-kit's only workspace runtime dep is `@george43g/robustness`, already
    published, so it needs no companion release — `shared-types` is NOT a dependency of it. **The
-   one-time npm bootstrap publish is George's own manual step**, and until it happens the job is
-   `workflow_dispatch`-gated.
+   one-time npm bootstrap publish is George's own manual step** — **done 2026-08-22, and the job is
+   now ungated.**
+
+   **BOOTSTRAPPING A PACKAGE NEEDS THREE THINGS, AND THE THIRD IS THE ONE THAT IS EASY TO MISS.**
+
+   1. The package on npm. `@george43g/mcp-kit@0.1.0`, published manually because trusted publishing
+      requires the package to already exist. Two attempts failed first: a granular token without the
+      bypass-2FA flag returned `E403`, and a plain `npm publish` returned `EOTP`. The web-auth flow
+      in an interactive terminal is what worked.
+   2. Its Trusted Publisher. **`npm trust github` is a real CLI as of npm 11.19** — this is no longer
+      a website-only step:
+      `npm trust github @george43g/mcp-kit --file release-packages.yml --repo george43g/mcp-cli-starter-template --allow-publish`
+      → `id: 8bf00f47-fb66-47e6-a0d5-ba99ee4b4df2`, verifiable with `npm trust list`.
+   3. **The git tag `mcp-kit-v0.1.0`.** semantic-release resolves `lastRelease` from **git tags**
+      matching `tagFormat`, **not from the registry**. So publishing 0.1.0 to npm did NOT close the
+      1.0.0 hazard this entry recorded — removing the gate without the tag would still have produced
+      a first release and cut **1.0.0**, skipping 0.1.x entirely. Found by checking every package's
+      tags before arming the job: robustness/cli-kit/tui-kit/secret-store each had one, mcp-kit had
+      none. Tagged at `d0219ae`, the last commit touching `packages/mcp-kit` and the tree the
+      published tarball was built from.
+
+   **A CORRECTION TO OUR OWN VERIFICATION METHOD, worth more than the item.** After the successful
+   publish, `npm view` and a direct `registry.npmjs.org` GET both returned **404** for several
+   minutes. We concluded the publish had failed — with what looked like a negative control, since
+   `@george43g/robustness` returned 200 from the identical query. **The control was mis-specified**:
+   an established package answering 200 proves the QUERY works, not that a BRAND-NEW name propagates
+   instantly to the read replicas. First-publish propagation lag is real and the control did not test
+   for it. `npm trust` succeeded against the package while reads were still 404ing, which is the
+   evidence that settled it. **A control must vary the thing under test** — here, newness — not
+   merely demonstrate that the instrument works.
 
    **The gate is not cosmetic, and the first version of this entry got it wrong.** It said the job
    would "run, verify, and find nothing to do". False: **semantic-release's first release for a
