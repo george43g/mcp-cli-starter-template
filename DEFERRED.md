@@ -2776,6 +2776,23 @@ This matters to THIS repo specifically: a kit bump is the most conspicuous chang
 so it collects blame for every flake it coincides with. If a consumer reports a kit regression, the
 first question is which line of the diff could produce that symptom — and "none" is an answer.
 
+**RE-OPENED WITHIN THE HOUR BY 0.12.0, which is the argument for a check over a report.** All five
+consumers reached `robustness@0.11.0` on 2026-08-22 — the first time in this arc — after five
+hand-written tables and five sessions acting on them. `0.12.0` published the same evening. Resolved
+versions read from consumer lockfiles that night:
+
+| repo | resolves |
+|---|---|
+| EQStack | **0.12.0** |
+| browser-tab-mcp | 0.11.0 |
+| life-stack | 0.11.0 |
+| up-bank-mcp | 0.11.0 |
+
+One of four current, hours after four of four were. **A state that takes five agents a day to reach
+and one publish to undo is not fixed, it is being manually held.** The durable form is life-stack's
+`scripts/check-dep-ranges.mjs`, extended to assert the **resolved** version rather than the range's
+shape — mechanism 5 is invisible to any test that only reads a manifest.
+
 **Cost**: ~15 min per release to sweep and report; unbounded if it keeps not happening.
 
 ---
@@ -2883,3 +2900,75 @@ read as absence. Pair it with life-stack's constructed-env-name near-miss and th
 call site.**
 
 **Sequencing warning already sent**: their explicit-pin policy means `^0.11.0` will not reach 0.12.0.
+
+---
+
+## 43. PARKED — telemetry to the home OpenObserve, pending George's own proposal
+
+**Status**: **PARKED 2026-08-22 by George**, mid-discussion, with *"your assumptions are wrong. I will
+propose a way forward."* **Do not resume the design from this entry.** It exists so the measured
+facts survive; the conclusions below it are explicitly superseded by whatever he proposes.
+
+**The ask, verbatim**: every tool he builds should store error / status / diagnostic / **performance**
+logs on the home server's OpenObserve, spooling while it is unreachable and flushing when it returns
+— *"so that i can get the needed feedback to improve all my tools"* — while never running for anyone
+else who installs the same tools.
+
+### Measured facts (keep these; they cost two peer sessions real work)
+
+From **g-home-server**, probed live on the server:
+
+- Ingest is **not** OTLP and **not** OpenObserve directly. It is Vector: `POST
+  https://ingest.lan.melbournewebco.com.au/`, JSON array body, `http_server` source on `:8687`
+  behind Caddy. Vector forwards to `http://openobserve:5080/api/default/wm_stack/_json`.
+  **Do not write to `openobserve:5080`** — 127.0.0.1 only on the host.
+- Auth is **HTTP Basic**, one credential from a Docker secret. Not mTLS, no bearer.
+- **Reachability is LAN-only.** Assume an offline window of **days, not hours**.
+- **Nothing tails anything today.** Vector on the server has no `file` source; its disk buffer sits
+  between Vector and OpenObserve, i.e. server-side only.
+- `remove_after_secs` verified: three closed files, six lines delivered, all three deleted after full
+  read. Wiping the checkpoint dir causes **duplicates, not loss** (`A1 A2 A1 A2`) — the benign
+  direction. Measured on Linux containers; **not tested on macOS**.
+- **A file deleted before the shipper reads it is lost in TOTAL SILENCE** — one of two files removed,
+  the survivor delivered, **zero** warnings about the missing one. "The reaper won the race" is
+  indistinguishable from "there was nothing to ship".
+
+From **life-stack**, read from source:
+
+- **A governing decision already exists**, `apps/opkeep/lib/otlp.sh:10-16`, George 2026-08-21
+  (*"split by encodability"*): shell tools that can only speak JSON go direct; **tools that already
+  carry an OTel SDK may route via Vector for its disk buffer.** Measured on Vector 0.44.0: its OTLP
+  source accepts **only** `application/x-protobuf`; JSON gets `500 Rejection(InvalidHeader)`.
+- life-stack HAS shipping code — `apps/opkeep/lib/otlp.sh`, 131 lines, live — with **five rules worth
+  stealing**: off by default (no endpoint ⇒ **not one subprocess spawned**); never the value (the emit
+  function is not passed a secret); never blocks and never fails the call; no recursion; and
+  `--cached-only` never emits.
+- **No spool-and-retry exists anywhere in the tree.** opkeep deliberately does the opposite —
+  `README.md:322` states losing a span during a collector restart is *acceptable* because these are
+  *"a diagnostic aid, not a record of record"*. That is a stated non-goal, not an unfinished feature.
+- launchd is the established pattern, and MCP tools already run that way: `com.george43g.browser-tab`
+  and `com.george43g.up-bank` are loaded on this Mac today.
+- OpenObserve and Vector live in a **third repo** — `D:\src\workstation-platform`, a different
+  session's — so the collector side is neither this repo's nor life-stack's.
+
+Checked here: **Vector is not on Homebrew** (`brew info vector` → no formula) and is not installed.
+George says the dotfiles session is building a custom formula, which changes that cost.
+
+### The one defect this surfaced in shipped code
+
+`pruneLogs` (`robustness@0.11.0`, shipped 2026-08-22) reaps by **count** — `MCP_LOG_KEEP_FILES`,
+default 5 — and reaps **silently**. Five files is five *rotations*, which a burst crosses in minutes.
+The reasoning for a count was sound for the problem it solved (rotation caps each file, so
+`keep × maxBytes` IS the byte budget) and became wrong when a delivery requirement appeared under it.
+**A retention policy that is right for disk is not automatically right for delivery; the two want
+different units.** Whatever ships, this needs revisiting.
+
+### What is explicitly UNRESOLVED
+
+- **Diagnostic aid, or record of record?** Every branch turns on it. opkeep answered it for itself
+  (aid). Unanswered for this fleet.
+- **Where the spool lives.** g-home-server argues `$TMPDIR` is fatal because macOS deletes it and the
+  loss is silent. George argues `$TMPDIR` is *correct* precisely because it guarantees eventual
+  deletion — no unbounded growth, no sensitive data lingering on a stranger's disk — with Vector
+  picking files up promptly into its own cache. **Both positions are recorded; neither is adopted.**
+- Whether an agent is configured (Vector) or written, and where it lives.
