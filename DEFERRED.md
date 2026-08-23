@@ -3431,3 +3431,73 @@ for email redaction and the global switch is the exception**, because only the c
 its surfaces carry addresses. There is already a home for it — `## Logging` at `:169`, the
 `MCP_LOG_REDACT_EMAILS` note at `:181`, and `### Email redaction is opt-in…` at `:207`. A `docs:`
 change to a published package; unstarted.
+
+---
+
+## 46. mcp-kit and the app resolve DIFFERENT robustness instances, so logger state is split
+
+Found 2026-08-24 while red-drilling the log-branding fix (decision item 2). The fix
+looked broken — `TMPDIR=$D node dist/cli.js health` still produced `$TMPDIR/mcp/`
+after branding was moved to module scope. It is not broken. **The app cannot brand
+the instance that writes that file.**
+
+### Measured
+
+```
+app     (apps/example-repo-mcp) -> packages/robustness/dist/index.js
+mcp-kit (packages/mcp-kit)      -> node_modules/.pnpm/@george43g+robustness@0.12.0/
+                                     node_modules/@george43g/robustness/dist/index.js
+```
+
+Two physically distinct modules. `logFilePrefixOverride` and `logFilePath` are
+**module-scope** state (`logger.ts:122`, `:250`), therefore **per-instance**.
+`setLogFilePrefix` in the app writes the workspace instance; `perf()` inside
+`dispatch.ts:126` reads the registry instance, which nobody branded, so it falls
+back to `envStr(key("LOG_PREFIX"), "mcp")` — the shared default bucket.
+
+`node dist/cli.js health` emits exactly one record, and it is that span. Hence one
+file, in `mcp/`, and **no amount of early branding in the app changes it.**
+
+### Why this matters beyond the log directory
+
+**DEFERRED #45 and Vector O4 attribute `$TMPDIR/mcp/` entirely to call ORDERING —
+late-call and never-called. That diagnosis is incomplete.** For dispatch perf
+spans, ordering is irrelevant: the app never touches the instance involved. Both
+mechanisms are real; the ordering one is not the whole story, and a reader who
+fixes only the ordering will see the bucket persist and conclude the fix failed —
+which is exactly what happened here.
+
+**This also means decision item 4's behavioural test would go RED in this repo for
+a monorepo-only reason.** The test asserts "no default-prefix directory appears";
+that assertion is correct for a generated repo and currently unsatisfiable here.
+Deciding what the test does about that is part of building it — do not weaken the
+assertion to make the monorepo pass.
+
+### The likely durable fix, NOT taken here
+
+`packages/mcp-kit` declares robustness as a regular **`dependency`**; `tui-kit`
+declares the same relationship as a **`peerDependency`**:
+
+| package | shape |
+|---|---|
+| `packages/mcp-kit/package.json` | `dependencies: { "@george43g/robustness": ">=0.11.0 <1" }` |
+| `packages/tui-kit/package.json` | `peerDependencies: { "@george43g/robustness": ">=0.1.1 <1" }` + `devDependencies: workspace:*` |
+
+A peer dependency is supplied by the consumer, so there is exactly one instance by
+construction. tui-kit got this right; mcp-kit did not. **A kit holding module-scope
+process state must be a peer dependency of anything that shares that state.**
+
+**Is a generated repo affected? UNKNOWN — not measured, and do not assume it is
+not.** The reasoning that says "probably fine" is: a generated app pins
+`robustness ^X` and mcp-kit asks for `>=X <1`, both resolve to the same version,
+pnpm dedupes to one copy. The reasoning that says it can break: **a caret on a 0.x
+pins the MINOR**, so once robustness 0.13.0 ships, the app's `^0.12.0` stays on
+0.12.x while mcp-kit's `>=0.12.0 <1` is free to take 0.13.0 — **two instances, in a
+real user's repo, silently splitting logger state.** That is a shipped hazard, not
+a monorepo artifact, and it is created by the same two-sided range rule recorded in
+#41. Measuring it needs a real install of a generated repo, not reasoning.
+
+**Trigger:** George's call, and it rides **mcp-kit 1.0.0** (decision item 3) if
+taken — moving a dependency to peerDependencies is exactly the kind of change a
+major absorbs, and there will not be a cheaper opportunity. Do it in that release
+or explicitly decide not to.
