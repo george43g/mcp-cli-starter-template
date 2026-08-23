@@ -16,8 +16,11 @@
  * To remove the dev-only get_logs tool: drop it from src/tools/registry.ts.
  */
 
+// MUST be first — brands the log directory at module scope, before anything
+// that can log is imported. See src/log-brand.ts.
+import "./log-brand.js";
 import { buildResourcesHandler, startStdio } from "@george43g/mcp-kit";
-import { envBool, setLogFilePrefix, setStderrMirror } from "@george43g/robustness";
+import { envBool, setStderrMirror } from "@george43g/robustness";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
@@ -33,10 +36,10 @@ import { makeResourcesProvider } from "./resources/registry.js";
 import { devModeEnabled, makeAppRegistry } from "./tools/registry.js";
 
 export async function runMcpServer(opts: { transport?: "stdio" | "http" } = {}): Promise<void> {
-  // Brand the log directory so different tools' logs don't collide.
-  const slug = APP_NAME.replace(/^@[^/]+\//, "");
-  setLogFilePrefix(slug);
-
+  // Log branding happens at module scope via the `./log-brand.js` import above,
+  // NOT here. It used to live in this function, which made it correct only by
+  // current call ordering — anything that logged earlier silently won the
+  // directory.
   const transport = opts.transport ?? (process.argv.includes("--http") ? "http" : "stdio");
   const includeDevOnly = devModeEnabled();
   const registry = makeAppRegistry();
