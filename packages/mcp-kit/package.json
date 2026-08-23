@@ -51,7 +51,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@george43g/robustness": ">=0.11.0 <1",
+    "@george43g/robustness": ">=0.12.0 <1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.25.0"
