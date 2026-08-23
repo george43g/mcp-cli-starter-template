@@ -3482,6 +3482,16 @@ declares the same relationship as a **`peerDependency`**:
 |---|---|
 | `packages/mcp-kit/package.json` | `dependencies: { "@george43g/robustness": ">=0.11.0 <1" }` |
 | `packages/tui-kit/package.json` | `peerDependencies: { "@george43g/robustness": ">=0.1.1 <1" }` + `devDependencies: workspace:*` |
+| `packages/cli-kit/package.json` | no robustness dependency of any kind |
+
+**mcp-kit is the ONLY one of the three kits with the plain-dependency shape**
+(measured 2026-08-24, prompted by life-stack-e8 offering `apps/mcpsync` as a third
+data point). That removes the "maybe a plain dependency is this repo's house
+style" reading — it is not a style, it is an outlier. **mcpsync itself turned out
+NOT to be a data point**: it declares `cli-kit`, `robustness` and `tui-kit` and
+**does not depend on mcp-kit at all**, so the peer change cannot reach it, and
+tui-kit already gives it the single-instance arrangement #46 argues for. Recorded
+because the offer was reasonable and the refutation is cheap to lose.
 
 A peer dependency is supplied by the consumer, so there is exactly one instance by
 construction. tui-kit got this right; mcp-kit did not. **A kit holding module-scope
