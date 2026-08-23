@@ -1666,3 +1666,120 @@ no background task, no unanswered peer message.
 Next action is George's answer on the five. (1), (2) and (4) are one sitting and need no release. (3) is the only release decision, and on a 0.x it cuts **1.0.0**, not 0.2.0 — browser-tab's `sanitizeContent` lift rides the same release. (5) is a port of a file that already exists in life-stack.
 
 **Do not start any of them without his word.** Each changes what generated repos do, and the two recommendations withdrawn above were both stopped by asking a peer to argue against them, not by review.
+
+---
+
+# 2026-08-24 — all five decided by George, plus Vector approved in full
+
+**Precedence: where this entry and any summary disagree, this entry is correct.**
+It records DECISIONS, not completed work. Nothing below is implemented yet unless
+its row says so.
+
+## State
+
+All five queued items and the Vector question were put to George sequentially on
+2026-08-24 and answered. **Two releases are now authorised in shape: `mcp-kit`
+1.0.0 and a `robustness` minor.** No code has been written against any of them.
+
+## Constraints (new this session, verbatim)
+
+- *"you need to provide the most important bits to me in a dot point summary at
+  the end of each turn to ensrue i read it"* — 2026-08-24. Now also in
+  `~/.claude/CLAUDE.md`: `needs you` first, then `done`, then `next`. Anything
+  requiring George to act must be a bullet, never prose.
+
+## Settled — the five, with the option George chose
+
+| # | Decision | Consequence |
+|---|---|---|
+| 1 | **Wire `devOnlyEnabled: devModeEnabled`** into `apps/example-repo-mcp/src/dispatcher.ts:26-31`, **plus** browser-tab's transport-level assertion (`stress-mcp.ts:596-597`) that `get_logs` answers "Unknown tool name" by direct name with dev off. | No release. Harness goes 15 → **16** assertions, so `EXPECTED_ASSERTIONS` (`stress-mcp.ts:197`) and the **13 markdown files** quoting "15-assertion" all move; `pnpm check:stress-count` enforces it. Three surfaces: canonical → `08-app/lib/` → `regen:example`. |
+| 2 | **Structural brand-on-import module.** A `src/log-brand.ts` whose module-scope side effect calls `setLogFilePrefix(slug)`, imported **first** by `cli.ts`, `index.ts` and `tui/index.tsx`. | No release. Chosen over the one-line `cli.ts` patch so ordering is correct by construction, not by luck. |
+| 3 | **(D) Throw at construction.** `buildDispatcher` throws when the registry holds a `devOnly` tool and no `devOnlyEnabled` predicate was passed, naming the offending tools. | **Cuts `mcp-kit` 1.0.0.** browser-tab's `sanitizeContent` lift rides it. **Makes item 1 a hard prerequisite** — the generated app throws without it. up-bank is pinned `^0.1.0` and generated repos get `^<version>` (`build-templates.mjs:207`), so 1.0.0 reaches nobody automatically: it is a coordination event across three consumers. |
+| 4 | **Full behavioural test + the robustness late-brand detector.** Spawn every subcommand under an isolated `TMPDIR`, enumerated from the bin's own command table, assert no default-prefix directory appears; kill the long-running ones. Plus the zero-false-positive detector at `setLogFilePrefix` (`logger.ts:118`) warning via `writeStderrLine` when `logFilePath` is already non-null. | Test: no release, lands in the **template** (four surfaces). Detector: **a `robustness` release.** |
+| 5 | **Port life-stack's `check-deps-stale.mjs` + a scheduled CI job** that fails loudly. Not a PR gate — `verify` stays network-free. | No release. Also clears the live staleness found while deciding it (below). |
+
+**Chosen option text is preserved because the reasoning is not recoverable from
+the diff:** item 3 went to (D) over (A)-flip and (C)-rename because D *dissolves*
+up-bank's fork — under D you cannot have a `devOnly` tool without a predicate, so
+the field genuinely is a gate and the name stops lying without a rename.
+
+## Settled — measured while deciding, not previously known
+
+| # | Finding | Anchor |
+|---|---|---|
+| M1 | **This repo is dependency-stale RIGHT NOW, and `pnpm verify` is blind to it.** `packages/mcp-kit/package.json` declares `@george43g/robustness` at `>=0.11.0 <1` as a real `dependency`; published latest is **0.12.0**; the lockfile retains `'@george43g/robustness@0.11.0'`. Mechanism 5, live, in the repo that has been auditing four consumers for exactly this. | `npm view` + `pnpm-lock.yaml`, 2026-08-24 |
+| M2 | **18 of 20 first-party edges are `workspace:*`** — which is why M1 hid. `mcp-kit → robustness` is the only registry-resolved first-party edge, and it is the one that drifted. `tui-kit` holds robustness as `devDependencies: workspace:*` + `peerDependencies: >=0.1.1 <1`, so it does not resolve from the registry. | manifest scan, 2026-08-24 |
+| M3 | **`@george43g/shared-types` returns E404 on `npm view` and that is correct** — it is `private: true` and absent from `PUBLISHABLE` (`scripts/check-publishable-manifests.mjs:42-53`). The ported staleness check must distinguish *deliberately unpublished* from *registry unreachable*, or it exits 2 forever. | 2026-08-24 |
+| M4 | **Vector O3 is closed for `example-repo-mcp`: CLEAN.** `MCP_LOG_DIR` is empty in `.env.example` across all three surfaces; the only non-empty settings are `tests/http-lifecycle.test.ts:81` and `scripts/stress-mcp.ts:384`, both temp dirs they create. No absolute override in any production config. This was the last outstanding row in that audit. | 2026-08-24 |
+
+## Corrections (claims now void)
+
+- **"Log prefix — two call sites; `index.ts` brands too late" is WRONG for this
+  repo, and it was my row.** DEFERRED #45's own entry-point audit says
+  `index.ts` ✓, `tui/index.tsx` ✓, **`cli.ts` ✗**, `commands/http.ts` ✗-but-harmless.
+  **One call site here, not two.** The "brands too late" mechanism is real but was
+  measured in browser-tab's tree. I conflated the general trap with our instance.
+  What *is* true of `index.ts`: it brands as the first statement inside
+  `runMcpServer()`, so it is correct **by current call ordering, not by
+  construction** — which is the argument for item 2's structural fix.
+
+## Settled — Vector
+
+**George approved the plan IN FULL, all five emitters** (2026-08-24), over the
+staged option I recommended. The staged alternative and its reasoning are in
+`Rejected` below so this is not re-litigated.
+
+- Install/supervision per `~/dotfiles/docs/vector-rollout.md` S1-S2: mise pin
+  `vector = "0.57.0"`, **own launchd plist**, `brew services` rejected
+  (`Formula/vector.rb:56` sets `keep_alive false`, unoverridable).
+- **`INGEST_BASIC_AUTH_GHOMESERVER` is still George's to create** — approval of
+  the plan does not create the credential. Verified absent: zero matches across
+  all 529 key-vault items. **Nothing runs until it exists.**
+- **Accepted with the plan, explicitly:** up-bank account identifiers and
+  browser-tab URLs are covered by **no** redaction rule at any version; gmail and
+  imsg ship email addresses with redaction defaulting off; browser-tab, up-bank
+  and life-stack resolve robustness **0.11.0**, where the email-redaction
+  identifier does not exist in the shipped `dist/` at all.
+- **O12's single artifact folds into the mcp-kit 1.0.0 already authorised by item
+  3**: a guard beside `packages/mcp-kit/src/dispatch.ts:155-161`, which copies
+  `err.message`/`err.stack` verbatim into `dispatch_error` and is inherited by
+  every consumer. Doing it in that release avoids a second coordination event
+  across the same three consumers.
+
+**dotfiles owns install/config and has not been told yet** — the vector-rollout
+record is in a peer repo and this session is read-only there.
+
+## Rejected (so they are not re-proposed)
+
+| Option | Why | Rejected by |
+|---|---|---|
+| Item 2 as a one-line `cli.ts` patch | Closes the measured defect but leaves the arrangement correct-by-ordering, so a future entry point repeats the trap. | George, for the structural module |
+| Item 3 (A) flip default / (C) additive rename | (A) picks a default instead of answering what `devOnly` means, and fails silently. (C) is a minor that reaches everyone automatically but documents the trap rather than closing it. | George, for (D) |
+| Item 4 one-shot subcommands only | Drawing the line by hand is the exact enumeration failure that let `cli.ts` through, and `mcp` is the entry point that matters most. | George |
+| Item 5 manual `pnpm check:deps-stale` only | life-stack's own caveat: it had never once been executed before the day it caught this — *a correct check nobody runs fails exactly like a broken one*. | George, for the scheduled job |
+| Vector staged rollout (safe emitters first) | Recommended by this session: ship `example-repo-mcp` + browser-tab, hold gmail/imsg/up-bank until O12 answered per-emitter. George took full approval instead, accepting the exposure listed above. | George |
+
+## Open
+
+| # | Question | Whose call |
+|---|---|---|
+| O-A | **Does authorising the 1.0.0 *shape* authorise the *publish*?** The standing constraint is that publishing needs George's own approval, and `release-packages.yml` fires on push to `main`. Treating the item-3 answer as publish approval would be an inference. **Ask before pushing anything that triggers the release.** | **George** |
+| O-B | `INGEST_BASIC_AUTH_GHOMESERVER` creation (Vector O1). | **George** |
+| O-C | Vector O11 — is NDJSON-in-`$TMPDIR` the intended coverage boundary, or should stderr-only tools (voice-mcp) be brought in? Not covered by full approval; it is a design question about what is *representable*. | **George** |
+| O-D | The direct-to-`main` push of `5d86258`, flagged 2026-08-23, still unanswered. Docs-only, fires no release. **Do not revert unilaterally.** | **George** |
+
+## Tree
+
+`main` at `ef49986`, clean, level with origin, no open PRs. CI on `ef49986` is
+**green** — both matrix legs passed; the release-token gate skipped correctly
+(push event, docs-only). Nothing staged, no worktrees, no background work.
+Only this repo was written to; `~/dotfiles` and all peer repos were read-only.
+
+## Resume
+
+Nothing is in progress. The next action is implementation, and the ordering is
+forced by item 3: **item 1 must land before mcp-kit 1.0.0 is consumed**, or the
+generated app throws at construction. Suggested batching — (a) items 1+2+4 as one
+sitting, no release; (b) item 5, independent, no release; (c) mcp-kit 1.0.0
+carrying item 3 + `sanitizeContent` + the O12 `dispatch_error` guard; (d) the
+robustness minor carrying item 4's detector. **Stop at O-A before (c) or (d).**
