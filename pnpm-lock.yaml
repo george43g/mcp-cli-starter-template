@@ -217,8 +217,8 @@ importers:
   packages/mcp-kit:
     dependencies:
       '@george43g/robustness':
-        specifier: '>=0.11.0 <1'
-        version: 0.11.0
+        specifier: '>=0.12.0 <1'
+        version: 0.12.0
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@3.25.76)
@@ -663,8 +663,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@george43g/robustness@0.11.0':
-    resolution: {integrity: sha512-2AArHPvT7Vj2gbtH897w3TIg7DaFwOuwPcXuNAZcuUBqUUYZOpVcSU4XT6hoeWFDLlLBlwbHHmc1WKoL+ytBDQ==}
+  '@george43g/robustness@0.12.0':
+    resolution: {integrity: sha512-oFne6RLHZWSVfMQCRaRocIzIgTfW822QcxyaUQzax9fyRsVcv2vbNjSDipD2jM/SaWSQppu1344En5HLuF+Ujw==}
     engines: {node: '>=24'}
 
   '@hono/node-server@2.0.11':
@@ -4037,7 +4037,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@george43g/robustness@0.11.0': {}
+  '@george43g/robustness@0.12.0': {}
 
   '@hono/node-server@2.0.11(hono@4.12.29)':
     dependencies:
