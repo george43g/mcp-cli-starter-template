@@ -6,6 +6,7 @@
  */
 
 import { writeFileSync } from "node:fs";
+import { cpus, loadavg } from "node:os";
 import { type IntervalHistogram, monitorEventLoopDelay } from "node:perf_hooks";
 import { getHeapSpaceStatistics, getHeapStatistics } from "node:v8";
 import { normalizeEnvPrefix } from "./env.js";
@@ -19,12 +20,29 @@ import {
   unregisterCleanup,
 } from "./shutdown.js";
 
+/**
+ * Normalised host load: 1-minute loadavg divided by CPU count, so 1.0 means
+ * "as much runnable work as there are cores".
+ *
+ * `os.cpus().length` reports HOST cores, not a cgroup quota — a 1-CPU container
+ * on a 64-core box understates its own saturation and this reads as idle, which
+ * degrades toward killing, i.e. today's behaviour. A consumer that knows its
+ * real quota should pass `hostLoadReader`.
+ */
+function defaultHostLoad(): number {
+  const cores = cpus().length;
+  const oneMinute = loadavg()[0] ?? 0;
+  return cores > 0 ? oneMinute / cores : 0;
+}
+
 export interface WatchdogState {
   startedAt: number;
   eventLoopP99Ms: number;
   eventLoopMaxMs: number;
   eventLoopSustainedCount: number;
   lastEventLoopSampleTs: number;
+  /** Cumulative CPU microseconds at the previous event-loop sample, or null before the first. */
+  lastCpuUsageUs: number | null;
   rssMb: number;
   heapMb: number;
   heapHistory: number[];
@@ -89,6 +107,46 @@ export interface WatchdogOptions {
   eventLoopKillMs?: number;
   eventLoopSustainedMs?: number;
   eventLoopSustainedSamples?: number;
+  /**
+   * Duty cycle (CPU-ms per wall-ms, 0..1) at or below which the process counts
+   * as OFF-CPU during a sustained-lag window. Default 0.15.
+   *
+   * Set LOW on purpose. A genuinely spinning process does not measure ~1.0 on a
+   * loaded host — it gets descheduled too. Measured by browser-tab-mcp on
+   * darwin/arm64 node v24.15.0 at host load ~24: a busy-spin came in at **74%**,
+   * while `Atomics.wait` (an off-CPU park, structurally the same as a
+   * synchronous syscall waiting on IPC) came in at **0.01%**. Three orders of
+   * magnitude apart, so the threshold is not delicate — but one set near 1.0
+   * would misclassify a real spin-wedge as starvation on exactly the hosts this
+   * feature exists for.
+   */
+  starvationDutyCycle?: number;
+  /**
+   * Normalised host load (loadavg ÷ CPU count) at or above which the host counts
+   * as SATURATED. Default 1.0 — i.e. more runnable work than cores.
+   */
+  starvationHostLoad?: number;
+  /**
+   * Injectable CPU reader. Defaults to `process.cpuUsage`. Cumulative and
+   * monotonic since process start, in microseconds.
+   *
+   * Exists so the starvation matrix is testable deterministically. That is not
+   * a nicety: a test process on a loaded CI host sits in the low-CPU quadrant —
+   * *exactly* the starved case — so a version of this feature that read the real
+   * host would make the pre-existing lag test flaky in precisely the conditions
+   * the feature is about, and it would present as flake rather than as a fault.
+   */
+  cpuUsageReader?: () => NodeJS.CpuUsage;
+  /**
+   * Injectable host-load reader, PRE-NORMALISED (loadavg ÷ CPUs). Defaults to
+   * `os.loadavg()[0] / os.cpus().length`.
+   *
+   * Pre-normalised so the container caveat lives in one default rather than at
+   * every call site: `os.cpus().length` reports HOST cores, not a cgroup quota,
+   * so a 1-CPU container on a 64-core host understates its own saturation.
+   * A consumer that knows its quota can pass a correct reader.
+   */
+  hostLoadReader?: () => number;
   memorySampleMs?: number;
   maxRssMb?: number;
   memoryGrowthSamples?: number;
@@ -188,6 +246,8 @@ function buildConfig(options: WatchdogOptions) {
       "EVENT_LOOP_SUSTAINED_SAMPLES",
       6,
     ),
+    starvationDutyCycle: numberOption(options.starvationDutyCycle, "STARVATION_DUTY_CYCLE", 0.15),
+    starvationHostLoad: numberOption(options.starvationHostLoad, "STARVATION_HOST_LOAD", 1.0),
     memorySampleMs: numberOption(options.memorySampleMs, "MEMORY_SAMPLE_MS", 60_000),
     maxRssMb: numberOption(options.maxRssMb, "MAX_RSS_MB", 1_024),
     memoryGrowthSamples: numberOption(options.memoryGrowthSamples, "HEAP_GROWTH_SAMPLES", 10),
@@ -288,6 +348,74 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     void shutdownController?.shutdown(1).catch(() => exit(1));
   };
 
+  /**
+   * Is sustained event-loop lag this process's fault, or the host's?
+   *
+   * From inside a process the two are INDISTINGUISHABLE by lag alone: "my code
+   * blocked the loop" and "the OS did not schedule me" produce identical delay
+   * histograms. The discriminator is CPU consumed during the window.
+   *
+   *   lag + high CPU                 -> spinning on its own work  -> KILL
+   *   lag + low CPU + host saturated -> starved by the host       -> OBSERVE
+   *   lag + low CPU + host idle      -> blocked in a syscall      -> KILL
+   *
+   * The third row is why duty cycle alone is not enough, and it is not
+   * hypothetical: a synchronous syscall waiting on IPC parks the thread
+   * off-CPU while the loop is fully stopped. A pure duty-cycle test reads that
+   * as "starved, do not kill" and leaves the process wedged forever — the exact
+   * failure the watchdog exists to catch.
+   *
+   * Why observing beats killing when starved: a restart does not give a starved
+   * process CPU, and process creation is itself CPU-intensive, so killing adds
+   * load to an already-saturated host and pushes more processes over the same
+   * threshold. Measured in the field: 126 respawns of one consumer at a 0.57%
+   * duty cycle, with a second consumer self-killing on the same signature in the
+   * same window.
+   *
+   * Reported and designed by browser-tab-mcp, 2026-08-25, with up-bank-mcp as
+   * the independent second instance.
+   */
+  const classifySustainedLag = (
+    dutyCycle: number | null,
+  ): { starved: boolean; evidence: Record<string, unknown> } => {
+    // No baseline yet (the very first sample) or an unusable reading: fall
+    // through to today's behaviour. NEVER invent a duty cycle — a fabricated
+    // "low" reading would suppress a real kill.
+    if (dutyCycle === null) {
+      return { starved: false, evidence: { duty_cycle: null } };
+    }
+
+    if (dutyCycle > config.starvationDutyCycle) {
+      // On-CPU: spinning on its own work. Host load is irrelevant here — a
+      // spinning wedge is on-CPU whatever else the machine is doing, which is
+      // what stops high load from ever suppressing a genuine kill.
+      return { starved: false, evidence: { duty_cycle: dutyCycle, verdict: "wedged_spinning" } };
+    }
+
+    const readLoad = opts.hostLoadReader ?? defaultHostLoad;
+    const hostLoad = (() => {
+      try {
+        return readLoad();
+      } catch {
+        return null;
+      }
+    })();
+
+    // Windows returns [0,0,0] from loadavg, so hostLoad reads as idle there and
+    // this degrades to today's behaviour (kill). Documented, not discovered.
+    if (hostLoad === null || hostLoad < config.starvationHostLoad) {
+      return {
+        starved: false,
+        evidence: { duty_cycle: dutyCycle, host_load: hostLoad, verdict: "wedged_off_cpu" },
+      };
+    }
+
+    return {
+      starved: true,
+      evidence: { duty_cycle: dutyCycle, host_load: hostLoad, verdict: "starved_by_host" },
+    };
+  };
+
   const sampleEventLoop = (): void => {
     if (!eventLoopHistogram || shutdownController?.isShuttingDown()) return;
     const now = Date.now();
@@ -302,6 +430,25 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
       });
       return;
     }
+
+    // Duty cycle is computed on EVERY sample, not only breaching ones, so the
+    // window always covers exactly one sample interval. Computing it lazily at
+    // breach time would span however many samples since the last breach — and
+    // would have no baseline at all on the first one.
+    const dutyCycle = ((): number | null => {
+      const readCpu = opts.cpuUsageReader ?? (() => process.cpuUsage());
+      let totalUs: number | null = null;
+      try {
+        const u = readCpu();
+        totalUs = u.user + u.system;
+      } catch {
+        totalUs = null;
+      }
+      const previousUs = state.lastCpuUsageUs;
+      if (totalUs !== null) state.lastCpuUsageUs = totalUs;
+      if (totalUs === null || previousUs === null || elapsed <= 0) return null;
+      return (totalUs - previousUs) / 1000 / elapsed;
+    })();
 
     const p99Ms = eventLoopHistogram.percentile(99) / 1e6;
     const maxMs = eventLoopHistogram.max / 1e6;
@@ -331,8 +478,19 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
           sample_interval_ms: config.eventLoopSampleMs,
           sustained_threshold_ms: config.eventLoopSustainedMs,
         };
-        if (shouldKill("event_loop_sustained_lag", data)) {
-          triggerKill("event_loop_sustained_lag", data);
+        // STARVATION CHECK. Applies to THIS reason only — never to
+        // `event_loop_blocked` above. See `starvationDutyCycle` for why.
+        const verdict = classifySustainedLag(dutyCycle);
+        const enriched = { ...data, ...verdict.evidence };
+        if (verdict.starved) {
+          // Deliberately NOT a kill, and deliberately not silent. The label is
+          // the whole point: two sessions lost an evening to `watchdog_kill:
+          // event_loop_sustained_lag` on a process that was never on-CPU.
+          diagnostic("warn", "event_loop_starved_not_killed", enriched);
+          return;
+        }
+        if (shouldKill("event_loop_sustained_lag", enriched)) {
+          triggerKill("event_loop_sustained_lag", enriched);
         }
         return;
       }
@@ -429,6 +587,7 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     // A changed sample window must not read as a machine sleep to the next
     // sample — see the skew guard in sampleEventLoop.
     state.lastEventLoopSampleTs = Date.now();
+    state.lastCpuUsageUs = null;
     eventLoopTimer = setInterval(sampleEventLoop, config.eventLoopSampleMs);
     eventLoopTimer.unref();
     memoryTimer = setInterval(sampleMemory, config.memorySampleMs);
@@ -564,6 +723,7 @@ function initialState(): WatchdogState {
     eventLoopMaxMs: 0,
     eventLoopSustainedCount: 0,
     lastEventLoopSampleTs: now,
+    lastCpuUsageUs: null,
     rssMb: 0,
     heapMb: 0,
     heapHistory: [],

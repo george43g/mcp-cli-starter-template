@@ -372,6 +372,55 @@ The hook is synchronous. The verdict is needed before the sampler can act, so
 there is nothing useful to do with a pending promise; feed a queue from the
 hook if the reaction is slow.
 
+### Starvation is not a stall (new in 0.13.0)
+
+`event_loop_sustained_lag` used to kill on event-loop lag alone. **Lag alone
+cannot tell "my code blocked the loop" from "the OS didn't schedule me"** — from
+inside the process the delay histograms are identical.
+
+On a loaded host that made the watchdog a **positive feedback loop**: kill →
+respawn → module loading burns CPU → more processes cross the threshold. Two
+consumers measured it independently on one machine, each self-killing ~130 times
+while at a **0.57% duty cycle**.
+
+The discriminator is CPU consumed during the lag window, with host load as the
+tiebreak for the one branch CPU cannot resolve:
+
+| lag sustained | CPU in window | host | verdict | action |
+|---|---|---|---|---|
+| yes | **high** | any | spinning on its own work | **kill** |
+| yes | low | **saturated** | starved by the host | **observe** — logs `event_loop_starved_not_killed` |
+| yes | low | idle | blocked in a sync syscall | **kill** |
+
+The third row is why duty cycle alone is not enough: a synchronous syscall
+waiting on IPC parks the thread **off-CPU while the loop is fully stopped**. A
+pure duty-cycle test reads that as "starved, don't kill" and leaves the process
+wedged forever — the exact failure the watchdog exists to catch.
+
+**`event_loop_blocked` is never downgraded.** It is the high-threshold immediate
+path, and starvation presents as *sustained moderate* lag rather than one huge
+sample — measured across 223 real starvation samples, the worst reached 7646ms
+and never crossed the 10s threshold.
+
+**Tuning.** `starvationDutyCycle` defaults to **0.15**, deliberately low: a real
+busy-spin measured **74%**, not ~100%, because even a spinning process gets
+descheduled on a loaded host. An off-CPU park measured **0.01%**. Three orders of
+magnitude apart, so the threshold is not delicate — but one set near 1.0 would
+misclassify a genuine spin-wedge as starvation on exactly the hosts this targets.
+`starvationHostLoad` defaults to `1.0` (loadavg ÷ cores).
+
+**Two platform caveats, both degrading toward today's behaviour (kill):**
+
+- **Windows** returns `[0, 0, 0]` from `os.loadavg()`, so the host always reads as
+  idle and this feature does nothing there.
+- **Containers**: `os.cpus().length` reports HOST cores, not a cgroup quota, so a
+  1-CPU container on a 64-core box understates its own saturation. Pass
+  `hostLoadReader` if you know your real quota.
+
+Both readers are injectable (`cpuUsageReader`, `hostLoadReader`) so the matrix is
+testable without depending on real host load — which matters more than it looks,
+since a test process on a loaded CI host sits in the starved quadrant itself.
+
 ## Watchdog state
 
 `readWatchdogState()` returns the live watchdog state — event-loop percentiles,

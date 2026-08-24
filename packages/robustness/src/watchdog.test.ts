@@ -590,3 +590,168 @@ describe("observe-only breach hook", () => {
     controller.reset();
   });
 });
+
+/**
+ * Starvation vs wedging — the four rows of the two-signal table.
+ *
+ * Fixtures and case matrix supplied by browser-tab-mcp, 2026-08-25, after they
+ * and up-bank-mcp independently self-killed ~130 times each on one loaded host.
+ * Adapted to this harness; the semantics are theirs.
+ *
+ *   lag + high CPU                 -> spinning on own work  -> KILL
+ *   lag + low CPU + host saturated -> starved by the host   -> OBSERVE
+ *   lag + low CPU + host idle      -> blocked in a syscall  -> KILL
+ *   event_loop_blocked             -> hard stop, any CPU    -> KILL (never downgraded)
+ */
+describe("sustained lag: starved vs wedged", () => {
+  const SAMPLE_MS = 1_000;
+
+  /** Cumulative, monotonic microseconds — same contract as process.cpuUsage(). */
+  const cpuReaderAt = (duty: number) => {
+    let calls = 0;
+    return () => ({ user: calls++ * duty * SAMPLE_MS * 1000, system: 0 });
+  };
+
+  async function run(opts: { duty: number; hostLoad: number }) {
+    vi.useFakeTimers();
+    const events: string[] = [];
+    const breaches: WatchdogBreach[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      eventLoopSampleMs: SAMPLE_MS,
+      eventLoopKillMs: 1_000_000, // keep the immediate path out of the way
+      eventLoopSustainedMs: 0, // an idle histogram already satisfies p99 >= 0
+      eventLoopSustainedSamples: 2,
+      cpuUsageReader: cpuReaderAt(opts.duty),
+      hostLoadReader: () => opts.hostLoad,
+      onDiagnostic: (d) => events.push(d.event),
+      onBreach: (b) => {
+        breaches.push(b);
+        return "observe";
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+    await vi.advanceTimersByTimeAsync(SAMPLE_MS * 3);
+    controller.reset();
+    return { events, breaches };
+  }
+
+  it("KILLS a spinning process — high CPU means it is wedged on its own work", async () => {
+    // 74% is what a real busy-spin measured at host load ~24; it is NOT ~100%,
+    // because even a spinning process gets descheduled. A threshold near 1.0
+    // would misread this as starvation on exactly the hosts this targets.
+    const { breaches } = await run({ duty: 0.74, hostLoad: 24 });
+    expect(breaches.map((b) => b.reason)).toContain("event_loop_sustained_lag");
+    expect(breaches[0]?.data).toMatchObject({ verdict: "wedged_spinning" });
+  });
+
+  it("OBSERVES a starved process — low CPU on a saturated host", async () => {
+    // browser-tab's measured 0.57% duty cycle, host load 24 across 118 procs.
+    const { events, breaches } = await run({ duty: 0.0057, hostLoad: 24 });
+    expect(breaches).toHaveLength(0);
+    expect(events).toContain("event_loop_starved_not_killed");
+  });
+
+  it("KILLS an off-CPU wedge on an IDLE host — a sync syscall, not starvation", async () => {
+    // The row that makes duty-cycle-alone wrong: a synchronous syscall waiting
+    // on IPC parks the thread off-CPU while the loop is fully stopped.
+    const { breaches } = await run({ duty: 0.0057, hostLoad: 0.2 });
+    expect(breaches.map((b) => b.reason)).toContain("event_loop_sustained_lag");
+    expect(breaches[0]?.data).toMatchObject({ verdict: "wedged_off_cpu" });
+  });
+
+  it("never downgrades event_loop_blocked, whatever the CPU says", async () => {
+    // Regression guard for the existing "observes an event-loop breach" test:
+    // a test process on a loaded CI host sits in the starved quadrant, so a
+    // downgrade applied to every reason would make that test flaky in exactly
+    // the conditions this feature is about.
+    vi.useFakeTimers();
+    const breaches: WatchdogBreach[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      eventLoopSampleMs: SAMPLE_MS,
+      eventLoopKillMs: 0,
+      cpuUsageReader: cpuReaderAt(0.0057),
+      hostLoadReader: () => 24,
+      onDiagnostic: () => {},
+      onBreach: (b) => {
+        breaches.push(b);
+        return "observe";
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+    await vi.advanceTimersByTimeAsync(SAMPLE_MS);
+    expect(breaches.map((b) => b.reason)).toEqual(["event_loop_blocked"]);
+    controller.reset();
+  });
+
+  it("does not invent a duty cycle when the CPU reader throws", async () => {
+    // A fabricated "low" reading would suppress a real kill. No reading means
+    // today's behaviour, not a guess.
+    vi.useFakeTimers();
+    const breaches: WatchdogBreach[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      eventLoopSampleMs: SAMPLE_MS,
+      eventLoopKillMs: 1_000_000,
+      eventLoopSustainedMs: 0,
+      eventLoopSustainedSamples: 2,
+      cpuUsageReader: () => {
+        throw new Error("no cpu for you");
+      },
+      hostLoadReader: () => 24,
+      onDiagnostic: () => {},
+      onBreach: (b) => {
+        breaches.push(b);
+        return "observe";
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+    await vi.advanceTimersByTimeAsync(SAMPLE_MS * 3);
+    expect(breaches.map((b) => b.reason)).toContain("event_loop_sustained_lag");
+    expect(breaches[0]?.data).toMatchObject({ duty_cycle: null });
+    controller.reset();
+  });
+});
+
+/**
+ * The off-CPU wedge is PHYSICALLY REAL, not a mocking artefact.
+ *
+ * `Atomics.wait` parks the thread on a futex: the event loop is fully blocked
+ * while the process consumes no CPU — structurally what a synchronous syscall
+ * waiting on IPC does. Fixture from browser-tab-mcp, who measured
+ * darwin/arm64 node v24.15.0: Atomics.wait 1500ms -> duty 0.01%; busy-spin
+ * 1500ms -> duty 74.25%. Three orders of magnitude, so no delicate threshold.
+ */
+describe("off-CPU wedge is real, not a mock", () => {
+  const dutyOf = (fn: () => void) => {
+    const c0 = process.cpuUsage();
+    const t0 = Date.now();
+    fn();
+    const c1 = process.cpuUsage(c0);
+    return (c1.user + c1.system) / 1000 / Math.max(1, Date.now() - t0);
+  };
+
+  it("blocks the loop while consuming ~no CPU", () => {
+    vi.useRealTimers();
+    const duty = dutyOf(() => {
+      const sab = new Int32Array(new SharedArrayBuffer(4));
+      Atomics.wait(sab, 0, 0, 200);
+    });
+    expect(duty).toBeLessThan(0.05);
+  });
+
+  it("a spinning wedge is an order of magnitude above it", () => {
+    vi.useRealTimers();
+    const duty = dutyOf(() => {
+      const end = Date.now() + 200;
+      while (Date.now() < end) {
+        /* burn */
+      }
+    });
+    expect(duty).toBeGreaterThan(0.2);
+  });
+});
