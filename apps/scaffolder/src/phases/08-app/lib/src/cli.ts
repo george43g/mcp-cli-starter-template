@@ -14,6 +14,11 @@
  * To remove TUI support: delete the `tui` subcommand below + `src/tui/`.
  */
 
+// MUST be first — brands the log directory at module scope, before anything
+// that can log is imported. This file is the SOLE bin, so every subcommand
+// enters here; it previously branded on no path at all, which sent every
+// CLI invocation's perf spans to the shared default bucket. See src/log-brand.ts.
+import "./log-brand.js";
 import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { color, isInteractive } from "@george43g/cli-kit";

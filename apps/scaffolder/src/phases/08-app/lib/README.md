@@ -64,6 +64,30 @@ Useful knobs, all read at call time so CLI flags still reach them:
 | `MCP_LOG_REDACT=0` | Disable redaction. On by default: phone numbers and secret-shaped strings are rewritten before any sink sees them. |
 | `MCP_LOG_DIR` | Where NDJSON files go (default `$TMPDIR/<tool>/`, 10MB rotation). |
 
+### Log branding happens on import, not at startup
+
+`src/log-brand.ts` calls `setLogFilePrefix()` as a **module-scope side effect**,
+and every process entry point (`src/cli.ts`, `src/index.ts`, `src/tui/index.tsx`)
+imports it **first**, above any import that can log.
+
+This is not stylistic. The logger fixes its file path at the **first write**, not
+at configuration time, and derives the directory from whatever prefix is set at
+that instant. Branding from inside a function is therefore correct only by call
+ordering: anything that logs earlier wins the directory for the whole process,
+and the logs still work — they are just in the wrong place, silently.
+
+**If you add an entry point, import `./log-brand.js` first.** If you rename the
+package, nothing needs changing; the slug is derived from `APP_NAME`.
+
+Two caveats worth knowing before you rely on the directory name:
+
+- `MCP_LOG_PREFIX` moves the whole **directory**, not just the filename, because
+  the directory is `join(tmpdir(), prefix)`.
+- A dependency that pulls in its own copy of `@george43g/robustness` gets its own
+  module-scope logger state, and this app cannot brand it. If you see records
+  under `$TMPDIR/mcp/` that you expected here, that is the cause — check whether
+  the kit resolves the same physical copy your app does.
+
 The equivalent programmatic setters (`setFileLogging`, `setLogRedaction`,
 `setStderrMirror`) take precedence over the environment.
 
@@ -188,6 +212,26 @@ deletes the old ones.
 - **Drop TUI support**: delete `src/tui/`, the `tui` subcommand from `src/cli.ts`, the `example-repo-tui` bin entry from `package.json`, and the TUI entry from `vite.config.ts` `lib.entry`.
 - **Drop Rust acceleration**: delete `apps/rust-accel/`, the `src/native-bridge.ts` file, and the `tryLoadNative()` call in `src/tools/noop.ts`.
 - **Drop `get_logs`**: delete `src/tools/get-logs.ts` and remove it from the registry.
+
+## Dev-only tools are gated on the call path
+
+`get_logs` is registered `devOnly`, so it is filtered out of `tools/list` unless
+`MCP_DEV` is set. **That filter is cosmetic on its own** — a client that already
+knows the name can still call it. The gate that actually stops the call is the
+`devOnlyEnabled` predicate passed to `buildDispatcher()` in `src/dispatcher.ts`:
+
+```ts
+buildDispatcher({ registry, /* … */ devOnlyEnabled: devModeEnabled });
+```
+
+Without it, a `devOnly` tool is hidden **and callable**, and nothing fails —
+no type error, no test failure; the tool simply answers. With it, calling
+`get_logs` by name with `MCP_DEV` unset returns `Unknown tool name`, which is the
+behaviour you want: a dev-only tool that is not enabled must be indistinguishable
+from one that does not exist.
+
+**If you add your own `devOnly` tool, you inherit this — do not remove the
+predicate.**
 
 ## Shell completions
 

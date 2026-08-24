@@ -12,12 +12,15 @@
  *  6. NEVER console.log after StdioServerTransport.connect() — JSON-RPC
  *     owns stdout. Log via @george43g/robustness/logger.
  *  7. Tool responses include structuredContent + _meta footer.
+ *  8. devOnly tools are gated on the CALL path, not just hidden from
+ *     tools/list. Filtering the listing alone leaves them callable by name —
+ *     see the devOnlyEnabled note below.
  */
 
 import { buildDispatcher, type Dispatch } from "@george43g/mcp-kit";
 import { recordToolCall, recordToolError } from "./counters.js";
 import { engineLabel } from "./native-bridge.js";
-import { makeAppRegistry } from "./tools/registry.js";
+import { devModeEnabled, makeAppRegistry } from "./tools/registry.js";
 
 let _dispatch: Dispatch | null = null;
 
@@ -28,6 +31,13 @@ export function getDispatcher(): Dispatch {
       onCall: () => recordToolCall(),
       onError: () => recordToolError(),
       engineLabel,
+      // REQUIRED, not optional. index.ts filters tools/list by devModeEnabled(),
+      // but the listing is cosmetic — a client that already knows the name can
+      // still call it. Without this predicate the dev gate does nothing, and the
+      // failure is silent: no type error, no test failure, the tool just answers.
+      // A dev-only tool that is not enabled must be INDISTINGUISHABLE from one
+      // that does not exist.
+      devOnlyEnabled: devModeEnabled,
     });
   }
   return _dispatch;

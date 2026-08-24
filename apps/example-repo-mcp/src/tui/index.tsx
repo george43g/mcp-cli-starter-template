@@ -9,13 +9,15 @@
  * subcommand from `src/cli.ts`.
  */
 
+// MUST be first — brands the log directory at module scope, before anything
+// that can log is imported. See src/log-brand.ts.
+import "../log-brand.js";
 import {
   envStr,
   installShutdownHandlers,
   installWatchdog,
   logStartup,
   registerCleanup,
-  setLogFilePrefix,
   startHeapMonitor,
 } from "@george43g/robustness";
 import { renderFullScreen, ThemeProvider } from "@george43g/tui-kit";
@@ -23,9 +25,6 @@ import { APP_NAME } from "../meta.js";
 import { App } from "./App.js";
 
 export async function runTui(): Promise<void> {
-  const slug = APP_NAME.replace(/^@[^/]+\//, "");
-  setLogFilePrefix(slug);
-
   installShutdownHandlers({ exitOnUncaughtException: false });
   installWatchdog({ idleRestart: false });
   startHeapMonitor();
