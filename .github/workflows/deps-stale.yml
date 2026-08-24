@@ -1,0 +1,59 @@
+# Ask the registry whether our first-party deps are current.
+#
+# DELIBERATELY NOT A PR GATE. `pnpm verify` is network-free by design — fast,
+# offline, deterministic — and gating merges on npm's availability would trade
+# that away. This runs on a schedule instead, and on demand.
+#
+# WHY A SCHEDULE RATHER THAN A COMMAND PEOPLE RUN
+#
+# life-stack shipped this check, it worked, and it had never once been executed
+# before the day it caught something. A correct check nobody runs fails exactly
+# like a broken one. The schedule is the fix for that, not the script.
+#
+# WHAT IT CANNOT SEE: the offline checks (`check:publishable-manifests`,
+# `check:dep-ranges`) catch a tree disagreeing with itself. This catches a tree
+# that agrees with itself and is uniformly behind — which no offline check can
+# detect, because every assertion passes.
+
+name: Dependency staleness
+
+on:
+  schedule:
+    # 09:00 Monday UTC. Weekly, not daily: a first-party minor lands far less
+    # often than that, and a job that cries wolf on a cadence nobody needs is a
+    # job people stop reading.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deps-stale
+  cancel-in-progress: false
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # No `pnpm install` on purpose. The script reads pnpm-lock.yaml as TEXT
+      # and shells out to `npm view`; installing would only add minutes and a
+      # chance for the install itself to change what we are measuring.
+      - name: Check first-party dependencies against the registry
+        run: node scripts/check-deps-stale.mjs
+
+# EXIT CODES, and why 2 is not folded into 1:
+#   0  every first-party dep is at the latest published version
+#   1  something is behind — actionable, remediation printed by the script
+#   2  the registry could not be reached for at least one package. NOT a pass.
+#      An unanswered question is not a clean answer; conflating them is the
+#      failure this whole family of checks exists to prevent.
