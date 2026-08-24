@@ -3511,3 +3511,83 @@ a monorepo artifact, and it is created by the same two-sided range rule recorded
 taken — moving a dependency to peerDependencies is exactly the kind of change a
 major absorbs, and there will not be a cheaper opportunity. Do it in that release
 or explicitly decide not to.
+
+---
+
+## 47. This repo's `.codex/config.toml` silently loses all three `MCP_DEV*` vars
+
+Found 2026-08-24, reported into this repo by the dotfiles session while chasing
+the same defect in two other trees. **Not fixable here — the file is generated.**
+
+### The defect
+
+`.codex/config.toml` is produced by `mcpsync sync` and carries, verbatim:
+
+```
+4:# NOTE: non-passthrough env skipped for example-repo-mcp-dev: MCP_DEV (literal)
+5:# NOTE: non-passthrough env skipped for example-repo-mcp-dev: MCP_DEV_ENTRY (literal)
+6:# NOTE: non-passthrough env skipped for example-repo-mcp-dev: MCP_DEV_WATCH_DIR (literal)
+```
+
+`.mcp.json` declares exactly `MCP_DEV, MCP_DEV_ENTRY, MCP_DEV_WATCH_DIR` for that
+server, so **all three are dropped** and the emitted TOML is syntactically valid
+and looks complete. The failure mode is silence.
+
+### Two premises that turned out to be false
+
+1. **"Codex has no per-project MCP mechanism."** It does. Measured by up-bank and
+   reproduced by dotfiles on the *same* `codex-cli 0.145.0` — `codex mcp list`
+   returns four extra servers inside a repo with a `.codex/config.toml`, exactly
+   the four that file declares. So these files are **live**, not inert.
+
+2. **"Codex's schema cannot carry literal env for an stdio server."** It can.
+   Verified here by execution, same version:
+
+   ```
+   $ codex mcp add --help
+         --env <KEY=VALUE>
+             Environment variables to set when launching the server. Only valid with stdio servers
+   ```
+
+   plus `~/.codex/config.toml:195` `[mcp_servers.blender.env]` (user scope) and
+   `~/repos/Gmail-MCP-Server.bak/.codex/config.toml:5`
+   `[mcp_servers.gmail-mcp-dev.env]` (project scope). **The same server carries
+   env at user scope and loses it at project scope** — which refutes the schema
+   argument using the adapter's own output format.
+
+### Fleet scope, enumerated not estimated
+
+```
+1   billing-mwc          3   blank-canvas         3   browser-tab-mcp
+1   EQStack              1   imsg-mcp             1   life-stack
+3   mcp-cli-starter-template
+                                    7 repos, 13 stripped variables
+```
+
+### Why it matters here specifically
+
+`MCP_DEV` unset is what `devModeEnabled()` reads. Under Codex this repo's dev MCP
+server would run **misconfigured** — `mcp-dev-proxy.ts:49` falls back to
+`src/index.ts` against `process.cwd()`, which does not exist at a monorepo root.
+It is the mirror image of the defect fixed in the same session (dev tools hidden
+but callable, PR #103): there the gate was too open, here the dev server does not
+start correctly at all. **"Works under Claude Code, broken under Codex."**
+
+### Not ours to fix, and the counter-argument that must travel with it
+
+`mcpsync` lives in `life-stack/apps/mcpsync` (DEFERRED #10) and the adapter was
+someone's uncommitted WIP at the time of writing, so this repo neither fixed nor
+read it. Hand-editing `.codex/config.toml` is pointless — the next `mcpsync sync`
+overwrites it.
+
+**Do not let "the schema supports it" become "pass everything through."** The
+`env_vars = [...]` passthrough form exists because some values are secrets that
+must stay *references* — `billing-mwc:14` `RESEND_API_KEY`,
+`blank-canvas:19` `CLOUDFLARE_API_TOKEN`. Turning those into literals would write
+credentials into a tracked project file, which is the thing this fleet's rules
+exist to prevent. The correct fix passes **literal** env through as literal and
+keeps **reference** env on the passthrough form — a distinction the adapter
+already draws and then discards.
+
+**Trigger:** life-stack ships the adapter fix; then re-run `mcpsync sync --scope
+project --yes` here and confirm the three vars appear.
