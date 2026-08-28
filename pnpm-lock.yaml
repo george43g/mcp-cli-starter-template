@@ -216,9 +216,6 @@ importers:
 
   packages/mcp-kit:
     dependencies:
-      '@george43g/robustness':
-        specifier: '>=0.12.0 <1'
-        version: 0.12.0
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@3.25.76)
@@ -229,6 +226,9 @@ importers:
         specifier: ^3.25.0
         version: 3.25.2(zod@3.25.76)
     devDependencies:
+      '@george43g/robustness':
+        specifier: workspace:*
+        version: link:../robustness
       '@george43g/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -662,10 +662,6 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
-
-  '@george43g/robustness@0.12.0':
-    resolution: {integrity: sha512-oFne6RLHZWSVfMQCRaRocIzIgTfW822QcxyaUQzax9fyRsVcv2vbNjSDipD2jM/SaWSQppu1344En5HLuF+Ujw==}
-    engines: {node: '>=24'}
 
   '@hono/node-server@2.0.11':
     resolution: {integrity: sha512-bjD221KPLoJTWUwso1J6fGKiTXEUFedG/s0visavY4zakFPkeGURMRNly+FhBHs7T8Dz4qHaZIMX9ZoJHSJtKA==}
@@ -4036,8 +4032,6 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.1':
     optional: true
-
-  '@george43g/robustness@0.12.0': {}
 
   '@hono/node-server@2.0.11(hono@4.12.29)':
     dependencies:

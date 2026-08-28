@@ -145,45 +145,48 @@ buildDispatcher: 1 devOnly tool(s) registered with no devOnlyEnabled predicate: 
 **Migration is one line** — pass the predicate, as shown in *Dev-only tools*
 above. If you have no `devOnly` tools, there is nothing to do.
 
-### ⚠️ Bump `@george43g/robustness` FIRST
+### Upgrading to 2.0.0 — declare `@george43g/robustness` yourself
 
-**1.0.0 raises its robustness floor**, and the two changes are individually safe
-but jointly hazardous:
+**`robustness` moved from `dependencies` to `peerDependencies`.** If your app
+already depends on `@george43g/robustness` directly — as every known consumer
+does, and as the generated template does — **there is nothing to do**. If it does
+not, add it.
 
+```jsonc
+// your package.json
+"dependencies": {
+  "@george43g/robustness": ">=0.13.0 <1"   // or a caret; any 0.x satisfies the peer
+}
 ```
-mcp-kit@0.1.0  ->  "@george43g/robustness": ">=0.11.0 <1"
-mcp-kit@1.0.0  ->  "@george43g/robustness": ">=0.12.0 <1"
-```
 
-| your app declares | with mcp-kit 1.0.0 | result |
-|---|---|---|
-| `^0.12.0` / `^0.13.0` | overlaps | **one instance** — dedupes |
-| **`^0.11.0`** | **no overlap** | **TWO instances** — you on 0.11.x, mcp-kit pulling its own |
+**What this fixes, and it is not cosmetic.** As a plain dependency with a
+*floor*, mcp-kit could resolve its **own second copy** of robustness whenever the
+app's range and mcp-kit's stopped overlapping. The logger keeps prefix and file
+state at module scope, so two copies means **two independent loggers**:
+`setLogFilePrefix` in your app cannot reach the instance mcp-kit's `perf()` spans
+write through, and dispatch spans silently land in the shared `$TMPDIR/mcp/`
+bucket no matter how correctly your app brands itself.
 
-Two instances means **the logger's module-scope state splits**. `setLogFilePrefix`
-on your instance cannot reach the one mcp-kit's `perf()` spans write through, so
-dispatch spans land in the shared `$TMPDIR/mcp/` bucket and no amount of correct
-branding in your app fixes it.
+That was live in **1.0.0**, whose floor was `>=0.12.0 <1`: an app on `^0.11.0`
+that bumped mcp-kit alone got exactly this split. **2.0.0 removes the failure
+mode by construction** — a peer is supplied by the consumer, so there is only
+ever one instance. The peer range is deliberately wide (`>=0.11.0 <1`, every
+symbol mcp-kit imports exists at 0.11.0), so no consumer is forced to move.
 
-**So: bump `@george43g/robustness` to a `>=0.12.0` range first, then bump
-mcp-kit.** In that order the ranges overlap at every step and the mcp-kit bump
-cannot split. Note a caret on a `0.x` pins the MINOR — `^0.11.0` will never move
-on its own, so the range itself has to change.
+`tui-kit` has always declared robustness this way; mcp-kit was the outlier.
 
-Verify afterwards with the one line that actually settles it:
+Verify with the one line that settles it:
 
 ```sh
 grep -oE "@george43g/robustness@[0-9.]+" pnpm-lock.yaml | sort -u
 ```
 
-One line is correct. Two means you have the split.
+One line is correct. Two means something still resolves its own copy.
 
-**Why this is possible at all:** mcp-kit declares robustness as a plain
-`dependency`, where `tui-kit` declares it as a `peerDependency`. A plain
-dependency with a *wide* range behaves like a peer — right up until the ranges
-stop overlapping, which is what raising the floor did. Making it a peer would
-remove the hazard by construction; that is deferred, and it costs a major.
-
+**The generalisable lesson:** a plain dependency with a *wide* range behaves like
+a peer — right up until the ranges stop overlapping. Two individually safe
+changes (raising a floor, cutting a major) were jointly hazardous. Found by
+`up-bank-mcp`.
 Found by `up-bank-mcp` as range arithmetic over the published manifests.
 **Not yet observed in a resolved tree by anyone** — treat the ordering as cheap
 insurance rather than a reproduction.
