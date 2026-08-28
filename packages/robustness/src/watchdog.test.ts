@@ -518,6 +518,12 @@ describe("observe-only breach hook", () => {
       ...INERT,
       eventLoopSampleMs: 1_000,
       eventLoopKillMs: 0, // an idle histogram already satisfies p99 >= 0
+      // Since 0.14.0 the hard path is starvation-classified too, so this test
+      // must state the host it assumes. A test process is low-CPU by nature, so
+      // on a loaded CI box it lands in the STARVED quadrant and the kill is
+      // deferred — which would present as flake rather than as the deliberate
+      // behaviour change it is. An idle host makes it a syscall wedge: kill.
+      hostLoadReader: () => 0,
       onDiagnostic: () => {},
       onBreach: (breach) => {
         breaches.push(breach);
@@ -661,11 +667,12 @@ describe("sustained lag: starved vs wedged", () => {
     expect(breaches[0]?.data).toMatchObject({ verdict: "wedged_off_cpu" });
   });
 
-  it("never downgrades event_loop_blocked, whatever the CPU says", async () => {
-    // Regression guard for the existing "observes an event-loop breach" test:
-    // a test process on a loaded CI host sits in the starved quadrant, so a
-    // downgrade applied to every reason would make that test flaky in exactly
-    // the conditions this feature is about.
+  it("event_loop_blocked is classified too since 0.14.0 — but only DEFERRED, never cancelled", async () => {
+    // SUPERSEDES what 0.13.0 asserted: that this path is never downgraded.
+    // That exclusion rested on 223 starvation samples never crossing 10s, with
+    // an explicit caveat that the data could not speak for a busier host.
+    // up-bank-mcp then measured 11567ms at load 58 and was killed for it.
+    // The safety now comes from the BOUND, not from excluding the path.
     vi.useFakeTimers();
     const breaches: WatchdogBreach[] = [];
     const controller = createWatchdog({
@@ -683,7 +690,9 @@ describe("sustained lag: starved vs wedged", () => {
     });
     controller.install();
     await vi.advanceTimersByTimeAsync(SAMPLE_MS);
-    expect(breaches.map((b) => b.reason)).toEqual(["event_loop_blocked"]);
+    // Starved + under the bound: deferred, not killed.
+    expect(breaches).toHaveLength(0);
+    // ...and it does not defer forever. See the bound tests below.
     controller.reset();
   });
 
@@ -765,5 +774,107 @@ describe("off-CPU wedge is real, not a mock", () => {
     // Both measured in the SAME environment, so contention cancels out.
     expect(spin).toBeGreaterThan(park * 10);
     expect(spin).toBeGreaterThan(0.05);
+  });
+});
+
+/**
+ * The HARD path is classified too, since 0.14.0 — but with a bound.
+ *
+ * 0.13.0 deliberately excluded `event_loop_blocked`, on 223 starvation samples
+ * whose worst was 7646ms and never crossed 10s. That evidence carried an explicit
+ * caveat from the session that produced it: one machine at ~5x oversubscription,
+ * unable to speak for a busier host. up-bank-mcp then measured **11567ms at load
+ * 58** on a live service and it was killed — so the spike path was reintroducing
+ * the feedback loop at a higher threshold rather than not at all.
+ *
+ * The bound is what makes downgrading the hard path safe: a starved verdict
+ * DEFERS the kill, it does not cancel it.
+ */
+describe("event_loop_blocked: starvation defers, it does not cancel", () => {
+  const SAMPLE_MS = 1_000;
+  const cpuReaderAt = (duty: number) => {
+    let calls = 0;
+    return () => ({ user: calls++ * duty * SAMPLE_MS * 1000, system: 0 });
+  };
+
+  async function run(opts: { duty: number; hostLoad: number; samples: number; limit?: number }) {
+    vi.useFakeTimers();
+    const events: string[] = [];
+    const breaches: WatchdogBreach[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      eventLoopSampleMs: SAMPLE_MS,
+      eventLoopKillMs: 0, // an idle histogram already satisfies p99 >= 0
+      starvationMaxConsecutive: opts.limit ?? 5,
+      cpuUsageReader: cpuReaderAt(opts.duty),
+      hostLoadReader: () => opts.hostLoad,
+      onDiagnostic: (d) => events.push(d.event),
+      onBreach: (b) => {
+        breaches.push(b);
+        return "observe";
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+    await vi.advanceTimersByTimeAsync(SAMPLE_MS * opts.samples);
+    controller.reset();
+    return { events, breaches };
+  }
+
+  it("DEFERS the kill while starved and under the bound", async () => {
+    // up-bank's shape: low duty cycle, host far past saturation.
+    const { events, breaches } = await run({ duty: 0.0057, hostLoad: 58, samples: 3 });
+    expect(breaches).toHaveLength(0);
+    expect(events).toContain("event_loop_blocked_starved_deferring_kill");
+  });
+
+  it("KILLS ANYWAY once the bound is reached — a wedge cannot hide forever", async () => {
+    // This is the answer to "a wedged process on a busy box is never recycled".
+    // The worst case is bounded at starvationMaxConsecutive * eventLoopSampleMs.
+    const { events, breaches } = await run({
+      duty: 0.0057,
+      hostLoad: 58,
+      samples: 5,
+      limit: 2,
+    });
+    expect(events).toContain("event_loop_blocked_starved_limit_reached");
+    expect(breaches.map((b) => b.reason)).toContain("event_loop_blocked");
+  });
+
+  it("KILLS IMMEDIATELY when the process is on-CPU — a spinning wedge is not starved", async () => {
+    const { events, breaches } = await run({ duty: 0.74, hostLoad: 58, samples: 2 });
+    expect(events).not.toContain("event_loop_blocked_starved_deferring_kill");
+    expect(breaches.map((b) => b.reason)).toContain("event_loop_blocked");
+  });
+
+  it("KILLS IMMEDIATELY when the host is idle — off-CPU on an idle box is a syscall wedge", async () => {
+    const { breaches } = await run({ duty: 0.0057, hostLoad: 0.2, samples: 2 });
+    expect(breaches.map((b) => b.reason)).toContain("event_loop_blocked");
+    expect(breaches[0]?.data).toMatchObject({ verdict: "wedged_off_cpu" });
+  });
+});
+
+describe("watchdog_installed is self-evidencing", () => {
+  it("names the classifier and its thresholds, so an operator need not grep node_modules", async () => {
+    // Before 0.14.0 this line was byte-identical between 0.12.0 and 0.13.0
+    // despite a behaviour change, and a consumer nearly recorded the starvation
+    // fix as not-live because of it.
+    vi.useFakeTimers();
+    const seen: Record<string, unknown>[] = [];
+    const controller = createWatchdog({
+      ...INERT,
+      onDiagnostic: (d) => {
+        if (d.event === "watchdog_installed" && d.data) seen.push(d.data);
+      },
+      shutdownController: trackingShutdown(new Set()),
+    });
+    controller.install();
+    expect(seen[0]).toMatchObject({
+      starvation_aware: true,
+      starvation_duty_cycle: expect.any(Number),
+      starvation_host_load: expect.any(Number),
+      starvation_max_consecutive: expect.any(Number),
+    });
+    controller.reset();
   });
 });

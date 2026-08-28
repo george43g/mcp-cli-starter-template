@@ -397,10 +397,40 @@ waiting on IPC parks the thread **off-CPU while the loop is fully stopped**. A
 pure duty-cycle test reads that as "starved, don't kill" and leaves the process
 wedged forever — the exact failure the watchdog exists to catch.
 
-**`event_loop_blocked` is never downgraded.** It is the high-threshold immediate
-path, and starvation presents as *sustained moderate* lag rather than one huge
-sample — measured across 223 real starvation samples, the worst reached 7646ms
-and never crossed the 10s threshold.
+**`event_loop_blocked` is classified too, since 0.14.0 — but only DEFERRED.**
+
+0.13.0 excluded the hard path deliberately, on 223 real starvation samples whose
+worst reached 7646ms and never crossed 10s. **That reasoning was falsified**, and
+the session that supplied the data had flagged the exact limit: one machine at
+~5x oversubscription, unable to speak for a busier host. `up-bank-mcp` then
+measured an **11567ms sample at load 58** on a live service and it was killed. At
+load 58 an 11.5s stall is starvation with *more* confidence, not less — so the
+spike path was reintroducing the feedback loop at a higher threshold rather than
+not at all.
+
+**What makes downgrading the hard path safe is the bound, not the
+classification.** A starved verdict on `event_loop_blocked` *defers* the kill; it
+never cancels it. After `starvationMaxConsecutive` consecutive deferrals
+(default 5) the watchdog kills regardless of what the CPU says, because a process
+that has not run for that long is not serving anyone. Worst case a genuine wedge
+hides for `starvationMaxConsecutive × eventLoopSampleMs` — 25s by default — and
+the counter resets on any non-breaching sample.
+
+Two diagnostics make the state visible: `event_loop_blocked_starved_deferring_kill`
+while under the bound, and `event_loop_blocked_starved_limit_reached` when it
+fires anyway.
+
+**⚠️ Upgrading from 0.13.0: if you have a test that drives the hard path and
+asserts a kill, inject `hostLoadReader`.** A test process is low-CPU by nature, so
+on a loaded CI host it lands in the starved quadrant and the kill is deferred —
+which presents as flake rather than as a deliberate behaviour change. This
+package's own suite hit exactly that; the fix is one line
+(`hostLoadReader: () => 0` for an idle host).
+
+**`watchdog_installed` now names the classifier** (`starvation_aware`, plus the
+three thresholds). Before 0.14.0 that line was byte-identical between 0.12.0 and
+0.13.0 despite a behaviour change, and a consumer nearly recorded the starvation
+fix as not-live because the only way to tell was to grep `node_modules`.
 
 **Tuning.** `starvationDutyCycle` defaults to **0.05**. Four measurements across
 two very different machines:
