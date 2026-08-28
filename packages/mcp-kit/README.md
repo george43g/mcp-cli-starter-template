@@ -145,6 +145,49 @@ buildDispatcher: 1 devOnly tool(s) registered with no devOnlyEnabled predicate: 
 **Migration is one line** — pass the predicate, as shown in *Dev-only tools*
 above. If you have no `devOnly` tools, there is nothing to do.
 
+### ⚠️ Bump `@george43g/robustness` FIRST
+
+**1.0.0 raises its robustness floor**, and the two changes are individually safe
+but jointly hazardous:
+
+```
+mcp-kit@0.1.0  ->  "@george43g/robustness": ">=0.11.0 <1"
+mcp-kit@1.0.0  ->  "@george43g/robustness": ">=0.12.0 <1"
+```
+
+| your app declares | with mcp-kit 1.0.0 | result |
+|---|---|---|
+| `^0.12.0` / `^0.13.0` | overlaps | **one instance** — dedupes |
+| **`^0.11.0`** | **no overlap** | **TWO instances** — you on 0.11.x, mcp-kit pulling its own |
+
+Two instances means **the logger's module-scope state splits**. `setLogFilePrefix`
+on your instance cannot reach the one mcp-kit's `perf()` spans write through, so
+dispatch spans land in the shared `$TMPDIR/mcp/` bucket and no amount of correct
+branding in your app fixes it.
+
+**So: bump `@george43g/robustness` to a `>=0.12.0` range first, then bump
+mcp-kit.** In that order the ranges overlap at every step and the mcp-kit bump
+cannot split. Note a caret on a `0.x` pins the MINOR — `^0.11.0` will never move
+on its own, so the range itself has to change.
+
+Verify afterwards with the one line that actually settles it:
+
+```sh
+grep -oE "@george43g/robustness@[0-9.]+" pnpm-lock.yaml | sort -u
+```
+
+One line is correct. Two means you have the split.
+
+**Why this is possible at all:** mcp-kit declares robustness as a plain
+`dependency`, where `tui-kit` declares it as a `peerDependency`. A plain
+dependency with a *wide* range behaves like a peer — right up until the ranges
+stop overlapping, which is what raising the floor did. Making it a peer would
+remove the hazard by construction; that is deferred, and it costs a major.
+
+Found by `up-bank-mcp` as range arithmetic over the published manifests.
+**Not yet observed in a resolved tree by anyone** — treat the ordering as cheap
+insurance rather than a reproduction.
+
 **Why a throw and not a flipped default.** Before 1.0.0, omitting the predicate
 left dev-only tools *callable* — hidden from `tools/list` and answering by name.
 Two consumers hit that independently, and one measured a dev-only log reader

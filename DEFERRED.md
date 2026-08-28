@@ -3497,6 +3497,50 @@ A peer dependency is supplied by the consumer, so there is exactly one instance 
 construction. tui-kit got this right; mcp-kit did not. **A kit holding module-scope
 process state must be a peer dependency of anything that shares that state.**
 
+### UPGRADED FROM THEORY TO RANGE ARITHMETIC — 2026-08-28, by up-bank-mcp
+
+The trigger is no longer hypothetical, and **mcp-kit 1.0.0 is what arms it.**
+Verified against the published manifests, not reasoning:
+
+```
+$ npm view @george43g/mcp-kit@0.1.0 dependencies.@george43g/robustness
+>=0.11.0 <1
+$ npm view @george43g/mcp-kit@1.0.0 dependencies.@george43g/robustness
+>=0.12.0 <1
+```
+
+| app declares | mcp-kit | result |
+|---|---|---|
+| `^0.12.0` / `^0.13.0` | 1.0.0 | one instance — dedupes |
+| **`^0.11.0`** | **1.0.0** | **TWO instances** |
+
+**up-bank's articulation, which is the durable part: a plain dependency with a
+WIDE range behaves like a peer — right up until the ranges stop overlapping.**
+That is why this never bit before: mcp-kit 0.1.0's `>=0.11.0 <1` was satisfied by
+any 0.x caret an app picked, so pnpm deduped onto the app's choice. Raising the
+floor to 0.12 is what breaks the overlap, and it was **my** change (#102),
+shipped in the same release as the major.
+
+**Two individually safe changes, jointly hazardous.** That is the generalisable
+shape, and it is why neither review caught it.
+
+**Mitigation shipped, not just recorded:** mcp-kit's README now says bump
+robustness FIRST, with the verifying one-liner
+(`grep -oE "@george43g/robustness@[0-9.]+" pnpm-lock.yaml | sort -u`). browser-tab
+was warned directly — they were measured at 0.11.0 and I had already told them
+the bump was safe, which it was not in that order.
+
+**STILL NOT OBSERVED IN A RESOLVED TREE.** up-bank derived this from range
+arithmetic over published manifests plus their current lockfile and stated
+plainly they had not run the install; nor have I. **up-bank measured ONE instance
+today** (`@george43g/robustness@0.12.0`, single entry) — because they are on
+`^0.12.0`, which overlaps. They will report one-versus-two after an authorised
+bump. Until then this is arithmetic, not a reproduction.
+
+**This strengthens the peerDependency case concretely**, where previously it
+rested on a general principle: the hazard now has a named trigger, an affected
+version range, and a consumer sitting in it.
+
 **Is a generated repo affected? UNKNOWN — not measured, and do not assume it is
 not.** The reasoning that says "probably fine" is: a generated app pins
 `robustness ^X` and mcp-kit asks for `>=X <1`, both resolve to the same version,
