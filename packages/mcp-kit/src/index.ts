@@ -20,7 +20,7 @@ export type {
   ResourceTemplate,
 } from "./resources.js";
 export { buildResourcesHandler } from "./resources.js";
-export { sanitize } from "./sanitize.js";
+export { CONTENT_BUDGET, sanitize, sanitizeContent } from "./sanitize.js";
 export type {
   AnyToolDefinition,
   ContentBlock,

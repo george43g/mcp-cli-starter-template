@@ -197,10 +197,32 @@ describe("devOnlyEnabled — hiding a tool is not disabling it", () => {
     expect((await dispatch("get_logs", {})).isError).toBe(true);
   });
 
-  it("omitting the option leaves dev-only tools callable — today's behaviour", async () => {
-    // The seam is additive: a consumer that does not pass it sees no change.
-    const dispatch = buildDispatcher({ registry: devRegistry });
-    expect((await dispatch("get_logs", {})).isError).toBeUndefined();
+  it("THROWS at construction when a devOnly tool is registered with no predicate", () => {
+    // 1.0.0 behaviour change. Until then this returned a working dispatcher and
+    // left get_logs CALLABLE — hidden from tools/list, answering by name. Two
+    // consumers hit it independently; one measured a real log payload coming
+    // back with the dev flag unset.
+    expect(() => buildDispatcher({ registry: devRegistry })).toThrow(/devOnlyEnabled/);
+  });
+
+  it("names the offending tools in the throw, so the fix does not need a search", () => {
+    // An error that says "something is misconfigured" costs a bisect. The whole
+    // point of failing at construction is that it can say WHICH.
+    expect(() => buildDispatcher({ registry: devRegistry })).toThrow(/get_logs/);
+  });
+
+  it("does NOT throw when the registry holds no devOnly tools", () => {
+    // The change must be invisible to consumers that never used devOnly —
+    // otherwise it is a migration for everyone rather than for the affected.
+    expect(() => buildDispatcher({ registry })).not.toThrow();
+  });
+
+  it("does not throw when the predicate is supplied, whatever it returns", () => {
+    // The gate is about the predicate EXISTING at construction; its value is a
+    // per-dispatch question. A predicate returning false must still build.
+    expect(() =>
+      buildDispatcher({ registry: devRegistry, devOnlyEnabled: () => false }),
+    ).not.toThrow();
   });
 
   it("never gates a tool that is not devOnly", async () => {

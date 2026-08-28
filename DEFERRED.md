@@ -3555,14 +3555,28 @@ and looks complete. The failure mode is silence.
    env at user scope and loses it at project scope** — which refutes the schema
    argument using the adapter's own output format.
 
-### Fleet scope, enumerated not estimated
+### Fleet scope — CORRECTED 2026-08-24 to **11 across 6**, not 13 across 7
 
-```
-1   billing-mwc          3   blank-canvas         3   browser-tab-mcp
-1   EQStack              1   imsg-mcp             1   life-stack
-3   mcp-cli-starter-template
-                                    7 repos, 13 stripped variables
-```
+My first count (13/7) counted **rewrites, not breakages**. Corrected by
+up-bank-mcp's point, re-derived by dotfiles, confirmed by life-stack-e8.
+
+**The mechanism I did not have: Codex MERGES user scope into project scope.** A
+server that also exists in `~/.codex/config.toml` has its env filled in from
+there, so it is **masked from this defect entirely**. `life-stack` drops out of
+the list for exactly that reason — `blender` exists at `~/.codex/config.toml:195`
+and resolves `DISABLE_TELEMETRY` fine, measured by life-stack-e8.
+
+**So the real victims are servers that exist ONLY at project scope** — which is
+precisely why the damage clusters on `*-dev` servers, including this repo's
+`example-repo-mcp-dev`. That explains the shape of the data rather than just
+counting it.
+
+`billing-mwc`'s `imessage` losing `PATH` is the only non-`*-dev` casualty, and a
+runtime dependency rather than a dev flag.
+
+**Withdrawn: the `blender` phones-home claim.** dotfiles reported it, then
+withdrew it at source once life-stack-e8 measured the merged view. It is recorded
+here only so nobody re-derives it from the original report.
 
 ### Why it matters here specifically
 
@@ -3572,6 +3586,48 @@ server would run **misconfigured** — `mcp-dev-proxy.ts:49` falls back to
 It is the mirror image of the defect fixed in the same session (dev tools hidden
 but callable, PR #103): there the gate was too open, here the dev server does not
 start correctly at all. **"Works under Claude Code, broken under Codex."**
+
+### CONFIRMED conservative — the adapter has no reason, and the defect predates the WIP
+
+I inferred "conservative" without reading the file. life-stack-e8 read it (their
+repo) and confirmed it, `apps/mcpsync/src/core/hosts/codex-adapter.ts:46-53`:
+
+```ts
+      const vs = varsIn(v);
+      if (vs.length === 1 && vs[0] === k) passthrough.push(k);
+      else
+        notes.push(
+          `non-passthrough env skipped for ${s.name}: ${k} (${vs.join("+") || "literal"})`,
+        );
+    }
+    if (passthrough.length) table.env_vars = passthrough;
+```
+
+A value passes only when it is exactly `${K}` and `K` matches its own key;
+everything else — a literal included — falls to `else`. The renderer emits only
+`env_vars = [...]` (`:96`, `:118`); **no code path anywhere in the file emits an
+`[mcp_servers.<name>.env]` table.** They looked for and did not find: a comment
+claiming Codex cannot express literal env, a version guard, or a test asserting
+the comment form. **The skip is the absence of an emitter, not a defended
+decision.**
+
+**It also predates the in-flight work** — `git show HEAD:…` carries the same line
+at `:48`, and the uncommitted changes add `renderProjectTables` without touching
+the env decision. So the project-scope work did not cause this; it **exposed** it,
+by making these files live where they were previously written and ignored.
+
+### ⚠️ Triage hazard — do not run bare `codex mcp list`
+
+It masks the `Env` column but prints **`Args` verbatim**. Two sessions leaked a
+live API key into their transcripts with it. Use the allowlist form, verified
+leak-free independently by two sessions:
+
+```sh
+codex mcp list 2>&1 | awk '{n=$1; e=""; for(i=2;i<=NF;i++) if ($i ~ /^[A-Za-z_][A-Za-z0-9_]*=\*+,?$/) e=e" "$i; print n "\t" (e==""?"Env: -":e)}'
+```
+
+And `Env: -` is **ambiguous three ways**: stripped, never had env, or the
+credential lives in `args`.
 
 ### Not ours to fix, and the counter-argument that must travel with it
 
