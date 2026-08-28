@@ -51,12 +51,12 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@george43g/robustness": ">=0.12.0 <1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.25.0"
   },
   "devDependencies": {
+    "@george43g/robustness": "workspace:*",
     "@george43g/tsconfig": "workspace:*",
     "@george43g/vitest-config": "workspace:*",
     "@semantic-release/changelog": "^6.0.3",
@@ -68,5 +68,8 @@
     "semantic-release-monorepo": "^8.0.2",
     "typescript": "^5.7.0",
     "vitest": "^3.2.7"
+  },
+  "peerDependencies": {
+    "@george43g/robustness": ">=0.11.0 <1"
   }
 }
