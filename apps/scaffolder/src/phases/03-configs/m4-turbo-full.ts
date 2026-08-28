@@ -74,7 +74,7 @@ const TURBO_JSON = `{
       "inputs": ["src/**", "tests/**", "scripts/**", "biome.json"]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "build"],
       "inputs": ["src/**", "tests/**", "vitest.config.ts"]
     },
     "test:no-native": {
