@@ -43,6 +43,8 @@ export interface WatchdogState {
   lastEventLoopSampleTs: number;
   /** Cumulative CPU microseconds at the previous event-loop sample, or null before the first. */
   lastCpuUsageUs: number | null;
+  /** Consecutive hard-threshold breaches downgraded as starvation. Bounds how long a wedge can hide. */
+  blockedStarvedCount: number;
   rssMb: number;
   heapMb: number;
   heapHistory: number[];
@@ -138,6 +140,22 @@ export interface WatchdogOptions {
    * as SATURATED. Default 1.0 — i.e. more runnable work than cores.
    */
   starvationHostLoad?: number;
+  /**
+   * How many CONSECUTIVE hard-threshold (`event_loop_blocked`) breaches may be
+   * downgraded as starvation before the watchdog kills anyway. Default 5.
+   *
+   * This is the bound that makes downgrading the hard path safe. Without it,
+   * "starved, do not kill" on the immediate path means a genuinely wedged
+   * process on a permanently busy host is never recycled — which is the exact
+   * failure the watchdog exists to prevent, and the strongest argument against
+   * touching this path at all.
+   *
+   * With it, the worst case is bounded: a wedge hides for at most
+   * `starvationMaxConsecutive * eventLoopSampleMs` (default 25s) before being
+   * killed regardless of what the CPU says. The counter resets on any sample
+   * that does not breach.
+   */
+  starvationMaxConsecutive?: number;
   /**
    * Injectable CPU reader. Defaults to `process.cpuUsage`. Cumulative and
    * monotonic since process start, in microseconds.
@@ -260,6 +278,11 @@ function buildConfig(options: WatchdogOptions) {
     ),
     starvationDutyCycle: numberOption(options.starvationDutyCycle, "STARVATION_DUTY_CYCLE", 0.15),
     starvationHostLoad: numberOption(options.starvationHostLoad, "STARVATION_HOST_LOAD", 1.0),
+    starvationMaxConsecutive: numberOption(
+      options.starvationMaxConsecutive,
+      "STARVATION_MAX_CONSECUTIVE",
+      5,
+    ),
     memorySampleMs: numberOption(options.memorySampleMs, "MEMORY_SAMPLE_MS", 60_000),
     maxRssMb: numberOption(options.maxRssMb, "MAX_RSS_MB", 1_024),
     memoryGrowthSamples: numberOption(options.memoryGrowthSamples, "HEAP_GROWTH_SAMPLES", 10),
@@ -471,7 +494,45 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
 
     if (p99Ms >= config.eventLoopKillMs) {
       const data = { p99_ms: p99Ms, max_ms: maxMs, threshold_ms: config.eventLoopKillMs };
-      if (shouldKill("event_loop_blocked", data)) triggerKill("event_loop_blocked", data);
+
+      // The hard path is classified TOO, since 0.14.0. It was excluded in
+      // 0.13.0 on the evidence available then — 223 real starvation samples
+      // whose worst reached 7646ms, never crossing 10s — and that evidence came
+      // with an explicit caveat from the session that produced it: one machine
+      // at ~5x oversubscription, and it could not speak for a far busier host.
+      //
+      // The caveat was right. up-bank-mcp measured an 11567ms sample at load
+      // 58 on a bank-facing service, post-0.13.0, and it was killed. At load 58
+      // an 11.5s stall is starvation with MORE confidence, not less — so the
+      // spike path was reintroducing the feedback loop the sustained path had
+      // just removed, only at a higher load threshold.
+      //
+      // What keeps this safe is the BOUND below, not the classification: a
+      // starved verdict here defers the kill, it does not cancel it.
+      const verdict = classifySustainedLag(dutyCycle);
+      if (verdict.starved) {
+        state.blockedStarvedCount++;
+        const enriched = {
+          ...data,
+          ...verdict.evidence,
+          consecutive_starved: state.blockedStarvedCount,
+          starved_limit: config.starvationMaxConsecutive,
+        };
+        if (state.blockedStarvedCount < config.starvationMaxConsecutive) {
+          diagnostic("warn", "event_loop_blocked_starved_deferring_kill", enriched);
+          return;
+        }
+        // Bound reached. Whatever the CPU says, a process that has been unable
+        // to run for this long is not serving anyone — kill it and let the
+        // supervisor decide when to bring it back.
+        diagnostic("error", "event_loop_blocked_starved_limit_reached", enriched);
+        if (shouldKill("event_loop_blocked", enriched)) triggerKill("event_loop_blocked", enriched);
+        return;
+      }
+
+      state.blockedStarvedCount = 0;
+      const enriched = { ...data, ...verdict.evidence };
+      if (shouldKill("event_loop_blocked", enriched)) triggerKill("event_loop_blocked", enriched);
       // Returns even when observed: the control flow below (sustained counter,
       // lag warning) is unreachable at this p99 anyway, and keeping the shape
       // identical to the kill path is one less thing to reason about.
@@ -508,6 +569,7 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
       }
     } else {
       state.eventLoopSustainedCount = 0;
+      state.blockedStarvedCount = 0;
     }
     if (p99Ms >= config.eventLoopWarnMs) {
       diagnostic("warn", "event_loop_lag", {
@@ -599,7 +661,20 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
     // A changed sample window must not read as a machine sleep to the next
     // sample — see the skew guard in sampleEventLoop.
     state.lastEventLoopSampleTs = Date.now();
-    state.lastCpuUsageUs = null;
+    state.blockedStarvedCount = 0;
+    // SEED the CPU baseline at install, not on the first sample. Without this
+    // the very first breach after startup has no previous reading, so it cannot
+    // be classified and kills unclassified — which is precisely the immediate
+    // post-start window where a host is busiest (module loading, several
+    // services coming up at once) and starvation is most likely.
+    state.lastCpuUsageUs = (() => {
+      try {
+        const u = (opts.cpuUsageReader ?? (() => process.cpuUsage()))();
+        return u.user + u.system;
+      } catch {
+        return null;
+      }
+    })();
     eventLoopTimer = setInterval(sampleEventLoop, config.eventLoopSampleMs);
     eventLoopTimer.unref();
     memoryTimer = setInterval(sampleMemory, config.memorySampleMs);
@@ -651,6 +726,16 @@ export function createWatchdog(options: WatchdogOptions = {}): WatchdogControlle
       memory_growth_min_mb: config.memoryGrowthMinMb,
       idle_restart: config.idleRestart,
       idle_restart_after_ms: config.idleRestartAfterMs,
+      // Emitted so an OPERATOR can tell which classifier is running from the
+      // logs alone. Before 0.14.0 this line was byte-identical between 0.12.0
+      // and 0.13.0 despite a behaviour change, and a consumer nearly recorded
+      // the starvation fix as not-live on that basis — the only way to know was
+      // to grep the installed package. A diagnostic that cannot distinguish two
+      // behaviours it configures is not doing its job.
+      starvation_aware: true,
+      starvation_duty_cycle: config.starvationDutyCycle,
+      starvation_host_load: config.starvationHostLoad,
+      starvation_max_consecutive: config.starvationMaxConsecutive,
     });
   };
 
@@ -736,6 +821,7 @@ function initialState(): WatchdogState {
     eventLoopSustainedCount: 0,
     lastEventLoopSampleTs: now,
     lastCpuUsageUs: null,
+    blockedStarvedCount: 0,
     rssMb: 0,
     heapMb: 0,
     heapHistory: [],
