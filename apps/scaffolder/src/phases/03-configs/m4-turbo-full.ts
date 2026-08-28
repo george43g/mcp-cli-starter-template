@@ -78,7 +78,7 @@ const TURBO_JSON = `{
       "inputs": ["src/**", "tests/**", "vitest.config.ts"]
     },
     "test:no-native": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "build"],
       "outputs": [],
       "inputs": ["src/**", "tests/**", "vitest.config.ts"],
       "env": ["MCP_DISABLE_NATIVE"]
