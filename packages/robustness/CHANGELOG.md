@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.13.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.12.0...robustness-v0.13.0) (2026-08-28)
+
+
+### Features
+
+* **robustness:** distinguish a starved process from a wedged one ([#107](https://github.com/george43g/mcp-cli-starter-template/issues/107)) ([224ea5f](https://github.com/george43g/mcp-cli-starter-template/commit/224ea5fe2de5143ea8c7eb36e7e70a1c64e2a3f4))
+
 # [@george43g/robustness-v0.12.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.11.0...robustness-v0.12.0) (2026-08-22)
 
 
