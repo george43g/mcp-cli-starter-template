@@ -745,13 +745,25 @@ describe("off-CPU wedge is real, not a mock", () => {
   });
 
   it("a spinning wedge is an order of magnitude above it", () => {
+    // ASSERT THE SEPARATION, NOT AN ABSOLUTE FLOOR. The first version of this
+    // asserted `> 0.2` and FAILED IN CI at 0.167 — a real busy-spin on a shared
+    // 2-core runner gets so little CPU that it lands near the threshold. That
+    // measurement is why starvationDutyCycle defaults to 0.05 rather than 0.15,
+    // and it is exactly the class of environment this feature exists for, so the
+    // test must not assume a machine that is idle enough to spin freely.
     vi.useRealTimers();
-    const duty = dutyOf(() => {
+    const park = dutyOf(() => {
+      const sab = new Int32Array(new SharedArrayBuffer(4));
+      Atomics.wait(sab, 0, 0, 200);
+    });
+    const spin = dutyOf(() => {
       const end = Date.now() + 200;
       while (Date.now() < end) {
         /* burn */
       }
     });
-    expect(duty).toBeGreaterThan(0.2);
+    // Both measured in the SAME environment, so contention cancels out.
+    expect(spin).toBeGreaterThan(park * 10);
+    expect(spin).toBeGreaterThan(0.05);
   });
 });

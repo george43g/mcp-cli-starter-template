@@ -109,16 +109,28 @@ export interface WatchdogOptions {
   eventLoopSustainedSamples?: number;
   /**
    * Duty cycle (CPU-ms per wall-ms, 0..1) at or below which the process counts
-   * as OFF-CPU during a sustained-lag window. Default 0.15.
+   * as OFF-CPU during a sustained-lag window. Default 0.05.
    *
-   * Set LOW on purpose. A genuinely spinning process does not measure ~1.0 on a
-   * loaded host — it gets descheduled too. Measured by browser-tab-mcp on
-   * darwin/arm64 node v24.15.0 at host load ~24: a busy-spin came in at **74%**,
-   * while `Atomics.wait` (an off-CPU park, structurally the same as a
-   * synchronous syscall waiting on IPC) came in at **0.01%**. Three orders of
-   * magnitude apart, so the threshold is not delicate — but one set near 1.0
-   * would misclassify a real spin-wedge as starvation on exactly the hosts this
-   * feature exists for.
+   * Set LOW on purpose, and lower than first proposed. A genuinely spinning
+   * process does NOT measure ~1.0 on a contended host — it gets descheduled too.
+   * Four measurements, spanning two very different machines:
+   *
+   * | condition | duty cycle | where |
+   * |---|---|---|
+   * | off-CPU park (`Atomics.wait`) | **0.01%** | darwin/arm64, load ~24 |
+   * | starved, real incident | **0.57%** | darwin/arm64, load ~24 |
+   * | busy-spin | **74%** | darwin/arm64, load ~24 |
+   * | busy-spin | **16.7%** | shared 2-core CI runner |
+   *
+   * That last row is why this default is 0.05 and not 0.15. It was measured by
+   * this package's own test failing in CI, and it moves the worst case a long
+   * way: a real spin can land at 17%, so a 0.15 threshold clears it by only ~10%.
+   * Misclassifying a WEDGE as starvation is the dangerous direction — the
+   * process is then never recycled and a hung server survives — so the threshold
+   * belongs near the starved cluster, not near the spinning one.
+   *
+   * At 0.05 the margins are ~9x above the real starvation sample and ~3x below
+   * the worst observed spin, instead of 26x and 1.1x.
    */
   starvationDutyCycle?: number;
   /**

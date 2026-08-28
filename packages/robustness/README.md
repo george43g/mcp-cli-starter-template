@@ -402,12 +402,23 @@ path, and starvation presents as *sustained moderate* lag rather than one huge
 sample — measured across 223 real starvation samples, the worst reached 7646ms
 and never crossed the 10s threshold.
 
-**Tuning.** `starvationDutyCycle` defaults to **0.15**, deliberately low: a real
-busy-spin measured **74%**, not ~100%, because even a spinning process gets
-descheduled on a loaded host. An off-CPU park measured **0.01%**. Three orders of
-magnitude apart, so the threshold is not delicate — but one set near 1.0 would
-misclassify a genuine spin-wedge as starvation on exactly the hosts this targets.
-`starvationHostLoad` defaults to `1.0` (loadavg ÷ cores).
+**Tuning.** `starvationDutyCycle` defaults to **0.05**. Four measurements across
+two very different machines:
+
+| condition | duty cycle | where |
+|---|---|---|
+| off-CPU park (`Atomics.wait`) | 0.01% | darwin/arm64, load ~24 |
+| starved, real incident | 0.57% | darwin/arm64, load ~24 |
+| busy-spin | 74% | darwin/arm64, load ~24 |
+| busy-spin | **16.7%** | shared 2-core CI runner |
+
+That last row is why the default is 0.05 and not 0.15 — it was found by this
+package's own test failing in CI. **A real spin can land at 17%**, which a 0.15
+threshold clears by only ~10%. Misclassifying a *wedge* as starvation is the
+dangerous direction (the process is never recycled and a hung server survives),
+so the threshold belongs near the starved cluster, not near the spinning one. At
+0.05 the margins are ~9x above the real starvation sample and ~3x below the worst
+observed spin. `starvationHostLoad` defaults to `1.0` (loadavg ÷ cores).
 
 **Two platform caveats, both degrading toward today's behaviour (kill):**
 
