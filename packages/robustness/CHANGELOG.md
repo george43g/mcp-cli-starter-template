@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.14.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.13.0...robustness-v0.14.0) (2026-08-30)
+
+
+### Features
+
+* **robustness:** classify the hard event-loop path too, with a bound ([#110](https://github.com/george43g/mcp-cli-starter-template/issues/110)) ([30195ce](https://github.com/george43g/mcp-cli-starter-template/commit/30195ce7ce40bf9a10e7c47b58508d896fdc07a9))
+
 # [@george43g/robustness-v0.13.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.12.0...robustness-v0.13.0) (2026-08-28)
 
 
