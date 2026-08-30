@@ -91,6 +91,26 @@ Existing-target policy:
 | 11-agent-files | full starter agent config, or minimal package-manager-aware docs for non-starter repos |
 | 12-ci-release | matrix CI + disabled semantic-release + screenshots CI + .releaserc + .npmignore |
 
+### The generated `turbo.json` contract
+
+Every task that RUNS tests declares **`build` as well as `^build`**.
+
+`^build` builds a package's *dependencies*, not the package itself. A generated
+repo's test suite spawns its own bin (`dist/cli.js`) to assert the log directory
+is branded, so without its own `build` that test passes on any machine where a
+previous build left `dist/` lying around, and fails in a fresh clone — the exact
+shape a scaffolded repo is in on day one.
+
+This repo learned it the expensive way: the miss was fixed in `test`, its
+siblings `test:coverage` and `test:no-native` were not checked, and the next
+release job died in a fresh checkout after every PR check had gone green.
+`pnpm check:turbo-tasks` now asserts the property across all three surfaces —
+canonical, this generator, and the tracked `example/` — with a positive control
+so a broken matcher cannot read as "clean".
+
+**If you add a test-running task to the generated turbo config, give it
+`build`.**
+
 ## Diff-safe retrofit
 
 `apply` defaults to **dry-run** and a safe target profile. Generic repositories

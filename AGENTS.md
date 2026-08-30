@@ -84,6 +84,7 @@ packages/
 | `pnpm test:scripts` | Node's built-in runner over `scripts/**/*.test.mjs` — the repo scripts' own tests |
 | `pnpm check:registry-boundary` | A generated-app import of a kit API that is not in the RELEASED surface. Compares against each package's git release tag, so it needs no network — `pnpm verify` cannot catch this otherwise, because pnpm links the workspace copy |
 | `pnpm check:workflows` | `actionlint` (pinned in `mise.toml`) over all three workflow surfaces. Requires `mise install` first |
+| `pnpm check:turbo-tasks` | Every turbo task that RUNS tests must depend on its OWN `build`, not just `^build`. Caught twice in one hour: `^build` builds *dependencies*, so a test spawning its own `dist/` passes where a stale build exists and dies in a fresh clone — which is how a release job failed after every PR check went green |
 | `pnpm check:deps-stale` | Asks the **registry** whether our first-party deps are current. **NOT in `verify`** — `verify` is network-free by design. Runs weekly via `.github/workflows/deps-stale.yml`. Catches the one thing every offline check is blind to: a tree that agrees with itself and is uniformly behind. Exit 2 = registry unreachable, which is **not** a pass |
 | `pnpm verify` | lint + script tests + docs + stress count + manifests + registry boundary + workflows + typecheck + test:coverage + build (the CI shape) |
 | `pnpm stress` | 15-assertion MCP stress harness against `apps/example-repo-mcp/` |

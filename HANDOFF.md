@@ -1783,3 +1783,89 @@ generated app throws at construction. Suggested batching — (a) items 1+2+4 as 
 sitting, no release; (b) item 5, independent, no release; (c) mcp-kit 1.0.0
 carrying item 3 + `sanitizeContent` + the O12 `dispatch_error` guard; (d) the
 robustness minor carrying item 4's detector. **Stop at O-A before (c) or (d).**
+
+---
+
+# 2026-08-30 — the five are DONE and merged; two releases are staged but UNPUBLISHED
+
+**Precedence: where this entry and any earlier one disagree, this entry is
+correct.** The 2026-08-24 entry above lists the five decisions under
+*"Open — the five, all George's"*. **That is stale — all five are decided,
+implemented and merged.** It also describes the log-prefix defect as "two call
+sites, `index.ts` brands too late"; that framing was corrected the same day and
+the real mechanism was a third cause entirely (see #46).
+
+## State
+
+`main` at `02ef4dc`. **All five decisions shipped.** Two releases are merged and
+**NOT published** — the release job fails on `main` and #112 is the fix.
+
+## Done — the five, with anchors
+
+| # | What | Anchor |
+|---|---|---|
+| 1 | `devOnlyEnabled` wired; dev tools gated on the CALL path | `80d418b` (#103), red-drilled both ways |
+| 2 | `src/log-brand.ts` — branding as a module-scope side effect | `80d418b` (#103) |
+| 3 | `devOnly` throws at construction | `9c51a62` (#106) → **mcp-kit 1.0.0, PUBLISHED** |
+| 4 | Behavioural log-prefix test, enumerated from the bin's `--help` | `02ef4dc` (#109) — unblocked by #46 |
+| 5 | `check-deps-stale.mjs` ported + weekly job | `685bdee` (#104) |
+
+Plus, unplanned and consumer-driven: `robustness@0.13.0` (starvation-aware
+watchdog, PUBLISHED), `robustness 0.14.0` (hard-path classification, merged,
+UNPUBLISHED), `mcp-kit 2.0.0` (peer dependency, merged, UNPUBLISHED).
+
+## Open
+
+| Item | Owner | Evidence it is still open |
+|---|---|---|
+| `turbo-test-tasks` | mcp-cli-toolkit | PR #112. `main`'s `turbo.json` still has `test:coverage` and `test:no-native` on `["^build"]` — verified by `git show origin/main:turbo.json`. **Until this merges the release job fails and nothing publishes.** |
+| `publish-2.0.0-and-0.14.0` | mcp-cli-toolkit | `npm view` at 2026-08-30 → mcp-kit **1.0.0**, robustness **0.13.0**. Two release runs failed: `33203996874` and `33204002219`. |
+| `release-token-edited-trigger` | mcp-cli-toolkit | `ci.yml`'s `pull_request:` declares no `types:`, so `edited` is absent and a body edited after CI goes green is never re-checked. Never attempted. |
+| `handoff-direct-push-5d86258` | mcp-cli-toolkit | Asked 2026-08-23, never answered. Docs-only, fires no release. **Do not revert unilaterally.** |
+
+## Elsewhere
+
+- `vector-o11` and `ingest-basic-auth-password` (dotfiles / life-stack) — Vector
+  approved in full 2026-08-24; the credential is George's to create. Not this
+  session's rows; their owners raise them.
+
+## Corrections (claims now void)
+
+- **"The release is in flight"** — it was not. Two release runs FAILED and
+  published nothing. I reported the merges as though they implied publication;
+  the only reason I knew otherwise is that I watched the run.
+- **"`pnpm verify` exit 0" is not "CI green".** Said three times this session.
+  `verify` does not run `readme-check`, and it cannot see a fresh clone — which
+  is exactly where the turbo defect lives.
+- **DEFERRED #46's "UNKNOWN — not measured"** is answered: up-bank ran the
+  install and measured ONE instance. Entry updated.
+
+## Traps
+
+- **Fixing the instance you were shown is not fixing the class.** `test` was
+  patched; `test:coverage` and `test:no-native` were not looked at, and the next
+  release died in a fresh checkout after every PR check went green.
+- **A red-drill that does not go red is evidence of a broken drill**, not of a
+  passing test. Removing `cli.ts`'s brand import changed nothing because
+  `index.js` imports it transitively.
+- **A stale branch can be a REGRESSION dressed as salvage.**
+  `ci/stop-duplicating-work-per-os` proposed dropping the macOS leg, arguing the
+  legs "never disagreed on a real defect". `main` already carries a later
+  rationale saying the opposite — macOS caught a tsx SIGKILL/IPC timing defect
+  shipped into every generated repo. Deleted, not landed.
+- **`lint:fix` after copying to `lib/` silently creates golden drift.**
+
+## Tree
+
+`main` at `02ef4dc`, clean. One open PR (#112). Branch cleanup done: four dead
+local branches and two fully-merged remote remnants deleted; `--prune` cleared
+~10 stale refs. `fix/resync-example-after-skipped-job` was superseded (it bumped
+`example/` to `^0.9.0`; `main` is at `^1.0.0`).
+
+## Resume
+
+Merge #112 → the release job should publish `mcp-kit@2.0.0` and
+`robustness@0.14.0`. **Confirm with `npm view`, never from the workflow's exit
+status.** Then notify consumers with two migration notes: declare
+`@george43g/robustness` yourself (peer dep), and inject `hostLoadReader` in any
+test that drives the hard event-loop path and asserts a kill.

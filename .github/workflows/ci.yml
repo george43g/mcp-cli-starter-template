@@ -156,6 +156,14 @@ jobs:
         # binary so the check is reproducible across runners.
         uses: jdx/mise-action@v4
 
+      - name: Turbo test tasks depend on their own build
+        if: matrix.os == 'ubuntu-latest'
+        # `^build` builds DEPENDENCIES, not the package itself. A test that
+        # spawns its own dist/ passes where a stale build exists and dies in a
+        # fresh clone — which is how a release job failed here after every PR
+        # check had gone green.
+        run: pnpm check:turbo-tasks
+
       - name: Workflow YAML lint (all three surfaces)
         if: matrix.os == 'ubuntu-latest'
         # After the mise step above: actionlint is pinned in mise.toml, so it is

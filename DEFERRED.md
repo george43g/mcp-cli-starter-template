@@ -3434,7 +3434,46 @@ change to a published package; unstarted.
 
 ---
 
-## 46. mcp-kit and the app resolve DIFFERENT robustness instances, so logger state is split
+## 46. RESOLVED — mcp-kit and the app resolved DIFFERENT robustness instances
+
+**CLOSED 2026-08-28 by PR #109 (`mcp-kit@2.0.0`), which is MERGED but NOT YET
+PUBLISHED — see the release note at the end of this entry.** `robustness` moved
+from `dependencies` to `peerDependencies` with a deliberately wide range
+(`>=0.11.0 <1`), so the consumer supplies the single instance and the split is
+unrepresentable.
+
+**Verified by measurement, not argument:**
+
+```
+before:  app     -> packages/robustness/dist/index.js
+         mcp-kit -> .pnpm/@george43g+robustness@0.12.0/.../dist/index.js
+after:   both    -> packages/robustness/dist/index.js
+```
+
+and the drill that had defeated two sessions:
+
+```
+$ TMPDIR=$D node dist/cli.js health
+$ find $D -name '*.ndjson'
+example-repo-mcp/example-repo-mcp-52827-….ndjson      # no $TMPDIR/mcp/
+```
+
+**The "is a generated repo affected?" question below is ANSWERED and the answer
+is recorded here so nobody re-derives it:** up-bank-mcp ran the install and found
+**ONE** instance, because their `^0.12.0` overlaps mcp-kit 1.0.0's `>=0.12.0 <1`.
+The hazard was real but latent for them — it bites an app on `^0.11.0`, whose
+range does not overlap. Either way #109 removes the failure mode by construction.
+
+**Also closed by the same work:** decision item 4, the behavioural log-prefix
+test, which was parked precisely because its assertion was unsatisfiable while
+the split existed. It now lands in the template and enumerates subcommands from
+the bin's own `--help`.
+
+Everything below is the original entry, kept for the reasoning.
+
+---
+
+## 46 (original). mcp-kit and the app resolve DIFFERENT robustness instances, so logger state is split
 
 Found 2026-08-24 while red-drilling the log-branding fix (decision item 2). The fix
 looked broken — `TMPDIR=$D node dist/cli.js health` still produced `$TMPDIR/mcp/`
