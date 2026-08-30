@@ -1,3 +1,4 @@
+import pc from "picocolors";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { color, disableColors } from "./color.js";
 import { colorEnabled, isCI, isStderrTTY, isStdinTTY, isStdoutTTY } from "./tty.js";
@@ -169,10 +170,17 @@ describe("color wrapper follows colorEnabled", () => {
     expect(color.bold("hi")).toBe("hi");
   });
 
-  it("emits escapes when colour is forced on", () => {
+  it("delegates to picocolors when colour is on", () => {
+    // Assert the WRAPPER delegates, not that escapes appear. picocolors decides
+    // `isColorSupported` at IMPORT time, so whether `pc.red` emits escapes at all
+    // depends on whether the runner exported FORCE_COLOR before the module
+    // loaded — turbo does, a bare `vitest run` does not. Asserting on escapes
+    // therefore passes under `pnpm verify` and fails standalone, which is the
+    // exact environment-dependence these tests exist to remove. I shipped that
+    // bug here first; this is the fix.
     delete process.env.NO_COLOR;
     process.env.FORCE_COLOR = "1";
-    expect(color.red("hi")).not.toBe("hi");
+    expect(color.red("hi")).toBe(pc.red("hi"));
     expect(color.red("hi")).toContain("hi");
   });
 

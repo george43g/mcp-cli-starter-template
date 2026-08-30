@@ -433,7 +433,14 @@ jobs:
     # on every push, which is DEFERRED #38's original bug wearing a different
     # hat. Its gate came off 2026-08-22, so it belongs here again.
     needs: [robustness, cli-kit, tui-kit, secret-store, mcp-kit]
-    if: ${{ !cancelled() && github.event_name == 'push' }}
+    # `workflow_dispatch` too, not just `push`. A dispatched release publishes
+    # exactly like a pushed one, so gating the resync on the event left
+    # `example/` stale against the versions that had just gone out — measured
+    # 2026-08-30, when a dispatched release shipped mcp-kit 2.0.0 and
+    # robustness 0.14.0 and the tracked output kept pinning ^1.0.0 / ^0.13.0.
+    # Same shape as DEFERRED #38: the resync is only as reachable as the
+    # narrowest condition on the path to it.
+    if: ${{ !cancelled() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
