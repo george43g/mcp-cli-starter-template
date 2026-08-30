@@ -1,6 +1,6 @@
 {
   "name": "@george43g/mcp-kit",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "MCP server building blocks: tool registry types, dispatcher with timeout/perf/abort/error-wrap baked in, stdio + Streamable HTTP transports, sanitize() for user content, UUID-gated prompt-injection helpers.",
   "type": "module",
   "license": "MIT",
