@@ -51,9 +51,9 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@george43g/cli-kit": "^2.0.1",
+    "@george43g/cli-kit": "^2.0.2",
     "@george43g/mcp-kit": "^2.0.0",
-    "@george43g/robustness": "^0.14.0",
+    "@george43g/robustness": "^0.14.1",
     "@george43g/secret-store": "^0.2.2",
     "@george43g/shared-types": "workspace:*",
     "@george43g/tui-kit": "^0.5.1",
