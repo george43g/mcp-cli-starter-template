@@ -869,11 +869,15 @@ describe("watchdog_installed is self-evidencing", () => {
       shutdownController: trackingShutdown(new Set()),
     });
     controller.install();
+    // EXACT values, not expect.any(Number). Presence-only is how 0.14.0
+    // shipped a 0.15 duty-cycle default against its own documented, measured
+    // 0.05 — the doc comment is the spec, so the defaults are pinned to it.
+    // A deliberate default change must edit both, which is the point.
     expect(seen[0]).toMatchObject({
       starvation_aware: true,
-      starvation_duty_cycle: expect.any(Number),
-      starvation_host_load: expect.any(Number),
-      starvation_max_consecutive: expect.any(Number),
+      starvation_duty_cycle: 0.05,
+      starvation_host_load: 1.0,
+      starvation_max_consecutive: 5,
     });
     controller.reset();
   });
