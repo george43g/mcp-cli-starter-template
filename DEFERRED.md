@@ -3436,11 +3436,24 @@ change to a published package; unstarted.
 
 ## 46. RESOLVED — mcp-kit and the app resolved DIFFERENT robustness instances
 
-**CLOSED 2026-08-28 by PR #109 (`mcp-kit@2.0.0`), which is MERGED but NOT YET
-PUBLISHED — see the release note at the end of this entry.** `robustness` moved
-from `dependencies` to `peerDependencies` with a deliberately wide range
-(`>=0.11.0 <1`), so the consumer supplies the single instance and the split is
-unrepresentable.
+**CLOSED 2026-08-28 by PR #109 (`mcp-kit@2.0.0`), PUBLISHED 2026-09-02.**
+`robustness` moved from `dependencies` to `peerDependencies` with a
+deliberately wide range (`>=0.11.0 <1`), so the consumer supplies the single
+instance and the split is unrepresentable.
+
+**Second, independent, post-publish measurement (2026-09-02):** up-bank-mcp
+bumped to `mcp-kit ^2.0.0` + `robustness ^0.14.0` (their commit `a1cab10`) and
+reported the verification grep verbatim — their lockfile, not ours:
+
+```
+$ grep -oE "@george43g/robustness@[0-9.]+" pnpm-lock.yaml | sort -u
+@george43g/robustness@0.14.0
+```
+
+One instance, zero code change (they already declared robustness directly).
+Their reading of the shape, worth keeping: the failure mode moves from "wrong
+bump order → silent split instance" to "consumer forgets to declare robustness
+→ hard install error". Loud beats silent.
 
 **Verified by measurement, not argument:**
 
