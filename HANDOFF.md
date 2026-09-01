@@ -2101,3 +2101,12 @@ Nothing open that this session owns.
 Nothing mid-flight. Next session: only the two Blocked-on-you decisions
 remain; consumer evidence (up-bank's log line, browser-tab's post-restart
 report) arrives as peer messages and needs no chasing.
+
+**Update, same day 05:44 AEST:** `robustness-0.14.1-threshold-fix` · up-bank-mcp
+is CLOSED — their production service (pid 97601) logs
+`starvation_duty_cycle":0.05` verbatim; full first-hand chain (npm view,
+scoped update, single-instance grep → `@george43g/robustness@0.14.1`, verify,
+stress 16/16, /health 200) in their BACKLOG close `a737367`. Interim exposure
+lasted under a day; the spurious cli-kit 2.0.2 was not pulled by their scoped
+update. Thread closed both sides. Remaining Elsewhere row: only the
+browser-tab daemon restart.
