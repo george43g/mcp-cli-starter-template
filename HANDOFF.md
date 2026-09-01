@@ -1869,3 +1869,93 @@ Merge #112 → the release job should publish `mcp-kit@2.0.0` and
 status.** Then notify consumers with two migration notes: declare
 `@george43g/robustness` yourself (peer dep), and inject `hostLoadReader` in any
 test that drives the hard event-loop path and asserts a kill.
+
+---
+
+# 2026-08-30 (post-crash checkpoint) — two tasks PARKED for the next context
+
+**Precedence: where this entry and any summary disagree, this entry is correct.**
+The machine crashed after the 2.0.0/0.14.0 releases published; a full post-crash
+audit found git/PRs/npm/records all consistent and nothing to recover. These two
+tasks were in flight or newly surfaced, and are parked here fully specified so
+they can be executed without re-deriving anything.
+
+## State
+
+`main` at `fc1aa19`, clean, level, no open PRs, no stashes/worktrees.
+Published (verified `npm view` 2026-08-30): `mcp-kit@2.0.0`,
+`robustness@0.14.0`, `cli-kit@2.0.1`, `tui-kit@0.5.1`, `secret-store@0.2.2`.
+Global `mcp-scaffold` bin is a live symlink into `apps/scaffolder` — tracks
+every build, never goes stale.
+
+## PARKED 1 — consumer notifications for mcp-kit 2.0.0 + robustness 0.14.0
+
+Never sent; the crash killed the session at exactly this step. Send via
+SendMessage under the `querying-peer-agents` contract. **Run `ListAgents` first
+— browser-tab session names churn (the defect reporter `browser-tab-mcp-4f` is
+long gone), so address whichever browser-tab session is live and write
+self-contained.** Recipients: `up-bank-mcp` (asked to be told), the live
+browser-tab session, `eqstack`, `life-stack`.
+
+**Rule: cite `npm view` output run AT SEND TIME, never the numbers above.**
+
+Content per release:
+
+- **mcp-kit 2.0.0 (breaking):** `@george43g/robustness` moved from
+  `dependencies` to `peerDependencies`, range `>=0.11.0 <1` (deliberately wide —
+  every symbol mcp-kit imports exists at 0.11.0, verified against the published
+  `index.d.ts`). **Migration: declare robustness in your own package.json** —
+  every known consumer already does, so for them it is a version bump with no
+  code change. This removes the split-instance hazard BY CONSTRUCTION, so the
+  1.0.0 "bump robustness first" ordering note is moot on 2.0.0. Verify with
+  `grep -oE "@george43g/robustness@[0-9.]+" pnpm-lock.yaml | sort -u` → one line.
+- **robustness 0.14.0:** the hard event-loop path (`event_loop_blocked`) is now
+  starvation-classified too — a starved verdict DEFERS the kill (never cancels;
+  `starvationMaxConsecutive`, default 5, ≈25s worst case), after up-bank measured
+  an 11567ms sample at load 58 being killed. CPU baseline now seeded at
+  `install()`. `watchdog_installed` now carries `starvation_aware` + the three
+  thresholds, so operators can tell which classifier runs from logs alone
+  (up-bank's ask). **Migration note that will bite silently: any test that
+  drives the hard path and asserts a kill must inject `hostLoadReader` (e.g.
+  `() => 0`)** — a test process is low-CPU by nature, so on a loaded CI host the
+  kill is deferred and the test reads as flake. This repo's own suite hit it in
+  two tests.
+- up-bank offered to report back the one-vs-two lockfile count after bumping;
+  invite that. browser-tab should confirm their ~126 respawns stopped on
+  0.13.0+ — the `event_loop_starved_not_killed` diagnostic now carries
+  `duty_cycle`/`host_load`/`verdict`.
+
+## PARKED 2 — `check-deps-stale.mjs` zero-entries fix
+
+**The weekly job will fail every scheduled run until this lands.** First
+scheduled run already failed (run on `fc1aa19`, `schedule` event). Reproduced
+locally:
+
+```
+check-deps-stale: FAILED — found no @george43g/* resolutions in pnpm-lock.yaml.
+  Either nothing depends on them, or the parser broke. Both need a human.
+```
+
+Root cause is LEGITIMATE state meeting a designed-loud control: the peer change
+(#109) removed the last registry-resolved first-party entry — the lockfile now
+has ZERO (`grep -cE "'@george43g/[a-z-]+@[0-9.]+'" pnpm-lock.yaml` → 0), all
+first-party edges are `workspace:` links, which `readLock()` correctly excludes.
+
+Fix shape: distinguish three outcomes — (a) registry entries found → check them
+as today; (b) **no registry entries but first-party `link:` entries present →
+PASS with a message saying the workspace is link-only** (count the links so the
+message is affirmative, not an absence); (c) neither → FAIL as today (parser
+broke). Red-drill both new branches. Small PR; `verify` does not run it, so CI
+green ≠ fixed — confirm by running the script.
+
+## Open (unchanged, George's)
+
+| slug | question |
+|---|---|
+| `release-token-edited-trigger` | `ci.yml` `pull_request:` lacks `types: [..., edited]`, so a PR body edited after CI goes green is never re-checked — and the body becomes the squash commit. One line, but decide deliberately. |
+| `handoff-direct-push-5d86258` | Revert the 2026-08-23 direct-to-main docs push and re-land as a PR, or leave it. Do not revert unilaterally. |
+
+## Resume
+
+Do PARKED 1 then PARKED 2, in that order — consumers are running old kits until
+told, and the staleness job fails weekly, not hourly.
