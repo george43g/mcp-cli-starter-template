@@ -1,3 +1,10 @@
+# [@george43g/cli-kit-v2.0.2](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v2.0.1...cli-kit-v2.0.2) (2026-09-01)
+
+
+### Bug Fixes
+
+* **ci:** resync example/ after a DISPATCHED release too, not only a pushed one ([#113](https://github.com/george43g/mcp-cli-starter-template/issues/113)) ([fc1aa19](https://github.com/george43g/mcp-cli-starter-template/commit/fc1aa190d00bfa381f96fa85c7ef2d4eb692d041)), closes [#112](https://github.com/george43g/mcp-cli-starter-template/issues/112) [#111](https://github.com/george43g/mcp-cli-starter-template/issues/111) [#111](https://github.com/george43g/mcp-cli-starter-template/issues/111)
+
 # [@george43g/cli-kit-v2.0.1](https://github.com/george43g/mcp-cli-starter-template/compare/cli-kit-v2.0.0...cli-kit-v2.0.1) (2026-08-10)
 
 
