@@ -450,6 +450,16 @@ so the threshold belongs near the starved cluster, not near the spinning one. At
 0.05 the margins are ~9x above the real starvation sample and ~3x below the worst
 observed spin. `starvationHostLoad` defaults to `1.0` (loadavg ÷ cores).
 
+> **0.14.0 shipped 0.15 here, against everything this section says.** The code
+> literal predated the CI measurement and nothing asserted the value — the
+> self-evidencing test checked that `watchdog_installed` *carried* a
+> `starvation_duty_cycle`, not what it was. A consumer reading their live log
+> line against the release note caught the disagreement. 0.14.1 corrects the
+> default to the documented 0.05, and the test now pins the exact values. If
+> you deployed 0.14.0 and (improbably) want its wider starved window back, set
+> `STARVATION_DUTY_CYCLE=0.15` — but read the table first; the wide window is
+> the wedge-survives direction.
+
 **Two platform caveats, both degrading toward today's behaviour (kill):**
 
 - **Windows** returns `[0, 0, 0]` from `os.loadavg()`, so the host always reads as

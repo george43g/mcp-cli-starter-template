@@ -276,7 +276,12 @@ function buildConfig(options: WatchdogOptions) {
       "EVENT_LOOP_SUSTAINED_SAMPLES",
       6,
     ),
-    starvationDutyCycle: numberOption(options.starvationDutyCycle, "STARVATION_DUTY_CYCLE", 0.15),
+    // 0.05, NOT 0.15 — the option's doc comment carries the four measurements
+    // behind the choice. 0.14.0 shipped 0.15 here while documenting 0.05: the
+    // literal predated the CI spin measurement and nothing asserted the value
+    // (the self-evidencing test checked presence only). Caught by up-bank-mcp
+    // reading their live `watchdog_installed` line against the release note.
+    starvationDutyCycle: numberOption(options.starvationDutyCycle, "STARVATION_DUTY_CYCLE", 0.05),
     starvationHostLoad: numberOption(options.starvationHostLoad, "STARVATION_HOST_LOAD", 1.0),
     starvationMaxConsecutive: numberOption(
       options.starvationMaxConsecutive,
