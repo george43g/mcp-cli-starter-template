@@ -1959,3 +1959,62 @@ green ≠ fixed — confirm by running the script.
 
 Do PARKED 1 then PARKED 2, in that order — consumers are running old kits until
 told, and the staleness job fails weekly, not hourly.
+
+---
+
+# 2026-09-02 (AEST) — precompact artifact
+
+**Precedence: where this file and the post-compact summary disagree, this file
+is correct.** This entry supplements the parked-tasks entry directly above; it
+does not restate it.
+
+## State
+
+`main` at `d22ff0a`, clean, level with origin, no open PRs; both releases
+published and verified; two executable tasks parked in the entry above.
+
+## Corrections
+
+- **The entry above is headed "2026-08-30" but was COMMITTED 2026-09-02 04:12
+  AEST** (`git log -1 --format=%ci d22ff0a`). My context's date was two days
+  stale — the crash gap passed without the context advancing. The content is
+  correct; only the heading's date is wrong. Left standing per append-only;
+  this line is the correction.
+- "Global mcp-scaffold is stale" (said in-session, already retracted there):
+  I `cmp`'d the pnpm SHIM against `dist/cli.js`. The shim's target is a live
+  symlink into the workspace and was identical. Measurement right, subject
+  wrong.
+
+## Open
+
+- `notify-consumers-2.0.0-0.14.0` · mcp-cli-toolkit — never sent (crash killed
+  the session at this step). Send-ready spec in the entry above.
+- `deps-stale-zero-entries` · mcp-cli-toolkit — never attempted; the scheduled
+  run on `fc1aa19` failed and will fail weekly until fixed. Spec above.
+
+## Blocked on you
+
+- `release-token-edited-trigger` · mcp-cli-toolkit — decide whether `ci.yml`'s
+  `pull_request:` gains `types: [opened, synchronize, reopened, edited]`.
+  Never attempted; asked 2026-08-25 and since, unanswered.
+- `handoff-direct-push-5d86258` · mcp-cli-toolkit — revert-and-PR or leave.
+  Asked 2026-08-23, unanswered. Do not revert unilaterally.
+
+## Traps
+
+- **A context's "today" can silently lag days across a crash gap.** `date`
+  before every stamp; `git log --format=%ci` is the arbiter afterwards.
+- **`cmp` on a launcher shim measures the shim.** Resolve to the target first;
+  "what is this the measurement OF?" catches what re-running never will.
+
+## Tree
+
+`/Users/george/repos/mcp-cli-starter-template`, branch `main`, 0/0 vs origin,
+no dirty paths, no stashes, sole worktree — all mine.
+
+## Resume
+
+Execute PARKED 1 then PARKED 2 from the entry above, in that order. Before
+PARKED 1, run `ListAgents` (browser-tab session names churn) and `npm view`
+(never quote versions from this file). Nothing is mid-flight: no background
+tasks, no staged work, no unanswered peer queries.
