@@ -2110,3 +2110,14 @@ stress 16/16, /health 200) in their BACKLOG close `a737367`. Interim exposure
 lasted under a day; the spurious cli-kit 2.0.2 was not pulled by their scoped
 update. Thread closed both sides. Remaining Elsewhere row: only the
 browser-tab daemon restart.
+
+**Update, 05:52 AEST:** browser-tab daemon restart · browser-tab-mcp is DONE —
+George authorized it; daemon pid 30762 (started 2026-09-01T23:54:49Z) runs
+0.14.1 and its `watchdog_installed` line carries `starvation_aware":true,
+"starvation_duty_cycle":0.05` verbatim (their log
+browser-tab-daemon-30762-2026-09-01T23-54-49.ndjson). They updated BEFORE
+restarting, so 0.14.0's 0.15 window was never live there. Remaining external
+observation, self-scheduled at their end: the next parallel-agent load storm
+either fires `event_loop_starved_not_killed` (verbatim line promised) or the
+daemon survives a storm that previously killed it ~10/hour — whichever
+arrives, dated. Nothing owed from this side.
