@@ -1,3 +1,10 @@
+# [@george43g/robustness-v0.14.1](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.14.0...robustness-v0.14.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* **robustness:** starvation duty-cycle default is the documented 0.05, not 0.15 ([#115](https://github.com/george43g/mcp-cli-starter-template/issues/115)) ([a95d8ce](https://github.com/george43g/mcp-cli-starter-template/commit/a95d8ce3e708a126530ddd23012c4ce5caf5b80c))
+
 # [@george43g/robustness-v0.14.0](https://github.com/george43g/mcp-cli-starter-template/compare/robustness-v0.13.0...robustness-v0.14.0) (2026-08-30)
 
 
