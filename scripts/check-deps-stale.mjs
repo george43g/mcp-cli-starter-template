@@ -44,7 +44,8 @@ const SCOPE = "@george43g/";
 
 function readLock() {
   const text = readFileSync(join(ROOT, "pnpm-lock.yaml"), "utf8");
-  const out = [];
+  const registry = [];
+  const links = [];
   let importer = null;
   let pkgName = null;
   for (const line of text.split("\n")) {
@@ -62,11 +63,16 @@ function readLock() {
     if (!pkgName) continue;
     const ver = line.match(/^ {8}version:\s*'?([^'\n]+?)'?\s*$/);
     if (ver) {
-      if (!ver[1].startsWith("link:")) out.push({ importer, name: pkgName, version: ver[1] });
+      // `link:` edges track the workspace copy directly and cannot be stale,
+      // so they are excluded from the npm-view loop — but they are COUNTED,
+      // because "no registry entries" has two readings and only the link tally
+      // can tell them apart (see the outcome split below).
+      if (ver[1].startsWith("link:")) links.push({ importer, name: pkgName });
+      else registry.push({ importer, name: pkgName, version: ver[1] });
       pkgName = null;
     }
   }
-  return out;
+  return { registry, links };
 }
 
 // pnpm appends a peer-dep suffix to some lockfile versions —
@@ -128,12 +134,37 @@ function privateWorkspaceNames() {
 }
 
 const PRIVATE = privateWorkspaceNames();
-const entries = readLock();
+const { registry: entries, links } = readLock();
 
-// POSITIVE CONTROL. Zero entries means the parser broke, not that the tree is
-// clean — and "clean" is the reassuring reading, which is why it must fail.
+// ZERO REGISTRY ENTRIES has two readings, and only the link tally separates
+// them. The mcp-kit peer-dependency change (#109) removed the last
+// registry-resolved first-party entry from this repo's lockfile — every
+// first-party edge became a `link:` — and the original zero-entries positive
+// control read that LEGITIMATE state as a broken parser, failing the weekly
+// job on its first scheduled run. So:
+//   (a) registry entries found            → check them against npm (below);
+//   (b) none, but first-party links exist → PASS, affirmatively: the parser
+//       demonstrably works (it counted the links), and a link tracks the
+//       workspace copy directly, so nothing CAN be stale;
+//   (c) neither                           → the parser broke, or nothing
+//       depends on first-party packages at all. Still a loud FAIL — "clean"
+//       is the reassuring reading, which is why it must not be the default.
 if (entries.length === 0) {
-  console.error(`check-deps-stale: FAILED — found no ${SCOPE}* resolutions in pnpm-lock.yaml.`);
+  if (links.length > 0) {
+    const linkNames = [...new Set(links.map((l) => l.name))].sort();
+    console.log(
+      `check-deps-stale: PASS — no registry-resolved ${SCOPE}* entries; the workspace is link-only.`,
+    );
+    console.log(
+      `  ${links.length} first-party edge(s) across ${linkNames.length} package(s) resolve as workspace links:`,
+    );
+    for (const n of linkNames) console.log(`    - ${n}`);
+    console.log("  A link tracks the workspace copy directly, so there is nothing to be stale.");
+    process.exit(0);
+  }
+  console.error(
+    `check-deps-stale: FAILED — found no ${SCOPE}* deps in pnpm-lock.yaml at all, registry or link.`,
+  );
   console.error("  Either nothing depends on them, or the parser broke. Both need a human.");
   process.exit(1);
 }
