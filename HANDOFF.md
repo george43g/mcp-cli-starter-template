@@ -2018,3 +2018,86 @@ Execute PARKED 1 then PARKED 2 from the entry above, in that order. Before
 PARKED 1, run `ListAgents` (browser-tab session names churn) and `npm view`
 (never quote versions from this file). Nothing is mid-flight: no background
 tasks, no staged work, no unanswered peer queries.
+
+---
+
+# 2026-09-02 05:32 AEST — both parked tasks CLOSED; a third found and shipped
+
+**Precedence: where this entry and any summary disagree, this entry is correct.**
+
+## State
+
+Both parked tasks executed and closed. A consumer-reported defect in
+robustness 0.14.0 was confirmed, fixed, and published as **0.14.1** in the
+same sitting. `main` clean and level; no open PRs.
+
+## Done
+
+- `notify-consumers-2.0.0-0.14.0` — CLOSED. All four notices sent (up-bank,
+  browser-tab, eqstack, life-stack), versions cited from `npm view` at send
+  time. Returns: up-bank's single-instance grep recorded in DEFERRED #46 as
+  the second independent measurement (their commit `a1cab10`); life-stack
+  corrected the consumer map (mcpsync consumes robustness only, NOT mcp-kit —
+  `apps/mcpsync/package.json:51`); browser-tab answered honest-unknown
+  (0.13.0 never deployed — their `^0.12.0` caret pinned the minor through two
+  releases; now `^0.14.0` via their PR #138, daemon restart George-gated).
+- `deps-stale-zero-entries` — CLOSED by PR #114 (`593ef59`). Three-outcome
+  split; link-only lockfile now PASSES affirmatively (19 edges / 9 packages
+  named). Red-drilled: fixture test failed against the old code first. New
+  `scripts/check-deps-stale.test.mjs` runs the real script against fixture
+  lockfiles; 62/62 script tests. `verify` does not run this check — confirmed
+  by executing the script against the live lockfile, exit 0.
+- **NEW, found mid-task:** robustness 0.14.0 shipped `starvationDutyCycle`
+  default **0.15** while its own doc comment/README/rationale said **0.05**
+  (`watchdog.ts:279` vs `:127` at v0.14.0). Caught by up-bank reading their
+  restarted service's live `watchdog_installed` line against my release note.
+  Fixed by PR #115 (`a95d8ce`) → **robustness@0.14.1** published (release run
+  33548882442, success). Verified in the shipped artifact itself: unpacked the
+  0.14.1 tarball, `dist/watchdog.js` carries `STARVATION_DUTY_CYCLE", 0.05`.
+  The self-evidencing test now pins EXACT defaults (0.05/1.0/5), not
+  `expect.any(Number)` — presence-not-value was the hole. Both restart-gated
+  consumers pinged; up-bank closes their `robustness-0.14.1-threshold-fix`
+  row on the new pid's log line. up-bank ran 0.14.0's 0.15 for the interim by
+  explicit, endorsed choice (bounded days of a conjunction-gated miss window
+  beats a stale launchd override).
+
+## Corrections
+
+- The same release run cut **`cli-kit@2.0.2` — spurious but benign.**
+  `fc1aa19` (#113, typed `fix(ci)`) also touched
+  `packages/cli-kit/src/tty.test.ts`; semantic-release reads the TYPE against
+  every package directory a commit touches. 2.0.1→2.0.2 diff is tests/README
+  only, `dist/` unchanged. Trap refined: **the workflow's `paths` exclusion
+  gates the TRIGGER, not the analyzer** — a later legitimate release run still
+  counts the earlier commit. The defence remains commit-type discipline: the
+  cli-kit test edit inside #113's squash should have been its own
+  `test(cli-kit):` commit/PR.
+
+## Open
+
+Nothing open that this session owns.
+
+## Blocked on you (unchanged, asked before)
+
+- `release-token-edited-trigger` · mcp-starter-template — add
+  `types: [opened, synchronize, reopened, edited]` to `ci.yml`?
+- `handoff-direct-push-5d86258` · mcp-starter-template — revert-and-PR or
+  leave. Not reverting unilaterally.
+
+## Elsewhere
+
+- `robustness-0.14.1-threshold-fix` · up-bank-mcp — their pickup row; closes
+  on their new pid logging `starvation_duty_cycle":0.05`.
+- browser-tab daemon restart onto 0.14.1 · browser-tab-mcp — George-gated at
+  their end; their standing evidence ask follows it.
+
+## Tree
+
+`/Users/george/repos/mcp-cli-starter-template`, `main` at `ad1a4c0`
+(release bump + resync commits pulled), level with origin, clean — all mine.
+
+## Resume
+
+Nothing mid-flight. Next session: only the two Blocked-on-you decisions
+remain; consumer evidence (up-bank's log line, browser-tab's post-restart
+report) arrives as peer messages and needs no chasing.
