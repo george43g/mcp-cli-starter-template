@@ -2135,3 +2135,11 @@ DEFERRED #48 records the general symbol-resolution docs check + trigger.
 Descendants' local copies of the false text stay with dotfiles' audit scope
 (offered to send corrected text; awaiting their preference). No release fired
 — no `packages/**` path in the diff.
+
+**Update, 2026-09-03 06:55 AEST:** the descendant-copies row is CLOSED without
+action — both repos fixed their local false text in parallel before my offer
+arrived (up-bank `55e03f9`, browser-tab PR #168; dotfiles confirmed "do not
+message"). dotfiles recorded the origin findings in the audit (`df1a6d2`) and
+corrected the skill's overstatement of path-checker reach (`7d22447`);
+DEFERRED #48 upgraded to record the settled position and the
+selector-regression warning. Nothing owed anywhere on this thread.

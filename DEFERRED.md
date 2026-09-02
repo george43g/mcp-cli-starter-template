@@ -3770,3 +3770,16 @@ that is the second instance of the class, and the point where the general
 checker is cheaper than the third instance. Scope on pickup: start with
 `AGENTS.md` entry points only (root + stamped), tokens in backticks, resolved
 against the filesystem and each workspace's exported surface.
+
+**Status upgrade (2026-09-03): this deferral is now the settled fleet
+position, not a parked wish.** up-bank built the path-resolving half and
+measured its ceiling — it catches bad paths and disagreeing counts, but NOT a
+phantom symbol in a file that exists, and never a claim about behaviour. The
+harness-engineering skill was corrected accordingly (dotfiles `7d22447`):
+check paths and counts mechanically; treat symbols as a deliberate design
+problem; "never claim an enforcement you do not have" covers the residue no
+checker reaches. Do not re-open this as a rider on other work; the trigger
+above still governs pickup. Related: if anyone "simplifies"
+check-stdout-purity's selector into a repo-wide grep, that is a regression —
+the affirmative mcp-kit-marker criterion is what lets a CLI print to stdout
+legitimately (browser-tab's caveat, recorded in the script header).
