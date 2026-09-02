@@ -19,7 +19,8 @@
     "typecheck": "turbo run typecheck",
     "stress": "turbo run stress",
     "check:docs": "node scripts/check-docs-links.mjs",
-    "verify": "pnpm lint && pnpm check:docs && pnpm typecheck && pnpm test && pnpm build",
+    "check:stdout-purity": "node scripts/check-stdout-purity.mjs",
+    "verify": "pnpm lint && pnpm check:docs && pnpm check:stdout-purity && pnpm typecheck && pnpm test && pnpm build",
     "clean": "turbo run clean && rm -rf node_modules .turbo coverage"
   },
   "devDependencies": {

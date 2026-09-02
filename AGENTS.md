@@ -79,6 +79,7 @@ packages/
 | `pnpm typecheck` | `tsc --noEmit` per package |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm check:docs` | Docs integrity: relative links, agent-file symlinks, docs index coverage |
+| `pnpm check:stdout-purity` | No `console.*` call in an MCP app's `src/` — JSON-RPC owns stdout after the stdio transport connects. Exists because the stamped AGENTS.md claimed "CI grep enforces this" for months while nothing did, and the false sentence replicated into descendant repos. A claimed guard is worse than no guard |
 | `pnpm check:stress-count` | The stress harness's `EXPECTED_ASSERTIONS` vs every prose site that quotes it. The harness asserts the constant against its own run, so the chain is `results.length` → constant → docs |
 | `pnpm check:publishable-manifests` | Publish shape of the npm-published packages: repository metadata, `files`, no `workspace:` in shipped deps |
 | `pnpm test:scripts` | Node's built-in runner over `scripts/**/*.test.mjs` — the repo scripts' own tests |

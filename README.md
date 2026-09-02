@@ -168,6 +168,7 @@ skills/
 ```
 pnpm install
 pnpm verify                                 # lint + typecheck + test + build
+pnpm check:stdout-purity                    # no console.* in an MCP app's src — JSON-RPC owns stdout
 pnpm --filter @george43g/mcp-scaffold test  # golden-output drift test + unit tests
 mise run --cd apps/scaffolder smoke         # full end-to-end: init + install + test
 mise run --cd apps/scaffolder docs          # regenerate docs/scaffolder-cli/*.md

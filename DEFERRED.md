@@ -3743,3 +3743,30 @@ already draws and then discards.
 
 **Trigger:** life-stack ships the adapter fix; then re-run `mcpsync sync --scope
 project --yes` here and confirm the three vars appear.
+
+## 48. Docs-integrity check does not verify that cited symbols/commands resolve
+
+**What:** `check:docs` validates links, symlinks and index coverage, but nothing
+asserts that a path, exported symbol, command, or config name *written in prose*
+still exists. That gap is how the stamped AGENTS.md carried a fictional
+`TOOL_TIMEOUTS_MS` (in a file it even named — `src/tools/registry.ts`) and a
+"CI grep enforces this" claim with no grep, for months, replicated into at
+least two descendant repos (dotfiles fleet audit, 2026-09-02,
+`~/dotfiles/docs/harness-drift-audit-2026-09-02.md`). The harness-engineering
+skill now states it as a rule: *"Documentation integrity is an invariant like
+any other. Add one check asserting that every path, symbol, command, and
+config name written in the entry point still resolves."*
+
+**Why deferred:** the two live instances were fixed at the source and the
+stdout claim now has a real enforcer (`check:stdout-purity`, stamped into
+generated repos). The general checker is a meaningfully harder design — which
+prose tokens count as claims, and against what namespace they resolve — and
+deserves its own PR rather than a rider. A scaffold is the right origin for
+it: a new repo that ships with a docs-integrity check cannot inherit fiction
+silently.
+
+**Trigger:** the next time a doc-vs-code fiction is found in any stamped file —
+that is the second instance of the class, and the point where the general
+checker is cheaper than the third instance. Scope on pickup: start with
+`AGENTS.md` entry points only (root + stamped), tokens in backticks, resolved
+against the filesystem and each workspace's exported surface.

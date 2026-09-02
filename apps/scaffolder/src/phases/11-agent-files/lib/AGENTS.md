@@ -102,8 +102,8 @@ Scripts in each app's `package.json` pass `--env-file-if-exists` flags so the pr
 
 ## MCP best practices enforced in this codebase
 
-1. **Never write to stdout after `StdioServerTransport.connect()`** — JSON-RPC owns stdout. All logging goes through `@george43g/robustness/logger`. CI grep enforces this.
-2. **Every tool runs through `withTimeout`** — declare in `TOOL_TIMEOUTS_MS` (in `src/tools/registry.ts`) or rely on the default. Set to `0` only with a documented reason.
+1. **Never write to stdout after `StdioServerTransport.connect()`** — JSON-RPC owns stdout. All logging goes through `@george43g/robustness/logger`. Enforced statically by `pnpm check:stdout-purity` (`scripts/check-stdout-purity.mjs`, wired into `verify` and CI): no `console.*` call in an MCP app's `src/`. The runtime half is exercised by the stress harness over live stdio.
+2. **Every tool runs through `withTimeout`** — set `timeoutMs` on the tool's `ToolDefinition` (see `src/tools/noop.ts` for the shape) or rely on `MCP_TOOL_TIMEOUT_DEFAULT_MS` (30s). Set to `0` only with a documented reason.
 3. **Honor `AbortSignal`** — long-running loops check `signal?.aborted` between iterations and bail with a logged record.
 4. **Errors get an actionable hint** — wrap with `wrapToolError` (in `@george43g/mcp-kit`). Never return bare `error.message`.
 5. **No new robustness knobs without an `MCP_*` env override** — go through `@george43g/robustness/env`.
