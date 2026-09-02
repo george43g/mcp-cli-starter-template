@@ -59,6 +59,10 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   // EXEMPT_PATHS below.
   ["10-docs-readme/lib/LICENSE", "LICENSE"],
   ["10-docs-readme/lib/llms-install.md", "llms-install.md"],
+  // check-stdout-purity is deliberately generic (it keys on the mcp-kit
+  // dependency marker, not on repo names), so unlike check-docs-links the
+  // stamped copy IS the canonical script and byte-equality is enforced.
+  ["10-docs-readme/lib/scripts/check-stdout-purity.mjs", "scripts/check-stdout-purity.mjs"],
   ["11-agent-files/lib", "."],
   // Consumer CI intentionally omits the two meta-repo-only scaffolder drift steps.
   ["12-ci-release/lib/.github/workflows/ci.yml", "example/.github/workflows/ci.yml"],

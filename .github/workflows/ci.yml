@@ -99,6 +99,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm check:docs
 
+      - name: Stdout purity (no console.* in an MCP app's src — JSON-RPC owns stdout)
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm check:stdout-purity
+
       - name: Repo script unit tests (runs before the checks that depend on them)
         if: matrix.os == 'ubuntu-latest'
         run: pnpm test:scripts

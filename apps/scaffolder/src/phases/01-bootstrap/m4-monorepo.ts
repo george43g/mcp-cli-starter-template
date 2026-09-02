@@ -81,7 +81,13 @@ const ROOT_PACKAGE_JSON = (name: string) =>
         // Docs integrity gate (index coverage + relative links + agent-file
         // symlinks). Ships via 10-docs-readme's scripts/check-docs-links.mjs.
         "check:docs": "node scripts/check-docs-links.mjs",
-        verify: "pnpm lint && pnpm check:docs && pnpm typecheck && pnpm test && pnpm build",
+        // Stdout purity: no console.* call in an MCP app's src/. AGENTS.md
+        // claimed "CI grep enforces this" for months while nothing did — a
+        // 2026-09 fleet audit found the false sentence replicated into two
+        // descendant repos. Ships via 10-docs-readme's scripts/.
+        "check:stdout-purity": "node scripts/check-stdout-purity.mjs",
+        verify:
+          "pnpm lint && pnpm check:docs && pnpm check:stdout-purity && pnpm typecheck && pnpm test && pnpm build",
         clean: "turbo run clean && rm -rf node_modules .turbo coverage",
       },
       devDependencies: {

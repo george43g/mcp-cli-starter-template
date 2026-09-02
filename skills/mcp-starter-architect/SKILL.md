@@ -73,7 +73,8 @@ At the top of `src/dispatcher.ts`, every cloned tool ships this comment block:
 
 ```
 DISPATCHER INVARIANTS (do not weaken without consulting AGENTS.md):
- 1. Every tool runs through withTimeout — declare in TOOL_TIMEOUTS_MS or rely on default.
+ 1. Every tool runs through withTimeout — declare a per-tool timeout
+    in ToolDefinition.timeoutMs or rely on MCP_TOOL_TIMEOUT_DEFAULT_MS.
  2. noteActivity() fires on every dispatch (feeds the idle watchdog).
  3. perf() span around every handler.
  4. Errors wrapped with actionable hint + tool name (never bare error.message).
@@ -83,7 +84,7 @@ DISPATCHER INVARIANTS (do not weaken without consulting AGENTS.md):
 ```
 
 **To retrofit**: if your MCP server's dispatch path skips any of these, fix it. The cheapest wins:
-- Wrap your existing `setRequestHandler(CallToolRequestSchema, …)` body with `withTimeout(handler(...), { ms: TOOL_TIMEOUTS_MS[name] ?? 30_000, name })`
+- Wrap your existing `setRequestHandler(CallToolRequestSchema, …)` body with `withTimeout(name, () => handler(...), timeoutMs)` from `@george43g/robustness` (keep per-tool budgets in your own local map until you adopt mcp-kit's registry, where each `ToolDefinition` carries `timeoutMs`)
 - Replace every `console.log/error/warn` after stdio open with `logger.info/warn/error(…)`
 - Wrap thrown errors with `wrapToolError(err, { tool: name, hint: '...' })` before returning to JSON-RPC
 
@@ -193,7 +194,7 @@ Lays down:
 - `src/index.ts` — exports `runMcpServer({ transport: 'stdio' | 'http' })` + `callMcpTool`. Also has an `isMain` block so direct invocation (stress harness, `node dist/index.js`) still works.
 - `src/commands/http.ts` — **HTTP wiring in its own file**. The header explicitly lists every deletion step ("Delete this file + remove `registerHttpCommand(program)` + remove stress case #9 + drop `MCP_HTTP_TOKEN` from .env.example") so dropping HTTP support is a single-file change.
 - `src/tui/` — `index.tsx` (renderFullScreen + ThemeProvider + shutdown wiring) + `App.tsx` (demo with vim nav + dev stats toggle). Loaded by `cli.ts` via dynamic `import("./tui/index.js")` — not its own bin.
-- `src/tools/` — `registry.ts` (TOOL_TIMEOUTS_MS, makeAppRegistry, devModeEnabled), `health-check.ts` (canary — never touches external I/O), `noop.ts` (demo — TS path + Rust accelerator fallback), `get-logs.ts` (dev-only — registered iff `EXAMPLE_REPO_DEV=1`).
+- `src/tools/` — `registry.ts` (makeAppRegistry, devModeEnabled), `health-check.ts` (canary — never touches external I/O), `noop.ts` (demo — TS path + Rust accelerator fallback; per-tool `timeoutMs` lives on each ToolDefinition), `get-logs.ts` (dev-only — registered iff `EXAMPLE_REPO_DEV=1`).
 - `src/dispatcher.ts` — invariants block at top; `getDispatcher()` and `callMcpTool()` exports.
 - `src/native-bridge.ts` — `tryLoadNative()` with `MCP_DISABLE_NATIVE` escape hatch + `engineLabel()` so the TUI can show which path is active.
 - `scripts/mcp-dev-proxy.ts` — handshake-replay proxy. Cursor/Claude/Warp keep their session across `src/**` changes; the proxy restarts the child and replays the initialize roundtrip.
@@ -310,8 +311,8 @@ Launching an Ink TUI from a tape additionally needs `CI=false CONTINUOUS_INTEGRA
 
 ## MCP best practices (the rules the dispatcher enforces)
 
-1. **Never console.log after stdio open** — JSON-RPC owns stdout. Log via `@george43g/robustness/logger`. CI grep can enforce this.
-2. **Every tool wrapped in withTimeout** — declare in `TOOL_TIMEOUTS_MS` or rely on default (30s). Set to `0` only with a documented reason.
+1. **Never console.log after stdio open** — JSON-RPC owns stdout. Log via `@george43g/robustness/logger`. The starter enforces this with `scripts/check-stdout-purity.mjs` (in `verify` and CI); port that check rather than trusting prose.
+2. **Every tool wrapped in withTimeout** — set `timeoutMs` on each `ToolDefinition` or rely on `MCP_TOOL_TIMEOUT_DEFAULT_MS` (30s). Set to `0` only with a documented reason.
 3. **Honor `AbortSignal`** — long-running loops check `signal?.aborted` between iterations and bail with a logged record.
 4. **Errors get an actionable hint** — wrap with `wrapToolError`. Never return bare `error.message`.
 5. **No new robustness knobs without an MCP_* env override** — go through `@george43g/robustness/env`.
