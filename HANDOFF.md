@@ -2121,3 +2121,17 @@ observation, self-scheduled at their end: the next parallel-agent load storm
 either fires `event_loop_starved_not_killed` (verbatim line promised) or the
 daemon survives a storm that previously killed it ~10/hour — whichever
 arrives, dated. Nothing owed from this side.
+
+**Update, 2026-09-03 — stdout-purity claim made true (`2cc7f68`, PR #116).**
+dotfiles' fleet audit traced two false sentences in descendant repos to the
+stamped `11-agent-files/lib/AGENTS.md`: "CI grep enforces this" (no grep
+existed anywhere; the stress harness silently skips non-JSON stdout lines, so
+the invariant had NO enforcement) and a fictional `TOOL_TIMEOUTS_MS` (real
+mechanism: `ToolDefinition.timeoutMs`; six sites corrected). Fixed by
+IMPLEMENTING: `scripts/check-stdout-purity.mjs` (mcp-kit-marker scoped,
+positive controls both ways, 6 subprocess tests) wired into verify+CI here,
+in the generated repo, and stamped with a golden byte-equality mapping.
+DEFERRED #48 records the general symbol-resolution docs check + trigger.
+Descendants' local copies of the false text stay with dotfiles' audit scope
+(offered to send corrected text; awaiting their preference). No release fired
+— no `packages/**` path in the diff.
