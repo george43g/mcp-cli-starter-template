@@ -1,6 +1,14 @@
+---
+name: example-repo-dev
+description: Cloud-agent environment setup for working on this repo — Node 24 activation, corepack/pnpm, frozen-lockfile install — before any dev task in a cloud workspace. The canonical tool-usage skill is skills/example-repo/SKILL.md.
+---
+
 # example-repo-dev (cloud-agent skill)
 
 > This file is a thin pointer for cloud agents. The canonical skill lives at `skills/example-repo/SKILL.md`.
+> The frontmatter above was missing until 2026-09-03, so this skill NEVER
+> TRIGGERED — found by dotfiles' machine-wide skills survey, not by anything
+> in this repo, which is exactly the F9/claimed-guard failure shape.
 
 ## Before doing any work
 

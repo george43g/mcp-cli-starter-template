@@ -36,7 +36,7 @@ fails CI when canonical and `lib/` diverge.
 | [`docs/plans/README.md`](docs/plans/README.md) | ExecPlan convention for multi-hour or risky work |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Golden-output architecture (the generated tool's four surfaces) |
 | [`docs/scaffolder-cli/retrofit-findings.md`](docs/scaffolder-cli/retrofit-findings.md) | Retrofit safety invariants — preserve these |
-| [`skills/mcp-starter-architect/SKILL.md`](skills/mcp-starter-architect/SKILL.md) | Before retrofitting a real MCP server |
+| [`skills/mcp-starter-architect/SKILL.md`](skills/mcp-starter-architect/SKILL.md) | Before retrofitting a real MCP server. **Linked machine-globally by dotfiles** (symlinks at `~/.claude/skills/` and `~/.agents/skills/`, George 2026-09-03) — renaming or moving this directory breaks every session on the machine; coordinate with the dotfiles session first. Content edits need nothing |
 | [`skills/cli-artifacts/SKILL.md`](skills/cli-artifacts/SKILL.md) | Updating CLI docs, completions, or manpage generation |
 | [`skills/workspace-scaffolding/SKILL.md`](skills/workspace-scaffolding/SKILL.md) | Choosing native generators for new leaf workspaces |
 

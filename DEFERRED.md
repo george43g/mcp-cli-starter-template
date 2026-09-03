@@ -3783,3 +3783,27 @@ above still governs pickup. Related: if anyone "simplifies"
 check-stdout-purity's selector into a repo-wide grep, that is a regression —
 the affirmative mcp-kit-marker criterion is what lets a CLI print to stdout
 legitimately (browser-tab's caveat, recorded in the script header).
+
+## 49. Stamped agent skills fork on landing — all four downstream copies have drifted
+
+**What:** the scaffolder stamps `.claude/skills/{mcp-tool-author,pr-review-sop}`
+into generated repos (via `11-agent-files/lib`). dotfiles' 2026-09-03 machine
+survey found all four downstream copies (both skills × browser-tab-mcp,
+up-bank-mcp) have DRIFTED from this template (`diff -q`) — the harness audit's
+F9 class: *a stamped copy is a fork the moment it lands*. Some drift is
+legitimate (a consumer tailoring a checklist to its own repo); the problem is
+that nothing distinguishes tailoring from rot, and nothing tells a descendant
+the template improved.
+
+**Why deferred:** the fix is a design choice with real options — version-stamp
+skills (a frontmatter `template-version:` a checker can compare), a
+`mcp-scaffold apply`-time three-way merge, or declaring stamped skills
+fire-and-forget and saying so in their headers. Each changes the consumer
+contract; George should pick. Note the asymmetry with `mcp-starter-architect`,
+which dotfiles now links machine-globally INTO this repo — reference beats
+copy where the file needs no per-repo tailoring, and that may be the answer
+for these two as well.
+
+**Trigger:** the next template-side improvement to either stamped skill — the
+moment we'd want descendants to receive it is the moment the propagation
+question stops being theoretical.
