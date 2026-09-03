@@ -240,6 +240,27 @@ describe("02-toolchain/m4-gitignore + m5-gitattributes (literal writers)", () =>
     expect(gi).toContain(".turbo/");
   });
 
+  it("m4-gitignore never ignores a committed host config file", async () => {
+    // George's 2026-09-04 decision: .codex/config.toml is TRACKED in every
+    // repo, like .mcp.json and .cursor/mcp.json — one committed source that
+    // mcpsync fans out to every host. An older stamp of this template ignored
+    // `.codex/`, and five repos carried that pattern for months; it was found
+    // by a fleet sweep, not by anything in this repo. This pins the class:
+    // a host CONFIG is content, only its `.bak.` churn may be ignored.
+    const { cwd, ctx } = await makeCtx();
+    trashCans.push(cwd);
+
+    await new M4Gitignore().apply(ctx);
+
+    const gi = await readFile(join(cwd, ".gitignore"), "utf8");
+    const lines = gi.split("\n").map((l) => l.trim());
+    for (const banned of [".codex/", ".codex", ".mcp.json", ".cursor/", ".cursor/mcp.json"]) {
+      expect(lines, `.gitignore must not ignore host config "${banned}"`).not.toContain(banned);
+    }
+    // The per-developer local override and backup churn stay ignorable.
+    expect(lines).toContain(".mcp.local.json");
+  });
+
   it("m5-gitattributes contains the LFS anti-footgun", async () => {
     const { cwd, ctx } = await makeCtx();
     trashCans.push(cwd);
