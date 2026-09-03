@@ -2143,3 +2143,78 @@ message"). dotfiles recorded the origin findings in the audit (`df1a6d2`) and
 corrected the skill's overstatement of path-checker reach (`7d22447`);
 DEFERRED #48 upgraded to record the settled position and the
 selector-regression warning. Nothing owed anywhere on this thread.
+
+---
+
+# 2026-09-04 05:16 AEST — precompact artifact
+
+**Precedence: where this file and the post-compact summary disagree, this file
+is correct.** Detail lives in the dated entries above (2026-09-02 → 09-03) and
+in DEFERRED #46/#48/#49 — this entry states what is true now, not the story.
+
+## State
+
+Everything this session picked up is closed, committed and pushed; `main`
+clean and level at `06ce01f`; no open PRs, no background tasks, nothing
+mid-flight.
+
+## Constraints (new this session, George verbatim)
+
+- 2026-09-04, via dotfiles: *".codex/config.toml is tracked in every repo,
+  consistently, like .mcp.json"* — applied here by dotfiles (`f3f3474`),
+  guarded by the m4-gitignore host-config test (`06ce01f`).
+- 2026-09-03, via dotfiles: *"only humans, mcp-starter-architect should go
+  global"* — the skill dir is machine-globally symlinked; renaming/moving it
+  needs dotfiles coordination (recorded in AGENTS.md skills table).
+
+## Done (since the 09-02 artifact; anchors in the entries above)
+
+- Both parked tasks closed: notifications (peer returns recorded in DEFERRED
+  #46) and deps-stale (#114, `593ef59`).
+- robustness 0.14.1 published and verified in the shipped tarball (#115,
+  `a95d8ce`); both restart-gated consumers confirmed live on it from their own
+  logs. Spurious-but-benign cli-kit 2.0.2 explained and recorded.
+- Fleet-audit fictions fixed at origin (#116, `2cc7f68`): stdout-purity now a
+  real stamped check; TOOL_TIMEOUTS_MS corrected at six sites.
+- `430c756` (dev-skill frontmatter, global-link note, DEFERRED #49) and
+  `06ce01f` (gitignore guard).
+- George's question answered with first-hand measurement: the CURRENT
+  gitignore template never ignored `.codex` (zero occurrences in
+  m4-gitignore.ts and example/.gitignore); the five affected repos carried an
+  older stamp.
+
+## Open
+
+Nothing open that this session owns and can execute.
+
+## Blocked on you (long-standing, unchanged)
+
+- `release-token-edited-trigger` · mcp-starter-template — add
+  `types: [opened, synchronize, reopened, edited]` to ci.yml? Asked since
+  2026-08-25.
+- `handoff-direct-push-5d86258` · mcp-starter-template — revert-and-PR or
+  leave; not acting unilaterally. Asked 2026-08-23.
+- DEFERRED #49 (stamped-skill propagation model) is TRIGGER-gated, not
+  waiting on you today — it surfaces at the next template-side skill edit.
+
+## Traps (new since 09-02; older ones stand in prior entries)
+
+- A release run's `paths` filter gates the TRIGGER, not the commit analyzer —
+  an earlier unreleased commit still counts when a later run fires.
+- `expect.any(Number)` pins presence, not value — that hole shipped a default
+  contradicting its own doc comment. Pin exact values where the doc is the
+  spec.
+- A claimed guard is worse than no guard; and a "runtime fallback" can be
+  hollow (the stress harness silently skipped unparseable stdout lines).
+
+## Tree
+
+`/Users/george/repos/mcp-cli-starter-template`, `main` at `06ce01f`, 0/0 vs
+origin, clean, sole worktree — all mine.
+
+## Resume
+
+Nothing to resume: no staged work, no running tasks, no unanswered peer
+queries. Next session acts only on (a) George answering a Blocked-on-you
+item, (b) peer evidence arriving (browser-tab's load-storm observation,
+self-scheduled at their end), or (c) DEFERRED #49's trigger firing.
