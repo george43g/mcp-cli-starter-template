@@ -1,0 +1,10 @@
+[mcp_servers.example-repo-mcp-dev]
+command = "pnpm"
+args = ["tsx", "apps/example-repo-mcp/scripts/mcp-dev-proxy.ts"]
+# NOTE: non-passthrough env skipped for example-repo-mcp-dev: MCP_DEV (literal)
+# NOTE: non-passthrough env skipped for example-repo-mcp-dev: MCP_DEV_ENTRY (literal)
+# NOTE: non-passthrough env skipped for example-repo-mcp-dev: MCP_DEV_WATCH_DIR (literal)
+
+[mcp_servers.mise]
+command = "mise"
+args = ["mcp"]
