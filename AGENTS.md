@@ -143,10 +143,14 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
   both from message text. `pnpm test:scripts` + the `release-tokens` job now
   reject the token unless the subject also carries `!`; to write ABOUT it, use
   lowercase prose and do not spell the literal. The job runs in **two** places —
-  `ci.yml` on `pull_request`, and `release-packages.yml` as a gate every release
-  job needs. The second is the one that matters: `main` is unprotected, so a
-  direct push never opens a PR. It catches spurious majors, **not** an
-  under-classified breaking change published as a minor (DEFERRED #37).
+  `release-tokens.yml` on `pull_request`, and `release-packages.yml` as a gate
+  every release job needs. The second is the one that matters: `main` is
+  unprotected, so a direct push never opens a PR. It catches spurious majors,
+  **not** an under-classified breaking change published as a minor (DEFERRED #37).
+  The first has its **own** workflow file rather than a job in `ci.yml` because
+  it reads the PR title+body, which change without a push: only a workflow
+  listing the `edited` event re-runs on a description edit, and `ci.yml` cannot
+  list it without re-running the full matrix on every typo fix.
 - **Rendered output is not covered by semver.** A patch that improves a
   rendering breaks any consumer snapshotting stdout — no API change, no type
   error, nothing thrown. `cli-kit@2.0.1` broke 8 of one consumer's 12 snapshot
@@ -187,7 +191,9 @@ test + coverage gates → test:no-native → usage(1) artifact freshness →
 npm pack dry-run → scaffolder E2E smoke → 15-assertion stress harness →
 example/ sync check.
 
-Other workflows: `release.yml` (semantic-release, disabled by default — see
+Other workflows: `release-tokens.yml` (PR title+body cannot trigger an
+unintended release; carries the `edited` trigger, which is why it is not a job
+in `ci.yml`), `release.yml` (semantic-release, disabled by default — see
 [`docs/RELEASE.md`](docs/RELEASE.md)), `screenshots.yml` (VHS-driven),
 `readme-check.yml` (fails if `src/**` changed without a `README.md` update;
 bypass with `[skip-readme]`).

@@ -69,9 +69,9 @@ Nine phases applied in order. Each phase has 1–5 migrations. Phases 04-robustn
 | 07-shared-types | Zod schemas + Rust drift-check |
 | 08-app | The user-facing tool — single bin, MCP/CLI/TUI/REPL surfaces, dev MCP proxy, 15-assertion stress harness, MCP Resources demo (`health://`, `logs://recent/{n}`), MCPB Desktop bundle |
 | 09-rust-accel | Optional napi-rs v3 crate with hand-mirrored types |
-| 10-docs-readme | Mintlify config + MDX scaffold + reference markdown + public-style README |
+| 10-docs-readme | Mintlify config + MDX scaffold + reference markdown + public-style README + the guard scripts generated CI invokes (`check-docs-links`, `check-stdout-purity`, `check-release-tokens`) |
 | 11-agent-files | Full agent configuration for starter layouts; package-manager-aware minimal AGENTS.md + skill skeletons for other existing repos |
-| 12-ci-release | matrix CI + manual-only semantic-release (`workflow_dispatch:`, see [docs/RELEASE.md](docs/RELEASE.md)) + screenshots CI + .releaserc + .npmignore |
+| 12-ci-release | matrix CI + release-token guard (own workflow, so it can re-run on the `edited` event — the PR body becomes the squash commit message) + manual-only semantic-release (`workflow_dispatch:`, see [docs/RELEASE.md](docs/RELEASE.md)) + screenshots CI + .releaserc + .npmignore |
 
 ## Scaffolder usage
 
