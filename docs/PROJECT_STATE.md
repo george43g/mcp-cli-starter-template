@@ -62,6 +62,11 @@ commit whose body explained incident 1 and spelled the footer token while doing 
 analyzer reads that token anywhere in a body. Guard: `scripts/check-release-tokens.mjs` plus a
 `release-tokens` CI job gated on `pull_request` — squash-merging makes the PR title and body the
 commit message, so it must run before the merge. Its first test case is the real 2.0.0 message.
+Since 2026-09-04 that job lives in its own `.github/workflows/release-tokens.yml`, listing
+`types: [opened, synchronize, reopened, edited]`; as a job inside `ci.yml` it inherited the default
+event set, which omits `edited`, so a description edited after CI went green was never re-checked
+and that edited text is exactly what became the commit message. The same change stamped the script
+pair into generated repos, where the job had invoked a file the scaffolder never shipped.
 
 **#34's settled reasoning is worth keeping**, because the first framing was wrong: staying on `0.x`
 adds NO protection against breaking changes. `^1.0.0` will not cross to 2.0.0 any more than

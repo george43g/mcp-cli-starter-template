@@ -2158,9 +2158,27 @@ verbatim. The rule is symmetric:
 **Where it runs — and this took two corrections, both prompted by consumer questions rather than by
 our own review:**
 
-1. `ci.yml`, on `pull_request`. Squash-merging makes the PR title and body the commit message, so
-   the check has to happen BEFORE the merge; afterwards the package is published and npm versions
-   are immutable. Shipped to the generated template too — same semantic-release setup, same trap.
+1. `release-tokens.yml`, on `pull_request`. Squash-merging makes the PR title and body the commit
+   message, so the check has to happen BEFORE the merge; afterwards the package is published and
+   npm versions are immutable. Shipped to the generated template too — same semantic-release setup,
+   same trap.
+
+   **Two corrections here, both dated 2026-09-04.** It was a job inside `ci.yml` until then, and
+   `ci.yml` declares no `types:` on its `pull_request` trigger, so it got the default set —
+   `opened`, `synchronize`, `reopened` — which omits **`edited`**. A PR description edited after CI
+   went green was never re-checked, and that edited text is precisely what becomes the commit
+   message. Its own workflow file is what lets it carry `edited` without re-running the full matrix
+   on every typo fix, or letting a mid-run edit cancel an in-flight matrix run via ci.yml's
+   `cancel-in-progress` group.
+
+   And the sentence above ("shipped to the generated template too") was **false for as long as it
+   stood**: the scaffolder stamped the *job*, which ran `node scripts/check-release-tokens.mjs`,
+   but never stamped the *script* — `example/scripts/` held two files and neither was it. The job
+   could only ever have failed with "Cannot find module". Same class as the stdout-purity fiction
+   (#48's neighbourhood): a claimed guard is worse than no guard, and this one was claimed in the
+   backlog entry that documents the guard. `scripts/check-release-tokens.mjs` and
+   `scripts/lib/release-tokens.mjs` are now stamped via `10-docs-readme/lib/scripts/`, byte-equality
+   enforced by the golden test, so the downstream job is real for the first time.
 2. `release-packages.yml`, as a gate every release job `needs:`, checking the REAL commit messages
    over the pushed range. **This is the load-bearing copy.** The `pull_request` job alone was not on
    the publishing path: `main` is **not a protected branch** (`gh api …/branches/main/protection`

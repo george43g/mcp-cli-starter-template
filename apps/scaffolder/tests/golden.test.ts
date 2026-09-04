@@ -63,6 +63,13 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   // dependency marker, not on repo names), so unlike check-docs-links the
   // stamped copy IS the canonical script and byte-equality is enforced.
   ["10-docs-readme/lib/scripts/check-stdout-purity.mjs", "scripts/check-stdout-purity.mjs"],
+  // Same arrangement, and stamped for the same reason: release-tokens.yml
+  // invoked this script in generated repos from the day it shipped, while the
+  // script itself was never stamped — the job could only ever fail with
+  // "Cannot find module". A claimed guard is worse than no guard. Generic (it
+  // reads commit-message text and nothing repo-shaped), so byte-equality holds.
+  ["10-docs-readme/lib/scripts/check-release-tokens.mjs", "scripts/check-release-tokens.mjs"],
+  ["10-docs-readme/lib/scripts/lib/release-tokens.mjs", "scripts/lib/release-tokens.mjs"],
   ["11-agent-files/lib", "."],
   // Consumer CI intentionally omits the two meta-repo-only scaffolder drift steps.
   ["12-ci-release/lib/.github/workflows/ci.yml", "example/.github/workflows/ci.yml"],

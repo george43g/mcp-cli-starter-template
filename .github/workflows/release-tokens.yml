@@ -1,0 +1,49 @@
+name: Release tokens
+
+# The PR TITLE and BODY become the squash commit's message, and
+# `@semantic-release/commit-analyzer` reads a release-control token anywhere in
+# that body -- including inside a sentence describing a past incident rather
+# than declaring one. A `docs:` PR whose prose merely explained an earlier
+# mishap published an unplanned major here. So the check has to happen BEFORE
+# the merge; afterwards the package is published and npm versions are immutable.
+#
+# WHY THIS IS NOT A JOB IN ci.yml, which is where it lived until 2026-09-04:
+# it reads text that changes without a push. GitHub only re-runs a workflow for
+# the `pull_request` event types it lists, and the default set (opened,
+# synchronize, reopened) does NOT include `edited` -- so a description edited
+# after CI went green was never re-checked, and that edited text is what became
+# the commit message. ci.yml cannot simply add `edited`: it would re-run the
+# full ubuntu+macos matrix on every typo fix, and its `cancel-in-progress`
+# group would kill an in-flight matrix run mid-edit, leaving the PR with no
+# build result at all. A separate workflow gets the trigger and its own
+# cancellation scope for ~20s of runtime.
+#
+# THIS IS THE EARLY WARNING AND ON ITS OWN IT IS NOT SUFFICIENT. The PR body is
+# a PREDICTION of the commit message: an unprotected `main` takes direct pushes
+# that never open a PR, and a merger can still edit the squash message at merge
+# time. Whatever workflow publishes must run the same script in range mode over
+# the REAL commit messages -- `check-release-tokens.mjs --range "$BEFORE..$SHA"`
+# -- and gate every publish job on it.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-tokens:
+    name: Commit message cannot trigger an unintended release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Check PR title + body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s\n\n%s' "$PR_TITLE" "$PR_BODY" | node scripts/check-release-tokens.mjs

@@ -10,6 +10,12 @@
  *     install JSON snippets for Claude/Cursor/Warp/opencode, tools table.
  *   - LICENSE — MIT.
  *   - llms-install.md — user-facing setup guide for end users of cloned tools.
+ *   - scripts/ — the repo guards the generated CI actually invokes:
+ *     check-docs-links.mjs, check-stdout-purity.mjs, and
+ *     check-release-tokens.mjs (+ its scripts/lib/release-tokens.mjs). A
+ *     workflow that runs a script this phase does not stamp is a guard the
+ *     generated repo cannot run; release-tokens was exactly that until
+ *     2026-09-04.
  *
  * All `example-repo` placeholders are substituted at write time by portPackage.
  */

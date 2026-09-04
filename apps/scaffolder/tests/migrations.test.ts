@@ -8,7 +8,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -26,6 +26,7 @@ import M4Gitignore from "../src/phases/02-toolchain/m4-gitignore.js";
 import M5Gitattributes from "../src/phases/02-toolchain/m5-gitattributes.js";
 import { requireTemplate } from "../src/phases/03-configs/m3-vitest-pkg.js";
 import M2CliArtifacts from "../src/phases/08-app/m2-cli-artifacts.js";
+import M1DocsReadme from "../src/phases/10-docs-readme/m1-docs-readme.js";
 import M1CiRelease from "../src/phases/12-ci-release/m1-ci-release.js";
 
 async function makeCtx(
@@ -197,6 +198,61 @@ describe("12-ci-release/m1-ci-release", () => {
     expect(ci).toContain("Verify npm tarball is publishable");
     expect(ci).toContain("Stress harness (15 assertions including HTTP)");
     expect(ci).toContain("Upload stress report");
+  });
+
+  // The generated release-tokens.yml runs `node scripts/check-release-tokens.mjs`.
+  // It did so from the day it shipped as a job inside ci.yml, while phase 10
+  // never stamped that script — so in every generated repo the job could only
+  // fail with "Cannot find module", and DEFERRED #35 recorded it as shipped.
+  // The mechanical form of the lesson: a stamped workflow may only invoke a
+  // script the scaffolder also stamps. Generic on purpose — it scans every
+  // workflow for every `node scripts/...` call, so a future workflow that
+  // reaches for an unstamped guard fails here rather than in someone's repo.
+  it("every script a stamped workflow invokes is a script the scaffolder stamps", async () => {
+    const { cwd, ctx } = await makeCtx({ name: "foo" });
+    trashCans.push(cwd);
+
+    await new M1DocsReadme().apply(ctx);
+    await new M1CiRelease().apply(ctx);
+
+    const workflowDir = join(cwd, ".github/workflows");
+    const workflows = (await readdir(workflowDir)).filter((f) => f.endsWith(".yml"));
+    expect(workflows).toContain("release-tokens.yml");
+
+    const invoked = new Map<string, string>(); // script path → workflow that runs it
+    for (const file of workflows) {
+      const yaml = await readFile(join(workflowDir, file), "utf8");
+      for (const match of yaml.matchAll(/\bnode\s+(scripts\/[\w./-]+)/g)) {
+        const script = match[1];
+        if (script) invoked.set(script, file);
+      }
+    }
+    // Positive control: if the regex ever stops matching, the assertion below
+    // passes vacuously over an empty map and enforces nothing.
+    expect(invoked.size).toBeGreaterThan(0);
+
+    const missing = [...invoked].filter(([script]) => !existsSync(join(cwd, script)));
+    expect(missing).toEqual([]);
+  });
+
+  // The trigger is the whole point of the file existing separately: as a job in
+  // ci.yml it inherited the default pull_request event set, which omits
+  // `edited`, so a PR description edited after CI went green was never
+  // re-checked -- and that text is what squash-merge turns into the commit
+  // message. Pinned by exact line, not by presence: the defect WAS the absence
+  // of one event name from a list that otherwise looked complete.
+  it("release-tokens.yml re-runs when a PR description is edited", async () => {
+    const { cwd, ctx } = await makeCtx({ name: "foo" });
+    trashCans.push(cwd);
+
+    await new M1CiRelease().apply(ctx);
+    const wf = await readFile(join(cwd, ".github/workflows/release-tokens.yml"), "utf8");
+    expect(wf).toContain("types: [opened, synchronize, reopened, edited]");
+
+    // And it must NOT have come back as a job in ci.yml, where that trigger
+    // cannot be expressed without re-running the whole matrix on every edit.
+    const ci = await readFile(join(cwd, ".github/workflows/ci.yml"), "utf8");
+    expect(ci).not.toContain("release-tokens:");
   });
 });
 
