@@ -2218,3 +2218,94 @@ Nothing to resume: no staged work, no running tasks, no unanswered peer
 queries. Next session acts only on (a) George answering a Blocked-on-you
 item, (b) peer evidence arriving (browser-tab's load-storm observation,
 self-scheduled at their end), or (c) DEFERRED #49's trigger firing.
+
+---
+
+# 2026-09-04 15:02 AEST — both Blocked-on-you rows closed
+
+George answered `release-token-edited-trigger` and I retired
+`handoff-direct-push-5d86258`. **This entry outranks any summary that still
+lists either as open.**
+
+## State
+
+`main` at `cab3e81`, clean, level with origin, no open PRs, nothing mid-flight.
+The Blocked-on-you table is now EMPTY for the first time since 2026-08-23.
+
+## Constraints
+
+George, 2026-09-04, on the first attempt at asking the edited-trigger question:
+*"i cannot understand for the life of me what your question means and why these
+solutions were proposed - if you explain it better i may give you a more
+informed decision."*
+
+**How to apply**: a question about CI mechanics has to carry the mechanism, not
+just the choice. The version that worked stated the background (squash-merge
+makes PR body → commit message), the guard, the hole (GitHub's default
+`pull_request` event set omits `edited`), and what actually happens when it
+fires — then offered options whose previews were TIMELINES of the failure, not
+YAML. He picked immediately from that. Config snippets as previews are a
+readable-to-me/unreadable-to-him trap.
+
+## Done
+
+- **`release-token-edited-trigger` — CLOSED.** George picked "split the check
+  out". `.github/workflows/release-tokens.yml` is new, carrying
+  `types: [opened, synchronize, reopened, edited]` and its own concurrency
+  group; the job is gone from `ci.yml`. PR #117 → `cab3e81`. Self-evidencing:
+  the workflow ran on its own PR in **6s** while the matrix took 6m34s, which
+  is the whole argument for the split.
+- **A stamped guard that could never have run — FIXED in the same PR.** The
+  generated `ci.yml` has invoked `node scripts/check-release-tokens.mjs` since
+  the guard shipped, but the scaffolder never stamped that script;
+  `example/scripts/` held two files and neither was it. DEFERRED #35 recorded
+  it as *"shipped to the generated template too"*. Script pair now stamped via
+  `10-docs-readme/lib/scripts/` (+ `lib/release-tokens.mjs`), byte-equality
+  enforced by `LIB_TO_CANONICAL`; #35 corrected at the point of assertion.
+- **Mechanical guard against the recurrence**, `migrations.test.ts`: every
+  `node scripts/...` a stamped workflow invokes must resolve to a file the
+  scaffolder also stamps, plus a positive control so an unmatching regex cannot
+  pass vacuously over an empty set. **Verified by inversion** — pulling the
+  stamped script back out fails that test and only that test.
+- **`handoff-direct-push-5d86258` — RETIRED, not executed.** Reverting the
+  2026-08-23 direct docs push would restore text asserting PR #101 is open,
+  into the document a fresh session reads to recover state. The process point
+  had already landed. Assumption stated to George: leave it.
+
+## Open
+
+Nothing open that this session owns.
+
+## Traps
+
+- **A default event set is not a complete one, and it reads as complete.**
+  `pull_request:` with no `types:` silently means `[opened, synchronize,
+  reopened]`. The check looked wired for months. Where a workflow reads text
+  that can change WITHOUT a push — PR title, body, labels — the default set is
+  the wrong one, and the omission is invisible at the call site.
+- **A guard's script and its invocation are two surfaces and drift
+  independently.** The stdout-purity fiction (fixed 09-03) was prose claiming a
+  check that did not exist; this was a real check whose *script* was never
+  shipped where the *job* ran. Both read as enforcement. Ask separately: does
+  the check exist, and can the machine that runs it reach it?
+- **`git status` will not show you a gitignored generated file.**
+  `apps/scaffolder/src/generated/` is ignored, so `templates.ts` changing was
+  invisible in the staging review. It is rebuilt by `build:templates` — correct,
+  but do not read its absence from `git status` as "codegen did not run".
+
+## Tree
+
+`main` `cab3e81`, clean, level with origin. No branches (`#117`'s deleted on
+merge), no worktrees, no staged edits, no background tasks. Only this repo was
+written to.
+
+## Blocked on you
+
+Nothing. Both long-standing rows closed above.
+
+## Resume
+
+Nothing to resume. Next session acts only on (a) peer evidence arriving
+(browser-tab's load-storm observation, self-scheduled at their end), or
+(b) DEFERRED #49's trigger firing (next template-side edit to
+`mcp-tool-author` or `pr-review-sop`).
