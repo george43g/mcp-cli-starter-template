@@ -3825,3 +3825,53 @@ for these two as well.
 **Trigger:** the next template-side improvement to either stamped skill — the
 moment we'd want descendants to receive it is the moment the propagation
 question stops being theoretical.
+
+---
+
+## 50. `check:stale-plans` reads plans, not the code they describe
+
+**Status**: shipped 2026-09-07 with a known gap, recorded rather than closed.
+
+`scripts/check-stale-plans.mjs` was ported from life-stack (`da7e384`) after a
+fleet-wide forgotten-plans sweep filed four rows against `docs/plans/`. Its three
+rules — a status in the first 20 lines, a status that does not contradict a
+completion heading in its own body, and a 30-day commit window for non-terminal
+plans — are all **structural**. None of them reads the repo the plan describes.
+
+**The measurement that makes the gap concrete.** Run against the two real
+pre-fix files on 2026-09-07:
+
+- `2026-08-tui-shared-primitives.md` — rule 1 catches it. Verified by running the
+  script against the stashed original.
+- `2026-08-build-identity.md` — **not caught**. Last commit `bd56965`
+  (2026-08-09), measured at **29.18 days**, under the 30-day line by about
+  nineteen hours. It would have gone red the following day.
+
+That near-miss is the useful part, because it shows what rule 3 actually is.
+build-identity's defect was never staleness — the plan was *finished*, in
+`54917f1`, the day after it was written. Its status line disagreed with the
+**code**, and age was only ever going to catch that by coincidence. A plan can
+be edited yesterday and still describe a repo that stopped matching it a month
+ago; rule 3 says nothing about such a plan.
+
+**Why not build the code-reading version**: it is the same class as #48
+(docs-integrity cannot verify that a cited symbol resolves), and the settled
+fleet position there applies unchanged — check paths and counts mechanically,
+treat symbol-and-claim resolution as a deliberate design problem rather than a
+regex. A checker that tried to decide whether "planned, not started" matches a
+tree would be guessing, and a guessing guard that goes green is worse than the
+gap it covers.
+
+**What the check honestly buys**, stated this way in its own header so the
+coverage claim cannot rot: a plan cannot go quiet, cannot hide its status, and
+cannot contradict itself. It does not buy "the status is true."
+
+**Also deliberately not done**: the check is meta-repo-only. Generated repos get
+a `docs/plans/` convention from `10-docs-readme/lib/docs/plans/README.md` but not
+this script, so their plans are unguarded. Stamping it would mean a fourth
+`lib/scripts/` entry plus a generated-verify wiring, and nobody has asked.
+
+**Trigger**: a plan whose status is true-but-stale in the way rule 3 cannot see —
+i.e. the next time a sweep finds a recently-edited plan describing a tree that
+moved on. That is the case that would justify a code-reading rule, and until one
+exists the design has no evidence to work from.

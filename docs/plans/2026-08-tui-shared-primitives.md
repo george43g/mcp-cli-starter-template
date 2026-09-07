@@ -1,5 +1,14 @@
 # Shared TUI primitives for `@george43g/tui-kit`
 
+**Status**: `complete` — shipped as `tui-kit@0.5.0`, hardened to `0.5.1`. Full dated
+log under [Status](#status) below.
+
+> Hoisted here 2026-09-07. The status lived only at line 33, under a long Goal, and a
+> fleet sweep reading the header could not classify the plan at all — it came back as
+> "whether it ran can only be re-derived from the code it describes". A status a reader
+> has to hunt for is a status that gets re-derived, and re-derivation is where the wrong
+> answer comes from.
+
 ## Goal
 
 Four TUIs — imsg-mcp (EQStack), gmail-cli-mcp, up-bank-mcp, browser-tab-mcp —
@@ -40,6 +49,20 @@ repeated.
   browser-tab resolved collapse-vs-drop the same day; EQStack returned a full
   signature review with amendments and an adoption pledge, and approved the
   build. Spec below is final. Awaiting only up-bank's reply.
+- **2026-08-21** — `tui-kit@0.5.0` published (`51c242c`, tag `tui-kit-v0.5.0`). The
+  primitives are in `packages/tui-kit/src/`: `line-window.ts`, `bounded-list.ts`,
+  `nav-chunk.ts`, `nav-reduce.ts`, `viewport.ts`, `width-alloc.ts`, `scrollbar.ts`,
+  each with its own test file.
+- **2026-08-22** — `tui-kit@0.5.1` hardening published (`80a4c88`, tag
+  `tui-kit-v0.5.1`). This is the version the workspace is on today.
+- **2026-09-07** — log reconciled, no code change. The three entries above were
+  missing, so the section's own last line read *"Awaiting only up-bank's reply"*
+  under a header claiming all four consumers were surveyed — a plan that
+  contradicts itself within one screen. **Not re-verified from here**: whether the
+  four consumers actually deleted their local copies is the Accepted-when criterion
+  and it lives in their repos, not this one. The header's "all four surveyed" is
+  carried forward as written by the session that had that evidence; treat it as
+  reported, not re-measured.
 
 ## Discoveries
 
