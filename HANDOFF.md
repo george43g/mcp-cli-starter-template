@@ -2309,3 +2309,82 @@ Nothing to resume. Next session acts only on (a) peer evidence arriving
 (browser-tab's load-storm observation, self-scheduled at their end), or
 (b) DEFERRED #49's trigger firing (next template-side edit to
 `mcp-tool-author` or `pr-review-sop`).
+
+---
+
+# 2026-09-07 16:16 AEST — forgotten-plans sweep triaged
+
+life-stack relayed four rows George ticked in a fleet-wide sweep. Two were real
+defects, two were not. **This entry outranks any summary that lists all four as
+work items.**
+
+## State
+
+`main` at `7b95ee0`, clean, level with origin, no open PRs, nothing mid-flight.
+
+## Done
+
+- **`build-identity` status line corrected** (`7b95ee0`). It read *"planned, not
+  started"* while the whole plan had shipped in `54917f1` (PR #42, 2026-08-10),
+  one day after the plan's last edit — including the `--print` entry point the
+  plan's own Correction 4 named as a missing prerequisite. False for 28 days.
+- **`tui-shared-primitives` status hoisted** from line 33 to the header, and its
+  dated log reconciled: it ended on *"Awaiting only up-bank's reply"* beneath a
+  header claiming all four consumers were surveyed. The `0.5.0`/`0.5.1` ships now
+  carry anchors (`51c242c`, `80a4c88`). Consumer adoption is marked **reported,
+  not re-measured** — it lives in their repos.
+- **`robustness` and `secretstore`: NO ACTION, deliberately.** Both complete and
+  correctly filed. `docs/plans/README.md` keeps completed plans in place
+  ("history is evidence, not clutter"); there is no `active/` directory here. The
+  sweep's "move it out" was life-stack's layout, not a finding. Told them so.
+- **`scripts/check-stale-plans.mjs` ported** from life-stack `da7e384`, wired into
+  `verify` and `ci.yml`, 11 tests. Two bugs found while porting, one of which
+  affects THEIR copy and was sent back: word-boundary matching on terminal words
+  is insufficient (`PARTIALLY EXECUTED — two of five done` contains `done`), so
+  terminal words are anchored at the START of the status value; and rule 1 has to
+  understand the `## Status` section form or it reports "no status at all" for a
+  plan that has one.
+
+## Corrections
+
+The script header briefly claimed rule 3 "caught build-identity". It does not —
+see Traps. Corrected before commit; no version of that claim shipped.
+
+## Traps
+
+- **A guard's advertised coverage rots exactly like any other claim.** Measured
+  against the real pre-fix files: rule 1 catches tui-primitives; rule 3 does NOT
+  catch build-identity, which was **29.18 days** old against a 30-day line. The
+  near-miss is the useful part — that plan's status contradicted the CODE, and no
+  rule here reads code. Recorded as DEFERRED #50 with the honest claim: a plan
+  cannot go quiet, hide its status, or contradict itself; that is not "its status
+  is true".
+- **A peer's finding can be right about the file and wrong about the repo.** Two
+  of four rows were correct observations under life-stack's conventions and
+  non-findings under this repo's documented one. Check the local convention
+  before executing a filing instruction from another repo's sweep.
+- **Test the checker against the real artefacts, not only fixtures.** Both script
+  bugs surfaced from fixtures modelled on the actual files; the coverage gap
+  surfaced only from running against the stashed originals at their real commit
+  ages.
+
+## Tree
+
+`main` `7b95ee0`, clean, level. No branches, no worktrees, no staged edits, no
+background tasks. Only this repo was written to; peer repos untouched.
+
+## Blocked on you
+
+Nothing.
+
+## Elsewhere
+
+- `plans-ledger-rows` · life-stack — three ledger rows need correcting on their
+  side (build-identity was shipped not dropped; robustness and secretstore are
+  no-ops here). Sent with anchors; they own the ledger and raise it with George.
+
+## Resume
+
+Nothing to resume. Wakes on peer evidence (browser-tab's load-storm observation),
+DEFERRED #49's trigger, or DEFERRED #50's (a plan whose status is true-but-stale
+in the way rule 3 cannot see).
