@@ -80,6 +80,7 @@ packages/
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm check:docs` | Docs integrity: relative links, agent-file symlinks, docs index coverage |
 | `pnpm check:stdout-purity` | No `console.*` call in an MCP app's `src/` — JSON-RPC owns stdout after the stdio transport connects. Exists because the stamped AGENTS.md claimed "CI grep enforces this" for months while nothing did, and the false sentence replicated into descendant repos. A claimed guard is worse than no guard |
+| `pnpm check:stale-plans` | An ExecPlan must carry a status in its first 20 lines, not contradict a completion heading in its own body, and — if non-terminal — not go 30 days without a commit unless it carries a dated `PARKED`/`SUPERSEDED`. Ported from life-stack after a fleet sweep found `2026-08-build-identity.md` reading "planned, not started" for 28 days while every deliverable in it had shipped. **What it does not buy**: the status being *true*. It reads plans, never code |
 | `pnpm check:stress-count` | The stress harness's `EXPECTED_ASSERTIONS` vs every prose site that quotes it. The harness asserts the constant against its own run, so the chain is `results.length` → constant → docs |
 | `pnpm check:publishable-manifests` | Publish shape of the npm-published packages: repository metadata, `files`, no `workspace:` in shipped deps |
 | `pnpm test:scripts` | Node's built-in runner over `scripts/**/*.test.mjs` — the repo scripts' own tests |

@@ -89,6 +89,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm check:stdout-purity
 
+      - name: ExecPlans state their status, agree with themselves, and stay current
+        if: matrix.os == 'ubuntu-latest'
+        # Needs the full history the checkout step already fetches (fetch-depth: 0)
+        # — on a shallow clone `git log -1 -- <file>` returns HEAD's date for every
+        # file and the staleness rule passes without reading anything. The script
+        # detects that and fails rather than reporting the vacuous pass.
+        run: pnpm check:stale-plans
+
       - name: Repo script unit tests (runs before the checks that depend on them)
         if: matrix.os == 'ubuntu-latest'
         run: pnpm test:scripts

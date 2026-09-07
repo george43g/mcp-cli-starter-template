@@ -1,7 +1,24 @@
 # ExecPlan: build identity for the starter template
 
-**Status**: planned, not started. Design settled by an external brief (2026-08-09),
-verified against this repo and corrected where it differed — see Corrections.
+**Status**: `complete` — shipped 2026-08-10 in `54917f1` (PR #42), one day after the
+design below was settled. Corrected 2026-09-07: this line read *"planned, not started"*
+for 28 days while every deliverable in it was live, which is why a fleet sweep filed the
+plan as dropped work. Design settled by an external brief (2026-08-09), verified against
+this repo and corrected where it differed — see Corrections.
+
+- **2026-08-10** (`54917f1`) — all three deliverables landed together:
+  `packages/build-config/build-stamp.mjs` exporting `buildStamp(version)` and
+  `buildDefines(version)`; the `--print` entry point that Correction 4 identified as
+  missing from the reference implementation; `apps/example-repo-mcp/vite.config.ts:35`
+  consuming `buildDefines(version)` with the package as a `workspace:*` devDependency;
+  the reader in `src/meta.ts`; and `03-configs/m5-build-config-pkg.ts` so generated repos
+  get it too, with `["03-configs/lib/build-config", "packages/build-config"]` holding the
+  mirror byte-equal. Covered by `tests/meta.test.ts` (5) and `tests/meta-degraded.test.ts`
+  (4) — the degraded suite being the one that matters, since the failure mode named in the
+  Goal is a plausible fallback rather than an error.
+- **2026-09-07** — no code change; status line corrected to match what shipped.
+  `pnpm check:stale-plans` now fails on a non-terminal plan this old, so the next
+  28-day divergence between a status line and its repo is a red build.
 
 **Goal**: make every build self-identifying, so "is the artifact running the one I just
 built?" is a fact rather than a guess. Semver only moves on release, so every build
