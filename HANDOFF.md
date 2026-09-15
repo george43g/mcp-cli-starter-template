@@ -2388,3 +2388,84 @@ Nothing.
 Nothing to resume. Wakes on peer evidence (browser-tab's load-storm observation),
 DEFERRED #49's trigger, or DEFERRED #50's (a plan whose status is true-but-stale
 in the way rule 3 cannot see).
+
+---
+
+# 2026-09-15 14:04 AEST — .codex/config.toml restored; "never read" refuted by inversion
+
+life-stack re-rendered this repo's `.codex/config.toml` on George's direct
+instruction and left it untracked for me to decide. **This entry outranks any
+summary describing that file as inert.**
+
+## State
+
+`main` at `6be387b`, clean, level with origin, no open PRs, nothing mid-flight.
+
+## Constraints
+
+- George, 2026-09-15, relayed by life-stack: *"run mcp sync to repair the damage,
+  recreate the codex config files … should be recreated regardless of codex
+  trust"*.
+- Still standing, George 2026-09-04: *".codex/config.toml is tracked in every
+  repo, consistently, like .mcp.json"*. Tracking it again restores that.
+
+## Done
+
+- **`.codex/config.toml` tracked again** (PR #119 → `6be387b`). Content
+  checked first: same two servers as `.mcp.json`, no credentials.
+- **The file is live — measured, not asserted.** codex-cli 0.154.0, leak-safe list
+  plus exit code: in this repo `example-repo-mcp-dev` (all three `MCP_DEV*` set)
+  and `mise` load; a no-project-config control lists neither; **inversion** — TOML
+  moved aside with `.mcp.json` still present — both vanish; restored with identical
+  sha256, both return. So the TOML loads them, not a native `.mcp.json` read. Repo
+  is trusted, `~/.codex/config.toml:481-482`.
+- **DEFERRED #47 resolved** — its trigger fired; the three vars the old renderer
+  dropped now appear, set, in Codex's own listing.
+
+## Corrections
+
+- `73c6419` (2026-09-09): *"Codex never reads <repo>/.codex/config.toml"* — refuted
+  for `mcp_servers` in a trusted repo on 0.154.0. Its own measurement was a skills
+  key; whether that repo was untrusted or the key is not project-scoped is
+  **unknown**, deliberately not reconstructed.
+
+## Traps
+
+- **The leak-safe `awk` form hides error text too.** With `timeout` absent on
+  macOS, repo and control both printed `zsh:	Env: -` and agreed while measuring
+  nothing. A control that matches its treatment because both failed is the most
+  convincing null result there is. Print the tool's exit code beside any
+  allowlist filter.
+- **A negative grep can be a wrong pattern.** Codex quotes project keys with single
+  quotes; searching for `projects."<path>"` returned nothing for a trusted repo.
+- **The control could not rule out the live alternative; only the inversion could.**
+  "Absent outside the repo" was equally consistent with Codex reading `.mcp.json`
+  natively. Pick the inversion that removes exactly one candidate cause.
+
+## Tree
+
+`main` `6be387b`, clean, level. No branches, worktrees, staged edits or
+background tasks. Only this repo written to.
+
+## Open
+
+- `codex-dev-proxy-starts` · mcp-starter-template — listing proves the config
+  loads with all three vars set; that the dev proxy actually starts under Codex was
+  never run. Evidence it is open: never attempted. Low value unless someone uses
+  Codex against this repo's dev server.
+
+## Blocked on you
+
+Nothing.
+
+## Elsewhere
+
+- `codex-never-read-premise` · dotfiles — told (NOTE, no reply owed) that the
+  09-09 sweep's premise is refuted, in case other repos lost live copies on the
+  same reasoning. Theirs to act on.
+- `mcpsync-reference-env` · life-stack — whether the new renderer still keeps
+  reference env on the passthrough form cannot be tested here (literals only).
+
+## Resume
+
+Nothing to resume. Wakes on peer evidence, DEFERRED #49's trigger, or #50's.
