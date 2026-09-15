@@ -2469,3 +2469,87 @@ Nothing.
 ## Resume
 
 Nothing to resume. Wakes on peer evidence, DEFERRED #49's trigger, or #50's.
+
+---
+
+# 2026-09-15 16:31 AEST — dotfiles' instruction conventions triaged; two decisions with George
+
+dotfiles sent three instruction-file conventions as standard across George's repos.
+**None applied.** Here `CLAUDE.md` and `.cursorrules` are symlinks to `AGENTS.md`, so
+each change edits the instruction file itself. Full record: DEFERRED #51.
+
+## State
+
+`main` at `505f1e8`, clean, level with origin, no open PRs, nothing mid-flight.
+
+## Constraints
+
+- George, global `~/.claude/CLAUDE.md` (changed on disk 2026-09-15): *"In a monorepo
+  with many tools, and in dotfiles, delegate goals to subagents by default … Load
+  `delegating-work`, which retires every agent-count rule."* This repo is such a
+  monorepo, so the next multi-step goal here goes to a subagent (`local-implementer`
+  or `readonly-researcher`).
+
+## Done
+
+- DEFERRED #51 recorded (PR #120 → `505f1e8`).
+- Convention 3 (a sibling `CLAUDE.md` beside every `AGENTS.md`) is already met for
+  every instruction file: root, `apps/scaffolder/`, `example/`.
+- Codex chain budgets measured with `git ls-files`: root 16,716 B;
+  `apps/scaffolder` 24,258 B; `example` 30,569 B (**2,199 B headroom**); the `lib/`
+  template chain 38,236 B, **over the cap by 5,468** (computed, not probed).
+- dotfiles told, as a no-reply note, that convention 3 must exclude template agent
+  guides.
+
+## Blocked on you
+
+- `delegating-work-pointer` · mcp-starter-template — add a `delegating-work` line to
+  `AGENTS.md`? **Recommend skip**: your global instruction already carries it, and a
+  repo line only reaches agents that also lack the skill.
+- `cursorrules-drop` · mcp-starter-template — stop stamping and enforcing
+  `.cursorrules`? **Recommend yes**, as one four-surface PR (delegated). Cursor is
+  documented, not probed, as not reading it. 36 lines across 22 files, including the
+  docs check, the phase-11 migration and six test assertions.
+
+## Corrections
+
+- Template skills in this session were first attributed to nested
+  `lib/.claude/skills/`. Wrong: they load from root `.claude/skills/`, the canonical
+  source. By design.
+- The `.cursorrules` footprint was first reported as 33 mentions. It is 36 matching
+  lines across 22 files.
+
+## Traps
+
+- **Template agent guides are data, and tools load them as instructions.**
+  `lib/AGENTS.md` and `example/AGENTS.md` tell an agent names are already substituted.
+  Cursor, Codex and opencode load nested `AGENTS.md` files. A convention applied to
+  "every `AGENTS.md`" would extend that to Claude.
+- **zsh does not word-split an unquoted `$var`.** A chain-summing loop silently
+  treated `apps scaffolder` as one segment and printed a plausible all-ok table. Use
+  `${(s:/:)d}`.
+
+## Tree
+
+`main` `505f1e8`, clean, level. No branches, worktrees, staged edits or
+background tasks. Only this repo was written to.
+
+## Open
+
+- `template-guide-tmpl` · mcp-starter-template — rename
+  `lib/AGENTS.md` to a name no tool loads (e.g. `AGENTS.md.tmpl`) and restore it at
+  generation, so Cursor, Codex and opencode stop loading the false guide and the
+  `lib/` chain drops under Codex's cap. Proposed by dotfiles, recommended and not
+  started (DEFERRED #51 addendum). `lib/.claude/skills` and `lib/.cursor/rules` are
+  the same class, unverified.
+
+## Elsewhere
+
+- `claude-md-sibling-convention` · dotfiles — **closed on their side**:
+  `harness-engineering-monorepo` now exempts scaffolder template payload from the
+  sibling-`CLAUDE.md` rule (g-agent-skills).
+
+## Resume
+
+Nothing mid-flight. Acts on George answering `cursorrules-drop` or
+`delegating-work-pointer`, on peer evidence, or on DEFERRED #49/#50's triggers.
