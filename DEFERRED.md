@@ -3762,6 +3762,62 @@ already draws and then discards.
 **Trigger:** life-stack ships the adapter fix; then re-run `mcpsync sync --scope
 project --yes` here and confirm the three vars appear.
 
+### RESOLVED 2026-09-15 — the trigger fired and the three vars appear
+
+life-stack re-rendered `.codex/config.toml` on George's direct instruction
+(*"run mcp sync to repair the damage, recreate the codex config files … should be
+recreated regardless of codex trust"*), with `mcpsync -c ./.mcp.json apply --scope
+project --to codex -y`. The file now carries the table this entry said nothing
+emitted, `.codex/config.toml:5-8`:
+
+```toml
+[mcp_servers.example-repo-mcp-dev.env]
+MCP_DEV = "1"
+MCP_DEV_ENTRY = "apps/example-repo-mcp/src/index.ts"
+MCP_DEV_WATCH_DIR = "apps/example-repo-mcp/src"
+```
+
+**Measured, codex-cli 0.154.0, with a control and an inversion** (leak-safe form
+above, plus codex's exit code — see the trap below):
+
+| run | `example-repo-mcp-dev` | `mise` |
+|---|---|---|
+| this repo, toml present | listed, `MCP_DEV=*****, MCP_DEV_ENTRY=*****, MCP_DEV_WATCH_DIR=*****` | listed |
+| control: scratchpad, no project config | absent | absent |
+| inversion: this repo, toml moved aside, `.mcp.json` still present | absent | absent |
+| this repo, toml restored (sha256 identical) | listed | listed |
+
+Every other server was identical across runs, and codex exited 0 in all of them.
+The inversion is the row that matters: it rules out Codex reading `.mcp.json`
+natively, so **the TOML itself is what loads these servers.** This repo is trusted
+(`~/.codex/config.toml:481-482`, `trust_level = 'trusted'`).
+
+**This refutes the premise of `73c6419`** (2026-09-09, *"Codex never reads
+<repo>/.codex/config.toml … project files are simply never read"*), which removed
+the file as inert. What is refuted is the generalisation, for `mcp_servers` in a
+trusted repo on 0.154.0. That commit's own measurement was a different key,
+`skills.max_context_tokens`, and **whether it ran in an untrusted repo or whether
+that key is simply not honoured at project scope is unknown** — not reconstructed
+here. It stays in history; the file is tracked again per George's 2026-09-04
+convention (*".codex/config.toml is tracked in every repo, consistently, like
+.mcp.json"*).
+
+**Not re-verified**: that the dev server actually *starts* correctly under Codex
+(listing proves the config loaded with all three vars set, not that the proxy
+runs). And this server carries only literals, so this repo cannot test the
+counter-argument above — that reference env must stay on the passthrough form.
+Whether the new renderer keeps that distinction is life-stack's to confirm, in
+repos that have reference env.
+
+**Trap, two instances in one pass, both mine.** (1) A trust grep for
+`projects."<path>"` returned nothing because the file quotes keys with single
+quotes — a negative from a wrong pattern, read as "not trusted". (2) The leak-safe
+`awk` allowlist **also hides error text**: with `timeout` absent on macOS, both the
+repo run and the control printed only `zsh:	Env: -` and agreed perfectly while
+measuring nothing. **Always print codex's exit code alongside the allowlist form**
+(`echo "codex_exit=${pipestatus[1]}"` in zsh); a control that matches the treatment
+because both failed is the most convincing-looking null result there is.
+
 ## 48. Docs-integrity check does not verify that cited symbols/commands resolve
 
 **What:** `check:docs` validates links, symlinks and index coverage, but nothing
