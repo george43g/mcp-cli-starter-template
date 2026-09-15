@@ -4034,3 +4034,35 @@ row was right. Split paths with `${(s:/:)d}`.
 
 **Trigger:** George decides items 1 and 2. Separately, re-check the `example/`
 headroom whenever root `AGENTS.md` grows.
+
+### Addendum 2026-09-15: dotfiles accepted the exclusion, and proposed a better fix for `lib/`
+
+dotfiles updated `harness-engineering-monorepo` (g-agent-skills): a template
+`AGENTS.md` that a scaffolder ships gets no sibling `CLAUDE.md`. It then proposed going
+further, and storing the template under a name no tool loads, e.g. `AGENTS.md.tmpl`,
+renamed at generation.
+
+**That fixes what the exclusion cannot.** Cursor, Codex and opencode load
+`lib/AGENTS.md` today because of its name, so the false "names already substituted"
+guide still reaches them. The same name is what puts the `lib/` chain 5,468 B over
+Codex's cap. Renaming removes both problems, and generated repos still receive
+`AGENTS.md`.
+
+**Recommended, not started** · mcp-starter-template. It is a scaffolder change for its
+own PR:
+
+- the `build-templates` key;
+- the `11-agent-files/lib/AGENTS.md` entry in `EXEMPT_LIB_PATHS`;
+- the migration's write path;
+- a test asserting generated output is still named `AGENTS.md`.
+
+It does nothing for `example/`, which is generated output and must keep the real name.
+
+**Same class, unverified:** `lib/.claude/skills/` and `lib/.cursor/rules/` are also
+template payload with loadable names. Per tool-loading.md, Claude Code loads
+`<subdir>/.claude/skills/` once it works on files there. Whether that duplicates the
+root copies or is deduplicated by name is unknown here. If the `.tmpl` route is taken,
+decide the whole `lib/` tree at once rather than one file.
+
+**Trigger:** the next change to phase 11, or the next session misled by a template
+guide.
