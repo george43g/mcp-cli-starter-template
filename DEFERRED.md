@@ -3931,3 +3931,138 @@ this script, so their plans are unguarded. Stamping it would mean a fourth
 i.e. the next time a sweep finds a recently-edited plan describing a tree that
 moved on. That is the case that would justify a code-reading rule, and until one
 exists the design has no evidence to work from.
+
+---
+
+## 51. Instruction-file conventions from dotfiles: two are George's call, one is already met — and template agent guides load as instructions
+
+**Status**: open, 2026-09-15. Two items wait on George. None was applied on a peer's
+relay: in this repo `CLAUDE.md` and `.cursorrules` are symlinks to `AGENTS.md`, so
+every change here edits the instruction file itself.
+
+dotfiles sent three conventions it describes as standard across George's repos.
+
+### 1. A `delegating-work` pointer line in `AGENTS.md` — recommend skip
+
+George's own global instruction already carries it: *"In a monorepo with many tools,
+and in dotfiles, delegate goals to subagents by default … Load `delegating-work`"*
+(`~/.claude/CLAUDE.md`, whose source `make install` also links to `~/.codex/AGENTS.md`).
+A repo line would only reach agents without dotfiles installed, and those agents also
+lack the skill, so the pointer would dangle. George's call.
+
+### 2. Drop `.cursorrules` — recommend yes, as one four-surface PR
+
+**Evidence** `[external, docs-sourced, checked 2026-09-15]`: the harness-engineering
+`references/tool-loading.md` lists Cursor as reading `AGENTS.md` and
+`.cursor/rules/*.mdc`, citing cursor.com/docs/rules. `.cursorrules` is not listed, and
+that reference marks Cursor's loading as unprobed — so this is documented, not
+measured.
+
+**Cost, measured**: 36 matching lines across 22 tracked files, excluding `HANDOFF.md`
+and this file. It is load-bearing, not cosmetic:
+
+- enforced by `scripts/check-docs-links.mjs:40` and its stamped copy (`:38`);
+- created by `apps/scaffolder/src/phases/11-agent-files/m1-agent-files.ts:48`;
+- asserted by `apps/scaffolder/tests/agent-files.test.ts` at :83, :109, :114, :118,
+  :127 and :134;
+- listed in `scripts/init-template.mjs:64,75` and `.npmignore:11`;
+- described in `AGENTS.md:3`, `.cursor/rules/example-repo.mdc:7` and
+  `skills/mcp-starter-architect/SKILL.md:59,242`, plus the `lib/` and `example/`
+  mirrors.
+
+The migration only ever creates the link, so dropping it from the stamp leaves
+existing links in already-generated repos in place. The case for doing it: CI
+currently insists on a link nothing current reads. George's call, because it changes
+what every generated repo receives. Under his default, delegate it.
+
+### 3. A sibling `CLAUDE.md` beside every `AGENTS.md` — already met, and must NOT be generalised
+
+Every instruction file here has one: root, `apps/scaffolder/`, `example/`. **The rule
+has to exclude template agent guides**, which is the part worth keeping.
+
+`apps/scaffolder/src/phases/11-agent-files/lib/AGENTS.md` (13,978 B) and
+`example/AGENTS.md` (13,853 B) are the *generated* tool's guide. Both open with:
+
+> This repo was generated from `mcp-cli-starter-template` via `mcp-scaffold init`.
+> Names and scopes have already been substituted; you can start working directly.
+
+In this repo that is false, and it contradicts the golden rule: never hand-edit
+`lib/` or `example/`; sync and regenerate. Per tool-loading.md, Cursor applies a
+nested `AGENTS.md` when working with files in its directory, Codex loads every
+`AGENTS.md` from root to cwd, opencode attaches nearby ones, and Claude Code loads a
+directory's `CLAUDE.md` when it reads files there. So:
+
+- **`lib/` correctly has no `CLAUDE.md`.** Adding one to satisfy convention 3 would
+  make Claude load the template guide on every `lib/` read.
+- **`example/CLAUDE.md` exists** because `example/` is literal generated output and
+  the sync check requires it. Claude therefore loads the generated-tool guide when
+  reading `example/` files. That is intrinsic to committing generated output; removing
+  it would break the sync check.
+
+### Codex byte budget, measured 2026-09-15
+
+Each root-to-cwd chain, enumerated with `git ls-files`:
+
+| cwd | chain | bytes | vs 32,768 |
+|---|---|---|---|
+| `.` | `AGENTS.md` | 16,716 | ok |
+| `apps/scaffolder` | + `apps/scaffolder/AGENTS.md` | 24,258 | ok |
+| `example` | + `example/AGENTS.md` | 30,569 | ok, **2,199 B headroom** |
+| `…/11-agent-files/lib` | + scaffolder + `lib/AGENTS.md` | 38,236 | **over by 5,468: truncated** |
+
+The `lib` row is computed from measured file sizes plus Codex's documented combined
+budget (`codex-rs/core/src/agents_md.rs`, per tool-loading.md), not probed with a Codex
+run. Nobody plausibly starts Codex in a template directory, so it is recorded, not
+fixed. **The `example/` headroom is the row to watch**: root `AGENTS.md` growing by
+2.2 KB truncates Codex there.
+
+### Correction, caught before it left this session
+
+I first attributed this session's `mcp-tool-author` and `pr-review-sop` skills to the
+nested `lib/.claude/skills/` copies. Wrong mechanism: both are tracked at root
+`.claude/skills/`, the canonical source the `lib/` copies mirror
+(`["11-agent-files/lib", "."]`), and Claude loads root project skills normally. It is
+by design, not a leak. A meta-repo session does see generated-tool skills whose
+descriptions carry the unsubstituted `example-repo-mcp` placeholder.
+
+### Trap
+
+My first chain script under-counted every multi-segment path. zsh does not word-split
+an unquoted `$var`, so `apps scaffolder` became one segment and matched nothing, and
+the result was a plausible table of all-ok rows. Only the single-segment `example/`
+row was right. Split paths with `${(s:/:)d}`.
+
+**Trigger:** George decides items 1 and 2. Separately, re-check the `example/`
+headroom whenever root `AGENTS.md` grows.
+
+### Addendum 2026-09-15: dotfiles accepted the exclusion, and proposed a better fix for `lib/`
+
+dotfiles updated `harness-engineering-monorepo` (g-agent-skills): a template
+`AGENTS.md` that a scaffolder ships gets no sibling `CLAUDE.md`. It then proposed going
+further, and storing the template under a name no tool loads, e.g. `AGENTS.md.tmpl`,
+renamed at generation.
+
+**That fixes what the exclusion cannot.** Cursor, Codex and opencode load
+`lib/AGENTS.md` today because of its name, so the false "names already substituted"
+guide still reaches them. The same name is what puts the `lib/` chain 5,468 B over
+Codex's cap. Renaming removes both problems, and generated repos still receive
+`AGENTS.md`.
+
+**Recommended, not started** · mcp-starter-template. It is a scaffolder change for its
+own PR:
+
+- the `build-templates` key;
+- the `11-agent-files/lib/AGENTS.md` entry in `EXEMPT_LIB_PATHS`;
+- the migration's write path;
+- a test asserting generated output is still named `AGENTS.md`.
+
+It does nothing for `example/`, which is generated output and must keep the real name.
+
+**Same class, unverified:** `lib/.claude/skills/` and `lib/.cursor/rules/` are also
+template payload with loadable names. Per tool-loading.md, Claude Code loads
+`<subdir>/.claude/skills/` once it works on files there. Whether that duplicates the
+root copies or is deduplicated by name is unknown here. If the `.tmpl` route is taken,
+decide the whole `lib/` tree at once rather than one file.
+
+**Trigger:** the next change to phase 11, or the next session misled by a template
+guide.
