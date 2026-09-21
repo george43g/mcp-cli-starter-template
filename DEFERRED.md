@@ -4078,3 +4078,119 @@ decide the whole `lib/` tree at once rather than one file.
 
 **Trigger:** the next change to phase 11, or the next session misled by a template
 guide.
+
+---
+
+## 52. A gate filter that matches nothing passes GREEN — and 3 of 5 published packages are never pack-checked
+
+**Status**: open defect, measured 2026-09-21. Mine to fix; needs no decision.
+
+Found while answering browser-tab-mcp's query about the `-mcp` suffix (#53). They
+suspected a non-matching package was "silently skipped". It is worse: the step passes.
+
+**Measured, pnpm 10.29.3, with a control:**
+
+```
+$ pnpm --filter "@george43g/*-mcp" exec node -e 'console.log("ran")'
+ran
+exit=0
+$ pnpm --filter "@george43g/*-nosuchsuffix" exec node -e 'console.log("SHOULD NOT PRINT")'
+No projects matched the filters in "/Users/george/repos/mcp-cli-starter-template"
+exit=0
+```
+
+`--fail-if-no-match` is **accepted and ignored** (still exit 0 on no match), which is
+its own trap: an unknown flag that changes nothing looks exactly like a flag that
+worked. A hand-rolled guard is required. Working mechanism, measured:
+`pnpm --filter <pattern> list --depth -1 --json` returns a JSON array whose length is
+the match count — 1 for the real filter, 0 for a non-match.
+
+**The hole is already live.** `.github/workflows/ci.yml:181-182`:
+
+```yaml
+pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run
+pnpm --filter @george43g/cli-kit --filter @george43g/tui-kit exec npm pack --dry-run
+```
+
+`scripts/check-publishable-manifests.mjs:42-47` lists five published packages —
+robustness, cli-kit, tui-kit, secret-store, mcp-kit. **Only cli-kit and tui-kit are
+pack-checked.** robustness, secret-store and mcp-kit publish without ever having their
+tarball shape dry-run in CI.
+
+**The twelve suffix-selected sites** (all `@george43g/*-mcp`): `package.json:28`;
+`.github/workflows/ci.yml:181,211,214`;
+`apps/scaffolder/src/phases/12-ci-release/lib/.github/workflows/ci.yml:118,122,126`;
+`example/.github/workflows/ci.yml:118,122,126`;
+`apps/scaffolder/src/commands/add-mcp-app.ts:41` (scaffolded-repo gate) and `:58`
+(scope auto-detection).
+
+**The fix is coverage, not non-emptiness.** "At least one match" would still pass a
+repo whose second app is unselected. The invariant worth enforcing: *every app-like
+workspace is selected by the gate that is supposed to check it, and every publishable
+package is pack-checked* — so adding a workspace nothing checks fails the build. The
+model already in the repo is `scripts/check-stdout-purity.mjs:34`
+(`const MCP_MARKER = "@george43g/mcp-kit";`, rationale at `:20-23`): select on an
+affirmative dependency fact, never on a name shape or a hand-list.
+
+**Trigger**: none needed — this is a defect. Do it before #53, since #53's selection
+half disappears once gates stop keying on the name.
+
+---
+
+## 53. Should the scaffolder stop forcing the `-mcp` suffix? — recommended (b), George's call
+
+**Status**: open, George's call. Asked by browser-tab-mcp 2026-09-21 on George's
+instruction, while naming a second app there; he asked that it come here rather than be
+decided downstream. Answered with a recommendation, not started — it changes what every
+generated repo receives.
+
+**Recommendation: (b) make it optional** — the default still appends, `--name foo` with
+no suffix is honoured. (a) keep-forcing costs nothing today but leaves the suffix doing
+a selector's job. (c) drop-it costs everything (b) costs, buys nothing more, and makes
+the #52 trap reachable sooner in already-generated repos.
+
+**What (b) costs — four items:**
+
+1. **A second placeholder.** `apps/scaffolder/src/core/templating.ts:30` is
+   `const NAME_RE = /example-repo/g;` — the placeholder stops short of the suffix, so
+   `-mcp` is *literal text* in every lib template. Fix: an `example-repo-mcp` regex
+   substituted **before** `NAME_RE`. Cheap; the literal is already there.
+2. **Stop DERIVING the command name — the real trap.**
+   `apps/example-repo-mcp/package.json` has `bin: {"example-repo": …}` (the bare token)
+   while the package is `@george43g/example-repo-mcp`, and `src/cli.ts:56` computes the
+   command as `.name(APP_NAME.replace(/^@[^/]+\//, "").replace(/-mcp$/, ""))`. Verified
+   in generated output: `example/apps/example-mcp/package.json` is
+   `name: @george43g/example-mcp`, `bin: {"example": …}`. **They agree only because a
+   bare name can never end in `-mcp`.** Honour `--name foo-mcp` and the installed bin
+   stays `foo-mcp` while `--help` says `foo`. Make the command name explicit; delete the
+   runtime strip.
+3. **A collision guard.** `foo` and `foo-mcp` collide on `~/.${slug}`
+   (`src/access-check.ts:72`), the commander name (`cli.ts:56`) and the REPL prompt
+   (`cli.ts:128`); the other way on `${name}-mcp-dev` (`add-mcp-app.ts:140`) and
+   `.cursor/rules/${name}.mdc`. `src/core/config.ts:27-31` — the ban — is exactly what
+   makes this unreachable today.
+4. `add-mcp-app.ts:41,58` must stop using `endsWith("-mcp")`.
+
+**Blast radius.** Under (b) nothing in an existing generated repo breaks: the default
+still appends and stamped filters keep matching. The break is prospective — a
+suffix-less app added later to an older generated repo is not selected by that repo's
+stamped `ci.yml:118,122,126` (green, unchecked, per #52), and `add-mcp-app.ts:41` would
+not recognise a repo whose only app lacks the suffix as scaffolded. Release config is
+independent (`release-packages.yml:56-61` selects on `packages/*/**` paths); the dev
+proxy and `.mcp.json` use explicit paths, though the key string is load-bearing at
+`11-agent-files/lib/.claude/settings.local.json:33,37`; `log-brand.ts:37` keeps the
+suffix, so log directories are unaffected.
+
+**Correction to my own sweep.** The subagent that audited this concluded (b) is "a
+rewrite of the substitution contract across ~every lib file". That **overstates it** —
+item 1's second placeholder handles it, and the subagent named that alternative itself
+before dismissing it. Recorded so nobody re-derives the stronger claim.
+
+**Item 2 is worth doing even under (a)**: deriving a user-visible command name by
+regex-stripping a package name is fragile whatever is decided.
+
+**Unknown**: whether EQStack's three apps or browser-tab's repo depend on the suffix
+beyond what the template ships. Not read — peer repos, and I would be reconstructing.
+
+**Trigger**: George picks. Nothing downstream is blocked;
+`apps/tmux-control-mcp` follows the convention as it stands.
