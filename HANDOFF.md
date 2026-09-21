@@ -2553,3 +2553,91 @@ background tasks. Only this repo was written to.
 
 Nothing mid-flight. Acts on George answering `cursorrules-drop` or
 `delegating-work-pointer`, on peer evidence, or on DEFERRED #49/#50's triggers.
+
+---
+
+# 2026-09-21 18:54 AEST — `.cursorrules` dropped; both dotfiles decisions closed
+
+George answered both open items one at a time. **This entry outranks any summary
+that still lists them as pending, or that repeats the premise corrected below.**
+
+## State
+
+`main` at `d8608e6`, clean, level with origin, no open PRs, no worktrees,
+nothing mid-flight.
+
+## Constraints
+
+- George, 2026-09-21, asked one question at a time: **(1) skip** the
+  `delegating-work` pointer line in `AGENTS.md`; **(2) drop `.cursorrules`
+  everywhere**.
+
+## Done
+
+- **`.cursorrules` removed** from this repo and from everything the scaffolder
+  stamps (PR #121 → `d8608e6`). 24 files. `CLAUDE.md` → `AGENTS.md` is
+  untouched and still enforced.
+- **`AGENTS.md` unchanged** — decision (1) was to skip, so there is nothing to do
+  and nothing to revisit.
+- **First delegated build in this repo**, per George's monorepo default: a
+  `local-implementer` child in its own worktree, commit-but-never-push. Its result
+  was treated as a claim — I re-ran `pnpm verify` myself against the committed tree
+  (**exit 0**), read the diff, and confirmed the main checkout was untouched at
+  `2ca687e` throughout.
+
+## Corrections
+
+- **The premise the decision was put on is false, and the change still stands.**
+  George was asked on *"Cursor's docs do not list `.cursorrules`"*, flagged at the
+  time as documented-not-probed. Implementation research found Cursor's help site
+  still documents it in the future tense (*"legacy and will be deprecated"*), and
+  Zed and Cline are reported to read it. The surviving justification is narrower:
+  the file was a **symlink to `AGENTS.md`**, so it was a redundant alias that CI
+  *required*, never a separate source of instructions. Recorded in
+  `docs/PROJECT_STATE.md` under the docs-check bullet and in DEFERRED #51.
+- Earlier in-session: the footprint was first reported as 33 mentions; it is 36
+  matching lines across 22 files.
+
+## Open
+
+- `cline-fallthrough` · mcp-starter-template — **unknown** whether Cline reads a
+  project `AGENTS.md` once the alias is gone; its project-`AGENTS.md` support is an
+  open feature request (cline/cline#5033, #6162). Evidence it is open: a web search,
+  not a probe. Not in this fleet's tool set, so it bites only if a generated repo is
+  handed to a Cline user. Zed's fall-through is reported, not re-verified — a docs
+  fetch returned 404.
+- `template-guide-tmpl` · mcp-starter-template — rename `lib/AGENTS.md` to a name no
+  tool loads, restored at generation (DEFERRED #51 addendum). Recommended, not
+  started.
+- `handoff-checkpoint-adopt` · mcp-starter-template — `/precompact` changed
+  2026-09-21 to one rotating block per session (`bin/checkpoint rotate`). Old stacks
+  are left alone until a repo's owner runs `checkpoint adopt` once. This file is
+  still the old stacked shape; adopting is George's call, and this entry is written
+  in the old style deliberately.
+
+## Traps
+
+- **A child's counter-argument can be right about the fact and wrong about the
+  conclusion.** The child correctly falsified "nothing reads it", then asserted that
+  Zed and Cline "fall through to `AGENTS.md`, so behaviour is unchanged". That part
+  was not established for Cline. The commit message would have carried it into
+  history; squash-merge meant only the PR body and the files mattered, and both were
+  corrected first.
+- **Delete a test fixture only after reading what branch it covers.** The two
+  `.cursorrules` cases looked redundant with the `CLAUDE.md` ones and were not:
+  `fs.ts:128` reaches its `readlink()` comparison only when the existing entry IS a
+  symlink, and `CLAUDE.md` in those tests was a plain file, so it short-circuits.
+
+## Tree
+
+`main` `d8608e6`, clean, level. Worktree `../mcp-cli-starter-template-wt/
+cursorrules-drop` removed after merge. No staged edits, no background tasks.
+
+## Blocked on you
+
+Nothing.
+
+## Resume
+
+Nothing mid-flight. Acts on `template-guide-tmpl`, `handoff-checkpoint-adopt`, peer
+evidence, or DEFERRED #49/#50's triggers.
