@@ -5,7 +5,7 @@ Progressive-disclosure map of `docs/`. Start from the root
 
 `pnpm check:docs` (part of `pnpm verify`) enforces this index: every top-level
 `docs/*.md` must have a row here, every relative link must resolve, and the
-`CLAUDE.md`/`.cursorrules` agent-file symlinks must stay intact.
+`CLAUDE.md` agent-file symlink must stay intact.
 
 ## Start here
 

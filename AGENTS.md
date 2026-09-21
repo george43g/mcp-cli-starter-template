@@ -1,6 +1,6 @@
 # mcp-cli-starter-template — Agent Guide
 
-> `CLAUDE.md` and `.cursorrules` are symlinks to this file. Edit `AGENTS.md`; the others follow.
+> `CLAUDE.md` is a symlink to this file. Edit `AGENTS.md`; it follows.
 
 You're working on **the scaffolder repo + canonical static template**. This is the meta-tool that generates MCP+CLI+TUI starter projects (and retrofits existing MCP servers to match). For the cloned-tool's agent guide, see `apps/scaffolder/src/phases/11-agent-files/lib/AGENTS.md` (that gets written into target repos at scaffold time).
 

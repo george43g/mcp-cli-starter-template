@@ -227,6 +227,14 @@ to this repo:
   runs inside `pnpm verify` and as a CI step after Lint. Template surfaces
   (`example/`, `phases/**/lib/`) are excluded because their links target the
   generated repo's layout.
+  - **2026-09-21 — the `.cursorrules` half was dropped** (George's decision).
+    Cursor documents what it reads as `AGENTS.md` plus `.cursor/rules/*.mdc`;
+    `.cursorrules` is legacy there, so this repo and the scaffolder no longer
+    create it and `check-docs-links.mjs` no longer requires it. `CLAUDE.md` →
+    `AGENTS.md` is unchanged, and `.cursor/rules/example-repo.mdc` still points
+    Cursor at the same guide. Editors that still read a root `.cursorrules`
+    (Zed, Cline) fall through to `AGENTS.md`, which is the same content the
+    symlink resolved to.
 
 ### CLI artifacts and native generator policy
 

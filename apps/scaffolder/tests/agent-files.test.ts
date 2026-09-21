@@ -80,7 +80,9 @@ describe("11-agent-files target-aware output", () => {
     expect(existsSync(join(cwd, "skills/openwrt/SKILL.md"))).toBe(true);
     expect(existsSync(join(cwd, ".cursor/rules/openwrt.mdc"))).toBe(true);
     expect(await readlink(join(cwd, "CLAUDE.md"))).toBe("AGENTS.md");
-    expect(await readlink(join(cwd, ".cursorrules"))).toBe("AGENTS.md");
+    // Cursor reads AGENTS.md + .cursor/rules/*.mdc; the legacy .cursorrules
+    // link was dropped 2026-09-21 and must not come back.
+    expect(existsSync(join(cwd, ".cursorrules"))).toBe(false);
     expect(existsSync(join(cwd, ".mcp.json"))).toBe(false);
     expect(existsSync(join(cwd, "opencode.json"))).toBe(false);
     expect(existsSync(join(cwd, ".claude/settings.local.json"))).toBe(false);
@@ -106,17 +108,39 @@ describe("11-agent-files target-aware output", () => {
     await mkdir(join(cwd, "skills/foo"), { recursive: true });
     await writeFile(join(cwd, "AGENTS.md"), "user agents\n");
     await writeFile(join(cwd, "CLAUDE.md"), "user claude\n");
-    await symlink("OTHER.md", join(cwd, ".cursorrules"));
     await writeFile(join(cwd, "skills/foo/SKILL.md"), "user skill\n");
 
     const result = await new AgentFilesMigration().apply(await context(cwd));
     expect(result.filesDivergent).toEqual(
-      expect.arrayContaining(["AGENTS.md", "CLAUDE.md", ".cursorrules", "skills/foo/SKILL.md"]),
+      expect.arrayContaining(["AGENTS.md", "CLAUDE.md", "skills/foo/SKILL.md"]),
     );
     expect(await readFile(join(cwd, "AGENTS.md"), "utf8")).toBe("user agents\n");
     expect(await readFile(join(cwd, "CLAUDE.md"), "utf8")).toBe("user claude\n");
-    expect(await readlink(join(cwd, ".cursorrules"))).toBe("OTHER.md");
     expect(await readFile(join(cwd, "skills/foo/SKILL.md"), "utf8")).toBe("user skill\n");
+  });
+
+  // A CLAUDE.md that is a SYMLINK to the wrong target is a different branch of
+  // fs.symlink() than a CLAUDE.md that is a plain file (the readlink()
+  // target comparison only runs for an existing symlink). Both cases used to be
+  // covered because CLAUDE.md was the file and .cursorrules the wrong link;
+  // with .cursorrules gone, CLAUDE.md carries both.
+  it("preserves a CLAUDE.md symlink pointing at the wrong target without --force", async () => {
+    const cwd = await fixture({ name: "foo", packageManager: "npm@11" });
+    await symlink("OTHER.md", join(cwd, "CLAUDE.md"));
+
+    const result = await new AgentFilesMigration().apply(await context(cwd));
+    expect(result.filesDivergent).toEqual(expect.arrayContaining(["CLAUDE.md"]));
+    expect(result.notes?.join("\n")).toContain("preserved divergent links/files: CLAUDE.md");
+    expect(await readlink(join(cwd, "CLAUDE.md"))).toBe("OTHER.md");
+  });
+
+  it("repoints a CLAUDE.md symlink pointing at the wrong target under --force", async () => {
+    const cwd = await fixture({ name: "foo", packageManager: "npm@11" });
+    await symlink("OTHER.md", join(cwd, "CLAUDE.md"));
+
+    const result = await new AgentFilesMigration().apply(await context(cwd, true));
+    expect(result.filesDivergent).toBeUndefined();
+    expect(await readlink(join(cwd, "CLAUDE.md"))).toBe("AGENTS.md");
   });
 
   it("replaces divergent files and links under --force", async () => {
@@ -124,14 +148,13 @@ describe("11-agent-files target-aware output", () => {
     await mkdir(join(cwd, "skills/foo"), { recursive: true });
     await writeFile(join(cwd, "AGENTS.md"), "user agents\n");
     await writeFile(join(cwd, "CLAUDE.md"), "user claude\n");
-    await symlink("OTHER.md", join(cwd, ".cursorrules"));
     await writeFile(join(cwd, "skills/foo/SKILL.md"), "user skill\n");
 
     const result = await new AgentFilesMigration().apply(await context(cwd, true));
     expect(result.filesDivergent).toBeUndefined();
     expect(await readFile(join(cwd, "AGENTS.md"), "utf8")).toContain("Package manager: `npm`");
     expect(await readlink(join(cwd, "CLAUDE.md"))).toBe("AGENTS.md");
-    expect(await readlink(join(cwd, ".cursorrules"))).toBe("AGENTS.md");
+    expect(existsSync(join(cwd, ".cursorrules"))).toBe(false);
     expect(await readFile(join(cwd, "skills/foo/SKILL.md"), "utf8")).toContain(
       "Skeleton generated",
     );

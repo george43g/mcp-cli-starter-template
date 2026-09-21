@@ -1,6 +1,6 @@
 # example – Agent Guide
 
-> `CLAUDE.md` and `.cursorrules` are symlinks to this file. Edit `AGENTS.md`; the others follow.
+> `CLAUDE.md` is a symlink to this file. Edit `AGENTS.md`; it follows.
 
 This repo was generated from `mcp-cli-starter-template` via `mcp-scaffold init`. Names and scopes have already been substituted; you can start working directly.
 
