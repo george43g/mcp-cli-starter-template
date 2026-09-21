@@ -80,9 +80,9 @@ function* walk(dir) {
   for (const name of readdirSync(dir).sort()) {
     if (SKIP_DIRS.has(name)) continue;
     const full = join(dir, name);
-    // lstat, and skip symlinks: CLAUDE.md and .cursorrules point at AGENTS.md,
-    // so following them reports one stale line three times and sends the reader
-    // to a file whose fix is a no-op.
+    // lstat, and skip symlinks: CLAUDE.md points at AGENTS.md, so following it
+    // reports one stale line twice and sends the reader to a file whose fix is
+    // a no-op.
     const st = lstatSync(full, { throwIfNoEntry: false });
     if (!st || st.isSymbolicLink()) continue;
     if (st.isDirectory()) yield* walk(full);

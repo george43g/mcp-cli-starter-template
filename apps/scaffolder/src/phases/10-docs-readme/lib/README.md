@@ -122,7 +122,7 @@ ln -s "$(pwd)/skills/example-repo/SKILL.md" ~/.claude/skills/example-repo/SKILL.
 
 | File | What it covers |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | Canonical agent guide (also `CLAUDE.md`, `.cursorrules` as symlinks) |
+| [`AGENTS.md`](AGENTS.md) | Canonical agent guide (also `CLAUDE.md` as a symlink) |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How packages fit together; which to delete if you don't need a surface |
 | [`docs/HTTP_MODE.md`](docs/HTTP_MODE.md) | Streamable HTTP transport: bearer auth, `/health`, reverse-proxy patterns |
 | [`docs/RUST_ACCELERATION.md`](docs/RUST_ACCELERATION.md) | napi-rs build, `.node` binary handling, drift-check between Zod and serde |

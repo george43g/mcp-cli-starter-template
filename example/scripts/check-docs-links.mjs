@@ -4,7 +4,7 @@
  * Docs integrity check: agent-facing markdown must stay navigable.
  *
  * 1. Relative links in the agent/docs surfaces resolve to real files.
- * 2. CLAUDE.md / .cursorrules stay symlinks pointing at AGENTS.md.
+ * 2. CLAUDE.md stays a symlink pointing at AGENTS.md.
  * 3. Every top-level docs/*.md has a row in the docs index (docs/README.md).
  *
  * Wired into `pnpm verify` and CI so a broken link, a severed agent-file
@@ -33,10 +33,7 @@ const SCAN_ROOTS = [
 ];
 
 /** Symlink → required target, both relative to repo root. */
-const REQUIRED_SYMLINKS = [
-  ["CLAUDE.md", "AGENTS.md"],
-  [".cursorrules", "AGENTS.md"],
-];
+const REQUIRED_SYMLINKS = [["CLAUDE.md", "AGENTS.md"]];
 
 const failures = [];
 

@@ -56,7 +56,6 @@ example-repo/                           # the cloned tool, one git repo
 ├── .mcp.json / opencode.json / .cursor/mcp.json   # dev MCP proxy entries
 ├── AGENTS.md                       # canonical agent guide
 ├── CLAUDE.md → AGENTS.md           # symlink
-├── .cursorrules → AGENTS.md        # symlink
 ├── mise.toml                       # toolchain pin + tasks
 └── ...
 ```
@@ -236,10 +235,10 @@ Manual retrofit: even if you don't adopt Mintlify, the **public-style README** w
 }
 ```
 
-### 11-agent-files — AGENTS.md + symlinks + .mcp.json + skills
+### 11-agent-files — AGENTS.md + symlink + .mcp.json + skills
 
 - `AGENTS.md` — canonical agent guide (~180-line file with stack, commands, env layout, MCP best practices, watchdog thresholds, lifecycle, debugging, permissions, guardrails, troubleshooting).
-- `CLAUDE.md` and `.cursorrules` — **symlinks** to `AGENTS.md`. Editing one updates all three.
+- `CLAUDE.md` — a **symlink** to `AGENTS.md`. Editing either updates both. No `.cursorrules` is written: Cursor reads `AGENTS.md` and `.cursor/rules/*.mdc` (dropped 2026-09-21).
 - `.mcp.json`, `opencode.json`, `.cursor/mcp.json` — dev MCP proxy entries using **relative paths** (the static template lesson: absolute paths break when the repo gets cloned to a new location).
 - `.cursor/rules/example-repo.mdc` — Cursor rules file pointing at AGENTS.md.
 - `.claude/settings.local.json` — permissions allowlist for read-only Bash + pnpm/git/gh + Context7 MCP + the dev MCP server.

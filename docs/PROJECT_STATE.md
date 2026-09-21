@@ -223,10 +223,34 @@ to this repo:
   replacing the lost external-plan pattern.
 - `scripts/check-docs-links.mjs` (`pnpm check:docs`) mechanically enforces
   relative-link integrity in repo-facing markdown, the
-  `CLAUDE.md`/`.cursorrules` symlink invariants, and docs-index coverage. It
+  `CLAUDE.md` symlink invariant, and docs-index coverage. It
   runs inside `pnpm verify` and as a CI step after Lint. Template surfaces
   (`example/`, `phases/**/lib/`) are excluded because their links target the
   generated repo's layout.
+  - **2026-09-21 — the `.cursorrules` half was dropped** (George's decision).
+    It enforced a second symlink to the same file. Cursor documents what it
+    reads as `AGENTS.md` plus `.cursor/rules/*.mdc`, so this repo and the
+    scaffolder no longer create `.cursorrules` and the check no longer requires
+    it. `CLAUDE.md` → `AGENTS.md` is unchanged — verified by inversion, not
+    assertion: pointing `CLAUDE.md` at a wrong target makes `check:docs` exit 1
+    (`CLAUDE.md points at WRONG-TARGET.md, expected AGENTS.md`) and restoring it
+    returns 0. `.cursor/rules/example-repo.mdc` still points Cursor at the same
+    guide.
+  - **What was NOT established, and the justification that replaced it.** The
+    first framing was *"nothing current reads `.cursorrules`"*. That is **false**:
+    Cursor's own help site still documents it in the future tense (*"legacy and
+    will be deprecated"*), and Zed and Cline are reported to read it. The honest
+    justification is narrower — **it was a redundant alias we CI-enforced**,
+    since the file was a symlink to `AGENTS.md`, so any editor reading it was
+    already reading that exact content. Whether such an editor falls through to
+    `AGENTS.md` once the alias is gone is **reported yes for Zed** (its list
+    includes `AGENTS.md`; not re-verified here — a docs fetch 404'd) and
+    **unknown for Cline**, whose project-`AGENTS.md` support is an open feature
+    request (cline/cline#5033, #6162) while its docs describe `.clinerules/` and
+    a global `~/.agents/AGENTS.md`. Neither editor is in this fleet's tool set
+    (Claude Code, Codex, Cursor, Warp, opencode), every member of which reads
+    `AGENTS.md` or `CLAUDE.md`. **Revisit if a generated repo is handed to a
+    Cline user** — that is the one case where this could lose a guide.
 
 ### CLI artifacts and native generator policy
 

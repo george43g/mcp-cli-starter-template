@@ -3,7 +3,7 @@
  *
  * Lands:
  *   - AGENTS.md (canonical agent guide)
- *   - CLAUDE.md, .cursorrules (symlinks → AGENTS.md)
+ *   - CLAUDE.md (symlink → AGENTS.md)
  *   - .mcp.json, opencode.json, .cursor/mcp.json (dev-MCP entries — relative paths)
  *   - .cursor/rules/example-repo.mdc (Cursor rules pointer)
  *   - .claude/settings.local.json + .claude/skills/{mcp-tool-author,pr-review-sop}/
@@ -14,8 +14,9 @@
  * `.cursor/rules/example-repo.mdc` get resolved at write time (portPackage now
  * substitutes both content AND path).
  *
- * Symlinks: CLAUDE.md and .cursorrules are created as symlinks to AGENTS.md
- * after the lib copy.
+ * Symlink: CLAUDE.md is created as a symlink to AGENTS.md after the lib copy.
+ * Cursor reads AGENTS.md and .cursor/rules/*.mdc directly, so no .cursorrules
+ * is stamped (dropped 2026-09-21).
  */
 
 import {
@@ -32,7 +33,7 @@ const SKELETON_FOLLOW_UP =
 
 export default class AgentFilesMigration extends Migration {
   readonly id = "11-agent-files/m1-agent-files";
-  readonly title = "Port AGENTS.md + CLAUDE.md/.cursorrules symlinks + .mcp.json + skills";
+  readonly title = "Port AGENTS.md + CLAUDE.md symlink + .mcp.json + skills";
   readonly appliesTo = "both" as const;
   override readonly existingPolicy = "safe-any-existing" as const;
 
@@ -42,20 +43,18 @@ export default class AgentFilesMigration extends Migration {
       ? await portPackage(ctx, { pkgDir: "", libPrefix: "11-agent-files/lib/" })
       : await writeMinimalAgentFiles(ctx);
 
-    // Create the CLAUDE.md and .cursorrules symlinks pointing at AGENTS.md.
+    // Create the CLAUDE.md symlink pointing at AGENTS.md.
     const symlinkChanged: string[] = [];
     const symlinkDivergent: string[] = [];
-    for (const linkPath of ["CLAUDE.md", ".cursorrules"]) {
-      const outcome = await ctx.fs.symlink("AGENTS.md", linkPath);
-      if (outcome === "divergent-skipped") symlinkDivergent.push(linkPath);
-      else if (outcome !== "unchanged") symlinkChanged.push(linkPath);
-    }
+    const linkOutcome = await ctx.fs.symlink("AGENTS.md", "CLAUDE.md");
+    if (linkOutcome === "divergent-skipped") symlinkDivergent.push("CLAUDE.md");
+    else if (linkOutcome !== "unchanged") symlinkChanged.push("CLAUDE.md");
 
     const allChanged = [...(templateResult.filesChanged ?? []), ...symlinkChanged];
     const allDivergent = [...(templateResult.filesDivergent ?? []), ...symlinkDivergent];
     const notes = [
       ...(templateResult.notes ?? []),
-      ...(symlinkChanged.length ? [`symlinks: ${symlinkChanged.join(", ")} → AGENTS.md`] : []),
+      ...(symlinkChanged.length ? [`symlink: ${symlinkChanged.join(", ")} → AGENTS.md`] : []),
       ...(symlinkDivergent.length
         ? [`preserved divergent links/files: ${symlinkDivergent.join(", ")}`]
         : []),
