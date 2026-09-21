@@ -25,7 +25,7 @@
     "evaluate:retrofit": "node scripts/evaluate-retrofit.mjs",
     "check:robustness-package": "node scripts/check-robustness-package.mjs",
     "smoke:registry-runtime": "node scripts/smoke-registry-runtime.mjs",
-    "check:usage": "pnpm --filter @george43g/mcp-scaffold check:usage && pnpm --filter \"@george43g/*-mcp\" check:usage",
+    "check:usage": "pnpm --filter @george43g/mcp-scaffold check:usage && node scripts/for-each-mcp-app.mjs check:usage",
     "check:docs": "node scripts/check-docs-links.mjs",
     "check:stdout-purity": "node scripts/check-stdout-purity.mjs",
     "check:stress-count": "node scripts/check-stress-count.mjs",

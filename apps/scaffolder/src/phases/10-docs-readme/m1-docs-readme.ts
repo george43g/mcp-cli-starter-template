@@ -11,11 +11,15 @@
  *   - LICENSE — MIT.
  *   - llms-install.md — user-facing setup guide for end users of cloned tools.
  *   - scripts/ — the repo guards the generated CI actually invokes:
- *     check-docs-links.mjs, check-stdout-purity.mjs, and
- *     check-release-tokens.mjs (+ its scripts/lib/release-tokens.mjs). A
- *     workflow that runs a script this phase does not stamp is a guard the
- *     generated repo cannot run; release-tokens was exactly that until
- *     2026-09-04.
+ *     check-docs-links.mjs, check-stdout-purity.mjs,
+ *     check-release-tokens.mjs (+ its scripts/lib/release-tokens.mjs), and
+ *     for-each-mcp-app.mjs + mcp-apps.mjs (+ their scripts/lib/mcp-apps.mjs),
+ *     which the generated ci.yml uses to select apps for its usage, pack and
+ *     stress gates. A workflow that runs a script this phase does not stamp is
+ *     a guard the generated repo cannot run; release-tokens was exactly that
+ *     until 2026-09-04.
+ *     NOT stamped: pack-publishable.mjs — a scaffolded repo publishes nothing
+ *     out of packages/, so it has no publishable set to pack.
  *
  * All `example-repo` placeholders are substituted at write time by portPackage.
  */

@@ -70,6 +70,19 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   // reads commit-message text and nothing repo-shaped), so byte-equality holds.
   ["10-docs-readme/lib/scripts/check-release-tokens.mjs", "scripts/check-release-tokens.mjs"],
   ["10-docs-readme/lib/scripts/lib/release-tokens.mjs", "scripts/lib/release-tokens.mjs"],
+  // The gate-coverage pair (DEFERRED #52). The generated ci.yml runs
+  // `node scripts/for-each-mcp-app.mjs` for its usage, pack and stress steps,
+  // so both files must be stamped or those jobs die with "Cannot find module"
+  // — the check-release-tokens lesson, one workflow later. Generic for the
+  // same reason check-stdout-purity is: they key on the mcp-kit dependency
+  // marker, nothing repo-shaped, so byte-equality holds.
+  // NOT stamped, deliberately: scripts/pack-publishable.mjs and its
+  // scripts/lib/publishable.mjs. A scaffolded repo publishes nothing out of
+  // packages/ — it consumes the kits from npm — so it has no publishable set
+  // to pack, and a stamped copy would name packages that do not exist there.
+  ["10-docs-readme/lib/scripts/mcp-apps.mjs", "scripts/mcp-apps.mjs"],
+  ["10-docs-readme/lib/scripts/for-each-mcp-app.mjs", "scripts/for-each-mcp-app.mjs"],
+  ["10-docs-readme/lib/scripts/lib/mcp-apps.mjs", "scripts/lib/mcp-apps.mjs"],
   ["11-agent-files/lib", "."],
   // Consumer CI intentionally omits the two meta-repo-only scaffolder drift steps.
   ["12-ci-release/lib/.github/workflows/ci.yml", "example/.github/workflows/ci.yml"],

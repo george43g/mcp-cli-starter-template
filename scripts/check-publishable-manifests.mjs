@@ -23,6 +23,7 @@ import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
+import { PUBLISHABLE } from "./lib/publishable.mjs";
 import { rangeAdmits, UnmodelledRangeError } from "./lib/semver-range.mjs";
 
 const root = resolve(import.meta.dirname, "..");
@@ -31,26 +32,9 @@ const REPO_URL = "git+https://github.com/george43g/mcp-cli-starter-template.git"
 /** Workspace globs from pnpm-workspace.yaml, resolved manually (no yaml dep). */
 const WORKSPACE_DIRS = ["apps", "packages"];
 
-/**
- * The packages this repo actually publishes. Each has a release job in
- * .github/workflows/release-packages.yml and a Trusted Publisher on npmjs.com.
- *
- * `private: true` is NOT the discriminator: apps/scaffolder and
- * apps/example-repo-mcp are deliberately non-private (CI pack-checks their
- * tarball shape) but are never published, so they are not held to these rules.
- */
-const PUBLISHABLE = new Set([
-  "packages/robustness",
-  "packages/cli-kit",
-  "packages/tui-kit",
-  "packages/secret-store",
-  "packages/mcp-kit",
-  // apps/mcpsync was here until 2026-08-22. George decided it MIGRATES WITHOUT
-  // PUBLISHING (DEFERRED #10), so it is `private: true` and carries no
-  // publishConfig — it leaves as a private tool installed from a local path,
-  // not as a registry dependency. It was never published (npm view returned
-  // E404 throughout), so nothing on npm is orphaned by the change.
-]);
+// PUBLISHABLE moved to scripts/lib/publishable.mjs (DEFERRED #52) so that
+// pack-publishable.mjs packs exactly the set this file manifest-checks. When
+// the two were separate lists, three of the five were never pack-checked.
 
 const failures = [];
 
