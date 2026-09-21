@@ -3936,9 +3936,21 @@ exists the design has no evidence to work from.
 
 ## 51. Instruction-file conventions from dotfiles: two are George's call, one is already met — and template agent guides load as instructions
 
-**Status**: open, 2026-09-15. Two items wait on George. None was applied on a peer's
-relay: in this repo `CLAUDE.md` and `.cursorrules` are symlinks to `AGENTS.md`, so
-every change here edits the instruction file itself.
+**Status**: **both decisions taken 2026-09-21** — George, asked one at a time.
+**(1) Skip the pointer line**, so `AGENTS.md` is unchanged. **(2) Drop `.cursorrules`
+everywhere**, landed in this entry's own PR. Item 3 was already met. Nothing was
+applied on a peer's relay: `CLAUDE.md` is a symlink to `AGENTS.md` (and `.cursorrules`
+was a second one until it was dropped), so every change here edits the instruction
+file itself.
+
+⚠️ **The premise item 2 was decided on was wrong, and the change still stands.** It
+was put to George as *"Cursor's docs do not list `.cursorrules`"*, explicitly flagged
+as documented-not-probed. Research during implementation found Cursor's help site
+still documents it in the future tense (*"legacy and will be deprecated"*), and Zed
+and Cline are reported to read it. The surviving justification is narrower — a
+redundant alias that CI enforced, pointing at the same `AGENTS.md` bytes. The full
+verified/unknown split is in `docs/PROJECT_STATE.md` under the docs-check bullet, and
+the one case that could still lose a guide is a generated repo handed to a Cline user.
 
 dotfiles sent three conventions it describes as standard across George's repos.
 
