@@ -2641,3 +2641,94 @@ Nothing.
 
 Nothing mid-flight. Acts on `template-guide-tmpl`, `handoff-checkpoint-adopt`, peer
 evidence, or DEFERRED #49/#50's triggers.
+
+---
+
+# 2026-09-21 22:31 AEST — CI stops selecting by name; a peer query answered
+
+browser-tab-mcp asked, on George's instruction, whether the scaffolder should stop
+forcing the `-mcp` suffix. Answering it surfaced a live defect. **This entry outranks
+any summary that describes the CI gates as name-filtered.**
+
+## State
+
+`main` at `a1c55a4`, clean, level with origin, no open PRs, no worktrees, nothing
+mid-flight.
+
+## Done
+
+- **The gates no longer key on a name** (PR #123 → `52a5386`). `scripts/lib/mcp-apps.mjs`
+  selects `apps/*` workspaces declaring `@george43g/mcp-kit`;
+  `scripts/for-each-mcp-app.mjs` runs a script across them and **exits 1 on an empty
+  set**; `scripts/pack-publishable.mjs` packs every entry of `scripts/lib/publishable.mjs`,
+  which `check-publishable-manifests.mjs` now imports instead of keeping a second list.
+  Stamped into generated repos; `pack-publishable.mjs` deliberately is not.
+- **Pack coverage 2 → 6.** `robustness`, `secret-store` and `mcp-kit` were publishing
+  with no tarball dry-run. A second false claim fixed on the way:
+  `check-publishable-manifests.mjs:38-40` asserted CI pack-checked the scaffolder, and
+  it did not.
+- **DEFERRED #52 (the defect), #53 (the suffix answer), #54 (the flake)** recorded;
+  #52 carries its residue rather than claiming closure.
+- **Answered the peer** with verified `file:line`, a priced PICK, and a correction:
+  their citations into `apps/scaffolder/src/generated/templates.ts` cannot be quoted —
+  it is gitignored build output.
+
+## Corrections
+
+- **My first red drill reported a PASS and was measuring the wrong thing.** I invoked
+  the new guard by absolute path from a temp fixture; `scripts/lib/mcp-apps.mjs:36`
+  resolves `REPO_ROOT` from `import.meta.dirname`, so it measured the real repo and
+  never saw the fixture. Copying the script into the fixture — what `scripts/*.test.mjs`
+  already do — reproduces the red.
+- **A subagent's counter-argument was right on fact, wrong on conclusion**, twice this
+  session. Here it said (b) needs "a rewrite across ~every lib file"; a second
+  placeholder handles it, which it had itself proposed.
+
+## Traps
+
+- **`pnpm --filter` matching nothing exits 0.** Measured on 10.29.3 with a control. Any
+  gate built on a filter passes green when its filter stops matching.
+  **`--fail-if-no-match` is accepted and silently ignored** — an unknown flag that
+  changes nothing looks exactly like one that worked. Count matches instead:
+  `pnpm --filter <pat> list --depth -1 --json`.
+- **A green local `pnpm verify` does not mean a package's tests ran.** Turbo replayed a
+  cached `robustness` result in mine, which is why CI caught a failure I had not. Read
+  the turbo line — `cache miss, executing` vs `cache hit, replaying logs` — before
+  concluding a CI failure is or is not yours.
+
+## Open
+
+- `gate-every-app` · mcp-starter-template — #52's residue: the rule is "at least one
+  app, and every marked app", not "every app-like workspace". A partially retrofitted
+  server is unselected and now invisibly so. Needs George's call on how
+  `apps/rust-accel` is exempted; inventing an exclusion list unasked is what
+  `check-stdout-purity.mjs:20-23` exists to prevent.
+- `robustness-prunelogs-flake` · mcp-starter-template — DEFERRED #54. Evidence it is
+  open: it failed once and passed on re-run with a one-line diff. Needs its own
+  `test(robustness):` commit, since that directory is release-sensitive.
+- `template-guide-tmpl` · mcp-starter-template — unchanged, recommended, not started.
+- `handoff-checkpoint-adopt` · mcp-starter-template — `/precompact`'s new one-block
+  format is NOT adopted here; this entry is the old stacked style deliberately.
+
+## Tree
+
+`main` `a1c55a4`, clean, level. No branches, worktrees, staged edits or background
+tasks. Only this repo was written to; peer repos were read-only throughout.
+
+## Blocked on you
+
+- `mcp-suffix-optional` — make the forced `-mcp` suffix optional? Recommended, priced
+  in DEFERRED #53. Half its cost disappeared with `52a5386`, since CI no longer selects
+  on the name.
+- `gate-every-app` — see Open.
+
+## Elsewhere
+
+- `tmux-control-app` · browser-tab-mcp — holds the plan (their PR #194); told the suffix
+  is likely to be lifted rather than permanent, so they rename after a release here
+  instead of forking generated code.
+
+## Resume
+
+Nothing mid-flight. Acts on either Blocked-on-you item, peer evidence, or DEFERRED
+#49/#50/#54's triggers.
