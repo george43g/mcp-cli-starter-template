@@ -4237,3 +4237,47 @@ beyond what the template ships. Not read — peer repos, and I would be reconstr
 
 **Trigger**: George picks. Nothing downstream is blocked;
 `apps/tmux-control-mcp` follows the convention as it stands.
+
+---
+
+## 54. `pruneLogs` is intermittent on CI — and it is the coverage gate
+
+**Status**: observed once, 2026-09-21. **Not fixed here**: the fix touches
+`packages/robustness/`, and a commit touching a published package's directory is read
+as a release for that package, so it needs its own `test(robustness):` commit.
+
+**Evidence, both runs on PR #123:**
+
+| run | head | `@george43g/robustness#test:coverage` |
+|---|---|---|
+| 1 | `156e18b` | **FAILED** — `src/logger.test.ts > pruneLogs > reaps on rotation, through the public logging path`, `AssertionError: expected 3 to be less than or equal to 2` (1 failed, 217 passed) |
+| 2 | `33588c4` | **passed** — the only diff between the two heads is one README line |
+
+Controls: `main` at `610bca7` passed CI fifteen minutes before run 1, and locally on
+`main` `pnpm --filter @george43g/robustness test:coverage` passes 218/218. The branch
+touched no file under `packages/robustness/`.
+
+**Mechanism — hypothesis, NOT measured.** `packages/robustness/src/logger.test.ts:439-456`
+sets `MCP_LOG_MAX_BYTES=200` and `MCP_LOG_KEEP_FILES=1`, writes three `DEAD_PID`
+leftovers, emits 40 padded lines, then asserts `readdirSync(dir).length <= 2`. How many
+rotations occur depends on the serialized bytes per line, which include the pid and a
+timestamp — widths that differ between a runner and a laptop. Whether the last rotated
+file is reaped before the assertion runs is the likely race. **I did not reproduce it
+locally**, so this is a reading of the test, not a diagnosis.
+
+**Why it is worth an entry rather than a shrug**: this is the gate that enforces every
+workspace's coverage floor. A gate that fails at random teaches readers to re-run
+instead of read, which is how a real failure gets waved through.
+
+**A second, more general trap, mine.** My local `pnpm verify` passed before I pushed —
+but turbo reported `cache hit, replaying logs` for robustness, so those tests never
+executed in my run. **A green local verify does not mean a package's tests ran.** When
+deciding whether a CI failure is yours, check the turbo line for that package
+(`cache miss, executing` vs `cache hit, replaying logs`) before concluding anything.
+
+**Fix shape for whoever takes it**: assert the thing the test is actually about — that
+the `DEAD_PID` leftovers were reaped — rather than the total directory count, which
+couples the assertion to byte accounting. Or pin a deterministic line width.
+
+**Trigger**: the next time it fails, or the next deliberate visit to
+`packages/robustness/`.
