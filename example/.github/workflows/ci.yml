@@ -115,15 +115,22 @@ jobs:
         # since the last regen. Fix locally: `pnpm artifacts && git add
         # completions/ man/ docs/cli/`. Bypass: edit .usage.kdl + this
         # check together in the same PR.
-        run: pnpm --filter "@george43g/*-mcp" check:usage
+        #
+        # These three steps select apps via scripts/for-each-mcp-app.mjs,
+        # which derives the set from the mcp-kit dependency. They used to
+        # use `pnpm --filter "<scope>/*-mcp"`, which (a) exits 0 when it
+        # matches nothing, so the step passed green while checking nothing,
+        # and (b) skipped any app not carrying the -mcp suffix. Adding an
+        # app with `mcp-scaffold add-mcp-app` now gates it automatically.
+        run: node scripts/for-each-mcp-app.mjs check:usage
 
       - name: Verify npm tarball is publishable
         if: matrix.os == 'ubuntu-latest'
-        run: pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run
+        run: node scripts/for-each-mcp-app.mjs exec npm pack --dry-run
 
       # Platform surface: spawns the server, signals it, asserts on exit.
       - name: Stress harness (15 assertions including HTTP)
-        run: pnpm --filter "@george43g/*-mcp" stress
+        run: node scripts/for-each-mcp-app.mjs stress
 
       - name: Upload stress report
         if: always()

@@ -170,16 +170,26 @@ jobs:
 
       - name: Check usage(1) artifacts are fresh vs .usage.kdl
         if: matrix.os == 'ubuntu-latest'
-        # Covers both the mcp-scaffold CLI and every generated CLI app.
+        # Covers both the mcp-scaffold CLI and every MCP app (derived from the
+        # mcp-kit dependency, not a name-shaped filter — DEFERRED #52).
         # Fix locally: `pnpm --filter @george43g/mcp-scaffold artifacts`
-        # and/or `pnpm --filter "@george43g/*-mcp" artifacts`.
+        # and/or `node scripts/for-each-mcp-app.mjs artifacts`.
         run: pnpm check:usage
 
       - name: Verify npm tarball is publishable
         if: matrix.os == 'ubuntu-latest'
+        # Both halves are DERIVED, not hand-listed. This step used to pack the
+        # `*-mcp` apps by name shape plus cli-kit and tui-kit by hand, while
+        # check-publishable-manifests.mjs listed five published packages — so
+        # robustness, secret-store and mcp-kit published with no tarball
+        # dry-run, and a filter matching nothing exits 0 so nothing said a word
+        # (DEFERRED #52). The publishable set now lives once, in
+        # scripts/lib/publishable.mjs, and both scripts import it.
+        # The scaffolder is not an MCP app and is named explicitly.
         run: |
-          pnpm --filter "@george43g/*-mcp" exec npm pack --dry-run
-          pnpm --filter @george43g/cli-kit --filter @george43g/tui-kit exec npm pack --dry-run
+          node scripts/for-each-mcp-app.mjs exec npm pack --dry-run
+          pnpm --filter @george43g/mcp-scaffold exec npm pack --dry-run
+          node scripts/pack-publishable.mjs
 
       - name: Scaffolder E2E smoke (init → install → test)
         if: matrix.os == 'ubuntu-latest'
@@ -208,10 +218,10 @@ jobs:
           # timeout, SIGTERM, RSS watchdog, HTTP roundtrip). Skipped if
           # --no-rust-accel removed the http transport; we kept HTTP in
           # this run so all 13 must pass.
-          pnpm --filter "@george43g/*-mcp" stress
+          node scripts/for-each-mcp-app.mjs stress
 
       - name: Stress harness (15 assertions including HTTP)
-        run: pnpm --filter "@george43g/*-mcp" stress
+        run: node scripts/for-each-mcp-app.mjs stress
 
       - name: Example/ output stays in sync with scaffolder
         if: matrix.os == 'ubuntu-latest'
