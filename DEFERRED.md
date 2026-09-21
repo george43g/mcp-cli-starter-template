@@ -4135,6 +4135,49 @@ affirmative dependency fact, never on a name shape or a hand-list.
 **Trigger**: none needed — this is a defect. Do it before #53, since #53's selection
 half disappears once gates stop keying on the name.
 
+### PARTLY FIXED 2026-09-21 — and the residue is named, not glossed
+
+Shipped: the gated set is now **derived from an affirmative fact** rather than a name
+shape. `scripts/lib/mcp-apps.mjs` selects every `apps/*` workspace declaring
+`@george43g/mcp-kit`; `scripts/for-each-mcp-app.mjs` runs a script across them and
+**exits 1 when the set is empty**; `scripts/pack-publishable.mjs` packs every entry of
+`scripts/lib/publishable.mjs`, which `check-publishable-manifests.mjs` now imports
+instead of keeping a second copy. Stamped into generated repos via
+`10-docs-readme/lib/scripts/`.
+
+Verified here, not taken on report:
+
+```
+$ node scripts/for-each-mcp-app.mjs stress      # fixture, zero marked apps
+for-each-mcp-app: FAILED — no apps/* workspace declares @george43g/mcp-kit.
+exit=1
+$ node scripts/mcp-apps.mjs                     # fixture: @x/tmux-control, NO -mcp suffix
+@x/tmux-control
+exit=0
+```
+
+Pack coverage went from 2 packages to 6. A second false claim was found and fixed on
+the way: `check-publishable-manifests.mjs:38-40` asserted CI pack-checks the
+scaffolder's tarball shape, and it did not until this change.
+
+**THE RESIDUE — #52's stated invariant is NOT fully enforced.** The rule now is *"at
+least one app, and every marked app"*, not *"every app-like workspace"*. A partially
+retrofitted MCP server — an `apps/*` that is not yet on mcp-kit — is unselected, and
+now **invisibly** so, because a sibling keeps the set non-empty and the empty-set guard
+never fires. That is strictly better than the name filter (which failed the same way
+*and* passed green on zero apps) but it is not the invariant this entry asked for.
+Closing it needs a second rule: an `apps/*` with a `src/` and no marker is an error.
+**Not added** — it needs a decision on how `apps/rust-accel` is exempted (by hand, or
+by another affirmative fact), and inventing that unasked is how a guard acquires an
+exclusion list, which `check-stdout-purity.mjs:20-23` exists to avoid.
+
+**Trap, mine, while verifying this.** My first red drill ran the new script by absolute
+path from a temp fixture and reported a PASS — because
+`scripts/lib/mcp-apps.mjs:36` resolves `REPO_ROOT` from `import.meta.dirname`, so it
+measured the real repo and never looked at the fixture. Correct command, wrong subject.
+A drill against a script that resolves its own root must copy the script into the
+fixture, which is what `scripts/*.test.mjs` already do.
+
 ---
 
 ## 53. Should the scaffolder stop forcing the `-mcp` suffix? — recommended (b), George's call
