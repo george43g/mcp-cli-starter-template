@@ -4261,6 +4261,17 @@ beyond what the template ships. Not read — peer repos, and I would be reconstr
 **Trigger**: George picks. Nothing downstream is blocked;
 `apps/tmux-control-mcp` follows the convention as it stands.
 
+**DECIDED 2026-09-24 — George: *"drop the forced suffix"*.** Read as: the app name is
+taken as given, with no `-mcp` appended and none rejected. That is (c) for new
+scaffolds, not the (b) recommended above. The reason (c) was priced higher, "makes the
+#52 trap reachable sooner", has mostly lapsed: generated repos now select apps by the
+mcp-kit marker, not by name. The residue is older repos whose stamped `ci.yml` still
+filters on `*-mcp`, so `add-mcp-app` warns when it writes a suffix-less app into one. If
+George meant (b), the only difference is the default, and flipping it is one line.
+Decided alongside: the MCP-only CI steps skip rather than fail when a repo has no MCP
+app (the stated empty-set rule in #52 is superseded). Both are in progress on
+`feat/skip-when-no-mcp-apps` and `feat/app-name-verbatim`.
+
 ---
 
 ## 54. `pruneLogs` is intermittent on CI — and it is the coverage gate

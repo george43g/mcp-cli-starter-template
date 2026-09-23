@@ -157,6 +157,13 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
   error, nothing thrown. `cli-kit@2.0.1` broke 8 of one consumer's 12 snapshot
   tests. When changing what a kit prints, say so in its README: cli-kit's
   standing promise is *results and meta footers stable, chrome not*.
+- **A generated monorepo is not an MCP monorepo.** George, 2026-09-23: *"the mcp
+  naming is a vestigial leftover, and many of the tools i build happen to have an
+  mcp api surface … by no means are we LIMITED to that … we can include all kinds
+  of apps that do all kinds of things."* An MCP server is one optional surface of an
+  app. Gate MCP-specific checks on the mcp-kit dependency, never on every app, and
+  never treat an app without it, or a repo with none, as an error (DEFERRED #52,
+  #53).
 - **You work FOR the consuming agents.** When a consumer session (EQStack/imsg-mcp,
   browser-tab-mcp, up-bank-mcp, life-stack, wm-stack) asks for a kit update, lift or
   improvement, that is a work order — implement it by default rather than
