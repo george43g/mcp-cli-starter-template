@@ -4171,6 +4171,19 @@ Closing it needs a second rule: an `apps/*` with a `src/` and no marker is an er
 by another affirmative fact), and inventing that unasked is how a guard acquires an
 exclusion list, which `check-stdout-purity.mjs:20-23` exists to avoid.
 
+**REJECTED 2026-09-23 — the "every app-like workspace" invariant was wrong, not merely
+unfinished.** George: *"that is ridiculous … we use this to scaffold monorepos for
+convenience, the mcp naming is a vestigial leftover, and many of the tools i build
+happen to have an mcp api surface … however, by no means are we LIMITED to that … we
+can include all kinds of apps that do all kinds of things."* Measured against the
+sibling monorepos the same day (`apps/*` with a `package.json` declaring
+`@george43g/mcp-kit`): browser-tab-mcp 1 of 4 (chrome-extension, safari-extension,
+rust-accel unmarked); up-bank-mcp 1 of 2; EQStack 1 of 4 (analysis, plus gmail-mcp and
+imsg-mcp on the raw SDK); life-stack 0 of 19. The proposed rule would have failed CI in
+every one of them. An MCP server is one optional surface of an app, so the gates keep
+selecting only apps that opt into it; an unmarked app is normal, not an error. The
+residue above is closed by this decision, not by a second rule.
+
 **Trap, mine, while verifying this.** My first red drill ran the new script by absolute
 path from a temp fixture and reported a PASS — because
 `scripts/lib/mcp-apps.mjs:36` resolves `REPO_ROOT` from `import.meta.dirname`, so it
