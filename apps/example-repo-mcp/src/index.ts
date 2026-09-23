@@ -19,6 +19,8 @@
 // MUST be first — brands the log directory at module scope, before anything
 // that can log is imported. See src/log-brand.ts.
 import "./log-brand.js";
+import { realpathSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { buildResourcesHandler, startStdio } from "@george43g/mcp-kit";
 import { envBool, setStderrMirror } from "@george43g/robustness";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -86,10 +88,14 @@ export async function runMcpServer(opts: { transport?: "stdio" | "http" } = {}):
 
 // Run when invoked directly (stress harness, manual node invocation).
 // The bin (dist/cli.js) goes through cli.ts and never trips this branch.
+// Compared as file URLs, the same way cli.ts does it. This used to be
+// `argv[1].endsWith("/src/index.ts")`, which never matches a Windows path
+// (backslashes): the module loaded, started nothing, and the process exited
+// 0 with no output — measured on windows-latest.
 const isMain = (() => {
   try {
-    const arg = process.argv[1] ?? "";
-    return arg.endsWith("/dist/index.js") || arg.endsWith("/src/index.ts");
+    const arg = process.argv[1];
+    return arg !== undefined && import.meta.url === pathToFileURL(realpathSync(arg)).href;
   } catch {
     return false;
   }

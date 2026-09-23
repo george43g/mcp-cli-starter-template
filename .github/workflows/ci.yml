@@ -303,17 +303,17 @@ jobs:
           pnpm turbo run build --filter="./packages/*"
           node scripts/for-each-mcp-app.mjs build:ts
 
-      - name: Repo script unit tests
-        run: pnpm test:scripts
-
-      # TEMPORARY — remove this whole step once the http-lifecycle exit-0 on
-      # win32 is explained. Boots the same child http-lifecycle.test.ts boots,
+      # TEMPORARY — remove this whole step once windows-latest shows the
+      # http-lifecycle child reaching its banner. Runs straight after the build,
+      # before any suite, so no earlier failure can skip it. Boots the same child http-lifecycle.test.ts boots,
       # once, outside vitest. `--trace-exit` prints a stack for every
       # process.exit() call, so: a stack => something called exit (robustness
       # shutdown, a signal handler); no stack and a fast exit 0 => the event
       # loop simply drained, i.e. nothing ever started. The first line prints
-      # the argv[1] node will see, and whether src/index.ts's POSIX-only
-      # `endsWith("/src/index.ts")` entry guard would accept it.
+      # the argv[1] node will see, and whether the OLD POSIX-only guard
+      # (`endsWith("/src/index.ts")`, replaced by a file-URL comparison) would
+      # have accepted it — expected `false` on Windows, with the banner still
+      # printing below if the fix works.
       - name: "TEMPORARY diagnostic: why src/index.ts --http exits 0 on win32"
         continue-on-error: true
         working-directory: apps/example-repo-mcp
@@ -326,7 +326,7 @@ jobs:
           NO_COLOR: "1"
           CI: "1"
         run: |
-          node -e "const p = require('node:path').resolve('src/index.ts'); console.log('argv[1] =', p, '| index.ts guard accepts it:', p.endsWith('/src/index.ts'))"
+          node -e "const p = require('node:path').resolve('src/index.ts'); console.log('argv[1] =', p, '| old endsWith guard would accept it:', p.endsWith('/src/index.ts'))"
           set +e
           timeout 20 node --trace-exit --import tsx src/index.ts --http < /dev/null
           echo "exit status: $? (124 = still running after 20s, so it did NOT exit early)"
@@ -334,13 +334,19 @@ jobs:
           ls -la "$MCP_LOG_DIR" 2>&1
           cat "$MCP_LOG_DIR"/*.ndjson 2>&1 | tail -n 40
 
+      - name: Repo script unit tests
+        if: ${{ !cancelled() }}
+        run: pnpm test:scripts
+
       - name: MCP app tests (spawns, signals, tmpdir, printed paths)
+        if: ${{ !cancelled() }}
         # Straight through the script, not `pnpm test`: with no npm_execpath it
         # takes the cmd.exe fallback in for-each-mcp-app, which is the path the
         # original ENOENT came from.
         run: node scripts/for-each-mcp-app.mjs test
 
       - name: Scaffolder tests (golden drift + phases; ~10s)
-        # Last, so a Windows-only scaffolder failure cannot hide the app
-        # results above. Its test script regenerates its own templates first.
+        if: ${{ !cancelled() }}
+        # `!cancelled()` on each suite: one red suite must not hide the
+        # others. Its test script regenerates its own templates first.
         run: pnpm --filter @george43g/mcp-scaffold test

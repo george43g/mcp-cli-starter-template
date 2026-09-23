@@ -29,8 +29,12 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+// fileURLToPath, not `.pathname`: on Windows `.pathname` is "/C:/…" and
+// percent-encoded (RUNNER~1 becomes RUNNER%7E1), so every path built on it is
+// wrong. Measured on windows-latest. Keeps the trailing separator.
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const MCP_MARKER = "@george43g/mcp-kit";
 const CALL = /\bconsole\.[a-zA-Z]+\s*\(/;
 
