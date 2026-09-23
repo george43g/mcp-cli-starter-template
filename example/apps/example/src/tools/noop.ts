@@ -4,7 +4,8 @@
 //     (or `<name>.schema.ts` for non-mirrored tool-local types).
 //  2. .describe() EVERY field — these become LLM-facing tool docs.
 //  3. Set sensible defaults; never require fields that can be inferred.
-//  4. Annotations: readOnlyHint | destructiveHint | idempotentHint | openWorldHint.
+//  4. Annotations: title (shown in host UIs; tests/tool-contract.test.ts requires it)
+//     + readOnlyHint | destructiveHint | idempotentHint | openWorldHint.
 //  5. Per-tool timeout in the ToolDefinition (or rely on default 30s).
 //  6. Return content + structuredContent (always; the dispatcher does this for you).
 //  7. Wrap untrusted user-content with sanitize() and (if appropriate) wrapUntrusted().
@@ -30,6 +31,7 @@ export const noopTool: ToolDefinition<typeof NoopInputSchema, typeof NoopOutputS
   input: NoopInputSchema,
   output: NoopOutputSchema,
   annotations: {
+    title: "No-op echo (demo)",
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,

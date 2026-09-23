@@ -203,7 +203,7 @@ Types are hand-mirrored between `packages/shared-types/src/index.ts` (Zod) and `
 
 - **Node version**: ≥24. The setup script handles `nvm install 24` and corepack/pnpm activation.
 - **Environment mode**: on Linux/cloud, `.env.test` covers test mode; `.env.local` is per-developer and should not exist in cloud workspaces. If the agent needs a baseline config, fill `.env` from `.env.example`.
-- **Native module**: cloud workspaces typically lack a Rust toolchain. The `build:native:optional` script silently skips when `rustc` is missing; the TS fallback path is used automatically.
+- **Native module**: cloud workspaces typically lack a Rust toolchain. The `build:native:optional` script warns and skips (exit 0) when `rustc` is missing; the TS fallback path is used automatically.
 - **Running tests**: `pnpm test` (default mode). Tests gate behavior with `MCP_DISABLE_NATIVE=1` where the native path can't be assumed.
 
 ## Troubleshooting

@@ -35,7 +35,7 @@ description: Cloud-agent environment setup for working on this repo — Node 24 
 ## Native acceleration in cloud workspaces
 
 Cloud runners often lack a Rust toolchain. The native build is **optional** —
-the `build:native:optional` script silently skips on missing `rustc`. The
+the `build:native:optional` script warns and skips (exit 0) on missing `rustc`. The
 TypeScript fallback path is used automatically. CI test matrices include
 both paths (`pnpm test` and `pnpm test:no-native`).
 

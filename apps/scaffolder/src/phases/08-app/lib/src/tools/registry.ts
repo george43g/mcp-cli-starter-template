@@ -3,7 +3,9 @@
  *
  * Adding a tool:
  *   1. Create `src/tools/<name>.ts` matching the noop pattern.
- *   2. Import it here and add to the array below.
+ *   2. Import it here and add to the array below. Give it an
+ *      `annotations.title` and a README `## Tools` row —
+ *      `tests/tool-contract.test.ts` fails without either.
  *   3. Add an integration test in `tests/integration.test.ts`.
  *   4. If lifecycle-affecting, add a stress case in `scripts/stress-mcp.ts`.
  */

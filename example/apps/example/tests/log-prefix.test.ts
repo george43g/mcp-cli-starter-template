@@ -75,7 +75,16 @@ function subcommands(): string[] {
 async function runIsolated(sub: string): Promise<string> {
   const sandbox = mkdtempSync(join(tmpdir(), "log-prefix-"));
   sandboxes.push(sandbox);
-  const env = { ...process.env, TMPDIR: sandbox, MCP_LOG_TO_FILE: "1" };
+  // os.tmpdir() reads TMPDIR on POSIX but TEMP, then TMP, on win32. Redirecting
+  // only TMPDIR sends a Windows child's logs to the real temp dir while this
+  // test inspects an empty sandbox, so every case passes vacuously there.
+  const env = {
+    ...process.env,
+    TMPDIR: sandbox,
+    TEMP: sandbox,
+    TMP: sandbox,
+    MCP_LOG_TO_FILE: "1",
+  };
   const args = [BIN, sub, ...(REQUIRED_ARGS[sub] ?? [])];
 
   if (!LONG_RUNNING.has(sub)) {
