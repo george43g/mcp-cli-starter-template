@@ -31,6 +31,7 @@ mcp-scaffold init [target]              fresh scaffold (defaults to cwd)
 mcp-scaffold apply [--target <dir>]     retrofit an existing repo (dry-run; --execute to apply)
 mcp-scaffold plan  [--target <dir>]     dry-run preview only
 mcp-scaffold migrate <id>               run a single migration or one whole phase
+mcp-scaffold add-mcp-app <name>         add apps/<name>-mcp/ to an existing scaffolded repo
 mcp-scaffold list                       list discovered phases + migrations
 ```
 
@@ -65,8 +66,18 @@ It only runs when the run actually changed a dependency declaration
 reference tree you do not intend to build (this repo's own `regen:example` does
 exactly that).
 
-A failed install is a warning, not a failure. The generated files are already
-correct on disk; the warning tells you which command to re-run and where.
+A failed install is a warning, not a failure: the files are on disk, and the
+warning tells you which command to re-run and where once the cause is fixed.
+
+## Adding a second app
+
+`add-mcp-app <name>` prints the resolved `--target` first (it defaults to the
+current directory), then checks the private workspace packages the new app
+depends on — `build-config`, `tsconfig`, `vitest-config`, `shared-types` —
+before writing anything. A missing one is created, only when its directory is
+absent too; an existing one is never modified. If one is present but lacks an
+export the app imports, or cannot be created, the command fails naming the
+package, the export and the fix, and writes nothing.
 
 Existing-target policy:
 
