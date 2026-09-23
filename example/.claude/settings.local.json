@@ -30,9 +30,9 @@
       "WebSearch",
       "WebFetch",
       "mcp__claude_ai_Context7__*",
-      "mcp__example-mcp-dev__*"
+      "mcp__example-dev__*"
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["example-mcp-dev"]
+  "enabledMcpjsonServers": ["example-dev"]
 }

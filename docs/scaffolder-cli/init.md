@@ -15,7 +15,7 @@ Target directory (defaults to cwd)
 
 ### `--name <name>`
 
-Tool name (kebab-case, BARE — no -mcp suffix)
+Tool name (kebab-case), used as given: --name foo → apps/foo, bin foo
 
 ### `--scope <scope>`
 

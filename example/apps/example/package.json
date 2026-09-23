@@ -1,5 +1,5 @@
 {
-  "name": "@george43g/example-mcp",
+  "name": "@george43g/example",
   "version": "0.0.0",
   "description": "example — MCP server + CLI + TUI. Cloned from mcp-cli-starter-template; ready to extend with your own tools.",
   "type": "module",

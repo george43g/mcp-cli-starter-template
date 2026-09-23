@@ -14,7 +14,7 @@
  * This runs BEFORE the app is written, against the exact bytes 08-app will
  * write (same substitute + applyPublishedRanges pipeline as portPackage), so a
  * refusal leaves the target untouched. Failing after the write would leave
- * apps/<name>-mcp/ on disk, and the re-run would then be refused by the 08-app
+ * apps/<name>/ on disk, and the re-run would then be refused by the 08-app
  * collision guard.
  *
  * Invariant: a consumer's existing package is never modified. A missing one is
@@ -345,7 +345,7 @@ export async function ensureAppWorkspaceDeps(
   const phase: PhaseRunResult = { phaseId: WORKSPACE_DEPS_PHASE_ID, results };
   const name = requireRepoName(ctx.config);
   // m1-app-port reports the collision; creating packages first would be noise.
-  if (ctx.fs.exists(`apps/${name}-mcp`)) return phase;
+  if (ctx.fs.exists(`apps/${name}`)) return phase;
 
   const scope = ctx.config.global.scope.peek() ?? "@george43g";
   const files = options.appFiles ?? renderAppFiles(ctx);
@@ -398,7 +398,7 @@ export async function ensureAppWorkspaceDeps(
   }
   if (problems.length > 0) {
     throw new Error(
-      `add-mcp-app: refusing to write apps/${name}-mcp/ into ${ctx.cwd} — ` +
+      `add-mcp-app: refusing to write apps/${name}/ into ${ctx.cwd} — ` +
         "the workspace could not install it:\n" +
         problems.map((p) => `  - ${p}`).join("\n") +
         "\nNothing was written.",
@@ -431,7 +431,7 @@ export async function ensureAppWorkspaceDeps(
         `add-mcp-app: created ${unlisted.map(([, r]) => `${r.pkgDir}/`).join(", ")}, but ` +
           "pnpm-workspace.yaml does not include it, so the new app still could not install.\n" +
           "  To fix: add `packages/*` to pnpm-workspace.yaml, then re-run add-mcp-app. " +
-          `apps/${name}-mcp/ was not written.`,
+          `apps/${name}/ was not written.`,
       );
     }
   }

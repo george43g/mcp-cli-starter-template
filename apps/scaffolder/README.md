@@ -31,7 +31,7 @@ mcp-scaffold init [target]              fresh scaffold (defaults to cwd)
 mcp-scaffold apply [--target <dir>]     retrofit an existing repo (dry-run; --execute to apply)
 mcp-scaffold plan  [--target <dir>]     dry-run preview only
 mcp-scaffold migrate <id>               run a single migration or one whole phase
-mcp-scaffold add-mcp-app <name>         add apps/<name>-mcp/ to an existing scaffolded repo
+mcp-scaffold add-mcp-app <name>         add apps/<name>/ to an existing scaffolded repo
 mcp-scaffold list                       list discovered phases + migrations
 ```
 
@@ -69,6 +69,34 @@ exactly that).
 A failed install is a warning, not a failure: the files are on disk, and the
 warning tells you which command to re-run and where once the cause is fixed.
 
+## Naming
+
+The name you pass is the app's name, used as given — nothing is appended and
+nothing is stripped. `--name foo` gives `apps/foo/`, package `<scope>/foo`,
+bin `foo`, dev server `foo-dev`; `--name foo-mcp` gives `apps/foo-mcp/`,
+package `<scope>/foo-mcp`, bin `foo-mcp`, dev server `foo-mcp-dev`. The
+command name `--help` prints is read from the app's `bin`, not derived from its
+package name. Names that would collide with a workspace or package every
+generated repo already has (`rust-accel`, `shared-types`, `tsconfig`,
+`vitest-config`, `biome-config`, `build-config`, and the published kits) are
+rejected.
+
+A fresh scaffold names its private root package `<name>-workspace`, so
+`pnpm --filter <name>` reaches the app: pnpm matches an exact unscoped name
+before a scoped one, and a root also called `<name>` would win. An existing
+repo's root name is never changed.
+
+On an existing repo (`apply`, `migrate`), the name comes from `--name`; failing
+that, from the one `apps/*` workspace that depends on `@george43g/mcp-kit` (so
+a repo generated with root `foo` and app `apps/foo-mcp` keeps re-stamping
+`apps/foo-mcp`); failing that, from the root `package.json`. When several apps
+depend on mcp-kit, the root name is used and the command prints which name it
+chose and why.
+
+A monorepo with no MCP app at all is fine: the generated CI's MCP gates
+(`for-each-mcp-app.mjs`, `check-stdout-purity.mjs`) skip with a notice when no
+`apps/*` workspace depends on `@george43g/mcp-kit`.
+
 ## Adding a second app
 
 `add-mcp-app <name>` prints the resolved `--target` first (it defaults to the
@@ -78,6 +106,13 @@ before writing anything. A missing one is created, only when its directory is
 absent too; an existing one is never modified. If one is present but lacks an
 export the app imports, or cannot be created, the command fails naming the
 package, the export and the fix, and writes nothing.
+
+It recognises a scaffolded repo by an `apps/*` workspace that depends on
+`@george43g/mcp-kit` or has a scoped package name — not by a `-mcp` directory
+name — and takes the npm scope from it. If the repo's
+`.github/workflows/ci.yml` predates the marker-derived gates and still selects
+`--filter "<scope>/*-mcp"`, adding an app without that suffix prints a warning
+naming the file and the `--filter <scope>/<name>` to add beside it.
 
 Existing-target policy:
 
@@ -147,7 +182,7 @@ $ mcp-scaffold apply --target ~/repos/my-mcp --execute
 
 ## RETROFIT.md — the per-repo retrofit checklist
 
-For migrations that **couldn't auto-apply** to your repo (the 'new'-only ones that lay down a fresh monorepo skeleton, port the whole `apps/<name>-mcp/` tree, or add the optional Rust acceleration crate), `apply --execute` writes a `RETROFIT.md` at the target repo root. Each section contains:
+For migrations that **couldn't auto-apply** to your repo (the 'new'-only ones that lay down a fresh monorepo skeleton, port the whole `apps/<name>/` tree, or add the optional Rust acceleration crate), `apply --execute` writes a `RETROFIT.md` at the target repo root. Each section contains:
 
 - What the migration would have done in a fresh scaffold
 - Why it couldn't be auto-applied (mode mismatch, divergent files, etc.)

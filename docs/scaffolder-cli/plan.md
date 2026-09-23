@@ -35,7 +35,7 @@ Write a machine-readable migration report
 
 ### `--name <name>`
 
-Tool name (kebab-case, BARE — no -mcp suffix)
+Tool name (kebab-case), used as given: --name foo → apps/foo, bin foo
 
 ### `--scope <scope>`
 

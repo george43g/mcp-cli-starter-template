@@ -70,7 +70,7 @@ export default class RustAccelMigration extends Migration {
         `4. Add a drift-check test in packages/shared-types/tests/drift.test.ts that parses ` +
         `apps/rust-accel/src/types.rs at test time and asserts every Zod schema's fields are ` +
         `present in the Rust struct (and vice versa).\n` +
-        `5. Add apps/<name>-mcp/src/native-bridge.ts: \`tryLoadNative()\` requires the .node ` +
+        `5. Add apps/<name>/src/native-bridge.ts: \`tryLoadNative()\` requires the .node ` +
         `binary at runtime, with a try/catch + MCP_DISABLE_NATIVE=1 env escape that returns ` +
         `undefined to force the TS fallback path. Every accelerated tool handler must work ` +
         `with OR without the native module.\n` +

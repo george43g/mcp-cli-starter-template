@@ -98,7 +98,7 @@ See [Shared runtime versus generated source](docs/SHARED_RUNTIME.md).
 
 ### Adding a second MCP app to a scaffolded repo
 
-`add-mcp-app <name>` runs the 08-app phase migration against the existing monorepo with the new name injected. It scaffolds `apps/<name>-mcp/`, writes `.cursor/rules/<name>.mdc`, and appends a `<name>-mcp-dev` entry to `.mcp.json`. Other root files that hard-code the first app's name (root `mise.toml`'s pinned `screenshots` task, README sections) are intentionally not touched — fix those by hand if your scripts need to cover both apps. The npm scope is auto-detected from the first existing `apps/*-mcp/package.json`; pass `--scope` to override.
+`add-mcp-app <name>` runs the 08-app phase migration against the existing monorepo with the new name injected. The name is used as given — nothing is appended, and a trailing `-mcp` is kept if you type one: `add-mcp-app foo` scaffolds `apps/foo/` with bin `foo`, writes `.cursor/rules/foo.mdc`, and appends a `foo-dev` entry to `.mcp.json`. Other root files that hard-code the first app's name (root `mise.toml`'s pinned `screenshots` task, README sections) are intentionally not touched — fix those by hand if your scripts need to cover both apps. The npm scope is auto-detected from an existing app's scoped package name (MCP apps first); pass `--scope` to override. In a repo generated before CI selected apps by their `@george43g/mcp-kit` dependency, `ci.yml` still selects `--filter "<scope>/*-mcp"`; adding an app whose name lacks that suffix prints a warning naming the file and the extra `--filter` to add, because that filter would otherwise pass without ever running for the new app.
 
 ```bash
 mcp-scaffold add-mcp-app billing               # apps/billing-mcp/ under the detected scope

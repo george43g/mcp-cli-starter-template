@@ -92,8 +92,9 @@ describe("retrofitIntent() — 'new'-only migrations", () => {
     expect(intent.prompt.length).toBeGreaterThan(500);
     expect(intent.prompt).toMatch(/mcp-cli-starter-template/);
     expect(intent.prompt).toMatch(/turbo/i);
-    // User's repo name substituted into the concrete app path
-    expect(intent.prompt).toContain("apps/wm-mcp/");
+    // User's repo name substituted verbatim into the concrete app path
+    expect(intent.prompt).toContain("apps/wm/");
+    expect(intent.prompt).not.toContain("apps/wm-mcp/");
   });
 
   it("08-app/m1-app-port emits a retrofit intent referencing the architect skill", async () => {

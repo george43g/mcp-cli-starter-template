@@ -5,7 +5,7 @@
 **MCP server + CLI + TUI — one bin, three surfaces, production-ready from commit 1.**
 
 [![CI](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml/badge.svg)](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@george43g/example-mcp.svg)](https://www.npmjs.com/package/@george43g/example-mcp)
+[![npm version](https://img.shields.io/npm/v/@george43g/example.svg)](https://www.npmjs.com/package/@george43g/example)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=24](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)](https://nodejs.org)
 
@@ -25,11 +25,11 @@
 
 ```bash
 # Run directly (no install needed)
-npx @george43g/example-mcp mcp
+npx @george43g/example mcp
 
 # Or install globally
-npm  install -g @george43g/example-mcp
-pnpm add  -g @george43g/example-mcp
+npm  install -g @george43g/example
+pnpm add  -g @george43g/example
 ```
 
 After install, `example` is on your PATH. All subcommands route through that single bin:
@@ -72,7 +72,7 @@ Paste these into your MCP host's config. The bin name is `example` once installe
   "mcpServers": {
     "example": {
       "command": "npx",
-      "args": ["-y", "@george43g/example-mcp", "mcp"]
+      "args": ["-y", "@george43g/example", "mcp"]
     }
   }
 }
@@ -85,7 +85,7 @@ Paste these into your MCP host's config. The bin name is `example` once installe
   "mcpServers": {
     "example": {
       "command": "npx",
-      "args": ["-y", "@george43g/example-mcp", "mcp"]
+      "args": ["-y", "@george43g/example", "mcp"]
     }
   }
 }
@@ -142,7 +142,7 @@ This section is for the engineer running the scaffolder — delete it once you'v
 
 ```
 apps/
-  example-mcp/             your tool — clone-and-rename target
+  example/             your tool — clone-and-rename target
     src/
       cli.ts                THE SINGLE BIN — commander dispatch
       index.ts              runMcpServer() + callMcpTool() (library exports)

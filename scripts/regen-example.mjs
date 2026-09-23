@@ -75,7 +75,8 @@ async function prune(dir) {
  * `mise.toml` without explicit consent, and the task silently does not run.
  */
 function generateUsageArtifacts(target) {
-  const appDir = join(target, "apps/example-mcp");
+  // `--name example` below, used verbatim: the app is apps/example/.
+  const appDir = join(target, "apps/example");
   const env = { ...process.env, MISE_TRUSTED_CONFIG_PATHS: target };
   for (const task of ["docs", "completions", "manpage"]) {
     run("mise", ["run", "--cd", appDir, task], { env });

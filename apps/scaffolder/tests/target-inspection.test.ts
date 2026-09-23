@@ -21,13 +21,75 @@ afterEach(async () => {
 });
 
 describe("inspectTarget name resolution", () => {
-  it("derives an unscoped bare name and removes one trailing -mcp", async () => {
+  it("derives the unscoped name VERBATIM — a trailing -mcp is part of the name", async () => {
     const cwd = await target();
     await pkg(cwd, { name: "@scope/my-tool-mcp" });
     const result = await inspectTarget({ cwd, mode: "existing" });
-    expect(result.repoName).toBe("my-tool");
+    expect(result.repoName).toBe("my-tool-mcp");
     expect(result.repoNameSource).toBe("package.json");
     expect(result.fallbackWarning).toBeUndefined();
+  });
+
+  it("accepts an explicit --name ending in -mcp (the old ban is gone)", async () => {
+    const cwd = await target();
+    const result = await inspectTarget({ cwd, mode: "new", explicitName: "foo-mcp" });
+    expect(result.repoName).toBe("foo-mcp");
+  });
+
+  it.each(["rust-accel", "shared-types", "tsconfig", "robustness", "mcp-kit"])(
+    "rejects --name %s, which would collide with a workspace or published package",
+    async (name) => {
+      const cwd = await target();
+      await expect(inspectTarget({ cwd, mode: "new", explicitName: name })).rejects.toThrow(
+        /collides with/,
+      );
+    },
+  );
+
+  // A repo generated before names went verbatim has root `foo` and its app at
+  // apps/foo-mcp. Taking the root name would point every re-stamped path at
+  // apps/foo, which does not exist; the one MCP app IS the tool.
+  async function mcpApp(cwd: string, dir: string, name: string): Promise<void> {
+    await mkdir(join(cwd, "apps", dir), { recursive: true });
+    await writeFile(
+      join(cwd, "apps", dir, "package.json"),
+      JSON.stringify({ name, dependencies: { "@george43g/mcp-kit": "^2.0.0" } }),
+    );
+  }
+
+  it("takes the name from the ONE mcp-kit app in existing mode, over the root name", async () => {
+    const cwd = await target();
+    await pkg(cwd, { name: "foo" });
+    await mcpApp(cwd, "foo-mcp", "@scope/foo-mcp");
+    await mkdir(join(cwd, "apps", "web"), { recursive: true });
+    await writeFile(
+      join(cwd, "apps", "web", "package.json"),
+      JSON.stringify({ name: "@scope/web" }),
+    );
+    const result = await inspectTarget({ cwd, mode: "existing" });
+    expect(result.repoName).toBe("foo-mcp");
+    expect(result.repoNameSource).toBe("mcp-app");
+    expect(result.repoNameNote).toMatch(/apps\/foo-mcp/);
+  });
+
+  it("keeps the root name with several mcp-kit apps, and says which it chose and why", async () => {
+    const cwd = await target();
+    await pkg(cwd, { name: "foo" });
+    await mcpApp(cwd, "a-mcp", "@scope/a-mcp");
+    await mcpApp(cwd, "b", "@scope/b");
+    const result = await inspectTarget({ cwd, mode: "existing" });
+    expect(result.repoName).toBe("foo");
+    expect(result.repoNameSource).toBe("package.json");
+    expect(result.repoNameNote).toMatch(
+      /"foo".*root package\.json.*2 apps.*@scope\/a-mcp.*@scope\/b/s,
+    );
+  });
+
+  it("ignores the app in new mode — a fresh scaffold names itself", async () => {
+    const cwd = await target();
+    await mcpApp(cwd, "foo-mcp", "@scope/foo-mcp");
+    const result = await inspectTarget({ cwd, mode: "new", explicitName: "bar" });
+    expect(result.repoName).toBe("bar");
   });
 
   it("lets explicit --name win over package metadata", async () => {

@@ -8,7 +8,7 @@
 # against the process working directory, NOT the tape's location, so the
 # `../../../../` prefixes below are only correct when cwd is this folder:
 #
-#     cd apps/example-mcp/scripts/screenshots && vhs overview.tape
+#     cd apps/example/scripts/screenshots && vhs overview.tape
 #
 # `pnpm screenshots` and .github/workflows/screenshots.yml both do that for
 # you. Running `vhs apps/.../overview.tape` from the repo root instead writes

@@ -78,4 +78,4 @@ run = """
 [tasks.rename]
 description = "Rename this template (replaces example-repo placeholders, self-deletes script)"
 run = "node scripts/init-template.mjs {{ arg(name=\"name\") }}"
-# Example: mise run rename -- --name foo-mcp --scope @myorg
+# Example: mise run rename -- --name foo --scope @myorg   (name used as given: apps/foo, bin foo)

@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -99,9 +100,7 @@ describe("migrate command safety defaults", () => {
     for (const { dir } of PUBLISHED_PACKAGES) {
       expect(existsSync(join(cwd, "packages", dir))).toBe(false);
     }
-    const pkg = JSON.parse(
-      await readFile(join(cwd, "apps", "fresh-tool-mcp", "package.json"), "utf8"),
-    );
+    const pkg = JSON.parse(await readFile(join(cwd, "apps", "fresh-tool", "package.json"), "utf8"));
     // Derived, not literal — a hardcoded range here is what let the scaffolder
     // ship "^0.1.0" while robustness was on 0.2.1.
     for (const { name } of PUBLISHED_PACKAGES) {
@@ -120,7 +119,7 @@ describe("migrate command safety defaults", () => {
       },
     );
 
-    const app = join(cwd, "apps", "fresh-tool-mcp");
+    const app = join(cwd, "apps", "fresh-tool");
     for (const path of [
       join(app, "completions", "fresh-tool.bash"),
       join(app, "completions", "_fresh-tool"),
@@ -142,6 +141,64 @@ describe("migrate command safety defaults", () => {
     expect(manpage).toContain(".TH FRESH-TOOL 1");
     expect(docs).toContain("# `fresh-tool`");
   });
+});
+
+// The app's name is taken AS GIVEN: no suffix appended, none rejected. The
+// installed bin, the commander name `--help` prints, and every path and key
+// derived from the name must agree — before this, the bin was the bare token
+// while cli.ts regex-stripped `-mcp` off the package name at runtime, and the
+// two agreed only because a bare name could never end in `-mcp`.
+describe("init names the app verbatim", () => {
+  it.each(["fresh-tool", "fresh-tool-mcp"])("--name %s", async (name) => {
+    const cwd = await target();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await buildProgram().parseAsync(["--no-banner", "init", cwd, "--name", name, "--no-install"], {
+      from: "user",
+    });
+
+    const app = join(cwd, "apps", name);
+    const pkg = JSON.parse(await readFile(join(app, "package.json"), "utf8"));
+    expect(pkg.name).toBe(`@george43g/${name}`);
+    expect(Object.keys(pkg.bin)).toEqual([name]);
+    expect(existsSync(join(cwd, "apps", `${name}-mcp`))).toBe(false);
+
+    // The commander name comes from the bin, not from the package name.
+    const cli = await readFile(join(app, "src", "cli.ts"), "utf8");
+    expect(cli).toMatch(/\.name\(CLI_NAME\)/);
+    expect(cli).not.toMatch(/-mcp\$/);
+    const access = await readFile(join(app, "src", "access-check.ts"), "utf8");
+    expect(access).not.toMatch(/-mcp\$/);
+
+    // usage(1) spec, dev-server key and its paths all carry the same name.
+    expect(await readFile(join(app, ".usage.kdl"), "utf8")).toContain(`bin "${name}"`);
+    const mcp = JSON.parse(await readFile(join(cwd, ".mcp.json"), "utf8"));
+    const dev = mcp.mcpServers[`${name}-dev`];
+    expect(dev, JSON.stringify(Object.keys(mcp.mcpServers))).toBeDefined();
+    expect(dev.env.MCP_DEV_ENTRY).toBe(`apps/${name}/src/index.ts`);
+  });
+});
+
+// With the app named verbatim, a root package ALSO called `<name>` wins
+// `pnpm --filter <name>` (pnpm matches the exact unscoped name before the
+// scoped app — measured). The fresh root is `<name>-workspace` so the short
+// filter reaches the app.
+describe("init names the root so it cannot shadow the app", () => {
+  it("pnpm --filter <name> resolves to the app, not the root", async () => {
+    const cwd = await target();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await buildProgram().parseAsync(["--no-banner", "init", cwd, "--name", "foo", "--no-install"], {
+      from: "user",
+    });
+    const root = JSON.parse(await readFile(join(cwd, "package.json"), "utf8"));
+    expect(root.name).toBe("foo-workspace");
+    expect(root.private).toBe(true);
+    const where = execFileSync("pnpm", ["--filter", "foo", "exec", "pwd"], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, npm_config_verify_deps_before_run: "false" },
+    });
+    expect(realpathSync(where.trim())).toBe(realpathSync(join(cwd, "apps", "foo")));
+  }, 60_000);
 });
 
 describe("existing target strategies and reports", () => {
@@ -185,6 +242,37 @@ describe("existing target strategies and reports", () => {
             migration.migrationId === "07-shared-types/m1-shared-types",
         )?.status,
     ).toBe("skipped");
+  });
+
+  // An OLD generated repo: root `foo`, app at apps/foo-mcp. Re-stamped files
+  // must point at the app that exists, not at apps/foo.
+  it("re-stamps an old generated repo against its existing app dir", async () => {
+    const cwd = await target({ name: "foo", packageManager: "pnpm@10.29.3" });
+    await mkdir(join(cwd, "apps", "foo-mcp"), { recursive: true });
+    await writeFile(
+      join(cwd, "apps", "foo-mcp", "package.json"),
+      JSON.stringify({ name: "@george43g/foo-mcp", dependencies: { "@george43g/mcp-kit": "^2" } }),
+    );
+    await mkdir(join(cwd, "packages"));
+    await writeFile(join(cwd, "turbo.json"), "{}\n");
+    await writeFile(join(cwd, "pnpm-workspace.yaml"), "packages: []\n");
+    const out = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await buildProgram().parseAsync(
+      ["--no-banner", "apply", "--target", cwd, "--execute", "--no-install"],
+      { from: "user" },
+    );
+
+    expect(out.mock.calls.map((c) => String(c[0])).join("")).toMatch(
+      /Tool name "foo-mcp" taken from apps\/foo-mcp/,
+    );
+    expect(existsSync(join(cwd, "apps", "foo"))).toBe(false);
+    const mcp = JSON.parse(await readFile(join(cwd, ".mcp.json"), "utf8"));
+    expect(mcp.mcpServers["foo-mcp-dev"].env.MCP_DEV_ENTRY).toBe("apps/foo-mcp/src/index.ts");
+    expect(await readFile(join(cwd, "mise.toml"), "utf8")).toContain(
+      "pnpm --filter @george43g/foo-mcp screenshots",
+    );
+    // The root is the user's; existing mode never renames it.
+    expect(JSON.parse(await readFile(join(cwd, "package.json"), "utf8")).name).toBe("foo");
   });
 
   it("runs starter migrations for a complete starter layout", async () => {

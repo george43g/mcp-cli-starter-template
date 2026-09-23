@@ -54,10 +54,23 @@ const TURBO_JSON = JSON.stringify(
   2,
 );
 
+/**
+ * The fresh root's package name: `<name>-workspace`, never `<name>` itself.
+ *
+ * App names are verbatim, so the app is `<scope>/<name>`, and a root also
+ * called `<name>` wins `pnpm --filter <name>` — pnpm matches the exact
+ * unscoped name before the scoped one (measured), so `pnpm --filter foo tui`
+ * ran the ROOT. The root is private and nothing addresses it by name. Only
+ * this "new"-mode migration writes it; an existing repo's root is never renamed.
+ */
+export function rootPackageName(name: string): string {
+  return `${name}-workspace`;
+}
+
 const ROOT_PACKAGE_JSON = (name: string) =>
   `${JSON.stringify(
     {
-      name,
+      name: rootPackageName(name),
       version: "0.0.0",
       private: true,
       description: `${name} — MCP+CLI+TUI tool scaffolded from mcp-cli-starter-template.`,
@@ -164,7 +177,7 @@ export default class MonorepoMigration extends Migration {
         "Add root scripts: build/dev/test/lint/typecheck — all wrapping `turbo run <task>`. Plus a `verify` script that chains lint+typecheck+test+build.",
         "Move your existing source under `apps/" +
           name +
-          "-mcp/` (or whatever you renamed it to) and re-anchor imports.",
+          "/` (or whatever you renamed it to) and re-anchor imports.",
       ],
       prompt:
         `Retrofit my repo to a Turborepo monorepo following the template at ` +
@@ -191,8 +204,8 @@ export default class MonorepoMigration extends Migration {
         `typecheck dependsOn ^build, lint inputs src/**, test dependsOn ^build, ` +
         `dev cache:false persistent:true, clean cache:false. Use schema ` +
         `"https://turbo.build/schema.json" and \`ui: "tui"\`.\n` +
-        `6. Move my existing MCP server source into \`apps/${name}-mcp/\` (or pick a kebab-case ` +
-        `name). Update its package.json name to match (e.g. \`@<scope>/${name}-mcp\`).\n` +
+        `6. Move my existing MCP server source into \`apps/${name}/\` (or pick a kebab-case ` +
+        `name). Update its package.json name to match (e.g. \`@<scope>/${name}\`).\n` +
         `7. Run \`pnpm install\` to materialize the workspace, then \`pnpm verify\` to confirm.\n` +
         `\n` +
         `If my repo already has these fields set, MERGE — do not overwrite my custom ` +

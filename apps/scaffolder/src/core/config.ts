@@ -20,13 +20,39 @@ import type { ApplyMode } from "./migration.js";
 export type { ApplyMode };
 export type PackageManager = "pnpm" | "npm" | "bun";
 
+/**
+ * Names an app cannot take because a generated repo already has a workspace
+ * (`apps/rust-accel`, `packages/<x>`) or a registry dependency with that
+ * unscoped name. The forced `-mcp` suffix used to make every one of these
+ * unreachable; with the name taken verbatim, `--name tsconfig` would produce
+ * two workspaces called `@scope/tsconfig`, and `--name robustness` under the
+ * default scope an app named after the package it depends on.
+ */
+const RESERVED_APP_NAMES: ReadonlySet<string> = new Set([
+  "rust-accel",
+  "shared-types",
+  "tsconfig",
+  "vitest-config",
+  "biome-config",
+  "build-config",
+  "robustness",
+  "cli-kit",
+  "tui-kit",
+  "secret-store",
+  "mcp-kit",
+]);
+
+/**
+ * The tool/app name is used VERBATIM: `foo` → apps/foo/, bin `foo`;
+ * `foo-mcp` → apps/foo-mcp/, bin `foo-mcp`. Nothing is appended or stripped.
+ */
 export function assertValidRepoName(value: string): void {
   if (!/^[a-z][a-z0-9-]*$/.test(value)) {
     throw new Error(`Invalid repoName "${value}" — must be kebab-case`);
   }
-  if (value.endsWith("-mcp")) {
+  if (RESERVED_APP_NAMES.has(value)) {
     throw new Error(
-      `repoName "${value}" must NOT end in '-mcp' — we append it for you. Pass --name ${value.slice(0, -4)} instead.`,
+      `repoName "${value}" collides with a workspace or package every generated repo already has — pick another name.`,
     );
   }
 }
@@ -87,12 +113,14 @@ export class Config {
         ask: async () =>
           input({
             message:
-              "Tool name (kebab-case, BARE — no -mcp suffix; we add it to the dir, e.g. 'wm-stack' → apps/wm-stack-mcp)?",
+              "Tool name (kebab-case, used as given — 'wm-stack' → apps/wm-stack, bin wm-stack)?",
             validate: (v) => {
-              if (!/^[a-z][a-z0-9-]*$/.test(v)) return "kebab-case lowercase, starts with letter";
-              if (v.endsWith("-mcp"))
-                return "drop the -mcp suffix — we append it for you (e.g. 'foo', not 'foo-mcp')";
-              return true;
+              try {
+                assertValidRepoName(v);
+                return true;
+              } catch (err) {
+                return (err as Error).message;
+              }
             },
           }),
         skipIf: (c) => c.global.mode.peek() === "existing",

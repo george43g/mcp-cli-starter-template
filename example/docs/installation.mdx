@@ -6,7 +6,7 @@ description: 'Install example via npm/pnpm/npx or clone the template.'
 ## Run without installing
 
 ```bash
-npx @george43g/example-mcp mcp
+npx @george43g/example mcp
 ```
 
 This downloads, runs, and exits. Use this when wiring the tool into an MCP host config.
@@ -14,8 +14,8 @@ This downloads, runs, and exits. Use this when wiring the tool into an MCP host 
 ## Install globally
 
 ```bash
-npm  install -g @george43g/example-mcp
-pnpm add  -g @george43g/example-mcp
+npm  install -g @george43g/example
+pnpm add  -g @george43g/example
 ```
 
 After install, `example` is on your `$PATH`. All subcommands dispatch through that bin.
@@ -41,7 +41,7 @@ Add this to your MCP host's config file:
   "mcpServers": {
     "example": {
       "command": "npx",
-      "args": ["-y", "@george43g/example-mcp", "mcp"]
+      "args": ["-y", "@george43g/example", "mcp"]
     }
   }
 }

@@ -26,6 +26,33 @@ describe("nameRoffOf", () => {
 });
 
 describe("substitute", () => {
+  // The app's name lands VERBATIM: `example-repo-mcp` is one placeholder for
+  // the app name, not `example-repo` plus a literal suffix. Before this, `-mcp`
+  // was hard-coded text in every lib template and `--name foo-mcp` was banned.
+  it.each([
+    ["foo", "apps/foo @george43g/foo foo-dev bin foo"],
+    ["foo-mcp", "apps/foo-mcp @george43g/foo-mcp foo-mcp-dev bin foo-mcp"],
+  ])("substitutes the app-name placeholder verbatim for --name %s", (name, expected) => {
+    expect(
+      substitute(
+        "apps/example-repo-mcp @george43g/example-repo-mcp example-repo-mcp-dev bin example-repo",
+        {
+          name,
+          nameUpper: nameUpperOf(name),
+        },
+      ),
+    ).toBe(expected);
+  });
+
+  it("leaves -mcp literal where it is about MCP rather than the app's name", () => {
+    expect(
+      substitute("scripts/stress-mcp.ts scripts/mcp-dev-proxy.ts @george43g/mcp-kit", {
+        name: "foo",
+        nameUpper: "FOO",
+      }),
+    ).toBe("scripts/stress-mcp.ts scripts/mcp-dev-proxy.ts @george43g/mcp-kit");
+  });
+
   it("replaces example-repo markers", () => {
     expect(substitute("hello example-repo!", { name: "foo", nameUpper: "FOO" })).toBe("hello foo!");
   });

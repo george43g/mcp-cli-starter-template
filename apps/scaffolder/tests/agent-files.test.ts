@@ -77,8 +77,8 @@ describe("11-agent-files target-aware output", () => {
     expect(agents).toContain("`npm run test`");
     expect(agents).toContain("`node --test`");
     expect(agents).not.toMatch(/mcp-starter|Turborepo/);
-    expect(existsSync(join(cwd, "skills/openwrt/SKILL.md"))).toBe(true);
-    expect(existsSync(join(cwd, ".cursor/rules/openwrt.mdc"))).toBe(true);
+    expect(existsSync(join(cwd, "skills/openwrt-mcp/SKILL.md"))).toBe(true);
+    expect(existsSync(join(cwd, ".cursor/rules/openwrt-mcp.mdc"))).toBe(true);
     expect(await readlink(join(cwd, "CLAUDE.md"))).toBe("AGENTS.md");
     // Cursor reads AGENTS.md + .cursor/rules/*.mdc; the legacy .cursorrules
     // link was dropped 2026-09-21 and must not come back.

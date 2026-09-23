@@ -31,7 +31,7 @@ The shipped workflow has a single trigger — `workflow_dispatch:` — so it nev
    ```
 2. **Add the `NPM_TOKEN` secret** to the repo (Settings → Secrets and variables → Actions). Generate it on npmjs.com with the `Automation` token type and publish scope for your packages.
 3. **Decide which packages to publish.** The starter ships `"private": true` on every workspace package. Set `"private": false` on the packages you want to publish:
-   - `apps/example-mcp/package.json` — the user-facing CLI / MCP / TUI bin (most common)
+   - `apps/example/package.json` — the user-facing CLI / MCP / TUI bin (most common)
    - Any `packages/*` you want reused outside this repo (typically `robustness`, `mcp-kit`, etc.)
 4. **Set the `name` field** on each publishable package to match your npm scope (the starter uses `@george43g/*`; rename if you're publishing to a different scope or unscoped).
 5. **Push a commit with a conventional-commits prefix** (e.g. `feat: initial release`) — semantic-release will compute the first version and publish.
