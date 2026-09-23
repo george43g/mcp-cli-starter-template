@@ -93,13 +93,18 @@ describe("check-stdout-purity", () => {
     assert.equal(r.status, 0, r.stdout + r.stderr);
   });
 
-  it("FAILS when no MCP app exists at all — nothing-to-check is not a pass", () => {
+  // A monorepo of non-MCP apps has no JSON-RPC stdout to protect. Selection is
+  // by the mcp-kit dependency, not a name, so an empty set hides no MCP app.
+  it("SKIPS with exit 0 and a notice when no MCP app exists at all", () => {
     const r = makeRepo({
       "apps/cli-tool/package.json": PLAIN_MANIFEST,
-      "apps/cli-tool/src/main.ts": "const ok = true;\n",
+      "apps/cli-tool/src/main.ts": 'console.log("my real output");\n',
     });
-    assert.equal(r.status, 1, r.stdout + r.stderr);
-    assert.match(r.stderr, /no apps\/\* workspace declares/);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(
+      r.stdout,
+      /check-stdout-purity: no apps\/\* workspace declares @george43g\/mcp-kit — nothing to run, skipping/,
+    );
   });
 
   it("FAILS on an MCP app whose src is empty — a broken walk must not read as purity", () => {

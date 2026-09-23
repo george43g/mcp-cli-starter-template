@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -12,9 +12,10 @@ import { fileURLToPath } from "node:url";
  * check-stdout-purity.test.mjs: what CI consumes is the exit code and the
  * stdout, so that is what gets asserted.
  *
- * The red drill that matters is "zero marked apps → exit 1". The whole defect
- * (DEFERRED #52) was a selection that produced an empty set and still exited 0,
- * so proving the empty case goes RED is the point of this file.
+ * Zero marked apps prints NOTHING on stdout (it is a list, and an empty list is
+ * a legitimate answer for a monorepo with no MCP server) plus a one-line notice
+ * on stderr, and exits 0. What stays red is a marked workspace with no package
+ * name — the one way a real MCP app can still drop out of the gates.
  */
 
 const SCRIPT = fileURLToPath(new URL("./mcp-apps.mjs", import.meta.url));
@@ -35,17 +36,13 @@ function run(files) {
     mkdirSync(join(root, rel, ".."), { recursive: true });
     writeFileSync(join(root, rel), content);
   }
-  try {
-    const stdout = execFileSync("node", [join(root, "scripts", "mcp-apps.mjs")], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout: 30_000,
-      cwd: root,
-    });
-    return { status: 0, stdout, stderr: "" };
-  } catch (err) {
-    return { status: err.status, stdout: String(err.stdout), stderr: String(err.stderr) };
-  }
+  const r = spawnSync("node", [join(root, "scripts", "mcp-apps.mjs")], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 30_000,
+    cwd: root,
+  });
+  return { status: r.status, stdout: String(r.stdout), stderr: String(r.stderr) };
 }
 
 const MARKED = JSON.stringify({
@@ -71,15 +68,20 @@ describe("mcp-apps", () => {
     assert.deepEqual(r.stdout.trim().split("\n"), ["@x/server-mcp"]);
   });
 
-  it("FAILS when no app declares the marker — nothing-to-check is not a pass", () => {
+  it("prints nothing and exits 0 when no app declares the marker, with a notice on stderr", () => {
     const r = run({ "apps/cli-tool/package.json": PLAIN });
-    assert.equal(r.status, 1, r.stdout + r.stderr);
-    assert.match(r.stderr, /no apps\/\* workspace declares @george43g\/mcp-kit/);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.equal(r.stdout, "");
+    assert.match(
+      r.stderr,
+      /mcp-apps: no apps\/\* workspace declares @george43g\/mcp-kit — nothing to run, skipping/,
+    );
   });
 
-  it("FAILS when apps/ does not exist at all", () => {
+  it("prints nothing and exits 0 when apps/ does not exist at all", () => {
     const r = run({ "package.json": PLAIN });
-    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.equal(r.stdout, "");
     assert.match(r.stderr, /no apps\/\* workspace declares/);
   });
 
