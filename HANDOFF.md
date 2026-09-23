@@ -2732,3 +2732,116 @@ tasks. Only this repo was written to; peer repos were read-only throughout.
 
 Nothing mid-flight. Acts on either Blocked-on-you item, peer evidence, or DEFERRED
 #49/#50/#54's triggers.
+
+## Checkpoint · mcp-starter-template · 2026-09-23
+
+Where this block and a conversation summary disagree, **this block is correct**.
+
+### State
+
+`main` at `a3fea01`, clean, level with origin, no open PRs, no worktrees, nothing
+mid-flight. Both of George's 2026-09-21 decisions are executed and closed.
+
+### Constraints
+
+George, 2026-09-21, asked one question at a time (recorded with reasoning in
+DEFERRED #51): **(1) skip** the `delegating-work` pointer line in `AGENTS.md` —
+so do not add it; **(2) drop `.cursorrules` everywhere** — so do not reinstate it.
+Both are standing, not one-off.
+
+### Done
+
+- `.cursorrules` removed from this repo and from scaffolded output (`d8608e6`).
+  `CLAUDE.md` → `AGENTS.md` untouched and still enforced.
+- CI gates no longer select by name (`52a5386`): apps are chosen by declaring
+  `@george43g/mcp-kit`, and an empty set exits 1. Pack coverage 2 → 6 —
+  `robustness`, `secret-store`, `mcp-kit` had been publishing with no tarball
+  dry-run.
+- `.codex/config.toml` tracked again and proven live by inversion (`6be387b`):
+  with the file moved aside both project servers vanish from `codex mcp list`;
+  restored, they return. That refuted `73c6419`'s "Codex never reads it".
+- Release-token guard split into `release-tokens.yml` so it carries the `edited`
+  trigger (`cab3e81`); DEFERRED #47 closed by the same measurement.
+- DEFERRED #51–#54 written; browser-tab-mcp's `-mcp` suffix query answered with
+  verified `file:line` and a priced pick.
+
+### Open
+
+- `mcp-suffix-optional` · mcp-starter-template — make the forced `-mcp` suffix
+  optional. Evidence still open, measured 2026-09-23: `apps/scaffolder/src/core/config.ts:29`
+  still throws on a name ending in `-mcp`. Priced in DEFERRED.md:4183.
+- `gate-every-app` · mcp-starter-template — #52's residue: the rule is "at least
+  one app, and every marked app", not "every app-like workspace", so a partially
+  retrofitted server is unselected and now invisibly. Evidence: DEFERRED.md:4163,
+  never attempted; needs George's call on how `apps/rust-accel` is exempted.
+- `robustness-prunelogs-flake` · mcp-starter-template — DEFERRED.md:4243. Evidence:
+  failed once on CI and passed on re-run with a one-line diff; deliberately not
+  fixed here, since a commit touching `packages/robustness/` is read as a release
+  for that package.
+- `template-guide-tmpl` · mcp-starter-template — rename `lib/AGENTS.md` to a name
+  no tool loads. Evidence: DEFERRED.md:4063, "Recommended, not started".
+- `handoff-checkpoint-adopt` · mcp-starter-template — every dated entry BELOW this
+  block is the old stacked format. Evidence measured 2026-09-23: `HANDOFF.md` was
+  2,734 lines with zero `## Checkpoint ·` blocks and no `handoff-archive/` before
+  this write. `checkpoint adopt` is the owner's one-off call, not mine to take.
+
+### Corrections
+
+- **The premise `.cursorrules` was decided on is false.** It was put to George as
+  "Cursor's docs do not list it", flagged documented-not-probed. Cursor's help site
+  still documents it in the future tense, and Zed and Cline read it. The surviving
+  justification is narrower and holds: it was a symlink to `AGENTS.md`, so a
+  redundant alias that CI *required*. Full verified/unknown split in
+  `docs/PROJECT_STATE.md` under the docs-check bullet.
+- Its footprint was first reported as 33 mentions; it is 36 lines across 22 files.
+
+### Traps
+
+- **`pnpm --filter` matching nothing exits 0**, so any gate built on a filter passes
+  green once its filter stops matching. `--fail-if-no-match` is accepted and
+  silently ignored on 10.29.3. Count matches instead:
+  `pnpm --filter <pat> list --depth -1 --json`.
+- **A green local `pnpm verify` does not mean a package's tests ran.** Turbo
+  replayed a cached `robustness` result in mine, which is why CI caught a failure I
+  had not. Read the turbo line before concluding a CI failure is or is not yours.
+- **A drill against a script that resolves its own root must copy the script into
+  the fixture.** Mine ran the new guard by absolute path and reported a PASS while
+  measuring the real repo (`scripts/lib/mcp-apps.mjs:36` uses `import.meta.dirname`).
+- **A subagent's counter-argument can be right on the fact and wrong on the
+  conclusion** — twice this session. Verify the conclusion separately from the
+  finding; both times the finding was valuable and the conclusion overstated.
+
+### Tree
+
+`/Users/george/repos/mcp-cli-starter-template`, branch `main`, level with
+`origin/main` at `a3fea01` before this checkpoint's own commit. Clean, no dirty
+paths, no worktrees, no background tasks. Only this repo was written to all
+session; peer repos stayed read-only.
+
+### Blocked on you
+
+- `mcp-suffix-optional` — recommended (b), make it optional. Half its cost vanished
+  with `52a5386`, since CI no longer selects on the name.
+- `gate-every-app` — should an `apps/*` workspace without the mcp-kit marker fail
+  the build, with `rust-accel` exempted by hand or by another affirmative fact?
+
+### Elsewhere
+
+- `tmux-control-app` · browser-tab-mcp — holds their plan (PR #194); told the
+  selection fix has shipped and is theirs to adopt, and that the suffix decision is
+  George's alone.
+- `instruction-conventions` · dotfiles — withdrew their `delegating-work` pointer
+  ask 2026-09-22; verified no such line exists here, so nothing to undo.
+
+### Resume
+
+Nothing mid-flight and nothing queued. Act only on: George answering either
+Blocked-on-you item; peer evidence arriving; or a trigger firing for DEFERRED
+#49/#50/#54. If George takes `mcp-suffix-optional`, start at DEFERRED.md:4183 —
+the four costs are priced there and item 2 (stop deriving the command name by
+regex-stripping the package name) is worth doing even if the rest is declined.
+
+## History
+
+<!-- BEGIN checkpoint-history (generated; do not edit) -->
+<!-- END checkpoint-history -->
