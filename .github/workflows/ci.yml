@@ -257,3 +257,90 @@ jobs:
           name: stress-report-${{ matrix.os }}
           path: apps/**/stress-*-report.json
           if-no-files-found: ignore
+
+  # A Windows leg, THIS repo only — never the stamped ci.yml under
+  # 12-ci-release/lib or example/. This repo is public, so Windows minutes are
+  # free; a generated repo is private by default and billed (Windows at 2x
+  # Linux), which the cost note on `build-test` above explains in dollars.
+  #
+  # Why it exists: browser-tab-mcp ran the generated app on windows-latest and
+  # found three classes of defect that no POSIX leg can see — `spawn("pnpm")`
+  # (pnpm is pnpm.cmd there), `node_modules/.bin/tsx` (tsx.cmd), and test
+  # regexes that assume `/` in printed paths. It is lean on purpose: only the
+  # suites that spawn processes or print paths. Everything that is pure
+  # computation over the same files is already answered by the ubuntu leg.
+  #
+  # A separate job, not a third matrix entry: every step in `build-test` would
+  # need a new `if`, and a job outside the matrix can neither cancel it nor be
+  # cancelled by it. No Rust: the runner image ships rustup, and a napi compile
+  # would add minutes to measure nothing this job is for — so the build names
+  # the TS surfaces instead of running `pnpm build`.
+  windows:
+    name: windows-latest · node 24
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # the build stamp counts commits; see build-test
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.29.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (TS only — packages, then each MCP app's build:ts)
+        run: |
+          pnpm turbo run build --filter="./packages/*"
+          node scripts/for-each-mcp-app.mjs build:ts
+
+      - name: Repo script unit tests
+        run: pnpm test:scripts
+
+      # TEMPORARY — remove this whole step once the http-lifecycle exit-0 on
+      # win32 is explained. Boots the same child http-lifecycle.test.ts boots,
+      # once, outside vitest. `--trace-exit` prints a stack for every
+      # process.exit() call, so: a stack => something called exit (robustness
+      # shutdown, a signal handler); no stack and a fast exit 0 => the event
+      # loop simply drained, i.e. nothing ever started. The first line prints
+      # the argv[1] node will see, and whether src/index.ts's POSIX-only
+      # `endsWith("/src/index.ts")` entry guard would accept it.
+      - name: "TEMPORARY diagnostic: why src/index.ts --http exits 0 on win32"
+        continue-on-error: true
+        working-directory: apps/example-repo-mcp
+        shell: bash
+        env:
+          MCP_HTTP_TOKEN: diagnostic-token
+          MCP_HTTP_PORT: "0"
+          MCP_HTTP_BIND: 127.0.0.1
+          MCP_LOG_DIR: ${{ runner.temp }}/exit-diagnostic
+          NO_COLOR: "1"
+          CI: "1"
+        run: |
+          node -e "const p = require('node:path').resolve('src/index.ts'); console.log('argv[1] =', p, '| index.ts guard accepts it:', p.endsWith('/src/index.ts'))"
+          set +e
+          timeout 20 node --trace-exit --import tsx src/index.ts --http < /dev/null
+          echo "exit status: $? (124 = still running after 20s, so it did NOT exit early)"
+          echo "--- log files under MCP_LOG_DIR (none = startup logging never ran):"
+          ls -la "$MCP_LOG_DIR" 2>&1
+          cat "$MCP_LOG_DIR"/*.ndjson 2>&1 | tail -n 40
+
+      - name: MCP app tests (spawns, signals, tmpdir, printed paths)
+        # Straight through the script, not `pnpm test`: with no npm_execpath it
+        # takes the cmd.exe fallback in for-each-mcp-app, which is the path the
+        # original ENOENT came from.
+        run: node scripts/for-each-mcp-app.mjs test
+
+      - name: Scaffolder tests (golden drift + phases; ~10s)
+        # Last, so a Windows-only scaffolder failure cannot hide the app
+        # results above. Its test script regenerates its own templates first.
+        run: pnpm --filter @george43g/mcp-scaffold test

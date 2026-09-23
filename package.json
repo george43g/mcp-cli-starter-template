@@ -29,7 +29,7 @@
     "check:docs": "node scripts/check-docs-links.mjs",
     "check:stdout-purity": "node scripts/check-stdout-purity.mjs",
     "check:stress-count": "node scripts/check-stress-count.mjs",
-    "test:scripts": "node --test 'scripts/**/*.test.mjs'",
+    "test:scripts": "node --test \"scripts/**/*.test.mjs\"",
     "check:publishable-manifests": "node scripts/check-publishable-manifests.mjs",
     "check:registry-boundary": "node scripts/check-registry-boundary.mjs",
     "check:workflows": "actionlint .github/workflows/*.yml apps/scaffolder/src/phases/12-ci-release/lib/.github/workflows/*.yml example/.github/workflows/*.yml",

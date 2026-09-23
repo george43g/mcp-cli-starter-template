@@ -15,16 +15,23 @@
  */
 
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const APP_DIR = resolve(import.meta.dirname, "..");
-const TSX = resolve(APP_DIR, "node_modules/.bin/tsx");
+/**
+ * `node --import <tsx loader>`, not the tsx CLI shim: on Windows that shim is
+ * `tsx.cmd`, which spawn cannot run without a shell (ENOENT, measured on
+ * windows-latest). Same loader resolution as http-lifecycle.test.ts.
+ */
+const TSX_LOADER = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 
 /** Feed `lines` to `cli console` over stdin and return everything it wrote. */
 function pipeToConsole(lines: string[]): Promise<{ out: string; code: number | null }> {
   return new Promise((resolvePipe, rejectPipe) => {
-    const child = spawn(TSX, ["src/cli.ts", "console"], {
+    const child = spawn(process.execPath, ["--import", TSX_LOADER, "src/cli.ts", "console"], {
       cwd: APP_DIR,
       stdio: ["pipe", "pipe", "pipe"],
       // Keep the child's output deterministic regardless of the host terminal.

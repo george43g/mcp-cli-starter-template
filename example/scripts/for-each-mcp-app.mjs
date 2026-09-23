@@ -30,6 +30,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { basename } from "node:path";
 
 import { noMcpAppsNotice, REPO_ROOT, selectMcpApps } from "./lib/mcp-apps.mjs";
 
@@ -46,12 +47,45 @@ if (apps.length === 0) {
   process.exit(0);
 }
 
+/**
+ * How to run pnpm without assuming `spawn("pnpm")` works — it does not on
+ * Windows, where pnpm on PATH is `pnpm.cmd` and spawn only resolves `.cmd`
+ * through a shell (ENOENT otherwise; measured on windows-latest).
+ *
+ * 1. Under `pnpm run`, npm_execpath is pnpm itself: its JS entry (run it with
+ *    this node) or a standalone binary (spawn it directly). No shell at all.
+ *    The basename must say pnpm: under `npm run` it is npm-cli.js, and
+ *    `npm --filter …` is not what was asked for.
+ * 2. Otherwise (`node scripts/for-each-mcp-app.mjs …` straight from CI), POSIX
+ *    spawns `pnpm` directly and Windows goes through cmd.exe as ONE command
+ *    string. One string, not `shell: true` plus an args array: Node 24
+ *    deprecates that pair (DEP0190) because it concatenates without escaping.
+ *    The args are package and script names from this repo, never user input;
+ *    each is still double-quoted when it holds anything cmd.exe would read.
+ */
+function pnpmInvocation(pnpmArgs) {
+  // biome-ignore lint/suspicious/noUndeclaredEnvVars: set by pnpm itself, not a turbo task input.
+  const execPath = process.env.npm_execpath ?? "";
+  const name = basename(execPath).toLowerCase();
+  if (/^pnpm\.[cm]?js$/.test(name)) {
+    return { cmd: process.execPath, args: [execPath, ...pnpmArgs], shell: false };
+  }
+  if (name === "pnpm" || name === "pnpm.exe") {
+    return { cmd: execPath, args: pnpmArgs, shell: false };
+  }
+  if (process.platform !== "win32") return { cmd: "pnpm", args: pnpmArgs, shell: false };
+  const quoted = pnpmArgs.map((a) => (/^[\w@/.:=,+-]+$/.test(a) ? a : `"${a}"`));
+  return { cmd: ["pnpm", ...quoted].join(" "), args: [], shell: true };
+}
+
 const failed = [];
 for (const app of apps) {
   console.log(`\n-- for-each-mcp-app: ${app.name} > pnpm ${args.join(" ")}`);
-  const run = spawnSync("pnpm", ["--filter", app.name, ...args], {
+  const pnpm = pnpmInvocation(["--filter", app.name, ...args]);
+  const run = spawnSync(pnpm.cmd, pnpm.args, {
     cwd: REPO_ROOT,
     stdio: "inherit",
+    shell: pnpm.shell,
   });
   if (run.error) {
     failed.push(`${app.name}: could not spawn pnpm (${run.error.code ?? run.error.message})`);

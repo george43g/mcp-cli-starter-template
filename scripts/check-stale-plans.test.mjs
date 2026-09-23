@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 /**
  * Runs the REAL script as a subprocess against fixture plan directories, in the
@@ -174,7 +174,9 @@ describe("check-stale-plans", () => {
     const shallow = mkdtempSync(join(tmpdir(), "stale-plans-shallow-"));
     sandboxes.push(shallow);
     const clone = join(shallow, "c");
-    execFileSync("git", ["clone", "-q", "--depth", "1", `file://${source}`, clone], {
+    // pathToFileURL, not `file://${source}`: a Windows path has a drive letter
+    // and backslashes, which that concatenation turns into a URL git rejects.
+    execFileSync("git", ["clone", "-q", "--depth", "1", pathToFileURL(source).href, clone], {
       env,
       stdio: "pipe",
     });

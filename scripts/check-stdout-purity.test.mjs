@@ -60,7 +60,7 @@ describe("check-stdout-purity", () => {
       "apps/server/src/index.ts": 'const x = 1;\nconsole.log("debug", x);\n',
     });
     assert.equal(r.status, 1, r.stdout + r.stderr);
-    assert.match(r.stderr, /apps\/server\/src\/index\.ts:2/);
+    assert.match(r.stderr, /apps[\\/]server[\\/]src[\\/]index\.ts:2/);
     assert.match(r.stderr, /JSON-RPC/);
   });
 

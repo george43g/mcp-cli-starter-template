@@ -20,7 +20,7 @@
  */
 
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -102,7 +102,9 @@ export function scanAssertionCounts(root, expected) {
   let sitesChecked = 0;
 
   for (const full of walk(root)) {
-    const rel = relative(root, full);
+    // POSIX separators: RECORD_FILES and the failure lines are repo paths, and
+    // `relative` answers with backslashes on Windows.
+    const rel = relative(root, full).split(sep).join("/");
     if (RECORD_FILES.has(rel)) continue;
     scanned++;
     const lines = readFileSync(full, "utf8").split("\n");
