@@ -35,7 +35,8 @@ Edit `~/.claude/settings.local.json` (or `.mcp.json` in your project root):
 {
   "mcpServers": {
     "example": {
-      "command": "example"
+      "command": "example",
+      "args": ["mcp"]
     }
   }
 }
@@ -62,7 +63,7 @@ For the dev-mode proxy (auto-reload on source changes):
 ### MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector example
+npx @modelcontextprotocol/inspector example mcp
 ```
 
 Opens a local web UI for poking at tools interactively.

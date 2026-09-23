@@ -2,12 +2,17 @@
 /**
  * init-template.mjs — clone-and-rename for mcp-cli-starter-template.
  *
- * Replaces `example-repo` (kebab-case lowercase) and `EXAMPLE_REPO` (env-var
- * style) across every tracked file, renames `apps/example-repo-mcp/` and a few
- * placeholder paths, optionally swaps the npm scope, then self-deletes.
+ * Replaces `example-repo-mcp` (the app's whole name), then `example-repo`
+ * (kebab-case lowercase) and `EXAMPLE_REPO` (env-var style) across every
+ * tracked file, renames `apps/example-repo-mcp/` and a few placeholder paths,
+ * optionally swaps the npm scope, then self-deletes.
+ *
+ * The name is taken VERBATIM, the same rule as `mcp-scaffold init`: `--name foo`
+ * gives apps/foo/ with bin `foo`; `--name foo-mcp` gives apps/foo-mcp/ with bin
+ * `foo-mcp`. Nothing is appended.
  *
  * Usage:
- *   pnpm tsx scripts/init-template.mjs --name foo-mcp [--scope @myorg]
+ *   pnpm tsx scripts/init-template.mjs --name foo [--scope @myorg]
  *
  * Idempotent in the sense that re-running on an already-renamed repo is a
  * no-op (it'll just not find any placeholders). But after the script
@@ -27,6 +32,8 @@ const exec = promisify(execCallback);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
 
+// Replaced FIRST, so NAME_PLACEHOLDER cannot eat its prefix and leave `-mcp`.
+const APP_NAME_PLACEHOLDER = "example-repo-mcp";
 const NAME_PLACEHOLDER = "example-repo";
 const NAME_UPPER_PLACEHOLDER = "EXAMPLE_REPO";
 const SCOPE_PLACEHOLDER = "@george43g";
@@ -112,7 +119,8 @@ EXAMPLE
 
 WHAT IT DOES
   1. Replace example-repo and EXAMPLE_REPO in every tracked file.
-  2. Rename apps/example-repo-mcp/ and a few placeholder paths.
+  2. Rename apps/example-repo-mcp/ to apps/<tool-name>/ (name used as given)
+     and a few placeholder paths.
   3. Update package.json names + bin maps.
   4. Optionally swap the npm scope.
   5. Delete this script.
@@ -146,7 +154,8 @@ async function gitTrackedFiles() {
 async function replaceInFile(path, name, upper, scope) {
   if (!existsSync(path)) return false;
   const raw = await readFile(path, "utf8");
-  let next = raw.split(NAME_PLACEHOLDER).join(name);
+  let next = raw.split(APP_NAME_PLACEHOLDER).join(name);
+  next = next.split(NAME_PLACEHOLDER).join(name);
   next = next.split(NAME_UPPER_PLACEHOLDER).join(upper);
   if (scope) {
     next = next.split(SCOPE_PLACEHOLDER).join(scope);
@@ -160,7 +169,7 @@ async function replaceInFile(path, name, upper, scope) {
 
 async function renamePlaceholderPaths(name) {
   const candidates = [
-    [join(REPO_ROOT, "apps", `${NAME_PLACEHOLDER}-mcp`), join(REPO_ROOT, "apps", `${name}-mcp`)],
+    [join(REPO_ROOT, "apps", APP_NAME_PLACEHOLDER), join(REPO_ROOT, "apps", name)],
     [
       join(REPO_ROOT, ".agents", "skills", `${NAME_PLACEHOLDER}-dev`),
       join(REPO_ROOT, ".agents", "skills", `${name}-dev`),
