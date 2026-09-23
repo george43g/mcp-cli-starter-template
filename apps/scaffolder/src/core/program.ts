@@ -22,6 +22,7 @@ import {
   detectScope,
   writePerAppAgentFiles,
 } from "../commands/add-mcp-app.js";
+import { ensureAppWorkspaceDeps, pnpmWorkspaceLister } from "../commands/add-mcp-app-deps.js";
 import { drawBanner } from "../ui/banner.js";
 import { drawRecap } from "../ui/recap.js";
 import { Config } from "./config.js";
@@ -31,7 +32,7 @@ import { installDependencies } from "./install-deps.js";
 import { makeLogger } from "./logger.js";
 import type { ExistingStrategy } from "./migration.js";
 import { type ApplyMode, type MigrationContext } from "./migration.js";
-import { loadPhases, runPhases } from "./phase-runner.js";
+import { loadPhases, type PhaseRunResult, runPhases } from "./phase-runner.js";
 import { collectIntents, renderRetrofitMarkdown } from "./retrofit.js";
 import { writeRunReport } from "./run-report.js";
 import { makeShell } from "./shell.js";
@@ -165,6 +166,9 @@ export function buildProgram(): Command {
       const globalOpts = program.opts<{ verbose?: boolean; banner?: boolean }>();
       if (globalOpts.banner !== false) drawBanner();
       const cwd = resolve(String(opts.target ?? process.cwd()));
+      // --target defaults to process.cwd(), which agent harnesses reset between
+      // commands — name the checkout before anything is written to it.
+      process.stdout.write(`add-mcp-app: target ${cwd}\n`);
       assertInsideScaffoldedRepo(cwd);
       // Auto-detect scope from existing apps unless the user passed --scope.
       const scope = typeof opts.scope === "string" ? opts.scope : detectScope(cwd);
@@ -173,7 +177,11 @@ export function buildProgram(): Command {
       opts.scope = scope;
       // mode='add', dryRun=false, phaseFilter='08-app', force=true (the
       // collision guard in m1-app-port prevents clobbering existing apps).
-      await runScaffolder("add", cwd, globalOpts, opts, false, "08-app", true);
+      // The preflight makes the app's private workspace deps resolvable first,
+      // or throws before anything is written.
+      await runScaffolder("add", cwd, globalOpts, opts, false, "08-app", true, (ctx) =>
+        ensureAppWorkspaceDeps(ctx, { listWorkspace: pnpmWorkspaceLister(ctx.shell) }),
+      );
       const fs = makeFs({ cwd, dryRun: false, force: true });
       const log = makeLogger({ verbose: globalOpts.verbose === true });
       const perApp = await writePerAppAgentFiles({ fs, cwd, name, scope, log });
@@ -234,6 +242,7 @@ async function runScaffolder(
   dryRun: boolean,
   migrationFilter?: string,
   force = true,
+  preflight?: (ctx: MigrationContext) => Promise<PhaseRunResult>,
 ): Promise<void> {
   const log = makeLogger({ verbose: globalOpts.verbose === true });
   const shell = makeShell({ cwd, dryRun });
@@ -299,7 +308,8 @@ async function runScaffolder(
     if (phases.length === 0) return;
   }
 
-  const phaseResults = await runPhases(phases, ctx);
+  const preflightResults = preflight ? [await preflight(ctx)] : [];
+  const phaseResults = [...preflightResults, ...(await runPhases(phases, ctx))];
 
   // RETROFIT.md is meaningful only for `apply --execute` against an existing
   // repo. `init` writes fresh files (nothing was skipped because of mode);
@@ -344,7 +354,8 @@ async function runScaffolder(
   if (install.status === "failed") {
     ctx.log.warn(
       `${install.packageManager} install failed: ${install.message}\n` +
-        `  The generated files are correct — re-run \`${install.packageManager} install\` in ${cwd}.`,
+        `  The files were written but the workspace is not installed. Fix the error above, ` +
+        `then re-run \`${install.packageManager} install\` in ${cwd}.`,
     );
   }
 

@@ -106,6 +106,23 @@ async function runIsolated(sub: string): Promise<string> {
   return sandbox;
 }
 
+/**
+ * Named rather than inline in `it.each` below: biome 2.5.3 and 2.5.5 format an
+ * inline callback followed by a timeout argument differently, so the inline form
+ * failed `biome check` in consumer repos pinned to the other version.
+ */
+async function assertNoDefaultPrefixDir(sub: string): Promise<void> {
+  const sandbox = await runIsolated(sub);
+  const defaultDir = join(sandbox, DEFAULT_PREFIX);
+  const found = existsSync(defaultDir) ? readdirSync(defaultDir) : [];
+  expect(
+    found,
+    `${sub} logged to the shared default-prefix directory. Either an entry point does ` +
+      "not import ./log-brand.js first, or a dependency resolved its own copy of " +
+      "@george43g/robustness and is writing through an instance this app cannot brand.",
+  ).toEqual([]);
+}
+
 describe("every subcommand brands its log directory", () => {
   const subs = subcommands();
 
@@ -116,19 +133,5 @@ describe("every subcommand brands its log directory", () => {
     expect(subs).toContain("mcp");
   });
 
-  it.each(subs)(
-    "`%s` writes no $TMPDIR/mcp/ directory",
-    async (sub) => {
-      const sandbox = await runIsolated(sub);
-      const defaultDir = join(sandbox, DEFAULT_PREFIX);
-      const found = existsSync(defaultDir) ? readdirSync(defaultDir) : [];
-      expect(
-        found,
-        `${sub} logged to the shared default-prefix directory. Either an entry point does ` +
-          "not import ./log-brand.js first, or a dependency resolved its own copy of " +
-          "@george43g/robustness and is writing through an instance this app cannot brand.",
-      ).toEqual([]);
-    },
-    30_000,
-  );
+  it.each(subs)("`%s` writes no $TMPDIR/mcp/ directory", assertNoDefaultPrefixDir, 30_000);
 });
