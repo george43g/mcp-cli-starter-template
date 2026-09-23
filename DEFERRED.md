@@ -4179,10 +4179,20 @@ can include all kinds of apps that do all kinds of things."* Measured against th
 sibling monorepos the same day (`apps/*` with a `package.json` declaring
 `@george43g/mcp-kit`): browser-tab-mcp 1 of 4 (chrome-extension, safari-extension,
 rust-accel unmarked); up-bank-mcp 1 of 2; EQStack 1 of 4 (analysis, plus gmail-mcp and
-imsg-mcp on the raw SDK); life-stack 0 of 19. The proposed rule would have failed CI in
-every one of them. An MCP server is one optional surface of an app, so the gates keep
-selecting only apps that opt into it; an unmarked app is normal, not an error. The
-residue above is closed by this decision, not by a second rule.
+imsg-mcp on the raw SDK); life-stack 0 of 9 Node workspaces (plus 10 non-Node app
+directories — Python, compose stacks, shell, Ansible; its one MCP server, `apps/tapo`,
+uses the raw SDK; its kit consumers are CLIs like `mcpsync` on cli-kit + tui-kit). The
+proposed rule would have failed CI in every one of them. An MCP server is one optional
+surface of an app, so the gates keep selecting only apps that opt into it; an unmarked
+app is normal, not an error. The residue above is closed by this decision, not by a
+second rule.
+
+The coverage worry was real but sat at the wrong level. Generic checks already reach
+every workspace, whatever it is, through `turbo run test|build|typecheck`; only the
+MCP-specific steps (stress, usage artifacts, pack) key on the marker. life-stack puts its
+"nothing checks this" guard where it belongs — on the CHECKS, not the apps:
+`scripts/check-orphaned-checks.mjs` fails when a check is not reachable from
+`verify`. That is the shape to port if this ever needs closing again.
 
 **Trap, mine, while verifying this.** My first red drill ran the new script by absolute
 path from a temp fixture and reported a PASS — because
