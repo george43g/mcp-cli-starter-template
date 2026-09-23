@@ -13,17 +13,45 @@ pnpm stress          # 15-assertion robustness harness
 
 ## Bins
 
-| Bin | Purpose | Default transport |
-|-----|---------|-------------------|
-| `example-repo-mcp` | MCP server | stdio (`--http` for Streamable HTTP) |
-| `example-repo-cli` | Commander CLI: `mcp`, `http`, `tui`, `doctor`, `health`, `noop`, `cli` (REPL) | n/a (in-process dispatch) |
-| `example-repo-tui` | Ink TUI | n/a |
+One bin. Every surface is a subcommand of it, so there is nothing else to put
+on `PATH`:
+
+| Bin | Entry |
+|-----|-------|
+| `example-repo` | `dist/cli.js` |
+
+| Subcommand | Transport | What it does |
+|------------|-----------|--------------|
+| `mcp` | stdio; `--http` (with `--port`, `--bind`) for Streamable HTTP | Run the MCP server |
+| `tui` | n/a (refuses to start without a TTY) | Ink TUI |
+| `doctor` | n/a | Preflight checks: Node version, native module, config dir |
+| `health` | in-process dispatch | Call `health_check` and print the result |
+| `noop` | in-process dispatch | Call `noop` (`--input <text>`, `--upper`) |
+| `repl` (alias `console`) | in-process dispatch | Interactive REPL over every tool |
+
+`dist/index.js` is a second entry point, not a bin: it starts the server
+directly (stdio, or `--http`), and is what the `.mcpb` bundle's `manifest.json` spawns.
+
+`tests/tool-contract.test.ts` fails if either table drifts from `package.json`
+`bin` or from the bin's own `--help`.
+
+## Tools
+
+| Tool | CLI | What it does |
+|------|-----|--------------|
+| `health_check` | `health` | Server health: uptime, memory, event-loop p99, call count, recent errors. No external I/O |
+| `noop` | `noop --input <text>` | Echo the input, optionally upper-cased; the canonical tool pattern to copy |
+| `get_logs` | none | Recent log lines from memory or the NDJSON file. Dev-only: listed and callable only when MCP_DEV is set |
+
+Every tool sets `annotations.title`, the name MCP hosts show in their UIs.
+`tests/tool-contract.test.ts` fails when a registered tool lacks one, or when
+this table and `src/tools/registry.ts` disagree in either direction.
 
 ## Adding a tool
 
 1. Copy `src/tools/noop.ts` to `src/tools/<your-tool>.ts`.
 2. Define Zod input/output schemas (in `@george43g/shared-types` if you want to mirror in Rust, else inline in the tool file).
-3. Register the new tool in `src/tools/registry.ts`.
+3. Register the new tool in `src/tools/registry.ts`, give it an `annotations.title`, and add its row to `## Tools` above.
 4. Add an integration test in `tests/integration.test.ts`.
 5. If the tool affects process lifecycle, add a case in `scripts/stress-mcp.ts`.
 
@@ -208,8 +236,8 @@ deletes the old ones.
 
 ## Removing surfaces
 
-- **Drop HTTP support**: delete the `http` subcommand from `src/cli.ts`, the `--http` branch from `src/index.ts`, and case #9 from `scripts/stress-mcp.ts`. Remove `MCP_HTTP_TOKEN` from `.env.example`. If nothing else in your tool resolves a secret, drop `@george43g/secret-store` from `package.json` too.
-- **Drop TUI support**: delete `src/tui/`, the `tui` subcommand from `src/cli.ts`, the `example-repo-tui` bin entry from `package.json`, and the TUI entry from `vite.config.ts` `lib.entry`.
+- **Drop HTTP support**: delete `src/commands/http.ts` and its `registerHttpCommand(mcpCmd)` call in `src/cli.ts`, the `--http` branch from `src/index.ts`, and case #9 from `scripts/stress-mcp.ts`. Remove `MCP_HTTP_TOKEN` from `.env.example`. If nothing else in your tool resolves a secret, drop `@george43g/secret-store` from `package.json` too.
+- **Drop TUI support**: delete `src/tui/`, then the `tui` subcommand from `src/cli.ts` and from the `## Bins` table.
 - **Drop Rust acceleration**: delete `apps/rust-accel/`, the `src/native-bridge.ts` file, and the `tryLoadNative()` call in `src/tools/noop.ts`.
 - **Drop `get_logs`**: delete `src/tools/get-logs.ts` and remove it from the registry.
 

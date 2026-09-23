@@ -20,7 +20,7 @@ pnpm --filter @george43g/rust-accel build:debug   # debug symbols
 cargo test --release                              # unit tests (run from apps/rust-accel/)
 ```
 
-The build is **optional**. The top-level `pnpm build` calls `build:native:optional` which silently skips when `rustc` is missing. The starter app falls back to TypeScript automatically — `tryLoadNative()` returns null and `engineLabel()` returns `"ts"`.
+The build is **optional**. The top-level `pnpm build` calls `build:native:optional` (`scripts/build-native-optional.mjs`), which prints the build's own error and a skip warning, then exits 0, when `rustc` is missing. The starter app falls back to TypeScript automatically — `tryLoadNative()` returns null and `engineLabel()` returns `"ts"`.
 
 Force the TS path even when the binary is built: `MCP_DISABLE_NATIVE=1`. CI tests both paths (`pnpm test` and `pnpm test:no-native`).
 
