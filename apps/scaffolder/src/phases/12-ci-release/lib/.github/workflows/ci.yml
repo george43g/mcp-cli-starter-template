@@ -122,6 +122,8 @@ jobs:
         # matches nothing, so the step passed green while checking nothing,
         # and (b) skipped any app not carrying the -mcp suffix. Adding an
         # app with `mcp-scaffold add-mcp-app` now gates it automatically.
+        # A repo with no MCP app at all (nothing depends on mcp-kit) skips
+        # all three with a one-line notice and stays green.
         run: node scripts/for-each-mcp-app.mjs check:usage
 
       - name: Verify npm tarball is publishable

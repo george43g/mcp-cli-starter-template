@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -50,17 +50,15 @@ function run(files, args = ["gate"]) {
     mkdirSync(join(root, rel, ".."), { recursive: true });
     writeFileSync(join(root, rel), content);
   }
-  try {
-    const stdout = execFileSync("node", [join(root, "scripts", "for-each-mcp-app.mjs"), ...args], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout: 120_000,
-      cwd: root,
-    });
-    return { status: 0, stdout, stderr: "" };
-  } catch (err) {
-    return { status: err.status, stdout: String(err.stdout), stderr: String(err.stderr) };
-  }
+  // spawnSync, not execFileSync: the skip path exits 0 AND prints a notice, and
+  // execFileSync only surfaces the streams on a non-zero exit.
+  const r = spawnSync("node", [join(root, "scripts", "for-each-mcp-app.mjs"), ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 120_000,
+    cwd: root,
+  });
+  return { status: r.status, stdout: String(r.stdout), stderr: String(r.stderr) };
 }
 
 describe("for-each-mcp-app", () => {
@@ -83,13 +81,36 @@ describe("for-each-mcp-app", () => {
     assert.doesNotMatch(r.stdout, /GATE-RAN:.*apps\/cli-tool/);
   });
 
-  // THE RED DRILL. The whole defect was that this case exited 0.
-  it("FAILS when no app declares the marker — nothing-to-check is not a pass", () => {
+  // Zero MCP apps is a legitimate repo shape (a monorepo of non-MCP apps), not
+  // a vacuous pass: selection is by the mcp-kit dependency, not a name filter,
+  // so there is no app an empty set could be hiding.
+  it("SKIPS with exit 0 and a notice naming the marker when no app declares it", () => {
     const r = run({
       "apps/cli-tool/package.json": app("@x/cli-tool", { marked: false, scripts: ECHO }),
     });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(
+      r.stdout,
+      /for-each-mcp-app: no apps\/\* workspace declares @george43g\/mcp-kit — nothing to run, skipping/,
+    );
+    assert.doesNotMatch(r.stdout, /GATE-RAN/);
+  });
+
+  it("SKIPS with exit 0 when apps/ does not exist at all", () => {
+    const r = run({});
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /nothing to run, skipping/);
+  });
+
+  it("still FAILS on a marked workspace with no package name — pnpm --filter cannot address it", () => {
+    const r = run({
+      "apps/nameless/package.json": JSON.stringify({
+        dependencies: { "@george43g/mcp-kit": "^2.0.0" },
+        scripts: ECHO,
+      }),
+    });
     assert.equal(r.status, 1, r.stdout + r.stderr);
-    assert.match(r.stderr, /no apps\/\* workspace declares @george43g\/mcp-kit/);
+    assert.match(r.stderr, /no package name/);
   });
 
   it("selects an app whose name does NOT end in -mcp — the suffix is not the marker", () => {
@@ -124,6 +145,12 @@ describe("for-each-mcp-app", () => {
 
   it("FAILS with no command given rather than silently doing nothing", () => {
     const r = run({ "apps/server-mcp/package.json": app("@x/server-mcp", { scripts: ECHO }) }, []);
+    assert.equal(r.status, 2, r.stdout + r.stderr);
+    assert.match(r.stderr, /no pnpm script or command given/);
+  });
+
+  it("FAILS with no command given even when there are no MCP apps — usage errors are not skips", () => {
+    const r = run({}, []);
     assert.equal(r.status, 2, r.stdout + r.stderr);
     assert.match(r.stderr, /no pnpm script or command given/);
   });

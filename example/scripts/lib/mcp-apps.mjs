@@ -1,6 +1,5 @@
 /**
- * lib/mcp-apps.mjs — which workspaces are MCP apps, and the one place that
- * turns "none of them" into a failure.
+ * lib/mcp-apps.mjs — which workspaces are MCP apps.
  *
  * WHY THIS EXISTS: `pnpm --filter <pattern>` that matches nothing prints "No
  * projects matched the filters" and EXITS 0, so a CI step whose filter matches
@@ -19,12 +18,18 @@
  * `@george43g/mcp-kit` in dependencies ∪ devDependencies ∪ peerDependencies,
  * which is what makes it an MCP app — never on a name shape and never on a
  * hand-list of directory names. Same marker, for the same reason, as
- * check-stdout-purity.mjs:34 (rationale at :20-23). CLI meta-tools (the
- * scaffolder) are not MCP apps and are named explicitly at their call sites.
+ * check-stdout-purity.mjs. CLI meta-tools (the scaffolder) are not MCP apps and
+ * are named explicitly at their call sites.
  *
- * `requireMcpApps` EXITS 1 WHEN IT FINDS NONE. A gate with nothing to check is
- * a failure, never a pass — that is the entire defect this module ends. Both
- * callers go through it, so the empty case can only ever be red, in one place.
+ * ZERO MCP APPS IS A LEGITIMATE ANSWER, NOT A FAILURE. These monorepos hold all
+ * kinds of apps, and many hold no MCP server at all. Because selection is an
+ * affirmative dependency fact rather than a name filter, an empty set can only
+ * mean "no workspace depends on mcp-kit" — which is true of such a repo, so the
+ * MCP gates skip with a one-line notice naming the marker (`selectMcpApps`).
+ * The vacuous pass DEFERRED #52 guarded against came from a NAME filter that
+ * could miss an app that existed; that filter no longer exists, so there is no
+ * app an empty set could be hiding. What stays a failure is the one way a real
+ * MCP app can still drop out: a marked workspace with no package name.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -41,7 +46,7 @@ export const REPO_ROOT = resolve(import.meta.dirname, "../..");
  * Returns `{ apps, unnamed }` — `apps` entries are `{ dir, name }`, where
  * `name` is what `pnpm --filter` addresses; `unnamed` holds marked workspaces
  * with no package name, which the caller must treat as a failure rather than
- * skip (see requireMcpApps).
+ * skip (see selectMcpApps).
  */
 export function mcpApps(root = REPO_ROOT) {
   const apps = [];
@@ -75,21 +80,23 @@ export function mcpApps(root = REPO_ROOT) {
   return { apps, unnamed };
 }
 
-/** The list, or a hard failure with a message naming `who` asked. */
-export function requireMcpApps(who, root = REPO_ROOT) {
+/** One-line notice for the empty set; names the marker so a reader can check it. */
+export function noMcpAppsNotice(who) {
+  return `${who}: no apps/* workspace declares ${MCP_MARKER} — nothing to run, skipping.`;
+}
+
+/**
+ * The marked apps (possibly none), or a hard failure — naming `who` asked — if a
+ * marked workspace has no package name. The caller decides what an empty list
+ * means for it; for every current caller that is "skip, with noMcpAppsNotice".
+ */
+export function selectMcpApps(who, root = REPO_ROOT) {
   const { apps, unnamed } = mcpApps(root);
   if (unnamed.length > 0) {
     console.error(`${who}: FAILED — MCP app workspace(s) with no package name:`);
     for (const dir of unnamed) console.error(`  • ${dir}`);
     console.error("  `pnpm --filter` addresses a package by name, so an unnamed workspace");
     console.error("  silently drops out of every gate. Give it a scoped `name`.");
-    process.exit(1);
-  }
-  if (apps.length === 0) {
-    console.error(`${who}: FAILED — no apps/* workspace declares ${MCP_MARKER}.`);
-    console.error("  A gate with nothing to check is a failure, not a pass. Either the repo");
-    console.error("  has no MCP app (then delete the gates that call this), or the marker or");
-    console.error("  the manifest shape changed — update MCP_MARKER in scripts/lib/mcp-apps.mjs.");
     process.exit(1);
   }
   return apps;

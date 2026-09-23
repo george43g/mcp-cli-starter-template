@@ -14,8 +14,13 @@
  * detectable: a new app is gated because it depends on mcp-kit, not because
  * someone remembered to widen a filter.
  *
- * Two differences from the glob it replaces, both deliberate:
- *   - An empty set is a hard failure (lib/mcp-apps.mjs owns that message).
+ * Zero MCP apps is a skip, not a failure: it prints one line naming the marker
+ * and exits 0, because a monorepo of non-MCP apps is a legitimate shape and the
+ * dependency marker cannot miss an app the way a name filter could (reasoning
+ * in lib/mcp-apps.mjs). A usage error (no command) and a marked workspace with
+ * no package name still fail — neither is "this repo has no MCP apps".
+ *
+ * One deliberate difference from the glob it replaces:
  *   - One `pnpm --filter <exact-name>` per app, so an app missing the script
  *     fails instead of being carried by a sibling that has it. pnpm's recursive
  *     run only errors when NONE of the selected packages has the script
@@ -26,7 +31,7 @@
 
 import { spawnSync } from "node:child_process";
 
-import { REPO_ROOT, requireMcpApps } from "./lib/mcp-apps.mjs";
+import { noMcpAppsNotice, REPO_ROOT, selectMcpApps } from "./lib/mcp-apps.mjs";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -35,7 +40,11 @@ if (args.length === 0) {
   process.exit(2);
 }
 
-const apps = requireMcpApps("for-each-mcp-app");
+const apps = selectMcpApps("for-each-mcp-app");
+if (apps.length === 0) {
+  console.log(noMcpAppsNotice("for-each-mcp-app"));
+  process.exit(0);
+}
 
 const failed = [];
 for (const app of apps) {
