@@ -24,6 +24,7 @@ solely for this repo and can be edited freely.
 | [agent-handoff/EQSTACK-REPLY-MESSAGE.md](agent-handoff/EQSTACK-REPLY-MESSAGE.md) | Paste-able version of the EQStack reply |
 | [agent-handoff/UPBANK-REPLY-2026-08-09.md](agent-handoff/UPBANK-REPLY-2026-08-09.md) | Our reply to up-bank-mcp: REPL fix, the four features, why the publish request is deferred |
 | [agent-handoff/UPBANK-REPLY-MESSAGE.md](agent-handoff/UPBANK-REPLY-MESSAGE.md) | Paste-able version of the up-bank reply |
+| [agent-handoff/DEVTOOLS-FEEDBACK-2026-09-24.md](agent-handoff/DEVTOOLS-FEEDBACK-2026-09-24.md) | Live dev-tool feedback for agents (omp research): handed to dotfiles + executive |
 
 ## Golden-output (shipped into generated repos; lib-mirrored)
 
