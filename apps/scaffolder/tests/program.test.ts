@@ -244,6 +244,37 @@ describe("existing target strategies and reports", () => {
     ).toBe("skipped");
   });
 
+  // An OLD generated repo: root `foo`, app at apps/foo-mcp. Re-stamped files
+  // must point at the app that exists, not at apps/foo.
+  it("re-stamps an old generated repo against its existing app dir", async () => {
+    const cwd = await target({ name: "foo", packageManager: "pnpm@10.29.3" });
+    await mkdir(join(cwd, "apps", "foo-mcp"), { recursive: true });
+    await writeFile(
+      join(cwd, "apps", "foo-mcp", "package.json"),
+      JSON.stringify({ name: "@george43g/foo-mcp", dependencies: { "@george43g/mcp-kit": "^2" } }),
+    );
+    await mkdir(join(cwd, "packages"));
+    await writeFile(join(cwd, "turbo.json"), "{}\n");
+    await writeFile(join(cwd, "pnpm-workspace.yaml"), "packages: []\n");
+    const out = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await buildProgram().parseAsync(
+      ["--no-banner", "apply", "--target", cwd, "--execute", "--no-install"],
+      { from: "user" },
+    );
+
+    expect(out.mock.calls.map((c) => String(c[0])).join("")).toMatch(
+      /Tool name "foo-mcp" taken from apps\/foo-mcp/,
+    );
+    expect(existsSync(join(cwd, "apps", "foo"))).toBe(false);
+    const mcp = JSON.parse(await readFile(join(cwd, ".mcp.json"), "utf8"));
+    expect(mcp.mcpServers["foo-mcp-dev"].env.MCP_DEV_ENTRY).toBe("apps/foo-mcp/src/index.ts");
+    expect(await readFile(join(cwd, "mise.toml"), "utf8")).toContain(
+      "pnpm --filter @george43g/foo-mcp screenshots",
+    );
+    // The root is the user's; existing mode never renames it.
+    expect(JSON.parse(await readFile(join(cwd, "package.json"), "utf8")).name).toBe("foo");
+  });
+
   it("runs starter migrations for a complete starter layout", async () => {
     const cwd = await target({ name: "starter-tool", packageManager: "pnpm@10.29.3" });
     await mkdir(join(cwd, "apps"));

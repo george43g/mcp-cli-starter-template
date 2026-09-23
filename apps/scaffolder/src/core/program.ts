@@ -276,6 +276,8 @@ async function runScaffolder(
   config.global.repoName.set(target.repoName);
   config.global.packageManager.set(target.packageManager);
   if (target.fallbackWarning) log.warn(target.fallbackWarning);
+  // Always shown, not verbose-only: a surprising name is re-stamped into every path.
+  if (target.repoNameNote) process.stdout.write(`${target.repoNameNote}\n`);
   if (mode !== "existing" && target.packageManager !== "pnpm") {
     throw new Error(
       `Fresh scaffolds support pnpm only; received --package-manager ${target.packageManager}. ` +
