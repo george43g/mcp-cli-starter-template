@@ -1,6 +1,6 @@
 # Installing example
 
-This page is for end users (and the LLMs assisting them) who want to plug `example-mcp` into an MCP host like Claude Code, Cursor, Warp, or the MCP Inspector.
+This page is for end users (and the LLMs assisting them) who want to plug `example` into an MCP host like Claude Code, Cursor, Warp, or the MCP Inspector.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ This page is for end users (and the LLMs assisting them) who want to plug `examp
 From the published package (once the maintainer enables release):
 
 ```bash
-npm install -g @george43g/example-mcp
+npm install -g @george43g/example
 ```
 
 Or from source:
@@ -35,7 +35,7 @@ Edit `~/.claude/settings.local.json` (or `.mcp.json` in your project root):
 {
   "mcpServers": {
     "example": {
-      "command": "example-mcp"
+      "command": "example"
     }
   }
 }
@@ -48,7 +48,7 @@ For the dev-mode proxy (auto-reload on source changes):
   "mcpServers": {
     "example-dev": {
       "command": "pnpm",
-      "args": ["tsx", "/path/to/repo/apps/example-mcp/scripts/mcp-dev-proxy.ts"],
+      "args": ["tsx", "/path/to/repo/apps/example/scripts/mcp-dev-proxy.ts"],
       "env": { "MCP_DEV": "1" }
     }
   }
@@ -62,20 +62,20 @@ For the dev-mode proxy (auto-reload on source changes):
 ### MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector example-mcp
+npx @modelcontextprotocol/inspector example
 ```
 
 Opens a local web UI for poking at tools interactively.
 
 ## Configure secrets / env
 
-`example-mcp` reads its config from environment variables. Three options:
+`example` reads its config from environment variables. Three options:
 
 1. **Inline env** (CI, Docker, k8s): set `EXAMPLE_CREDENTIALS_JSON` or similar.
 2. **1Password CLI** (optional): set `EXAMPLE_CREDENTIALS_OP=op://Vault/Item/field`.
 3. **File**: place a JSON file at `~/.example/credentials.json`.
 
-See `apps/example-mcp/.env.example` for the full list of recognized variables.
+See `apps/example/.env.example` for the full list of recognized variables.
 
 ## Verify
 
@@ -91,7 +91,7 @@ If anything fails, run with `EXAMPLE_DEV=1` to register the `get_logs` MCP tool,
 
 ```bash
 # Published version
-npm install -g @george43g/example-mcp@latest
+npm install -g @george43g/example@latest
 
 # Source checkout
 git pull

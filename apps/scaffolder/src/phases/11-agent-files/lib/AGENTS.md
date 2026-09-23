@@ -66,15 +66,15 @@ packages/
 | `pnpm stress` | Run 15-assertion stress harness against the built MCP |
 | `pnpm verify` | lint + docs check + typecheck + test + build (CI shape) |
 | `pnpm check:docs` | Docs integrity: index coverage + relative links + agent-file symlinks |
-| `pnpm --filter example-repo-mcp artifacts` | Regenerate CLI help docs, completions, and manpage |
-| `pnpm --filter example-repo-mcp check:usage` | Byte-check generated CLI artifacts |
+| `pnpm --filter @george43g/example-repo-mcp artifacts` | Regenerate CLI help docs, completions, and manpage |
+| `pnpm --filter @george43g/example-repo-mcp check:usage` | Byte-check generated CLI artifacts |
 
 Per-app:
-- `pnpm --filter example-repo-mcp dev:mcp` — `tsx src/cli.ts mcp` with env files loaded
-- `pnpm --filter example-repo-mcp mcp` — run the built MCP via stdio
-- `pnpm --filter example-repo-mcp mcp -- --http` — run the built MCP via Streamable HTTP (requires `MCP_HTTP_TOKEN`)
-- `pnpm --filter example-repo-mcp tui` — launch the Ink TUI
-- `pnpm --filter example-repo-mcp doctor` — preflight checks (Node version, deps, native module, env)
+- `pnpm --filter @george43g/example-repo-mcp dev:mcp` — `tsx src/cli.ts mcp` with env files loaded
+- `pnpm --filter @george43g/example-repo-mcp mcp` — run the built MCP via stdio
+- `pnpm --filter @george43g/example-repo-mcp mcp -- --http` — run the built MCP via Streamable HTTP (requires `MCP_HTTP_TOKEN`)
+- `pnpm --filter @george43g/example-repo-mcp tui` — launch the Ink TUI
+- `pnpm --filter @george43g/example-repo-mcp doctor` — preflight checks (Node version, deps, native module, env)
 
 Portable repo skills:
 

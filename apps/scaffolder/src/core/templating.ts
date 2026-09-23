@@ -15,7 +15,10 @@
 import { PUBLIC_SCOPE, PUBLISHED_NAMES } from "./runtime-source.js";
 
 export interface TemplateVars {
-  /** kebab-case name (e.g. "wm-stack-mcp"). */
+  /**
+   * kebab-case app name, taken verbatim (e.g. "wm-stack" or "wm-stack-mcp").
+   * Both placeholders below land as exactly this string.
+   */
   name: string;
   /** ENV_VAR_STYLE_NAME (e.g. "WM_STACK_MCP"). */
   nameUpper: string;
@@ -27,6 +30,15 @@ export interface TemplateVars {
 // brace handlebars markers. The old `{{name}}` form collided with shell
 // brace-expansion, tera template engines (mise), and usage(1) identifier
 // generation (which stripped `{` to produce broken `_name()` functions).
+//
+// APP_NAME_RE is the app's full name. The canonical app is called
+// `example-repo-mcp`, and before this placeholder existed the `-mcp` after
+// `example-repo` was literal template text, so every generated app was forced
+// to `<name>-mcp` and a name already ending in `-mcp` had to be banned. It runs
+// BEFORE NAME_RE, which would otherwise eat its prefix and leave the suffix.
+// `-mcp` NOT preceded by the placeholder (stress-mcp.ts, mcp-dev-proxy.ts,
+// mcp-kit) is about MCP itself and stays literal.
+const APP_NAME_RE = /example-repo-mcp/g;
 const NAME_RE = /example-repo/g;
 const NAME_SNAKE_RE = /example_repo/g;
 const NAME_UPPER_KEBAB_RE = /EXAMPLE-REPO/g;
@@ -67,6 +79,7 @@ export function substitute(content: string, vars: TemplateVars): string {
   out = out.replace(NAME_UPPER_KEBAB_RE, vars.name.toUpperCase());
   out = out.replace(NAME_SNAKE_RE, nameSnakeOf(vars.name));
   out = out.replace(NAME_ROFF_RE, nameRoffOf(vars.name));
+  out = out.replace(APP_NAME_RE, vars.name);
   out = out.replace(NAME_RE, vars.name);
   if (vars.scope && vars.scope !== PUBLIC_SCOPE) {
     out = out.replace(SCOPE_RE, vars.scope);

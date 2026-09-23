@@ -14,6 +14,7 @@ interface PackageJson {
   name: string;
   version: string;
   description?: string;
+  bin?: string | Record<string, string>;
 }
 
 function loadPackageJson(): PackageJson {
@@ -23,13 +24,31 @@ function loadPackageJson(): PackageJson {
     const raw = readFileSync(path, "utf8");
     return JSON.parse(raw) as PackageJson;
   } catch {
-    return { name: "example-repo-mcp", version: "0.0.0" };
+    // A computed key, so the literal's formatting does not depend on whether
+    // the substituted name needs quotes (`foo` does not, `foo-bar` does).
+    const bin = "example-repo";
+    return { name: "example-repo-mcp", version: "0.0.0", bin: { [bin]: "./dist/cli.js" } };
   }
 }
 
 const pkg = loadPackageJson();
 
 export const APP_NAME = pkg.name;
+
+/**
+ * The command a user types — READ from `bin`, never derived from the package
+ * name. The two are chosen independently, and a regex that turns one into the
+ * other is right only while every app follows one naming shape.
+ */
+export function cliNameOf(p: Pick<PackageJson, "name" | "bin">): string {
+  const unscoped = p.name.replace(/^@[^/]+\//, "");
+  // npm installs a string `bin` under the unscoped package name.
+  if (typeof p.bin !== "object" || p.bin === null) return unscoped;
+  return Object.keys(p.bin)[0] ?? unscoped;
+}
+
+/** The installed bin's name: commander's `.name()`, the REPL prompt, `~/.<name>/`. */
+export const CLI_NAME = cliNameOf(pkg);
 export const APP_VERSION = pkg.version;
 export const APP_DESCRIPTION = pkg.description ?? "";
 

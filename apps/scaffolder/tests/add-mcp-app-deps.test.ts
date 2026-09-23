@@ -133,7 +133,7 @@ describe("add-mcp-app workspace-dependency preflight", () => {
       await readFile(join(cwd, "packages", "build-config", "package.json"), "utf8"),
     );
     expect(buildConfig.name).toBe(`${SCOPE}/build-config`);
-    const app = JSON.parse(await readFile(join(cwd, "apps", "bar-mcp", "package.json"), "utf8"));
+    const app = JSON.parse(await readFile(join(cwd, "apps", "bar", "package.json"), "utf8"));
     const names = await workspaceNames(cwd);
     const workspaceDeps = Object.entries({ ...app.dependencies, ...app.devDependencies })
       .filter(([, range]) => String(range).startsWith("workspace:"))
@@ -159,7 +159,7 @@ describe("add-mcp-app workspace-dependency preflight", () => {
 
     await addApp(cwd);
 
-    expect(existsSync(join(cwd, "apps", "bar-mcp", "package.json"))).toBe(true);
+    expect(existsSync(join(cwd, "apps", "bar", "package.json"))).toBe(true);
     expect(await snapshot(join(cwd, "packages"))).toEqual(before);
     expect(await readFile(join(cwd, "tsconfig.json"), "utf8")).toBe(rootTsconfig);
   }, 60_000);
@@ -171,7 +171,7 @@ describe("add-mcp-app workspace-dependency preflight", () => {
       [
         "package.json",
         JSON.stringify({
-          name: `${SCOPE}/bar-mcp`,
+          name: `${SCOPE}/bar`,
           devDependencies: { [`${SCOPE}/not-a-thing`]: "workspace:*" },
         }),
       ],
@@ -201,7 +201,7 @@ describe("add-mcp-app workspace-dependency preflight", () => {
     await expect(addApp(cwd)).rejects.toThrow(
       /@acme\/build-config is not a workspace package, but packages\/build-config\/ already exists/,
     );
-    expect(existsSync(join(cwd, "apps", "bar-mcp"))).toBe(false);
+    expect(existsSync(join(cwd, "apps", "bar"))).toBe(false);
     expect(await snapshot(cwd)).toEqual(before);
   }, 60_000);
 
@@ -226,7 +226,7 @@ describe("add-mcp-app workspace-dependency preflight", () => {
     expect(err?.message).toContain(
       "mcp-scaffold migrate 03-configs/m3-vitest-pkg --scope @acme --force --execute",
     );
-    expect(existsSync(join(cwd, "apps", "bar-mcp"))).toBe(false);
+    expect(existsSync(join(cwd, "apps", "bar"))).toBe(false);
     expect(await snapshot(cwd)).toEqual(before);
 
     // The advertised fix must actually be a fix.
@@ -248,7 +248,7 @@ describe("add-mcp-app workspace-dependency preflight", () => {
     );
     vi.restoreAllMocks();
     await addApp(cwd);
-    expect(existsSync(join(cwd, "apps", "bar-mcp", "vitest.config.ts"))).toBe(true);
+    expect(existsSync(join(cwd, "apps", "bar", "vitest.config.ts"))).toBe(true);
   }, 60_000);
 
   it("gives each stale private package its own fix, never --force for shared-types", async () => {
@@ -293,7 +293,7 @@ describe("add-mcp-app workspace-dependency preflight", () => {
     await expect(addApp(cwd)).rejects.toThrow(
       /pnpm-workspace\.yaml does not include it[\s\S]*add `packages\/\*`/,
     );
-    expect(existsSync(join(cwd, "apps", "bar-mcp"))).toBe(false);
+    expect(existsSync(join(cwd, "apps", "bar"))).toBe(false);
   }, 60_000);
 
   it("surfaces pnpm's own error when the workspace cannot be listed", async () => {

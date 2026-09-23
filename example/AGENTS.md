@@ -38,7 +38,7 @@ Delete any surface you don't need: see `docs/ARCHITECTURE.md`. The starter ships
 
 ```
 apps/
-  example-mcp/   # the tool — clone-and-rename target
+  example/   # the tool — clone-and-rename target
   rust-accel/     # napi crate, optional acceleration
 packages/
   robustness/     # logger + watchdog + shutdown + with-timeout + health + retry + rate-limit
@@ -66,15 +66,15 @@ packages/
 | `pnpm stress` | Run 15-assertion stress harness against the built MCP |
 | `pnpm verify` | lint + docs check + typecheck + test + build (CI shape) |
 | `pnpm check:docs` | Docs integrity: index coverage + relative links + agent-file symlinks |
-| `pnpm --filter example-mcp artifacts` | Regenerate CLI help docs, completions, and manpage |
-| `pnpm --filter example-mcp check:usage` | Byte-check generated CLI artifacts |
+| `pnpm --filter @george43g/example artifacts` | Regenerate CLI help docs, completions, and manpage |
+| `pnpm --filter @george43g/example check:usage` | Byte-check generated CLI artifacts |
 
 Per-app:
-- `pnpm --filter example-mcp dev:mcp` — `tsx src/cli.ts mcp` with env files loaded
-- `pnpm --filter example-mcp mcp` — run the built MCP via stdio
-- `pnpm --filter example-mcp mcp -- --http` — run the built MCP via Streamable HTTP (requires `MCP_HTTP_TOKEN`)
-- `pnpm --filter example-mcp tui` — launch the Ink TUI
-- `pnpm --filter example-mcp doctor` — preflight checks (Node version, deps, native module, env)
+- `pnpm --filter @george43g/example dev:mcp` — `tsx src/cli.ts mcp` with env files loaded
+- `pnpm --filter @george43g/example mcp` — run the built MCP via stdio
+- `pnpm --filter @george43g/example mcp -- --http` — run the built MCP via Streamable HTTP (requires `MCP_HTTP_TOKEN`)
+- `pnpm --filter @george43g/example tui` — launch the Ink TUI
+- `pnpm --filter @george43g/example doctor` — preflight checks (Node version, deps, native module, env)
 
 Portable repo skills:
 
@@ -131,7 +131,7 @@ The watchdog writes its state to JSON each tick when `MCP_WATCHDOG_STATE_PATH` i
 
 ## Logs
 
-NDJSON files written to `$TMPDIR/example-mcp/example-mcp-{PID}-{date}.ndjson`. Lines:
+NDJSON files written to `$TMPDIR/example/example-{PID}-{date}.ndjson`. Lines:
 - `level: "info" | "warn" | "error"` — events
 - `level: "perf"` with `dur_ms` — performance spans
 - `msg: "heartbeat"` — periodic memory/uptime (every 60s)
@@ -150,7 +150,7 @@ Default off (stdio mode). Enable with `example mcp --http`. Requires `MCP_HTTP_T
 
 ## Stress harness
 
-`pnpm stress` covers 13 lifecycle assertions (in `apps/example-mcp/scripts/stress-mcp.ts`):
+`pnpm stress` covers 13 lifecycle assertions (in `apps/example/scripts/stress-mcp.ts`):
 
 1. handshake + tools/list returns the full catalog
 2. `health_check` returns `Status: healthy`
@@ -173,8 +173,8 @@ Add a case whenever you ship something touching lifecycle, dispatch, error handl
 After any change:
 
 1. **Rebuild**: `pnpm build` (turbo will only rebuild what changed).
-2. **Reload the dev MCP**: the proxy at `apps/example-mcp/scripts/mcp-dev-proxy.ts` auto-reloads on `src/**/*.ts` changes. If your MCP host already has a session, restart it.
-3. **Exercise via the dev MCP**: call the relevant `mcp__example-mcp-dev__*` tool and confirm the change.
+2. **Reload the dev MCP**: the proxy at `apps/example/scripts/mcp-dev-proxy.ts` auto-reloads on `src/**/*.ts` changes. If your MCP host already has a session, restart it.
+3. **Exercise via the dev MCP**: call the relevant `mcp__example-dev__*` tool and confirm the change.
 4. **Add a regression test** when unit-testable. Tests live colocated as `*.test.ts` or in `tests/` for integration.
 5. **Run the full test suite**: `pnpm test`.
 6. **Run the stress harness** on changes that touch the dispatcher/lifecycle: `pnpm stress`.
@@ -187,7 +187,7 @@ After any change:
 
 ## Native Rust acceleration (optional)
 
-`apps/rust-accel/` contains a `napi-rs` v3 module. Build with `pnpm --filter rust-accel build`. The MCP loads it via `apps/example-mcp/src/native-bridge.ts:tryLoadNative()` and falls back to the TS implementation when missing.
+`apps/rust-accel/` contains a `napi-rs` v3 module. Build with `pnpm --filter rust-accel build`. The MCP loads it via `apps/example/src/native-bridge.ts:tryLoadNative()` and falls back to the TS implementation when missing.
 
 Force TS path: `MCP_DISABLE_NATIVE=1`. CI tests both paths.
 

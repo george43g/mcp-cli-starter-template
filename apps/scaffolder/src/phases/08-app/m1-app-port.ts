@@ -28,7 +28,7 @@ export default class AppPortMigration extends Migration {
   // "both" so the migration runs in both `init` (fresh scaffold) and `add`
   // (append a second MCP app to an existing monorepo). The `apply()` body
   // adds an explicit collision guard for the "add" path so we never clobber
-  // an existing apps/<name>-mcp/ when the user types the wrong name.
+  // an existing apps/<name>/ when the user types the wrong name.
   readonly appliesTo = "both" as const;
 
   // Skip in `apply` (existing-repo) mode: porting the whole canonical app
@@ -40,7 +40,8 @@ export default class AppPortMigration extends Migration {
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
     const name = requireRepoName(ctx.config);
-    const pkgDir = `apps/${name}-mcp`;
+    // Verbatim: the app's directory is its name, with nothing appended.
+    const pkgDir = `apps/${name}`;
     if (ctx.mode === "add" && ctx.fs.exists(pkgDir)) {
       return {
         status: "failed",
@@ -60,7 +61,7 @@ export default class AppPortMigration extends Migration {
     const name = requireRepoName(ctx.config);
     const scope = ctx.config.global.scope.peek() ?? "@your-scope";
     return {
-      summary: "Lay down the canonical apps/<name>-mcp/ tree (src/, scripts/, tests/, configs).",
+      summary: "Lay down the canonical apps/<name>/ tree (src/, scripts/, tests/, configs).",
       rationale:
         "appliesTo=new — porting the whole app overwrites src/index.ts, src/cli.ts, src/dispatcher.ts, the tool registry, the TUI, the stress harness, package.json, vite/vitest configs, .env.example, README, .usage.kdl, etc. An existing repo almost certainly has its own MCP server layout; the safer path is to lift the load-bearing patterns into the existing source.",
       manualSteps: [

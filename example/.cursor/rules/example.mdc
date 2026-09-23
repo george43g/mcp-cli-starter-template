@@ -22,7 +22,7 @@ Key rules every agent must follow:
 After any change:
 - `pnpm build`
 - Restart the MCP host so it picks up the dev proxy's reloaded child.
-- Call the relevant `mcp__example-mcp-dev__*` tool to confirm the
+- Call the relevant `mcp__example-dev__*` tool to confirm the
   change works end-to-end.
 - `pnpm test` (or `pnpm verify` for the full suite).
 - `pnpm stress` if the change touches dispatcher / lifecycle / transport.

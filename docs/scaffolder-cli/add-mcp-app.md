@@ -3,13 +3,13 @@
 
 - **Usage**: `mcp-scaffold add-mcp-app [FLAGS] <name>`
 
-Add a second MCP app to apps/<name>-mcp/ inside an existing scaffolded repo
+Add a second app to apps/<name>/ (name used as given) inside an existing scaffolded repo
 
 ## Arguments
 
 ### `<name>`
 
-Bare tool name for the new app (no -mcp suffix)
+Name for the new app, used as given (foo → apps/foo, bin foo)
 
 ## Flags
 
@@ -19,7 +19,7 @@ Path to the scaffolded repo
 
 ### `--scope <scope>`
 
-Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted.
+Npm scope, with leading @. Auto-detected from an existing apps/* package if omitted.
 
 ### `--no-tui`
 

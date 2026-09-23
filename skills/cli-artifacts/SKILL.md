@@ -26,7 +26,7 @@ regeneration.
 ## Retain this system without the MCP app
 
 The artifact pipeline is CLI-specific, not MCP-specific. Before deleting or
-replacing `apps/<name>-mcp/`, move these files into the surviving CLI package:
+replacing `apps/<name>/`, move these files into the surviving CLI package:
 
 - `.usage.kdl`
 - the `docs:cli`, `completions`, `manpage`, `artifacts`, and `check:usage`

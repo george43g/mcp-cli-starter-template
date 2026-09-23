@@ -80,13 +80,15 @@ function resolveRepoName(
     const unscoped = pkg.name.includes("/")
       ? pkg.name.slice(pkg.name.lastIndexOf("/") + 1)
       : pkg.name;
-    const derived = unscoped.endsWith("-mcp") ? unscoped.slice(0, -4) : unscoped;
+    // Verbatim: `@scope/foo-mcp` is the tool `foo-mcp`. Stripping the suffix
+    // here would point every app path the templates generate at apps/foo/,
+    // which is not where the app lives.
     try {
-      assertValidRepoName(derived);
-      return { name: derived, source: "package.json" };
+      assertValidRepoName(unscoped);
+      return { name: unscoped, source: "package.json" };
     } catch {
       return fallbackName(
-        "package.json contains a name that cannot produce a valid bare kebab-case tool name",
+        "package.json contains a name that cannot produce a valid kebab-case tool name",
       );
     }
   }

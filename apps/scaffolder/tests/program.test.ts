@@ -99,9 +99,7 @@ describe("migrate command safety defaults", () => {
     for (const { dir } of PUBLISHED_PACKAGES) {
       expect(existsSync(join(cwd, "packages", dir))).toBe(false);
     }
-    const pkg = JSON.parse(
-      await readFile(join(cwd, "apps", "fresh-tool-mcp", "package.json"), "utf8"),
-    );
+    const pkg = JSON.parse(await readFile(join(cwd, "apps", "fresh-tool", "package.json"), "utf8"));
     // Derived, not literal — a hardcoded range here is what let the scaffolder
     // ship "^0.1.0" while robustness was on 0.2.1.
     for (const { name } of PUBLISHED_PACKAGES) {
@@ -120,7 +118,7 @@ describe("migrate command safety defaults", () => {
       },
     );
 
-    const app = join(cwd, "apps", "fresh-tool-mcp");
+    const app = join(cwd, "apps", "fresh-tool");
     for (const path of [
       join(app, "completions", "fresh-tool.bash"),
       join(app, "completions", "_fresh-tool"),
@@ -141,6 +139,41 @@ describe("migrate command safety defaults", () => {
     expect(completion).not.toContain("example-repo");
     expect(manpage).toContain(".TH FRESH-TOOL 1");
     expect(docs).toContain("# `fresh-tool`");
+  });
+});
+
+// The app's name is taken AS GIVEN: no suffix appended, none rejected. The
+// installed bin, the commander name `--help` prints, and every path and key
+// derived from the name must agree — before this, the bin was the bare token
+// while cli.ts regex-stripped `-mcp` off the package name at runtime, and the
+// two agreed only because a bare name could never end in `-mcp`.
+describe("init names the app verbatim", () => {
+  it.each(["fresh-tool", "fresh-tool-mcp"])("--name %s", async (name) => {
+    const cwd = await target();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await buildProgram().parseAsync(["--no-banner", "init", cwd, "--name", name, "--no-install"], {
+      from: "user",
+    });
+
+    const app = join(cwd, "apps", name);
+    const pkg = JSON.parse(await readFile(join(app, "package.json"), "utf8"));
+    expect(pkg.name).toBe(`@george43g/${name}`);
+    expect(Object.keys(pkg.bin)).toEqual([name]);
+    expect(existsSync(join(cwd, "apps", `${name}-mcp`))).toBe(false);
+
+    // The commander name comes from the bin, not from the package name.
+    const cli = await readFile(join(app, "src", "cli.ts"), "utf8");
+    expect(cli).toMatch(/\.name\(CLI_NAME\)/);
+    expect(cli).not.toMatch(/-mcp\$/);
+    const access = await readFile(join(app, "src", "access-check.ts"), "utf8");
+    expect(access).not.toMatch(/-mcp\$/);
+
+    // usage(1) spec, dev-server key and its paths all carry the same name.
+    expect(await readFile(join(app, ".usage.kdl"), "utf8")).toContain(`bin "${name}"`);
+    const mcp = JSON.parse(await readFile(join(cwd, ".mcp.json"), "utf8"));
+    const dev = mcp.mcpServers[`${name}-dev`];
+    expect(dev, JSON.stringify(Object.keys(mcp.mcpServers))).toBeDefined();
+    expect(dev.env.MCP_DEV_ENTRY).toBe(`apps/${name}/src/index.ts`);
   });
 });
 

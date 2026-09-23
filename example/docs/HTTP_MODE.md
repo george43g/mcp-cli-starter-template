@@ -9,10 +9,10 @@ The starter ships HTTP support wired up by default. Tools that don't want it can
 export MCP_HTTP_TOKEN=$(openssl rand -hex 32)
 
 # Run the server (port 8080, bind 127.0.0.1)
-pnpm --filter @george43g/example-mcp http
+pnpm --filter @george43g/example http
 
 # Or with explicit port/bind
-pnpm --filter @george43g/example-mcp http -- --port 9090 --bind 0.0.0.0
+pnpm --filter @george43g/example http -- --port 9090 --bind 0.0.0.0
 ```
 
 ## Where the token comes from
@@ -83,9 +83,9 @@ Body format matches `formatHealthText()` from `@george43g/robustness/health.ts` 
 
 If your tool only needs stdio:
 
-1. Delete the `http` subcommand from `apps/example-mcp/src/cli.ts`.
-2. Delete the `transport === "http"` branch from `apps/example-mcp/src/index.ts:runMcpServer`.
-3. Delete case #9 (HTTP transport) from `apps/example-mcp/scripts/stress-mcp.ts`.
+1. Delete the `http` subcommand from `apps/example/src/cli.ts`.
+2. Delete the `transport === "http"` branch from `apps/example/src/index.ts:runMcpServer`.
+3. Delete case #9 (HTTP transport) from `apps/example/scripts/stress-mcp.ts`.
 4. Remove `MCP_HTTP_TOKEN`, `MCP_HTTP_PORT`, `MCP_HTTP_BIND` from `.env.example`.
 5. Optionally delete `packages/mcp-kit/src/transports/http.ts` if no other tool in your workspace uses it.
 

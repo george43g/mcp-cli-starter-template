@@ -27,7 +27,7 @@ import { checkLocalAccess, formatAccessReport } from "./access-check.js";
 import { applyHttpEnvFromOpts, registerHttpCommand } from "./commands/http.js";
 import { callMcpTool } from "./dispatcher.js";
 import { runMcpServer } from "./index.js";
-import { APP_NAME, buildStamp } from "./meta.js";
+import { APP_NAME, buildStamp, CLI_NAME } from "./meta.js";
 
 async function printResult(result: Awaited<ReturnType<typeof callMcpTool>>, json: boolean) {
   if (json) {
@@ -51,9 +51,9 @@ async function printResult(result: Awaited<ReturnType<typeof callMcpTool>>, json
 
 export async function main(argv: readonly string[] = process.argv): Promise<void> {
   const program = new Command();
-  // Bin name = the tool name (no -cli suffix). Subcommands route to MCP/TUI/etc.
+  // One bin; subcommands route to MCP/TUI/etc. The name is the bin's own key.
   program
-    .name(APP_NAME.replace(/^@[^/]+\//, "").replace(/-mcp$/, ""))
+    .name(CLI_NAME)
     .description("example-repo — single bin; subcommands run the MCP server, TUI, doctor, etc.")
     .version(buildStamp(), "-V, --version")
     .option("--json", "Emit machine-readable JSON")
@@ -125,7 +125,7 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
     .action(async () => {
       const { runRepl } = await import("@george43g/cli-kit");
       await runRepl({
-        prompt: APP_NAME.replace(/^@[^/]+\//, "").replace(/-mcp$/, ""),
+        prompt: CLI_NAME,
         banner: color.dim(`${APP_NAME} ${buildStamp()} — type 'help' for commands.`),
         dispatcher: {
           async listTools() {

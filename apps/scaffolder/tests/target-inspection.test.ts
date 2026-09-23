@@ -21,14 +21,30 @@ afterEach(async () => {
 });
 
 describe("inspectTarget name resolution", () => {
-  it("derives an unscoped bare name and removes one trailing -mcp", async () => {
+  it("derives the unscoped name VERBATIM — a trailing -mcp is part of the name", async () => {
     const cwd = await target();
     await pkg(cwd, { name: "@scope/my-tool-mcp" });
     const result = await inspectTarget({ cwd, mode: "existing" });
-    expect(result.repoName).toBe("my-tool");
+    expect(result.repoName).toBe("my-tool-mcp");
     expect(result.repoNameSource).toBe("package.json");
     expect(result.fallbackWarning).toBeUndefined();
   });
+
+  it("accepts an explicit --name ending in -mcp (the old ban is gone)", async () => {
+    const cwd = await target();
+    const result = await inspectTarget({ cwd, mode: "new", explicitName: "foo-mcp" });
+    expect(result.repoName).toBe("foo-mcp");
+  });
+
+  it.each(["rust-accel", "shared-types", "tsconfig", "robustness", "mcp-kit"])(
+    "rejects --name %s, which would collide with a workspace or published package",
+    async (name) => {
+      const cwd = await target();
+      await expect(inspectTarget({ cwd, mode: "new", explicitName: name })).rejects.toThrow(
+        /collides with/,
+      );
+    },
+  );
 
   it("lets explicit --name win over package metadata", async () => {
     const cwd = await target();

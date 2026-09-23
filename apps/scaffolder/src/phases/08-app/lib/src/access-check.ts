@@ -10,7 +10,7 @@
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { APP_NAME } from "./meta.js";
+import { CLI_NAME } from "./meta.js";
 import { hasNativeModule } from "./native-bridge.js";
 
 export type CheckStatus = "ok" | "warn" | "error" | "info";
@@ -69,8 +69,7 @@ function checkNative(): AccessCheckItem {
 
 function checkConfigDir(): AccessCheckItem {
   // Generic check — tools may use ~/.{toolName}/ for credentials, logs, etc.
-  const slug = APP_NAME.replace(/^@[^/]+\//, "").replace(/-mcp$/, "");
-  const dir = join(homedir(), `.${slug}`);
+  const dir = join(homedir(), `.${CLI_NAME}`);
   if (!existsSync(dir)) {
     return {
       key: "configDir",

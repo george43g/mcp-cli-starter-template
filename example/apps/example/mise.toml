@@ -1,7 +1,7 @@
-# App-local mise tasks for example-mcp.
+# App-local mise tasks for example.
 #
 # Run from inside this directory with `mise run <task>`, or from the repo
-# root with `mise run --cd apps/example-mcp <task>`.
+# root with `mise run --cd apps/example <task>`.
 #
 # These tasks generate shell completions, the manpage, and CLI markdown
 # docs from .usage.kdl — keep .usage.kdl in sync with src/cli.ts and the

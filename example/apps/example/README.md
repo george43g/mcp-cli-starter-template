@@ -1,4 +1,4 @@
-# example-mcp
+# example
 
 MCP server + CLI + TUI, cloned from `mcp-cli-starter-template`.
 
@@ -15,7 +15,7 @@ pnpm stress          # 15-assertion robustness harness
 
 | Bin | Purpose | Default transport |
 |-----|---------|-------------------|
-| `example-mcp` | MCP server | stdio (`--http` for Streamable HTTP) |
+| `example` | MCP server | stdio (`--http` for Streamable HTTP) |
 | `example-cli` | Commander CLI: `mcp`, `http`, `tui`, `doctor`, `health`, `noop`, `cli` (REPL) | n/a (in-process dispatch) |
 | `example-tui` | Ink TUI | n/a |
 
@@ -98,7 +98,7 @@ that depends on them: **a log file without a `shutdown` line means the process
 crashed.**
 
 ```json
-{"msg":"startup","data":{"pid":75652,"entrypoint":"example-mcp"}}
+{"msg":"startup","data":{"pid":75652,"entrypoint":"example"}}
 {"msg":"shutdown","data":{"pid":75652,"reason":"stdin_eof","uptime_s":41}}
 ```
 
@@ -117,7 +117,7 @@ Two caveats worth knowing:
   handlers and writes both markers, and a `SIGTERM` exits 0:
 
   ```json
-  {"msg":"startup","data":{"pid":85509,"entrypoint":"@george43g/example-mcp"}}
+  {"msg":"startup","data":{"pid":85509,"entrypoint":"@george43g/example"}}
   {"msg":"shutdown: signal_received","data":{"signal":"SIGTERM"}}
   {"msg":"shutdown","data":{"pid":85509,"reason":"signal:SIGTERM","uptime_s":4}}
   ```
@@ -145,7 +145,7 @@ The proxy now builds the command itself — `node --import <tsx loader> <entry>`
 one process — and takes only the entry from you:
 
 ```json
-"env": { "MCP_DEV": "1", "MCP_DEV_ENTRY": "apps/example-mcp/src/index.ts" }
+"env": { "MCP_DEV": "1", "MCP_DEV_ENTRY": "apps/example/src/index.ts" }
 ```
 
 **If you scaffolded before this, check your MCP host config for an explicit
@@ -266,7 +266,7 @@ CI gate `scripts/check-usage-freshness.mjs` (`pnpm check:usage`) fails the build
 Claude Desktop loads MCP servers from `.mcpb` bundles — zip archives with a `manifest.json` + the runtime files. Build one with:
 
 ```bash
-pnpm pack:mcpb         # runs `pnpm build` then bundles into example-mcp-<version>.mcpb
+pnpm pack:mcpb         # runs `pnpm build` then bundles into example-<version>.mcpb
 ```
 
 The output `.mcpb` drops into Claude Desktop via drag-and-drop (or **Settings → Extensions → Install from file**). Claude reads `manifest.json` (MCPB spec v0.3), spawns `node ${__dirname}/dist/index.js` for stdio transport, and surfaces this server's tools + resources in the catalogue.

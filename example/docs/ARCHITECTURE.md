@@ -6,7 +6,7 @@
 
 ```
 apps/
-  example-mcp/   — the example tool (clone-and-rename target)
+  example/   — the example tool (clone-and-rename target)
   rust-accel/     — napi-rs v3 crate, optional acceleration
 
 packages/
@@ -32,7 +32,7 @@ packages/
 ## Dependency direction (always upward)
 
 ```
-                  apps/example-mcp
+                  apps/example
                        │
    ┌───────────────────┼─────────────────────┐
    ▼                   ▼                     ▼
@@ -61,7 +61,7 @@ Every MCP tool call passes through `@george43g/mcp-kit/dispatch.ts:buildDispatch
 6. **No stdout writes** — JSON-RPC owns it after `StdioServerTransport.connect()`. All logging via `@george43g/robustness/logger`.
 7. **structuredContent** + **_meta** in every response — engine label (`ts` or `rust`) and duration_ms.
 
-These invariants exist as a comment block in `apps/example-mcp/src/dispatcher.ts`. Do not weaken them without a corresponding update to `AGENTS.md`.
+These invariants exist as a comment block in `apps/example/src/dispatcher.ts`. Do not weaken them without a corresponding update to `AGENTS.md`.
 
 ## The robustness harness
 
@@ -127,7 +127,7 @@ value. The keychain and exec links are skippable, so a container that only ever
 sees env vars pays nothing for them.
 
 The HTTP transport's bearer token is the worked example — see
-`apps/example-mcp/src/commands/http.ts`. `MCP_HTTP_TOKEN` in the
+`apps/example/src/commands/http.ts`. `MCP_HTTP_TOKEN` in the
 environment still wins, so deployments that export it behave exactly as before;
 the rest of the chain only adds places to look when it is absent.
 
@@ -135,7 +135,7 @@ the rest of the chain only adds places to look when it is absent.
 
 Each surface is independently deletable:
 
-- **No TUI**: delete `apps/example-mcp/src/tui/`, the `example-tui` bin entry in `package.json`, the `tui` subcommand from `src/cli.ts`, and the TUI entry from `vite.config.ts`. Optionally delete `packages/tui-kit` from `pnpm-workspace.yaml`.
+- **No TUI**: delete `apps/example/src/tui/`, the `example-tui` bin entry in `package.json`, the `tui` subcommand from `src/cli.ts`, and the TUI entry from `vite.config.ts`. Optionally delete `packages/tui-kit` from `pnpm-workspace.yaml`.
 - **No HTTP**: delete the `http` subcommand from `src/cli.ts`, the `--http` branch from `src/index.ts`, case #9 from `scripts/stress-mcp.ts`, and `MCP_HTTP_TOKEN` from `.env.example`.
 - **No Rust**: delete `apps/rust-accel/`, `src/native-bridge.ts`, and the `tryLoadNative()` call in `src/tools/noop.ts`. Remove `MIRRORED_SCHEMAS` from `packages/shared-types/src/index.ts` and the drift-check test.
 - **No `get_logs`**: delete `src/tools/get-logs.ts` and remove it from `src/tools/registry.ts`.

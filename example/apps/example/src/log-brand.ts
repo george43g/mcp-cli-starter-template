@@ -33,7 +33,7 @@
 import { setLogFilePrefix } from "@george43g/robustness";
 import { APP_NAME } from "./meta.js";
 
-/** The scoped package name without its `@scope/` prefix, e.g. `example-mcp`. */
+/** The scoped package name without its `@scope/` prefix, e.g. `example`. */
 export const LOG_SLUG = APP_NAME.replace(/^@[^/]+\//, "");
 
 setLogFilePrefix(LOG_SLUG);

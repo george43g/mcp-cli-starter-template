@@ -22,7 +22,7 @@ flag "-v --verbose" help="Log debug-level info to stderr"
 flag --yes help="Non-interactive: accept defaults for any unset value"
 flag --no-banner help="Suppress the ascii banner"
 cmd init help="Fresh scaffold into <target> (defaults to cwd)" {
-    flag --name help="Tool name (kebab-case, BARE — no -mcp suffix)" {
+    flag --name help="Tool name (kebab-case), used as given: --name foo → apps/foo, bin foo" {
         arg <name>
     }
     flag --scope help="Npm scope, with leading @" {
@@ -60,7 +60,7 @@ cmd apply help="Apply migrations to an existing repo" {
         arg <path>
     }
     flag --force help="Overwrite files that diverge from the template (default: preserve user customizations)"
-    flag --name help="Tool name (kebab-case, BARE — no -mcp suffix)" {
+    flag --name help="Tool name (kebab-case), used as given: --name foo → apps/foo, bin foo" {
         arg <name>
     }
     flag --scope help="Npm scope, with leading @" {
@@ -100,7 +100,7 @@ cmd plan help="Dry-run preview of which migrations would apply" {
     flag --report-json help="Write a machine-readable migration report" {
         arg <path>
     }
-    flag --name help="Tool name (kebab-case, BARE — no -mcp suffix)" {
+    flag --name help="Tool name (kebab-case), used as given: --name foo → apps/foo, bin foo" {
         arg <name>
     }
     flag --scope help="Npm scope, with leading @" {
@@ -137,7 +137,7 @@ cmd migrate help="Run a single migration or one whole phase" {
     flag --report-json help="Write a machine-readable migration report" {
         arg <path>
     }
-    flag --name help="Tool name (kebab-case, BARE — no -mcp suffix)" {
+    flag --name help="Tool name (kebab-case), used as given: --name foo → apps/foo, bin foo" {
         arg <name>
     }
     flag --scope help="Npm scope, with leading @" {
@@ -161,18 +161,18 @@ cmd migrate help="Run a single migration or one whole phase" {
     }
     arg <id> help="e.g. 07-shared-types/m1-shared-types, or just 07-shared-types"
 }
-cmd add-mcp-app help="Add a second MCP app to apps/<name>-mcp/ inside an existing scaffolded repo" {
+cmd add-mcp-app help="Add a second app to apps/<name>/ (name used as given) inside an existing scaffolded repo" {
     flag --target help="Path to the scaffolded repo" {
         arg <dir>
     }
-    flag --scope help="Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted." {
+    flag --scope help="Npm scope, with leading @. Auto-detected from an existing apps/* package if omitted." {
         arg <scope>
     }
     flag --no-tui help="Skip the Ink/React TUI surface for the new app"
     flag --no-install help="Skip the package-manager install after dependencies change"
     flag --no-http help="Skip the Streamable HTTP transport for the new app"
     flag --no-rust-accel help="Skip the rust-accel workspace dep for the new app"
-    arg <name> help="Bare tool name for the new app (no -mcp suffix)"
+    arg <name> help="Name for the new app, used as given (foo → apps/foo, bin foo)"
 }
 cmd list help="List discovered phases + migrations"
 __USAGE_EOF__

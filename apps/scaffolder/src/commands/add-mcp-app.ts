@@ -15,10 +15,57 @@ import type { FsHelper } from "../core/fs.js";
 import { nameUpperOf, substitute } from "../core/templating.js";
 import { TEMPLATES } from "../generated/templates.js";
 
+/** The dependency that makes a workspace an MCP app — same marker as scripts/lib/mcp-apps.mjs. */
+const MCP_MARKER = "@george43g/mcp-kit";
+
+interface AppWorkspace {
+  dir: string;
+  name: string;
+  marked: boolean;
+}
+
+/**
+ * Every apps/* workspace with a package name, sorted MCP apps first then by
+ * directory. A repo is recognised by what its apps ARE — they depend on
+ * mcp-kit, or they carry a scoped package name the new app can share — never
+ * by the shape of their names: app names are verbatim now, so `-mcp` is a
+ * choice, not a signal.
+ */
+function appWorkspaces(cwd: string): AppWorkspace[] {
+  let kids: import("node:fs").Dirent[];
+  try {
+    kids = readdirSync(resolve(cwd, "apps"), { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const found: AppWorkspace[] = [];
+  for (const kid of kids) {
+    if (!kid.isDirectory()) continue;
+    let pkg: {
+      name?: unknown;
+      dependencies?: Record<string, unknown>;
+      devDependencies?: Record<string, unknown>;
+      peerDependencies?: Record<string, unknown>;
+    };
+    try {
+      pkg = JSON.parse(readFileSync(resolve(cwd, "apps", kid.name, "package.json"), "utf8"));
+    } catch {
+      continue; // no manifest, or unparseable — not an app workspace
+    }
+    if (typeof pkg.name !== "string" || pkg.name.length === 0) continue;
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies };
+    found.push({ dir: kid.name, name: pkg.name, marked: MCP_MARKER in deps });
+  }
+  return found.sort((a, b) =>
+    a.marked === b.marked ? a.dir.localeCompare(b.dir) : a.marked ? -1 : 1,
+  );
+}
+
 /**
  * Throw with an actionable message if `cwd` isn't an existing scaffolded
  * monorepo. The signals we look for: `pnpm-workspace.yaml`, an `apps/`
- * directory, and at least one `apps/*-mcp/` subdirectory.
+ * directory, and at least one apps/* workspace that depends on mcp-kit or has
+ * a scoped package name.
  */
 export function assertInsideScaffoldedRepo(cwd: string): void {
   const checks: Array<[string, string]> = [
@@ -37,47 +84,58 @@ export function assertInsideScaffoldedRepo(cwd: string): void {
       }
     }
   }
-  const apps = readdirSync(resolve(cwd, "apps"), { withFileTypes: true })
-    .filter((d) => d.isDirectory() && d.name.endsWith("-mcp"))
-    .map((d) => d.name);
+  const apps = appWorkspaces(cwd).filter((a) => a.marked || a.name.startsWith("@"));
   if (apps.length === 0) {
     throw new Error(
-      `Not a scaffolded repo: apps/ has no *-mcp/ subdirectory (cwd=${cwd}). ` +
-        `Did you mean \`mcp-scaffold init\` instead?`,
+      `Not a scaffolded repo: apps/ has no app workspace — none depends on ${MCP_MARKER} ` +
+        `or has a scoped package name (cwd=${cwd}). Did you mean \`mcp-scaffold init\` instead?`,
     );
   }
 }
 
 /**
- * Read the first `apps/*-mcp/package.json` and parse the npm scope out of
- * its `name` field (e.g. `@acme/foo-mcp` → `@acme`). Throws if no existing
- * app exposes a parseable scoped name.
+ * Parse the npm scope out of an existing app's package name (e.g.
+ * `@acme/foo` → `@acme`), preferring MCP apps. Throws if no app has a
+ * scoped name.
  */
 export function detectScope(cwd: string): string {
-  const apps = readdirSync(resolve(cwd, "apps"), { withFileTypes: true })
-    .filter((d) => d.isDirectory() && d.name.endsWith("-mcp"))
-    .map((d) => d.name)
-    .sort();
-  for (const app of apps) {
-    let raw: string;
-    try {
-      raw = readFileSync(resolve(cwd, "apps", app, "package.json"), "utf8");
-    } catch {
-      continue;
-    }
-    try {
-      const pkg = JSON.parse(raw) as { name?: unknown };
-      if (typeof pkg.name === "string") {
-        const m = pkg.name.match(/^(@[^/]+)\//);
-        if (m) return m[1] as string;
-      }
-    } catch {
-      // ignore unparseable JSON; try the next app
-    }
+  for (const app of appWorkspaces(cwd)) {
+    const m = app.name.match(/^(@[^/]+)\//);
+    if (m) return m[1] as string;
   }
   throw new Error(
-    `Couldn't detect npm scope from any apps/*-mcp/package.json under ${cwd}. ` +
+    `Couldn't detect npm scope from any apps/*/package.json under ${cwd}. ` +
       `Pass --scope @your-scope explicitly.`,
+  );
+}
+
+/** Matches the name-shaped app filter older generated ci.yml files used. */
+const OLD_SUFFIX_FILTER = /--filter[= ]+["']?[^"'\s]*\*-mcp\b["']?/;
+
+/**
+ * Warning text when a suffix-less app is being added to a repo whose CI still
+ * selects apps by `--filter "<scope>/*-mcp"` — the shape every repo generated
+ * before the mcp-kit-marker gates carried. That filter does not match the new
+ * app, and pnpm exits 0 on a filter that matches nothing, so its usage, pack
+ * and stress steps would go green without ever running for it. Undefined when
+ * there is nothing to warn about.
+ */
+export function staleCiFilterWarning(cwd: string, name: string, scope: string): string | undefined {
+  if (name.endsWith("-mcp")) return undefined; // the old filter still selects it
+  const rel = ".github/workflows/ci.yml";
+  let ci: string;
+  try {
+    ci = readFileSync(resolve(cwd, rel), "utf8");
+  } catch {
+    return undefined;
+  }
+  if (!OLD_SUFFIX_FILTER.test(ci)) return undefined;
+  const pkg = `${scope}/${name}`;
+  return (
+    `${rel} selects apps with a \`*-mcp\` name filter, which does not match ${pkg}: ` +
+    `its CI steps will pass without running for the new app. Fix: add \`--filter ${pkg}\` ` +
+    `next to each \`--filter "…/*-mcp"\` in ${rel} (pnpm unions repeated filters), or ` +
+    `rename the app to end in -mcp.`
   );
 }
 
@@ -85,7 +143,8 @@ export function detectScope(cwd: string): string {
  * Write the per-app files the 11-agent-files phase would have written for
  * the first app:
  *   1. .cursor/rules/<name>.mdc — Cursor rules pointer (substituted)
- *   2. .mcp.json — append a new <name>-mcp-dev entry under mcpServers.
+ *   2. .mcp.json — append a new <name>-dev entry under mcpServers (the app's
+ *      name verbatim, so `foo` → `foo-dev` and `foo-mcp` → `foo-mcp-dev`).
  *      Skip with a notice if .mcp.json is missing or malformed.
  *
  * Routes everything through the ctx FsHelper so writeIfChanged + dry-run +
@@ -121,7 +180,7 @@ export async function writePerAppAgentFiles(args: {
     }
   }
 
-  // 2. .mcp.json — append a new <name>-mcp-dev entry under mcpServers.
+  // 2. .mcp.json — append a new <name>-dev entry under mcpServers.
   const mcpJsonPath = resolve(cwd, ".mcp.json");
   let raw: string;
   try {
@@ -137,18 +196,18 @@ export async function writePerAppAgentFiles(args: {
     log.warn(".mcp.json is not valid JSON; skipping dev-MCP entry append.");
     return { filesChanged, notes };
   }
-  const serverKey = `${name}-mcp-dev`;
+  const serverKey = `${name}-dev`;
   const servers: Record<string, unknown> = parsed.mcpServers ?? {};
   if (serverKey in servers) {
     notes.push(`.mcp.json already has a "${serverKey}" entry — left alone.`);
   } else {
     servers[serverKey] = {
       command: "pnpm",
-      args: ["tsx", `apps/${name}-mcp/scripts/mcp-dev-proxy.ts`],
+      args: ["tsx", `apps/${name}/scripts/mcp-dev-proxy.ts`],
       env: {
         MCP_DEV: "1",
-        MCP_DEV_ENTRY: `apps/${name}-mcp/src/index.ts`,
-        MCP_DEV_WATCH_DIR: `apps/${name}-mcp/src`,
+        MCP_DEV_ENTRY: `apps/${name}/src/index.ts`,
+        MCP_DEV_WATCH_DIR: `apps/${name}/src`,
       },
     };
     parsed.mcpServers = servers;

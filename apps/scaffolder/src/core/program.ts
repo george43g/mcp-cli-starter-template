@@ -20,6 +20,7 @@ import { Command } from "commander";
 import {
   assertInsideScaffoldedRepo,
   detectScope,
+  staleCiFilterWarning,
   writePerAppAgentFiles,
 } from "../commands/add-mcp-app.js";
 import { ensureAppWorkspaceDeps, pnpmWorkspaceLister } from "../commands/add-mcp-app-deps.js";
@@ -41,7 +42,10 @@ import { inspectTarget } from "./target-inspection.js";
 /** Common flags shared between init/apply/plan. */
 function addCommonFlags(cmd: Command): Command {
   return cmd
-    .option("--name <name>", "Tool name (kebab-case, BARE — no -mcp suffix)")
+    .option(
+      "--name <name>",
+      "Tool name (kebab-case), used as given: --name foo → apps/foo, bin foo",
+    )
     .option("--scope <scope>", "Npm scope, with leading @", "@george43g")
     .option(
       "--package-manager <pm>",
@@ -152,11 +156,13 @@ export function buildProgram(): Command {
 
   program
     .command("add-mcp-app <name>")
-    .description("Add a second MCP app to apps/<name>-mcp/ inside an existing scaffolded repo")
+    .description(
+      "Add a second app to apps/<name>/ (name used as given) inside an existing scaffolded repo",
+    )
     .option("--target <dir>", "Path to the scaffolded repo", process.cwd())
     .option(
       "--scope <scope>",
-      "Npm scope, with leading @. Auto-detected from existing apps/*-mcp/ if omitted.",
+      "Npm scope, with leading @. Auto-detected from an existing apps/* package if omitted.",
     )
     .option("--no-tui", "Skip the Ink/React TUI surface for the new app")
     .option("--no-install", "Skip the package-manager install after dependencies change")
@@ -186,6 +192,8 @@ export function buildProgram(): Command {
       const log = makeLogger({ verbose: globalOpts.verbose === true });
       const perApp = await writePerAppAgentFiles({ fs, cwd, name, scope, log });
       for (const note of perApp.notes) process.stdout.write(`  ${note}\n`);
+      const ciWarning = staleCiFilterWarning(cwd, name, scope);
+      if (ciWarning) log.warn(ciWarning);
     });
 
   program

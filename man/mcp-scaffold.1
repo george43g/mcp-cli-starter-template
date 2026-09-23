@@ -31,7 +31,7 @@ Dry\-run preview of which migrations would apply
 Run a single migration or one whole phase
 .TP
 \fBadd\-mcp\-app\fR
-Add a second MCP app to apps/<name>\-mcp/ inside an existing scaffolded repo
+Add a second app to apps/<name>/ (name used as given) inside an existing scaffolded repo
 .TP
 \fBlist\fR
 List discovered phases + migrations
@@ -44,7 +44,7 @@ Fresh scaffold into <target> (defaults to cwd)
 .PP
 .TP
 \fB\-\-name\fR \fI<name>\fR
-Tool name (kebab\-case, BARE — no \-mcp suffix)
+Tool name (kebab\-case), used as given: \-\-name foo → apps/foo, bin foo
 .TP
 \fB\-\-scope\fR \fI<scope>\fR
 Npm scope, with leading @
@@ -101,7 +101,7 @@ Write a machine\-readable migration report
 Overwrite files that diverge from the template (default: preserve user customizations)
 .TP
 \fB\-\-name\fR \fI<name>\fR
-Tool name (kebab\-case, BARE — no \-mcp suffix)
+Tool name (kebab\-case), used as given: \-\-name foo → apps/foo, bin foo
 .TP
 \fB\-\-scope\fR \fI<scope>\fR
 Npm scope, with leading @
@@ -150,7 +150,7 @@ safe | full (default: safe; full opts generic repos into starter infrastructure)
 Write a machine\-readable migration report
 .TP
 \fB\-\-name\fR \fI<name>\fR
-Tool name (kebab\-case, BARE — no \-mcp suffix)
+Tool name (kebab\-case), used as given: \-\-name foo → apps/foo, bin foo
 .TP
 \fB\-\-scope\fR \fI<scope>\fR
 Npm scope, with leading @
@@ -202,7 +202,7 @@ Overwrite divergent files (default: preserve in existing mode)
 Write a machine\-readable migration report
 .TP
 \fB\-\-name\fR \fI<name>\fR
-Tool name (kebab\-case, BARE — no \-mcp suffix)
+Tool name (kebab\-case), used as given: \-\-name foo → apps/foo, bin foo
 .TP
 \fB\-\-scope\fR \fI<scope>\fR
 Npm scope, with leading @
@@ -236,7 +236,7 @@ Repo\-relative directory receiving the usage(1) artifacts pipeline (default: .)
 \fB<id>\fR
 e.g. 07\-shared\-types/m1\-shared\-types, or just 07\-shared\-types
 .SH "MCP-SCAFFOLD ADD-MCP-APP"
-Add a second MCP app to apps/<name>\-mcp/ inside an existing scaffolded repo
+Add a second app to apps/<name>/ (name used as given) inside an existing scaffolded repo
 .PP
 \fBUsage:\fR mcp\-scaffold add\-mcp\-app [OPTIONS] <name>
 .PP
@@ -247,7 +247,7 @@ Add a second MCP app to apps/<name>\-mcp/ inside an existing scaffolded repo
 Path to the scaffolded repo
 .TP
 \fB\-\-scope\fR \fI<scope>\fR
-Npm scope, with leading @. Auto\-detected from existing apps/*\-mcp/ if omitted.
+Npm scope, with leading @. Auto\-detected from an existing apps/* package if omitted.
 .TP
 \fB\-\-no\-tui\fR
 Skip the Ink/React TUI surface for the new app
@@ -264,4 +264,4 @@ Skip the rust\-accel workspace dep for the new app
 .PP
 .TP
 \fB<name>\fR
-Bare tool name for the new app (no \-mcp suffix)
+Name for the new app, used as given (foo → apps/foo, bin foo)

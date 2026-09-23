@@ -55,4 +55,4 @@ run = "pnpm stress"
 
 [tasks.screenshots]
 description = "Regenerate TUI/CLI screenshots via VHS"
-run = "pnpm --filter @george43g/example-mcp screenshots"
+run = "pnpm --filter @george43g/example screenshots"
