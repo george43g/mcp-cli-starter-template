@@ -12,12 +12,16 @@
  * workspace contains — the same question `pnpm install` answers.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readlinkSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ensureAppWorkspaceDeps, pnpmWorkspaceLister } from "../src/commands/add-mcp-app-deps.js";
+import {
+  createOnlyFs,
+  ensureAppWorkspaceDeps,
+  pnpmWorkspaceLister,
+} from "../src/commands/add-mcp-app-deps.js";
 import { Config } from "../src/core/config.js";
 import { makeFs } from "../src/core/fs.js";
 import { makeGit } from "../src/core/git.js";
@@ -246,4 +250,94 @@ describe("add-mcp-app workspace-dependency preflight", () => {
     await addApp(cwd);
     expect(existsSync(join(cwd, "apps", "bar-mcp", "vitest.config.ts"))).toBe(true);
   }, 60_000);
+
+  it("gives each stale private package its own fix, never --force for shared-types", async () => {
+    const cwd = await scaffoldedRepo([...ALL_BUT_BUILD_CONFIG(), new M5BuildConfigPkg()]);
+    // Three packages older than the template, each in a different way.
+    await rm(join(cwd, "packages", "tsconfig", "react.json"));
+    await writeFile(
+      join(cwd, "packages", "build-config", "build-stamp.mjs"),
+      "export function buildStamp() {}\n",
+    );
+    await writeFile(
+      join(cwd, "packages", "shared-types", "src", "index.ts"),
+      'export * from "./legacy.js";\n',
+    );
+    await writeFile(
+      join(cwd, "packages", "shared-types", "src", "legacy.ts"),
+      "export const OnlyLegacySchema = 1;\n",
+    );
+    const before = await snapshot(cwd);
+
+    const err = await addApp(cwd).then(
+      () => undefined,
+      (e: unknown) => e as Error,
+    );
+    const msg = err?.message ?? "";
+    expect(msg).toContain("@acme/tsconfig/react.json does not resolve to a file");
+    expect(msg).toContain("mcp-scaffold migrate 03-configs/m1-tsconfig-pkg --scope @acme --force");
+    expect(msg).toContain("AND the root tsconfig.json");
+    expect(msg).toMatch(/@acme\/build-config has no export named 'buildDefines'/);
+    expect(msg).toContain("mcp-scaffold migrate 03-configs/m5-build-config-pkg --scope @acme");
+    // Followed `export *` into legacy.ts and still found no NoopInputSchema.
+    expect(msg).toMatch(/@acme\/shared-types has no export named .*'NoopInputSchema'/);
+    expect(msg).toContain("add the missing exports to packages/shared-types by hand");
+    expect(msg).not.toContain("migrate 07-shared-types");
+    expect(await snapshot(cwd)).toEqual(before);
+  }, 60_000);
+
+  it("fails without writing the app when pnpm-workspace.yaml does not cover a created package", async () => {
+    const cwd = await scaffoldedRepo([]);
+    await writeFile(join(cwd, "pnpm-workspace.yaml"), 'packages:\n  - "apps/*"\n');
+
+    await expect(addApp(cwd)).rejects.toThrow(
+      /pnpm-workspace\.yaml does not include it[\s\S]*add `packages\/\*`/,
+    );
+    expect(existsSync(join(cwd, "apps", "bar-mcp"))).toBe(false);
+  }, 60_000);
+
+  it("surfaces pnpm's own error when the workspace cannot be listed", async () => {
+    const cwd = await scaffoldedRepo([]);
+    await writeFile(join(cwd, "pnpm-workspace.yaml"), "packages: [\n");
+    const list = pnpmWorkspaceLister(makeShell({ cwd, dryRun: false }));
+    await expect(list(cwd)).rejects.toThrow(
+      /Could not list the workspace packages .* exited 1\): [\s\S]*unexpected end of the stream/,
+    );
+  }, 60_000);
+});
+
+describe("createOnlyFs", () => {
+  async function tempFs() {
+    const cwd = await mkdtemp(join(tmpdir(), "scaffolder-create-only-"));
+    cleanup.push(cwd);
+    const skipped: string[] = [];
+    return { cwd, skipped, fs: createOnlyFs(makeFs({ cwd, dryRun: false, force: true }), skipped) };
+  }
+
+  it("never overwrites an existing file, and creates a missing one", async () => {
+    const { cwd, skipped, fs } = await tempFs();
+    await writeFile(join(cwd, "keep.txt"), "mine\n");
+    expect(await fs.writeIfChanged("keep.txt", "theirs\n")).toBe("unchanged");
+    expect(await fs.writeIfChanged("new.txt", "fresh\n")).toBe("created");
+    expect(await readFile(join(cwd, "keep.txt"), "utf8")).toBe("mine\n");
+    expect(await readFile(join(cwd, "new.txt"), "utf8")).toBe("fresh\n");
+    expect(skipped).toEqual(["keep.txt"]);
+  });
+
+  it("leaves an existing symlink path alone and creates a missing one", async () => {
+    const { cwd, skipped, fs } = await tempFs();
+    await writeFile(join(cwd, "occupied"), "a real file\n");
+    expect(await fs.symlink("target.txt", "occupied")).toBe("unchanged");
+    expect(await readFile(join(cwd, "occupied"), "utf8")).toBe("a real file\n");
+    expect(await fs.symlink("target.txt", "link")).not.toBe("unchanged");
+    expect(readlinkSync(join(cwd, "link"))).toBe("target.txt");
+    expect(skipped).toEqual(["occupied"]);
+  });
+
+  it("refuses to remove anything", async () => {
+    const { cwd, fs } = await tempFs();
+    await writeFile(join(cwd, "keep.txt"), "mine\n");
+    await expect(fs.remove("keep.txt")).rejects.toThrow(/refuses to remove keep\.txt/);
+    expect(existsSync(join(cwd, "keep.txt"))).toBe(true);
+  });
 });

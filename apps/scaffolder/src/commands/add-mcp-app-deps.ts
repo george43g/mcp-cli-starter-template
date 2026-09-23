@@ -308,7 +308,7 @@ function checkRequirements(pkgDir: string, reqs: Requirement[]): string[] {
  * disk are skipped and recorded. The add-mode fs runs force=true, so without
  * this the migrations below would overwrite a consumer's files.
  */
-function createOnlyFs(inner: FsHelper, skipped: string[]): FsHelper {
+export function createOnlyFs(inner: FsHelper, skipped: string[]): FsHelper {
   return {
     ...inner,
     async writeIfChanged(relPath, content) {
