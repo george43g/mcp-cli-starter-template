@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -175,6 +176,29 @@ describe("init names the app verbatim", () => {
     expect(dev, JSON.stringify(Object.keys(mcp.mcpServers))).toBeDefined();
     expect(dev.env.MCP_DEV_ENTRY).toBe(`apps/${name}/src/index.ts`);
   });
+});
+
+// With the app named verbatim, a root package ALSO called `<name>` wins
+// `pnpm --filter <name>` (pnpm matches the exact unscoped name before the
+// scoped app — measured). The fresh root is `<name>-workspace` so the short
+// filter reaches the app.
+describe("init names the root so it cannot shadow the app", () => {
+  it("pnpm --filter <name> resolves to the app, not the root", async () => {
+    const cwd = await target();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await buildProgram().parseAsync(["--no-banner", "init", cwd, "--name", "foo", "--no-install"], {
+      from: "user",
+    });
+    const root = JSON.parse(await readFile(join(cwd, "package.json"), "utf8"));
+    expect(root.name).toBe("foo-workspace");
+    expect(root.private).toBe(true);
+    const where = execFileSync("pnpm", ["--filter", "foo", "exec", "pwd"], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, npm_config_verify_deps_before_run: "false" },
+    });
+    expect(realpathSync(where.trim())).toBe(realpathSync(join(cwd, "apps", "foo")));
+  }, 60_000);
 });
 
 describe("existing target strategies and reports", () => {

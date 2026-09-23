@@ -54,10 +54,23 @@ const TURBO_JSON = JSON.stringify(
   2,
 );
 
+/**
+ * The fresh root's package name: `<name>-workspace`, never `<name>` itself.
+ *
+ * App names are verbatim, so the app is `<scope>/<name>`, and a root also
+ * called `<name>` wins `pnpm --filter <name>` — pnpm matches the exact
+ * unscoped name before the scoped one (measured), so `pnpm --filter foo tui`
+ * ran the ROOT. The root is private and nothing addresses it by name. Only
+ * this "new"-mode migration writes it; an existing repo's root is never renamed.
+ */
+export function rootPackageName(name: string): string {
+  return `${name}-workspace`;
+}
+
 const ROOT_PACKAGE_JSON = (name: string) =>
   `${JSON.stringify(
     {
-      name,
+      name: rootPackageName(name),
       version: "0.0.0",
       private: true,
       description: `${name} — MCP+CLI+TUI tool scaffolded from mcp-cli-starter-template.`,

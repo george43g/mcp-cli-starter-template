@@ -89,7 +89,8 @@ describe("01-bootstrap/m4-monorepo", () => {
     expect(existsSync(join(cwd, "package.json"))).toBe(true);
 
     const pkg = JSON.parse(await readFile(join(cwd, "package.json"), "utf8"));
-    expect(pkg.name).toBe("foo");
+    // `<name>-workspace`, so `pnpm --filter foo` reaches the app, not the root.
+    expect(pkg.name).toBe("foo-workspace");
     expect(pkg.private).toBe(true);
     expect(pkg.type).toBe("module");
     expect(pkg.engines.node).toBe(">=24");

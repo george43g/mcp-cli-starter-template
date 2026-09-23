@@ -81,6 +81,11 @@ generated repo already has (`rust-accel`, `shared-types`, `tsconfig`,
 `vitest-config`, `biome-config`, `build-config`, and the published kits) are
 rejected.
 
+A fresh scaffold names its private root package `<name>-workspace`, so
+`pnpm --filter <name>` reaches the app: pnpm matches an exact unscoped name
+before a scoped one, and a root also called `<name>` would win. An existing
+repo's root name is never changed.
+
 A monorepo with no MCP app at all is fine: the generated CI's MCP gates
 (`for-each-mcp-app.mjs`, `check-stdout-purity.mjs`) skip with a notice when no
 `apps/*` workspace depends on `@george43g/mcp-kit`.
