@@ -4315,3 +4315,24 @@ couples the assertion to byte accounting. Or pin a deterministic line width.
 
 **Trigger**: the next time it fails, or the next deliberate visit to
 `packages/robustness/`.
+
+---
+
+## 55. POSIX-only scripts outside the generated app
+
+**Status**: open, found 2026-09-24 while fixing the generated app's Windows defects
+(PR #128, which made that app's own scripts cross-platform). These were reported,
+not fixed:
+
+- `clean` in the root, `packages/*`, `apps/rust-accel` and `apps/scaffolder` uses `rm -rf`.
+- Root `test:scripts` quotes its glob (`'scripts/**/*.test.mjs'`). cmd.exe does not
+  strip single quotes.
+- Root `check:workflows` relies on the shell expanding `*.yml`. cmd.exe does not.
+- The app's `completions:install` runs `bash scripts/install-completions.sh`. It needs
+  bash by design, so it stays.
+
+**Why not now**: this repo's CI has no Windows leg, and no consumer has reported a
+failure. The generated app is what downstream repos run, and PR #128 covered it.
+
+**Trigger**: a Windows CI leg here, or a consumer running these scripts on Windows.
+browser-tab-mcp's #199 adds a Windows leg on its side, so watch its results.
