@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.5.2](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.5.1...tui-kit-v0.5.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* **tui-kit:** ship the declaration for _resetDetectNerdFontCache ([#131](https://github.com/george43g/mcp-cli-starter-template/issues/131)) ([34d5841](https://github.com/george43g/mcp-cli-starter-template/commit/34d58419eb80b585e1a278a03692da58c16bce76))
+
 # [@george43g/tui-kit-v0.5.1](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.5.0...tui-kit-v0.5.1) (2026-08-21)
 
 
