@@ -26,12 +26,15 @@ don't need.
   server, the Ink TUI, the REPL, and direct per-tool subcommands. The patterns
   are all visible so you can copy them; delete any surface you don't need (see
   [ARCHITECTURE.md](ARCHITECTURE.md)).
-- **Shared logic lives in `packages/`, not the app.** `mcp-kit` (tool registry,
-  dispatch, transports, sanitize + prompt-injection), `cli-kit`, `tui-kit`, and
-  `robustness` (logger, watchdog, shutdown, timeouts, health), plus the config
-  packages. The app wires them together; the packages stay reusable and
-  independently testable. [SHARED_RUNTIME.md](SHARED_RUNTIME.md) explains how the
-  robustness runtime is consumed (vendored source vs. published package).
+- **Shared logic lives in published kits, not the app.** `@george43g/mcp-kit`
+  (tool registry, dispatch, transports, sanitize + prompt-injection),
+  `@george43g/cli-kit`, `@george43g/tui-kit`, `@george43g/secret-store` and
+  `@george43g/robustness` (logger, watchdog, shutdown, timeouts, health) come
+  from npm; the app wires them together. `packages/` holds only what is this
+  repo's own: `shared-types` and the config packages (`tsconfig`,
+  `biome-config`, `vitest-config`, `build-config`).
+  [SHARED_RUNTIME.md](SHARED_RUNTIME.md) explains how the robustness runtime is
+  consumed.
 - **Safety is built in, not bolted on.** Every tool runs through a timeout,
   honors `AbortSignal`, and returns actionable errors; a self-healing watchdog
   restarts the process when it wedges; external content is sanitized and wrapped.
@@ -40,8 +43,15 @@ don't need.
   [`AGENTS.md`](../AGENTS.md).
 - **Transports.** stdio by default; Streamable HTTP behind a bearer token when
   you need it ([HTTP_MODE.md](HTTP_MODE.md)).
+<!-- if:rust-accel -->
 - **Optional native acceleration.** A `napi-rs` crate under `apps/rust-accel/`
   with an automatic TS fallback ([RUST_ACCELERATION.md](RUST_ACCELERATION.md)).
+<!-- endif:rust-accel -->
+<!-- if:!rust-accel -->
+- **No native acceleration.** Generated with `--no-rust-accel`, so there is no
+  `apps/rust-accel/`; [RUST_ACCELERATION.md](RUST_ACCELERATION.md) covers adding
+  it later.
+<!-- endif:!rust-accel -->
 
 ## Verification — what "green" covers
 

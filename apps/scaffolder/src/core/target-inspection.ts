@@ -199,8 +199,12 @@ function resolvePackageManager(
     if (existsSync(join(options.cwd, lockfile))) return { value: manager, source: "lockfile" };
   }
 
+  // An existing package.json with no lockfile and no packageManager field is
+  // npm's by default. With no package.json there is nothing to detect: every
+  // manifest this run writes is pnpm's, so claiming an npm repo was detected
+  // (as it did for a docs-only tree) is false.
   return {
-    value: options.mode === "existing" ? "npm" : "pnpm",
+    value: options.mode === "existing" && pkg.status !== "missing" ? "npm" : "pnpm",
     source: "default",
   };
 }

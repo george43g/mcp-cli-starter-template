@@ -214,10 +214,10 @@ jobs:
           # catches a different class of "scaffolder unit tests pass but
           # output is broken" regression.
           pnpm verify
-          # Stress: 13 lifecycle assertions (handshake, health, parallel,
+          # Stress: 15 lifecycle assertions (handshake, health, parallel,
           # timeout, SIGTERM, RSS watchdog, HTTP roundtrip). Skipped if
           # --no-rust-accel removed the http transport; we kept HTTP in
-          # this run so all 13 must pass.
+          # this run so all 15 must pass.
           node scripts/for-each-mcp-app.mjs stress
 
       - name: Stress harness (15 assertions including HTTP)

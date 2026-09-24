@@ -8,7 +8,10 @@
  * Skips when monorepo === false (single-package mode, not yet supported).
  */
 
+import { BIOME_VERSION } from "../../core/biome-version.js";
 import {
+  bootstrapsBareTree,
+  createOnlyOnBareTree,
   Migration,
   type MigrationContext,
   type MigrationResult,
@@ -104,7 +107,9 @@ const ROOT_PACKAGE_JSON = (name: string) =>
         clean: "turbo run clean && rm -rf node_modules .turbo coverage",
       },
       devDependencies: {
-        "@biomejs/biome": "^2.5.5",
+        // Exact, never a range: biome.json's $schema is stamped from the same
+        // constant, and a newer CLI than the schema warns on every lint.
+        "@biomejs/biome": BIOME_VERSION,
         "@george43g/tsconfig": "workspace:*",
         "@types/node": "^24.13.3",
         tsx: "^4.23.1",
@@ -140,13 +145,20 @@ export default class MonorepoMigration extends Migration {
   readonly id = "01-bootstrap/m4-monorepo";
   readonly title =
     "Initialize Turborepo monorepo skeleton (pnpm-workspace, root package.json, turbo.json)";
-  readonly appliesTo = "new" as const;
+  // "both" only so the runner reaches shouldRun: an existing tree gets this
+  // layer solely when it is bare (see bootstrapsBareTree), and then create-only.
+  readonly appliesTo = "both" as const;
 
   override async shouldRun(ctx: MigrationContext): Promise<boolean> {
+    if (ctx.mode !== "new" && !bootstrapsBareTree(ctx)) return false;
     return ctx.config.global.monorepo.peek() !== false;
   }
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
+    return createOnlyOnBareTree(ctx, (c) => this.write(c));
+  }
+
+  private async write(ctx: MigrationContext): Promise<MigrationResult> {
     const filesChanged: string[] = [];
     const name = requireRepoName(ctx.config);
     const files: Array<[string, string]> = [
@@ -196,7 +208,8 @@ export default class MonorepoMigration extends Migration {
         `typecheck="turbo run typecheck", stress="turbo run stress", ` +
         `verify="pnpm lint && pnpm typecheck && pnpm test && pnpm build", ` +
         `clean="turbo run clean && rm -rf node_modules .turbo coverage".\n` +
-        `3. Add to root devDependencies (if missing): @biomejs/biome ^2.5.5, ` +
+        `3. Add to root devDependencies (if missing): @biomejs/biome ${BIOME_VERSION} ` +
+        `(exact, and matching biome.json's $schema), ` +
         `@george43g/tsconfig workspace:*, @types/node ^24.13, tsx ^4.23, turbo ^2.10, ` +
         `typescript ^5.7, vitest ^3.2.\n` +
         `4. Create pnpm-workspace.yaml: \`packages:\\n  - apps/*\\n  - packages/*\\n\`.\n` +

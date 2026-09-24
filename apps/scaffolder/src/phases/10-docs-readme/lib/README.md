@@ -4,16 +4,25 @@
 
 **MCP server + CLI + TUI — one bin, three surfaces, production-ready from commit 1.**
 
-[![CI](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml/badge.svg)](https://github.com/george43g/mcp-cli-starter-template/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@george43g/example-repo-mcp.svg)](https://www.npmjs.com/package/@george43g/example-repo-mcp)
+<!-- if:github-remote -->
+[![CI](https://github.com/__GITHUB_SLUG__/actions/workflows/ci.yml/badge.svg)](https://github.com/__GITHUB_SLUG__/actions/workflows/ci.yml)
+<!-- endif:github-remote -->
+<!-- if:!github-remote -->
+<!-- CI badge: this repo had no GitHub remote when it was generated. Once it does, add:
+[![CI](https://github.com/<owner>/<repo>/actions/workflows/ci.yml/badge.svg)](https://github.com/<owner>/<repo>/actions/workflows/ci.yml) -->
+<!-- endif:!github-remote -->
+<!-- npm badge: add after the first publish (docs/RELEASE.md) — before that it renders "package not found":
+[![npm version](https://img.shields.io/npm/v/@george43g/example-repo-mcp.svg)](https://www.npmjs.com/package/@george43g/example-repo-mcp) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=24](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)](https://nodejs.org)
 
 [Install](#install) · [Tools](#tools) · [Connect from your editor](#one-click-install) · [Docs](#docs) · [Skill for AI agents](#install-the-companion-skill)
 
+<!-- Hero images: docs/screenshots/*.gif do not exist until the screenshots
+workflow (.github/workflows/screenshots.yml, or `mise run screenshots`) renders
+them. Then replace this comment with:
 ![example-repo TUI](docs/screenshots/tui.gif)
-
-![example-repo CLI](docs/screenshots/overview.gif)
+![example-repo CLI](docs/screenshots/overview.gif) -->
 
 </div>
 
@@ -23,13 +32,20 @@
 
 ## Install
 
-```bash
-# Run directly (no install needed)
-npx @george43g/example-repo-mcp mcp
+`@george43g/example-repo-mcp` is not on npm until you publish it
+([docs/RELEASE.md](docs/RELEASE.md)). Until then, install from a clone:
 
-# Or install globally
+```bash
+pnpm install && pnpm build
+cd apps/example-repo-mcp && pnpm link --global   # puts `example-repo` on your PATH
+```
+
+Once published:
+
+```bash
+npx @george43g/example-repo-mcp mcp              # run without installing
 npm  install -g @george43g/example-repo-mcp
-pnpm add  -g @george43g/example-repo-mcp
+pnpm add     -g @george43g/example-repo-mcp
 ```
 
 After install, `example-repo` is on your PATH. All subcommands route through that single bin:
@@ -63,7 +79,10 @@ This repo has two: one at the root and one per app.
 
 ## One-click install
 
-Paste these into your MCP host's config. The bin name is `example-repo` once installed via npm; the `npx` form works without a local install.
+Paste these into your MCP host's config. The `npx` form below works once the
+package is published; until then, point the host at your local build instead —
+`"command": "node", "args": ["/absolute/path/to/apps/example-repo-mcp/dist/cli.js", "mcp"]`
+(or `"command": "example-repo", "args": ["mcp"]` after `pnpm link --global`).
 
 ### Claude Desktop / Code (`claude_desktop_config.json` or `.mcp.json`)
 
@@ -156,11 +175,14 @@ apps/
       stress-mcp.ts         15-assertion robustness harness
       screenshots/          VHS .tape files driving docs/screenshots/*.gif
     .usage.kdl              CLI spec → completions + manpage + markdown docs
+<!-- if:rust-accel -->
   rust-accel/               napi-rs crate (optional acceleration)
+<!-- endif:rust-accel -->
 
 packages/
-  robustness, mcp-kit, cli-kit, tui-kit, shared-types,
-  tsconfig, biome-config, vitest-config
+  shared-types, tsconfig, biome-config, vitest-config, build-config
+                            (the runtime kits — robustness, mcp-kit, cli-kit,
+                            tui-kit, secret-store — come from npm, not here)
 
 mise.toml                   toolchain pins (node, pnpm) + named tasks
 .github/workflows/          ci.yml, release.yml (disabled by default), readme-check.yml, screenshots.yml

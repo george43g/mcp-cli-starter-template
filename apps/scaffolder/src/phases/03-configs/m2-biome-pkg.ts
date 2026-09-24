@@ -6,6 +6,7 @@
  * sibling with `root: true` that points at the shared one.
  */
 
+import { biomeSchemaUrl, biomeVersionFor } from "../../core/biome-version.js";
 import {
   appliedStatus,
   Migration,
@@ -24,9 +25,9 @@ const PKG_JSON = (scope: string) => `{
 }
 `;
 
-const SHARED_BIOME = `{
+const SHARED_BIOME = (schema: string) => `{
   "root": false,
-  "$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
+  "$schema": "${schema}",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -82,8 +83,8 @@ const SHARED_BIOME = `{
 // Note: biome 2.x's `extends` workspace resolution is finicky — we inline the
 // rules at the root and keep the shared package as a reference. If/when biome
 // 2.5+ ships clean extends resolution, swap to `extends: ["{{scope}}/..."]`.
-const ROOT_BIOME = `{
-  "$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
+const ROOT_BIOME = (schema: string) => `{
+  "$schema": "${schema}",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -163,11 +164,13 @@ export default class BiomePkgMigration extends Migration {
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
     const scope = ctx.config.global.scope.peek() ?? "@george43g";
     const filesChanged: string[] = [];
+    // The schema must name the CLI that will read it, or every lint warns.
+    const schema = biomeSchemaUrl(biomeVersionFor(ctx.cwd));
 
     const files: Array<[string, string]> = [
       ["packages/biome-config/package.json", PKG_JSON(scope)],
-      ["packages/biome-config/biome.json", SHARED_BIOME],
-      ["biome.json", ROOT_BIOME],
+      ["packages/biome-config/biome.json", SHARED_BIOME(schema)],
+      ["biome.json", ROOT_BIOME(schema)],
     ];
 
     for (const [path, content] of files) {

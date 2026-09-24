@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { nameRoffOf, nameSnakeOf, nameUpperOf, substitute } from "../src/core/templating.js";
+import { githubSlug } from "../src/core/git.js";
+import {
+  nameRoffOf,
+  nameSnakeOf,
+  nameUpperOf,
+  renderFeatureBlocks,
+  substitute,
+} from "../src/core/templating.js";
 
 describe("nameUpperOf", () => {
   it("uppercases and converts dashes to underscores", () => {
@@ -142,4 +149,68 @@ describe("substitute", () => {
       "nothing to replace",
     );
   });
+});
+
+describe("renderFeatureBlocks", () => {
+  const doc = [
+    "apps/",
+    "  tool/",
+    "<!-- if:rust-accel -->",
+    "  rust-accel/",
+    "<!-- endif:rust-accel -->",
+    "<!-- if:!rust-accel -->",
+    "(no crate)",
+    "<!-- endif:!rust-accel -->",
+    "end",
+  ].join("\n");
+
+  it("keeps a block whose flag is on and drops its inverse", () => {
+    expect(renderFeatureBlocks(doc, { "rust-accel": true })).toBe(
+      "apps/\n  tool/\n  rust-accel/\nend",
+    );
+  });
+
+  it("drops a block whose flag is off and keeps its inverse", () => {
+    expect(renderFeatureBlocks(doc, { "rust-accel": false })).toBe(
+      "apps/\n  tool/\n(no crate)\nend",
+    );
+  });
+
+  it("leaves content without markers byte-identical", () => {
+    const plain = "no markers here\n<!-- an ordinary comment -->\n";
+    expect(renderFeatureBlocks(plain, {})).toBe(plain);
+  });
+
+  it("throws on an unknown flag rather than silently dropping the block", () => {
+    expect(() =>
+      renderFeatureBlocks("<!-- if:rust-acel -->\nx\n<!-- endif:rust-acel -->", {
+        "rust-accel": true,
+      }),
+    ).toThrow(/Unknown template flag "rust-acel"/);
+  });
+
+  it("throws on unbalanced blocks", () => {
+    expect(() => renderFeatureBlocks("<!-- if:a -->\nx", { a: true })).toThrow(/Unclosed/);
+    expect(() => renderFeatureBlocks("<!-- if:a -->\n<!-- endif:!a -->", { a: true })).toThrow(
+      /Unbalanced/,
+    );
+  });
+});
+
+describe("githubSlug", () => {
+  it.each([
+    ["git@github.com:acme/tool.git", "acme/tool"],
+    ["https://github.com/acme/tool.git", "acme/tool"],
+    ["https://github.com/acme/tool", "acme/tool"],
+    ["ssh://git@github.com/acme/my.tool.git", "acme/my.tool"],
+  ])("%s → %s", (url, slug) => {
+    expect(githubSlug(url)).toBe(slug);
+  });
+
+  it.each([undefined, "", "git@gitlab.com:acme/tool.git", "https://example.com/acme/tool"])(
+    "%s → undefined (no GitHub Actions to badge)",
+    (url) => {
+      expect(githubSlug(url)).toBeUndefined();
+    },
+  );
 });

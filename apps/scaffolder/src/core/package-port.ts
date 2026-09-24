@@ -7,10 +7,10 @@
  */
 
 import { TEMPLATES } from "../generated/templates.js";
-import type { MigrationContext, MigrationResult } from "./migration.js";
+import { type MigrationContext, type MigrationResult, rustAccelGenerated } from "./migration.js";
 import { applyPublishedRanges } from "./runtime-source.js";
 import { requireRepoName } from "./target-inspection.js";
-import { nameUpperOf, substitute } from "./templating.js";
+import { nameUpperOf, renderFeatureBlocks, substitute } from "./templating.js";
 
 export interface PackagePortOptions {
   /** Target subdir, e.g. "packages/robustness". */
@@ -25,6 +25,15 @@ export interface PackagePortOptions {
   libPrefix: string;
   /** Optional: additional inline files (rare). */
   extraFiles?: Array<[string, string]>;
+  /** Extra `<!-- if:flag -->` values on top of the defaults (see templateFlags). */
+  flags?: Readonly<Record<string, boolean>>;
+  /** Last-step rewrite of one rendered file (target path, content). */
+  transform?: (targetPath: string, content: string) => string;
+}
+
+/** Flags every ported template may branch on — what this run actually generates. */
+export function templateFlags(ctx: MigrationContext): Record<string, boolean> {
+  return { "rust-accel": rustAccelGenerated(ctx) };
 }
 
 export async function portPackage(
@@ -65,6 +74,7 @@ export async function portPackage(
     scope,
   };
 
+  const flags = { ...templateFlags(ctx), ...opts.flags };
   const prefix = opts.pkgDir === "" || opts.pkgDir === "." ? "" : `${opts.pkgDir}/`;
   for (const key of Object.keys(TEMPLATES)) {
     if (!key.startsWith(opts.libPrefix)) continue;
@@ -76,7 +86,11 @@ export async function portPackage(
     // Published packages come from the registry, always. substitute() has
     // already shielded their names from scope rewriting, so this only has to
     // swap the `workspace:*` protocol for the real range.
-    const content = applyPublishedRanges(substitute(TEMPLATES[key] ?? "", vars));
+    const rendered = renderFeatureBlocks(
+      applyPublishedRanges(substitute(TEMPLATES[key] ?? "", vars)),
+      flags,
+    );
+    const content = opts.transform ? opts.transform(targetPath, rendered) : rendered;
     recordOutcome(targetPath, await ctx.fs.writeIfChanged(targetPath, content));
   }
 

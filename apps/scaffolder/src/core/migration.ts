@@ -15,7 +15,7 @@
 
 import type { CommanderOption } from "./commander-types.js";
 import type { Config } from "./config.js";
-import type { FsHelper } from "./fs.js";
+import { createOnlyFs, type FsHelper } from "./fs.js";
 import type { GitHelper } from "./git.js";
 import type { Logger } from "./logger.js";
 import type { ShellHelper } from "./shell.js";
@@ -96,6 +96,58 @@ export interface RetrofitIntent {
   manualSteps: readonly string[];
   /** A self-contained AI prompt — full enough to run unmodified against any agent. */
   prompt: string;
+}
+
+/**
+ * `apply --existing-strategy full` against a tree with no root package.json:
+ * a docs-only repo, or one that is nothing but a README. There is no project
+ * whose files the "new"-only layers (root package.json, pnpm-workspace, the
+ * app itself, rust-accel) could clobber, so they run too — create-only, never
+ * overwriting a file already there. Without this, "full" laid down configs, CI
+ * and agent docs around an app that did not exist.
+ *
+ * A root package.json means real project code is already here. Those layers
+ * stay skipped with their RETROFIT.md breadcrumb, because porting a second app
+ * beside an existing one is a merge only a human (or an agent reading the
+ * breadcrumb) can do.
+ */
+export function bootstrapsBareTree(ctx: MigrationContext): boolean {
+  return (
+    ctx.mode === "existing" &&
+    ctx.existingStrategy === "full" &&
+    ctx.target.packageMetadataStatus === "missing"
+  );
+}
+
+/**
+ * Run `body` with a create-only fs when the tree is a bare existing one, so a
+ * "new"-only layer never overwrites a file already there, --force included.
+ * Every other mode passes ctx through untouched.
+ */
+export async function createOnlyOnBareTree(
+  ctx: MigrationContext,
+  body: (ctx: MigrationContext) => Promise<MigrationResult>,
+): Promise<MigrationResult> {
+  if (!bootstrapsBareTree(ctx)) return body(ctx);
+  const kept: string[] = [];
+  const result = await body({ ...ctx, fs: createOnlyFs(ctx.fs, kept) });
+  if (kept.length === 0) return result;
+  return {
+    ...result,
+    notes: [
+      ...(result.notes ?? []),
+      `kept ${kept.length} existing file(s) untouched (create-only on an existing tree): ${kept.join(", ")}`,
+    ],
+  };
+}
+
+/**
+ * Whether apps/rust-accel is (or will be) part of the generated repo, so the
+ * docs describing the tree can say so. Existing repos answer from disk.
+ */
+export function rustAccelGenerated(ctx: MigrationContext): boolean {
+  if (ctx.mode === "existing" && !bootstrapsBareTree(ctx)) return ctx.fs.exists("apps/rust-accel");
+  return ctx.config.features.rustAccel.peek() !== false;
 }
 
 /** Pick "applied" vs "would-apply" based on the run mode. */

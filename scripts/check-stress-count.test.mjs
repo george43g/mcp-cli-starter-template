@@ -51,6 +51,28 @@ describe("scanAssertionCounts", () => {
     assert.match(failures[0], /^README\.md:3: says "13-assertion", harness says 15$/);
   });
 
+  // The generated AGENTS.md said "13 lifecycle assertions" for weeks after the
+  // harness reached 15: one qualifier word between the number and the noun
+  // was enough to slip past a pattern that wanted them adjacent.
+  it("flags a count with one qualifier word before 'assertions'", () => {
+    const root = fixture({
+      [HARNESS]: harness(15),
+      "AGENTS.md": "`pnpm stress` covers 13 lifecycle assertions\n",
+      "b.md": "and 13 stress assertions\n",
+      "c.md": "all 15 lifecycle assertions pass\n",
+    });
+    const { failures } = scanAssertionCounts(root, 15);
+    assert.deepEqual(failures, [
+      'AGENTS.md:1: says "13 lifecycle assertions", harness says 15',
+      'b.md:1: says "13 stress assertions", harness says 15',
+    ]);
+  });
+
+  it("reads '13 of 13 assertions' as one quote, not two", () => {
+    const root = fixture({ [HARNESS]: harness(15), "a.md": "13 of 13 assertions passed\n" });
+    assert.equal(scanAssertionCounts(root, 15).failures.length, 1);
+  });
+
   it("accepts both spellings — hyphen and space", () => {
     const root = fixture({
       [HARNESS]: harness(15),

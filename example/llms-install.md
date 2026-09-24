@@ -81,9 +81,9 @@ See `apps/example/.env.example` for the full list of recognized variables.
 ## Verify
 
 ```bash
-example-cli doctor          # preflight (Node version, native module, config dir)
-example-cli health          # call health_check
-example-cli noop --input "hi"  # call the demo tool
+example doctor              # preflight (Node version, native module, config dir)
+example health              # call health_check
+example noop --input "hi"   # call the demo tool
 ```
 
 If anything fails, run with `EXAMPLE_DEV=1` to register the `get_logs` MCP tool, then ask your MCP host to call it.

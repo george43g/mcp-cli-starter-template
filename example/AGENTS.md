@@ -41,15 +41,22 @@ apps/
   example/   # the tool — clone-and-rename target
   rust-accel/     # napi crate, optional acceleration
 packages/
-  robustness/     # logger + watchdog + shutdown + with-timeout + health + retry + rate-limit
-  mcp-kit/        # tool-registry + dispatch + stdio/http transports + sanitize + prompt-injection
-  cli-kit/        # commander helpers + tty/color/output + env↔flag binder + interactive REPL
-  tui-kit/        # ink theme system + hooks (useDevStats, useMouse, useVimKeys) + components
   shared-types/   # Zod schemas + Rust mirror + drift-check test
   tsconfig/       # shared base/node/react TS configs
   biome-config/   # single biome.json source
   vitest-config/  # shared preset with coverage
+  build-config/   # build-identity stamp for the app's Vite build
 ```
+
+The runtime kits are **not** in `packages/`: the app depends on them from npm.
+
+| Package | What it gives the app |
+|---|---|
+| `@george43g/robustness` | logger + watchdog + shutdown + with-timeout + health + retry + rate-limit |
+| `@george43g/mcp-kit` | tool-registry + dispatch + stdio/http transports + sanitize + prompt-injection |
+| `@george43g/cli-kit` | commander helpers + tty/color/output + env↔flag binder + interactive REPL |
+| `@george43g/tui-kit` | ink theme system + hooks (useDevStats, useMouse, useVimKeys) + components |
+| `@george43g/secret-store` | env → .env → OS keychain → exec secret lookup |
 
 ## Commands
 
@@ -93,10 +100,12 @@ For any `--mode`, env files load in this order (each overrides the previous):
 
 - `.env` (gitignored): baseline defaults
 - `.env.local` (gitignored): your machine-specific paths/tokens
-- `.env.test` (committed): test-mode overrides used by Vitest's default `test` mode
+- `.env.test` (gitignored, optional): overrides for `pnpm mcp:test`, the only script that reads it. Vitest does not load it; tests set what they need themselves
 - `.env.example` (committed): exhaustive list of every recognized variable with sensible defaults
 
-Scripts in each app's `package.json` pass `--env-file-if-exists` flags so the precedence is honored without dotenv.
+Only `.env.example` is committed; `.gitignore` ignores every other `.env*` file, because any of them may end up holding a token.
+
+Scripts in each app's `package.json` pass `--env-file-if-exists` flags (`.env`, then `.env.local`) so the precedence is honored without dotenv.
 
 **Rule**: every recognized env var is also accepted as a CLI flag (binder in `@george43g/cli-kit/env-flag-binder`). `MCP_HTTP_TOKEN` ↔ `--http-token`, `MCP_LOG_DIR` ↔ `--log-dir`, etc.
 
@@ -150,7 +159,7 @@ Default off (stdio mode). Enable with `example mcp --http`. Requires `MCP_HTTP_T
 
 ## Stress harness
 
-`pnpm stress` covers 13 lifecycle assertions (in `apps/example/scripts/stress-mcp.ts`):
+`pnpm stress` covers 15 lifecycle assertions (in `apps/example/scripts/stress-mcp.ts`, which checks its own count against `EXPECTED_ASSERTIONS`):
 
 1. handshake + tools/list returns the full catalog
 2. `health_check` returns `Status: healthy`
@@ -160,11 +169,13 @@ Default off (stdio mode). Enable with `example mcp --http`. Requires `MCP_HTTP_T
 6. `MCP_TOOL_TIMEOUT_FORCE_MS=1` triggers a clean timeout
 7. SIGTERM produces exit code 0 (handler intercepted)
 8. `MCP_MAX_RSS_MB=50` triggers a watchdog kill
-9. HTTP `/health` returns 200
-10. HTTP `/mcp` without bearer returns 401
-11. HTTP `/mcp` initialize roundtrip with bearer + session-id succeeds
-12. HTTP `/mcp` accepts the initialized notification
-13. HTTP `/mcp` serves `tools/list` for the established session
+9. the shutdown marker names the real cause after SIGTERM
+10. the shutdown marker names the real cause after stdin EOF
+11. HTTP `/health` returns 200
+12. HTTP `/mcp` without bearer returns 401
+13. HTTP `/mcp` initialize roundtrip with bearer + session-id succeeds
+14. HTTP `/mcp` accepts the initialized notification
+15. HTTP `/mcp` serves `tools/list` for the established session
 
 Add a case whenever you ship something touching lifecycle, dispatch, error handling, or transport.
 
@@ -202,7 +213,7 @@ Types are hand-mirrored between `packages/shared-types/src/index.ts` (Zod) and `
 ## Cloud-agent (Cursor/Claude/Codex remote) specifics
 
 - **Node version**: ≥24. The setup script handles `nvm install 24` and corepack/pnpm activation.
-- **Environment mode**: on Linux/cloud, `.env.test` covers test mode; `.env.local` is per-developer and should not exist in cloud workspaces. If the agent needs a baseline config, fill `.env` from `.env.example`.
+- **Environment mode**: tests need no env file; `.env.local` is per-developer and should not exist in cloud workspaces. If the agent needs a baseline config, fill `.env` from `.env.example`.
 - **Native module**: cloud workspaces typically lack a Rust toolchain. The `build:native:optional` script warns and skips (exit 0) when `rustc` is missing; the TS fallback path is used automatically.
 - **Running tests**: `pnpm test` (default mode). Tests gate behavior with `MCP_DISABLE_NATIVE=1` where the native path can't be assumed.
 
@@ -210,6 +221,6 @@ Types are hand-mirrored between `packages/shared-types/src/index.ts` (Zod) and `
 
 - **Build hangs**: check `pnpm dev` isn't already running in another shell (Vite watch can deadlock turbo).
 - **Native module fails to load**: run `pnpm --filter rust-accel build` manually. If it fails with "rustc not found", install Rust or set `MCP_DISABLE_NATIVE=1`.
-- **`example-cli http` refuses to start**: requires `MCP_HTTP_TOKEN`. Generate one with `openssl rand -hex 32`.
+- **`example mcp --http` refuses to start**: requires `MCP_HTTP_TOKEN`. Generate one with `openssl rand -hex 32`.
 - **MCP host doesn't see tool changes**: the dev proxy auto-reloads on `src/**` but the host caches the session. Restart your MCP host (Cursor/Claude/Warp).
 - **Orphaned MCP processes**: `ps aux | grep example` and kill stragglers. The shutdown registry should catch this, but if it doesn't, file a bug.

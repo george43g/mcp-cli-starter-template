@@ -1,5 +1,5 @@
-import { execSync } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
+import { execFileSync, execSync } from "node:child_process";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -318,5 +318,200 @@ describe("existing target strategies and reports", () => {
       { from: "user" },
     );
     expect(existsSync(join(cwd, "packages", "shared-types", "package.json"))).toBe(true);
+    // A root package.json means project code already lives here: porting a
+    // second app beside it is a merge, left to RETROFIT.md.
+    expect(existsSync(join(cwd, "apps", "flat-tool"))).toBe(false);
+    expect(await readFile(join(cwd, "RETROFIT.md"), "utf8")).toContain("08-app/m1-app-port");
+  });
+});
+
+// Found retrofitting a docs-only repo (recall, 2026-09-24): `full` skipped the
+// root workspace and the app ("appliesTo=new, current mode=existing") and laid
+// configs, CI and agent docs around nothing — after announcing "Existing npm
+// repo detected" in a tree with no package.json.
+describe("apply --existing-strategy full on a bare tree", () => {
+  async function docsOnly(): Promise<string> {
+    const cwd = await target();
+    await mkdir(join(cwd, "docs"));
+    await writeFile(join(cwd, "docs", "notes.md"), "# my notes\n");
+    return cwd;
+  }
+
+  it("lays down the workspace and the app, create-only", async () => {
+    const cwd = await docsOnly();
+    // A file the user already has where the app would go survives even --force.
+    await mkdir(join(cwd, "apps", "x", "src"), { recursive: true });
+    await writeFile(join(cwd, "apps", "x", "src", "cli.ts"), "// mine\n");
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    const err = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    await buildProgram().parseAsync(
+      [
+        "--no-banner",
+        "apply",
+        "--target",
+        cwd,
+        "--execute",
+        "--force",
+        "--existing-strategy",
+        "full",
+        "--name",
+        "x",
+        "--no-rust-accel",
+        "--no-install",
+      ],
+      { from: "user" },
+    );
+
+    expect(existsSync(join(cwd, "package.json"))).toBe(true);
+    expect(existsSync(join(cwd, "pnpm-workspace.yaml"))).toBe(true);
+    expect(existsSync(join(cwd, "apps", "x", "package.json"))).toBe(true);
+    expect(existsSync(join(cwd, "apps", "x", "src", "index.ts"))).toBe(true);
+    expect(existsSync(join(cwd, "apps", "rust-accel"))).toBe(false);
+    expect(await readFile(join(cwd, "apps", "x", "src", "cli.ts"), "utf8")).toBe("// mine\n");
+    expect(await readFile(join(cwd, "docs", "notes.md"), "utf8")).toBe("# my notes\n");
+    const root = JSON.parse(await readFile(join(cwd, "package.json"), "utf8"));
+    expect(root.packageManager).toMatch(/^pnpm@/);
+    // The full agent guide, not the minimal one for a detected npm repo.
+    expect(await readFile(join(cwd, "AGENTS.md"), "utf8")).toContain("## Workspace topology");
+    expect(err.mock.calls.map((c) => String(c[0])).join("")).not.toMatch(/npm repo detected/);
+  });
+
+  it("does not claim an npm repo was detected when there is no package.json", async () => {
+    const cwd = await docsOnly();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    const err = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    await buildProgram().parseAsync(
+      ["--no-banner", "apply", "--target", cwd, "--name", "x", "--no-install"],
+      { from: "user" },
+    );
+    expect(err.mock.calls.map((c) => String(c[0])).join("")).not.toMatch(/npm repo detected/);
+  });
+});
+
+// Found retrofitting recall (2026-09-24): the generated docs described the
+// template's tree, not the one generated — rust-accel under --no-rust-accel,
+// the npm kits as packages/ source, a `<name>-cli http` bin that never existed,
+// a CI badge for the template repo, npm installs of an unpublished package,
+// hero images that did not exist, and `.env.test` "(committed)" while
+// .gitignore ignored it.
+describe("generated docs describe the tree that was generated", () => {
+  async function init(extra: string[] = [], prepare?: (cwd: string) => void): Promise<string> {
+    const cwd = await target();
+    prepare?.(cwd);
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await buildProgram().parseAsync(
+      ["--no-banner", "init", cwd, "--name", "fresh-tool", "--no-install", ...extra],
+      { from: "user" },
+    );
+    return cwd;
+  }
+  const read = (cwd: string, rel: string) => readFile(join(cwd, rel), "utf8");
+  const withoutComments = (s: string) => s.replace(/<!--[\s\S]*?-->/g, "");
+  const topology = (agents: string) =>
+    agents.slice(agents.indexOf("## Workspace topology"), agents.indexOf("## Commands"));
+
+  it("omits rust-accel everywhere under --no-rust-accel, and never lists the npm kits as packages/", async () => {
+    const cwd = await init(["--no-rust-accel"]);
+    expect(existsSync(join(cwd, "apps", "rust-accel"))).toBe(false);
+    const agents = await read(cwd, "AGENTS.md");
+    expect(topology(agents)).not.toContain("rust-accel");
+    for (const kit of ["robustness/", "mcp-kit/", "cli-kit/", "tui-kit/"]) {
+      expect(topology(agents)).not.toContain(`  ${kit}`);
+    }
+    expect(topology(agents)).toContain("@george43g/mcp-kit");
+    expect(agents).not.toContain("pnpm --filter rust-accel build");
+    const state = await read(cwd, "docs/PROJECT_STATE.md");
+    expect(state).not.toContain("crate under `apps/rust-accel/`");
+    expect(state).toContain("No native acceleration");
+    const readme = await read(cwd, "README.md");
+    expect(readme).not.toMatch(/^\s+rust-accel\//m);
+    expect(readme).not.toMatch(/^\s+robustness, mcp-kit/m);
+    // Marker lines never reach a generated file.
+    for (const text of [agents, readme, await read(cwd, "docs/PROJECT_STATE.md")]) {
+      expect(text).not.toMatch(/<!-- (end)?if:/);
+    }
+  });
+
+  it("keeps rust-accel in the docs when it is generated", async () => {
+    const cwd = await init();
+    expect(existsSync(join(cwd, "apps", "rust-accel"))).toBe(true);
+    expect(topology(await read(cwd, "AGENTS.md"))).toContain("rust-accel/");
+    expect(await read(cwd, "docs/PROJECT_STATE.md")).toContain("apps/rust-accel");
+  });
+
+  it("names only the one bin, `<name>`, never `<name>-cli`/`<name>-tui` or an `http` subcommand", async () => {
+    const cwd = await init();
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, e.name);
+        if (e.isDirectory()) {
+          if (e.name !== ".git" && e.name !== "node_modules") walk(full);
+        } else if (/\.(md|mdx|ts|tsx|json|yml|yaml|toml|kdl|example)$/.test(e.name)) {
+          readFileSync(full, "utf8")
+            .split("\n")
+            .forEach((line, i) => {
+              if (
+                /fresh-tool-(cli|tui)\b|fresh-tool(-cli)? http\b|--filter \S+ http\b/.test(line)
+              ) {
+                offenders.push(`${full.slice(cwd.length + 1)}:${i + 1}: ${line.trim()}`);
+              }
+            });
+        }
+      }
+    };
+    walk(cwd);
+    expect(offenders).toEqual([]);
+  });
+
+  it("README: no template-repo badge, no unconditional npm install, no missing images", async () => {
+    const cwd = await init();
+    const readme = await read(cwd, "README.md");
+    const live = withoutComments(readme);
+    expect(readme).not.toContain("george43g/mcp-cli-starter-template/actions");
+    expect(live).not.toContain("badge.svg)](https://github.com/");
+    expect(live).not.toContain("img.shields.io/npm");
+    expect(live).not.toContain("](docs/screenshots/");
+    expect(existsSync(join(cwd, "docs", "screenshots", "tui.gif"))).toBe(false);
+    const install = live.slice(
+      live.indexOf("## Install"),
+      live.indexOf("### Working on this repo"),
+    );
+    expect(install).toContain("pnpm link --global");
+    expect(install.indexOf("Once published")).toBeGreaterThan(-1);
+    expect(install.indexOf("Once published")).toBeLessThan(install.indexOf("npx "));
+  });
+
+  it("README: the CI badge points at the target's own GitHub remote", async () => {
+    const cwd = await init([], (dir) => {
+      execFileSync("git", ["init", "-q", "--initial-branch=main"], { cwd: dir });
+      execFileSync("git", ["remote", "add", "origin", "git@github.com:acme/fresh-tool.git"], {
+        cwd: dir,
+      });
+    });
+    const live = withoutComments(await read(cwd, "README.md"));
+    expect(live).toContain(
+      "[![CI](https://github.com/acme/fresh-tool/actions/workflows/ci.yml/badge.svg)](https://github.com/acme/fresh-tool/actions/workflows/ci.yml)",
+    );
+    expect(live).not.toContain("__GITHUB_SLUG__");
+  });
+
+  it("AGENTS.md's committed/gitignored claim for each .env file matches .gitignore", async () => {
+    const cwd = await init();
+    const agents = await read(cwd, "AGENTS.md");
+    const claims = [...agents.matchAll(/^- `(\.env[^`]*)` \((committed|gitignored)/gm)];
+    expect(claims.map((m) => m[1])).toEqual(
+      expect.arrayContaining([".env", ".env.local", ".env.test", ".env.example"]),
+    );
+    for (const [, file, claim] of claims) {
+      let ignored: boolean;
+      try {
+        execFileSync("git", ["check-ignore", "-q", file as string], { cwd });
+        ignored = true;
+      } catch {
+        ignored = false;
+      }
+      expect(ignored, `${file} is "${claim}" in AGENTS.md`).toBe(claim === "gitignored");
+    }
   });
 });

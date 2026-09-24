@@ -14,6 +14,8 @@
  */
 
 import {
+  bootstrapsBareTree,
+  createOnlyOnBareTree,
   Migration,
   type MigrationContext,
   type MigrationResult,
@@ -24,18 +26,20 @@ import { portPackage } from "../../core/package-port.js";
 export default class RustAccelMigration extends Migration {
   readonly id = "09-rust-accel/m1-rust-accel";
   readonly title = "Port apps/rust-accel/ (optional napi-rs v3 crate)";
-  readonly appliesTo = "new" as const;
+  // "both" only so a bare existing tree (bootstrapsBareTree) gets what `init`
+  // would give it; any other existing repo still skips via shouldRun.
+  readonly appliesTo = "both" as const;
 
   override async shouldRun(ctx: MigrationContext): Promise<boolean> {
+    if (ctx.mode !== "new" && !bootstrapsBareTree(ctx)) return false;
     // Default to including rust-accel unless explicitly disabled.
     return ctx.config.features.rustAccel.peek() !== false;
   }
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
-    return portPackage(ctx, {
-      pkgDir: "apps/rust-accel",
-      libPrefix: "09-rust-accel/lib/",
-    });
+    return createOnlyOnBareTree(ctx, (c) =>
+      portPackage(c, { pkgDir: "apps/rust-accel", libPrefix: "09-rust-accel/lib/" }),
+    );
   }
 
   override retrofitIntent(_ctx: MigrationContext): RetrofitIntent | undefined {

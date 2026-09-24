@@ -1,6 +1,6 @@
 # TUI design
 
-The starter ships a working Ink/React TUI that demos the patterns. Tools that don't need a TUI can delete `apps/example/src/tui/` and the `example-tui` bin entry; everything else still works.
+The starter ships a working Ink/React TUI that demos the patterns. Tools that don't need a TUI can delete `apps/example/src/tui/` and the `tui` subcommand of the `example` bin; everything else still works.
 
 ## Theme system
 
@@ -69,7 +69,6 @@ expect(lastFrame()).toContain("Item 2");
 ## Removing the TUI
 
 1. Delete `apps/example/src/tui/`.
-2. Remove `example-tui` from `apps/example/package.json`'s `bin` map.
-3. Remove the `tui` subcommand from `apps/example/src/cli.ts`.
-4. Remove the TUI entry from `apps/example/vite.config.ts` `lib.entry`.
-5. Optionally remove `@george43g/tui-kit` from `apps/example/package.json` dependencies and from `pnpm-workspace.yaml` if no other app uses it.
+2. Remove the `tui` subcommand from `apps/example/src/cli.ts`. (There is no separate TUI bin to remove: the app ships one bin, `example`.)
+3. Remove the TUI entry from `apps/example/vite.config.ts` `lib.entry`.
+4. Optionally remove `@george43g/tui-kit` from `apps/example/package.json` dependencies.

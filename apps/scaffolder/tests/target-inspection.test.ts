@@ -156,6 +156,15 @@ describe("inspectTarget package-manager precedence", () => {
     expect((await inspectTarget({ cwd, mode: "existing" })).packageManager).toBe("npm");
     expect((await inspectTarget({ cwd, mode: "new" })).packageManager).toBe("pnpm");
   });
+
+  // Nothing to detect: a tree with no package.json is nobody's npm repo, and
+  // every manifest the run writes into it is pnpm's.
+  it("defaults to pnpm, not npm, for an existing tree with no package.json", async () => {
+    const cwd = await target();
+    const result = await inspectTarget({ cwd, mode: "existing" });
+    expect(result.packageManager).toBe("pnpm");
+    expect(result.packageManagerSource).toBe("default");
+  });
 });
 
 describe("inspectTarget starter layout detection", () => {
