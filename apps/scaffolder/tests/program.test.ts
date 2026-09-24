@@ -201,7 +201,10 @@ describe("init names the root so it cannot shadow the app", () => {
       encoding: "utf8",
       env: { ...process.env, npm_config_verify_deps_before_run: "false" },
     });
-    expect(realpathSync(where.trim())).toBe(realpathSync(join(cwd, "apps", "foo")));
+    // `.native` expands Windows 8.3 short names (RUNNER~1 vs runneradmin):
+    // the temp dir comes back short, the child's cwd long, and the JS
+    // realpath leaves both as given.
+    expect(realpathSync.native(where.trim())).toBe(realpathSync.native(join(cwd, "apps", "foo")));
   }, 60_000);
 });
 
