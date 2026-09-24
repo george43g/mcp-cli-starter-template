@@ -107,7 +107,7 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
   they import. That graph is what lets "find references" reach from a package
   into the apps and tests. **Test hooks marked `@internal`** are stripped from
   the published `.d.ts`, which is also what a referencing project compiles
-  against — so a package whose tests import one (robustness, tui-kit) has a
+  against — so a package whose tests import one (today only robustness) has a
   `tsconfig.internal.json` (same sources, `stripInternal: false`, output in
   `node_modules/.cache`), listed **last** in its test project's references:
   TypeScript maps a source file to the LAST referenced project that contains
