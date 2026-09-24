@@ -4336,3 +4336,23 @@ failure. The generated app is what downstream repos run, and PR #128 covered it.
 
 **Trigger**: a Windows CI leg here, or a consumer running these scripts on Windows.
 browser-tab-mcp's #199 adds a Windows leg on its side, so watch its results.
+
+---
+
+## 56. Move `pnpm.overrides` from package.json to pnpm-workspace.yaml
+
+**Status**: deferred 2026-09-25. It prepares for pnpm 11 and fixes nothing today.
+
+The recall session reported that the generated root `package.json` keeps its security
+overrides (`@hono/node-server`, `fast-uri`, `postcss`) under a `"pnpm"` field that pnpm
+ignores, so they would vanish on the next lockfile rewrite. **That was false, and recall
+retracted it.** The warning came from the global pnpm 11.15.1, which hands off to 10.29.3
+through `packageManager`, and 10.29.3 does read the field. Measured here: deleting only
+`fast-uri` from `package.json` `pnpm.overrides` made
+`pnpm install --frozen-lockfile` fail with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`.
+
+The move becomes necessary when the template's pinned pnpm reaches 11, which reads
+workspace settings from `pnpm-workspace.yaml`. It touches the root `package.json`, its
+template copy, `example/`, and the lockfile.
+
+**Trigger**: bumping `packageManager` to pnpm 11, or pnpm 10 printing the warning itself.
