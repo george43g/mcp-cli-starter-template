@@ -302,6 +302,10 @@ if (font.detected === false) warnHard();       // fc-list confirmed none
 else if (font.detected === null) warnSoftly(); // could not tell
 ```
 
+The result is cached per process. Tests that stub the environment call
+`_resetDetectNerdFontCache()` (exported from the package root) between cases;
+it is a test seam, not a way to re-detect in production.
+
 The three-variant result is the whole point:
 
 | Result | Meaning |

@@ -68,7 +68,14 @@ export function detectNerdFont(): FontDetectResult {
 /**
  * Reset the per-process detection cache.
  *
- * @internal Test seam only. There is deliberately no options parameter and no
+ * Test seam only — for consumers' tests too (EQStack's imsg-mcp imports it
+ * from the package root), which is why it carries no internal tag. With one,
+ * `stripInternal` dropped it from `font-detect.d.ts` while `index.d.ts` still
+ * re-exported it — a dangling type export in every release up to 0.5.1. Do not
+ * write that tag's literal spelling anywhere in this comment: `stripInternal`
+ * matches it in prose too.
+ *
+ * There is deliberately no options parameter and no
  * public force-redetect: no consumer has a case for re-detection mid-process,
  * and an option added now could not be removed later. If a real case appears
  * (a settings screen that tells the user to install a font, then re-checks),
