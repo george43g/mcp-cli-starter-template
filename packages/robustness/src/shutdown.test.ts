@@ -11,6 +11,17 @@ import {
   unregisterCleanup,
 } from "./shutdown.js";
 
+/**
+ * Emit `unhandledRejection` the way Node does: with the reason AND the promise
+ * that rejected. The promise is already handled here, so it cannot itself
+ * trip the test runner's own unhandled-rejection trap.
+ */
+function emitUnhandledRejection(host: NodeJS.Process, reason: Error): void {
+  const promise = Promise.reject(reason);
+  promise.catch(() => {});
+  host.emit("unhandledRejection", reason, promise);
+}
+
 beforeEach(() => {
   resetShutdown();
   // The default diagnostic sink routes through the logger; keep these tests
@@ -26,7 +37,9 @@ describe("createShutdownController", () => {
       exit: (code) => exits.push(code),
       onDiagnostic: ({ event }) => calls.push(event),
     });
-    controller.registerCleanup(() => calls.push("cleanup"));
+    controller.registerCleanup(() => {
+      calls.push("cleanup");
+    });
 
     await controller.shutdown(9);
 
@@ -140,7 +153,7 @@ describe("unhandledRejection policy", () => {
     });
     controller.installHandlers();
 
-    host.emit("unhandledRejection", new Error("stray promise"));
+    emitUnhandledRejection(host, new Error("stray promise"));
 
     expect(await exited.promise).toBe(70);
     expect(diagnostics).toContain("unhandled_rejection");
@@ -159,7 +172,7 @@ describe("unhandledRejection policy", () => {
     });
     controller.installHandlers();
 
-    host.emit("unhandledRejection", new Error("observed only"));
+    emitUnhandledRejection(host, new Error("observed only"));
     await new Promise((r) => setImmediate(r));
 
     expect(diagnostics).toContain("unhandled_rejection");
@@ -350,7 +363,7 @@ describe("shutdown cause", () => {
     });
     controller.installHandlers();
 
-    host.emit("unhandledRejection", new Error("stray"));
+    emitUnhandledRejection(host, new Error("stray"));
 
     await exited.promise;
     expect(controller.getShutdownCause()).toBe("unhandled_rejection");
@@ -450,7 +463,7 @@ describe("cause is only recorded when the event actually initiates shutdown", ()
     });
     controller.installHandlers();
 
-    host.emit("unhandledRejection", new Error("survivable"));
+    emitUnhandledRejection(host, new Error("survivable"));
     await new Promise((r) => setImmediate(r));
 
     // Nothing shut down, so nothing caused a shutdown.
@@ -494,7 +507,7 @@ describe("cause is only recorded when the event actually initiates shutdown", ()
     });
     controller.installHandlers();
 
-    host.emit("unhandledRejection", new Error("fatal by default"));
+    emitUnhandledRejection(host, new Error("fatal by default"));
 
     expect(await exited.promise).toBe(70);
     expect(controller.getShutdownCause()).toBe("unhandled_rejection");
@@ -514,7 +527,7 @@ describe("cause is only recorded when the event actually initiates shutdown", ()
     controller.installHandlers();
 
     host.emit("uncaughtException", new Error("x"));
-    host.emit("unhandledRejection", new Error("y"));
+    emitUnhandledRejection(host, new Error("y"));
     await new Promise((r) => setImmediate(r));
 
     // The error fact is not lost — the diagnostic is the right channel for

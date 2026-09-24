@@ -116,6 +116,22 @@ async function walk(dir, files = []) {
   return files;
 }
 
+/**
+ * A lib/ file stored as `<name>.tmpl` is emitted as `<name>`.
+ *
+ * For files whose real name makes a tool treat the template as LIVE config.
+ * `08-app/lib/tsconfig.json` was one: the editor's TypeScript server adopted
+ * it as the project for every file under lib/, so template text got type
+ * errors, and its project references (relative to the generated repo) pointed
+ * at directories that do not exist here. The golden test strips the same
+ * suffix, so the file still byte-matches its canonical source.
+ */
+const TEMPLATE_SUFFIX = ".tmpl";
+
+function templateKey(rel) {
+  return rel.endsWith(TEMPLATE_SUFFIX) ? rel.slice(0, -TEMPLATE_SUFFIX.length) : rel;
+}
+
 function escapeBackticks(s) {
   return s.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
 }
@@ -142,7 +158,7 @@ async function main() {
       // missing there.
       const rel = relative(PHASES_DIR, f).split(sep).join("/"); // e.g. "04-robustness/lib/env.ts"
       const content = await readFile(f, "utf8");
-      entries.push({ key: rel, content });
+      entries.push({ key: templateKey(rel), content });
     }
   }
 

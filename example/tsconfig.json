@@ -1,5 +1,9 @@
 {
   "extends": "@george43g/tsconfig/base.json",
   "files": [],
-  "references": []
+  "references": [
+    { "path": "./packages/shared-types" },
+    { "path": "./packages/shared-types/tsconfig.test.json" },
+    { "path": "./apps/example" }
+  ]
 }

@@ -76,7 +76,8 @@ packages/
 | `pnpm test` | All workspace tests, including the scaffolder suite |
 | `pnpm test:coverage` | Same suites + enforce each workspace's coverage floor |
 | `pnpm test:no-native` | Force TS fallback (`MCP_DISABLE_NATIVE=1`) |
-| `pnpm typecheck` | `tsc --noEmit` per package |
+| `pnpm typecheck` | `tsc -b` over the root solution `tsconfig.json`: every package, every package's `tsconfig.test.json`, both apps. Test files were outside every project until 2026-09 — 46 errors nobody had compiled. Writes each package's `dist/` exactly as `pnpm build` does (verified byte-identical) |
+| `pnpm check:test-projects` | Every `apps/*`/`packages/*` test file belongs to a project reachable from the root `tsconfig.json`. Vitest strips types without checking them, so an orphaned test file is type-checked by nothing, silently. Uses `tsc --showConfig`, so TypeScript stays the authority on what a project contains |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm check:docs` | Docs integrity: relative links, agent-file symlinks, docs index coverage |
 | `pnpm check:stdout-purity` | No `console.*` call in an MCP app's `src/` — JSON-RPC owns stdout after the stdio transport connects. Exists because the stamped AGENTS.md claimed "CI grep enforces this" for months while nothing did, and the false sentence replicated into descendant repos. A claimed guard is worse than no guard |
@@ -88,7 +89,7 @@ packages/
 | `pnpm check:workflows` | `actionlint` (pinned in `mise.toml`) over all three workflow surfaces. Requires `mise install` first |
 | `pnpm check:turbo-tasks` | Every turbo task that RUNS tests must depend on its OWN `build`, not just `^build`. Caught twice in one hour: `^build` builds *dependencies*, so a test spawning its own `dist/` passes where a stale build exists and dies in a fresh clone — which is how a release job failed after every PR check went green |
 | `pnpm check:deps-stale` | Asks the **registry** whether our first-party deps are current. **NOT in `verify`** — `verify` is network-free by design. Runs weekly via `.github/workflows/deps-stale.yml`. Catches the one thing every offline check is blind to: a tree that agrees with itself and is uniformly behind. Exit 2 = registry unreachable, which is **not** a pass |
-| `pnpm verify` | lint + script tests + docs + stress count + manifests + registry boundary + workflows + typecheck + test:coverage + build (the CI shape) |
+| `pnpm verify` | lint + script tests + docs + stress count + manifests + registry boundary + workflows + turbo tasks + test projects + typecheck + test:coverage + build (the CI shape) |
 | `pnpm stress` | 15-assertion MCP stress harness against `apps/example-repo-mcp/` |
 | `pnpm regen:example` | Rebuild the tracked `example/` output from the scaffolder |
 
@@ -98,6 +99,23 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
 ## Conventions
 
 - **Single source of truth**: canonical files at the repo root + `apps/example-repo-mcp/` + `packages/*`. The scaffolder's `lib/` directories are byte-identical copies, drift-checked.
+- **TypeScript is one `tsc -b` solution** (root `tsconfig.json`, `"files": []`).
+  Each package's `tsconfig.json` is `composite` — its build info lives in
+  `dist/` so a deleted `dist/` is never read as up to date, and `files` carries
+  `!dist/tsconfig.tsbuildinfo` so it never ships. Tests live in a sibling
+  `tsconfig.test.json` that references its package; apps reference the packages
+  they import. That graph is what lets "find references" reach from a package
+  into the apps and tests. **Test hooks marked `@internal`** are stripped from
+  the published `.d.ts`, which is also what a referencing project compiles
+  against — so a package whose tests import one (today only robustness) has a
+  `tsconfig.internal.json` (same sources, `stripInternal: false`, output in
+  `node_modules/.cache`), listed **last** in its test project's references:
+  TypeScript maps a source file to the LAST referenced project that contains
+  it. Swap the order and `pnpm typecheck` fails on the hook imports, loudly.
+  The scaffolder's `lib/` trees are no project at all: the app's template
+  tsconfig is stored as `tsconfig.json.tmpl`, and `apps/scaffolder/src/phases/tsconfig.json`
+  (`noCheck`, referenced by no build) exists only so the editor stops reporting
+  errors on template text.
 - **A new kit API and its generated-app call site are TWO PRs, publish first.**
   `apps/example-repo-mcp/src/` becomes the generated app's source, and generated
   repos resolve `@george43g/*` from **npm** — so calling an API that only exists
@@ -194,7 +212,7 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
 ## Validation & CI
 
 `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, node 24:
-install → lint → docs check → manifest check → typecheck → build →
+install → lint → docs check → manifest check → test-projects check → typecheck (`tsc -b`) → build →
 test + coverage gates → test:no-native → usage(1) artifact freshness →
 npm pack dry-run → scaffolder E2E smoke → 15-assertion stress harness →
 example/ sync check.

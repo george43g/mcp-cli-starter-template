@@ -62,28 +62,34 @@ describe("buildDispatcher", () => {
     const dispatch = buildDispatcher({ registry });
     const r = await dispatch("ghost", {});
     expect(r.isError).toBe(true);
-    expect(r.content[0]?.text).toMatch(/Unknown tool/);
+    expect(r.content[0]).toMatchObject({
+      type: "text",
+      text: expect.stringMatching(/Unknown tool/),
+    });
   });
 
   it("rejects malformed input via Zod", async () => {
     const dispatch = buildDispatcher({ registry });
     const r = await dispatch("echo", { input: 42 });
     expect(r.isError).toBe(true);
-    expect(r.content[0]?.text).toMatch(/Invalid arguments/);
+    expect(r.content[0]).toMatchObject({
+      type: "text",
+      text: expect.stringMatching(/Invalid arguments/),
+    });
   });
 
   it("returns timeout error when handler exceeds budget", async () => {
     const dispatch = buildDispatcher({ registry });
     const r = await dispatch("slow", {});
     expect(r.isError).toBe(true);
-    expect(r.content[0]?.text).toMatch(/Timed out/);
+    expect(r.content[0]).toMatchObject({ type: "text", text: expect.stringMatching(/Timed out/) });
   });
 
   it("wraps thrown errors", async () => {
     const dispatch = buildDispatcher({ registry });
     const r = await dispatch("throws", {});
     expect(r.isError).toBe(true);
-    expect(r.content[0]?.text).toMatch(/kaboom/);
+    expect(r.content[0]).toMatchObject({ type: "text", text: expect.stringMatching(/kaboom/) });
   });
 
   it("uses caller-supplied engine label in _meta", async () => {

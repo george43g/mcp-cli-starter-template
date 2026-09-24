@@ -67,7 +67,7 @@ The runtime kits are **not** in `packages/`: the app depends on them from npm.
 | `pnpm dev` | Turbo: watch mode across all packages |
 | `pnpm test` | Run all unit + integration tests |
 | `pnpm test:no-native` | Force TS fallback path (`MCP_DISABLE_NATIVE=1`) |
-| `pnpm typecheck` | Turbo: `tsc --noEmit` per package |
+| `pnpm typecheck` | `tsc -b` over the root solution `tsconfig.json` — the app, `packages/shared-types` and its `tsconfig.test.json` |
 | `pnpm lint` | Biome check |
 | `pnpm lint:fix` | Biome write |
 | `pnpm stress` | Run 15-assertion stress harness against the built MCP |

@@ -12,7 +12,7 @@
  * the consumer's copy does not have (vitest-config without `withCoverageFloor`).
  *
  * This runs BEFORE the app is written, against the exact bytes 08-app will
- * write (same substitute + applyPublishedRanges pipeline as portPackage), so a
+ * write (same substitute + applyRegistryBoundary pipeline as portPackage), so a
  * refusal leaves the target untouched. Failing after the write would leave
  * apps/<name>/ on disk, and the re-run would then be refused by the 08-app
  * collision guard.
@@ -27,7 +27,7 @@ import { dirname, join, resolve } from "node:path";
 import { createOnlyFs } from "../core/fs.js";
 import type { Migration, MigrationContext } from "../core/migration.js";
 import type { MigrationRunResult, PhaseRunResult } from "../core/phase-runner.js";
-import { applyPublishedRanges } from "../core/runtime-source.js";
+import { applyRegistryBoundary } from "../core/runtime-source.js";
 import type { ShellHelper } from "../core/shell.js";
 import { requireRepoName } from "../core/target-inspection.js";
 import { nameUpperOf, substitute } from "../core/templating.js";
@@ -131,7 +131,8 @@ export function renderAppFiles(ctx: MigrationContext): Map<string, string> {
   const out = new Map<string, string>();
   for (const [key, content] of Object.entries(TEMPLATES)) {
     if (!key.startsWith(APP_LIB_PREFIX)) continue;
-    out.set(key.slice(APP_LIB_PREFIX.length), applyPublishedRanges(substitute(content, vars)));
+    const rel = key.slice(APP_LIB_PREFIX.length);
+    out.set(rel, applyRegistryBoundary(rel, substitute(content, vars)));
   }
   return out;
 }

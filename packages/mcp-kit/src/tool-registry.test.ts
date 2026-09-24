@@ -44,7 +44,6 @@ describe("makeRegistry", () => {
     const r = makeRegistry([prod]);
     const [tool] = r.toMcpTools();
     expect(tool?.inputSchema).toBeDefined();
-    // @ts-expect-error — outputSchema is on the SDK Tool type
     expect(tool?.outputSchema).toBeDefined();
   });
 });

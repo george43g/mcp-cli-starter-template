@@ -161,9 +161,19 @@ async function walkFiles(root: string, acc: string[] = []): Promise<string[]> {
   return acc;
 }
 
+/**
+ * A lib/ file stored as `<name>.tmpl` is the template of `<name>` — the suffix
+ * keeps tools from treating it as live config (see TEMPLATE_SUFFIX in
+ * scripts/build-templates.mjs, which strips it the same way).
+ */
+const TEMPLATE_SUFFIX = ".tmpl";
+
 /** Resolve a lib/ absolute path to its canonical absolute path. */
 function libToCanonical(libAbs: string): string | undefined {
-  const libRel = posixRel(PHASES_DIR, libAbs); // e.g. "08-app/lib/src/cli.ts"
+  const rawRel = posixRel(PHASES_DIR, libAbs); // e.g. "08-app/lib/src/cli.ts"
+  const libRel = rawRel.endsWith(TEMPLATE_SUFFIX)
+    ? rawRel.slice(0, -TEMPLATE_SUFFIX.length)
+    : rawRel;
   // Find the longest matching prefix in the table.
   let best: { libPrefix: string; canonical: string } | undefined;
   for (const [libPrefix, canonical] of LIB_TO_CANONICAL) {
@@ -179,6 +189,22 @@ function libToCanonical(libAbs: string): string | undefined {
     best.canonical === "." ? tail : tail ? `${best.canonical}/${tail}` : best.canonical;
   return resolve(REPO_ROOT, canonicalRel);
 }
+
+describe("lib/ is template text, not a live TypeScript project", () => {
+  it("ships no file an editor would adopt as a project config", async () => {
+    // A lib/tsconfig.json makes the editor's TypeScript server treat the whole
+    // template tree as a project: type errors on template text, and project
+    // references that only resolve inside a generated repo. Store it as
+    // `tsconfig.json.tmpl` instead — build-templates strips the suffix.
+    // src/phases/tsconfig.json (noCheck, referenced by no build) is what
+    // keeps lib/ files out of an error-reporting inferred project instead.
+    const offenders = (await walkFiles(PHASES_DIR))
+      .map((f) => posixRel(PHASES_DIR, f))
+      .filter((rel) => /^\d{2}-[^/]+\/lib\//.test(rel))
+      .filter((rel) => /(^|\/)(tsconfig|jsconfig)\.json$/.test(rel));
+    expect(offenders).toEqual([]);
+  });
+});
 
 describe("golden-output drift", () => {
   it("every lib/ file matches its canonical source byte-for-byte", async () => {

@@ -116,8 +116,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm check:registry-boundary
 
+      - name: Every workspace test file belongs to a TypeScript project
+        if: matrix.os == 'ubuntu-latest'
+        # Vitest strips types without checking them, so a test file outside
+        # every tsconfig project is type-checked by nothing. 46 errors sat in
+        # such files until 2026-09.
+        run: pnpm check:test-projects
 
-      - name: Typecheck
+      - name: Typecheck (tsc -b over the root solution — packages, apps AND tests)
         if: matrix.os == 'ubuntu-latest'
         run: pnpm typecheck
 

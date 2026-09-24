@@ -30,6 +30,7 @@ import type { Migration, MigrationContext } from "../src/core/migration.js";
 import { buildProgram } from "../src/core/program.js";
 import { makeShell } from "../src/core/shell.js";
 import { inspectTarget } from "../src/core/target-inspection.js";
+import { addRootReferences } from "../src/core/tsconfig-refs.js";
 import M1TsconfigPkg from "../src/phases/03-configs/m1-tsconfig-pkg.js";
 import M3VitestPkg from "../src/phases/03-configs/m3-vitest-pkg.js";
 import M5BuildConfigPkg from "../src/phases/03-configs/m5-build-config-pkg.js";
@@ -161,7 +162,11 @@ describe("add-mcp-app workspace-dependency preflight", () => {
 
     expect(existsSync(join(cwd, "apps", "bar", "package.json"))).toBe(true);
     expect(await snapshot(join(cwd, "packages"))).toEqual(before);
-    expect(await readFile(join(cwd, "tsconfig.json"), "utf8")).toBe(rootTsconfig);
+    // Not clobbered by the tsconfig recipe — only the new app appended to the
+    // solution, so `tsc -b` type-checks it like the first one.
+    expect(await readFile(join(cwd, "tsconfig.json"), "utf8")).toBe(
+      addRootReferences(rootTsconfig, ["./apps/bar"]),
+    );
   }, 60_000);
 
   it("fails before writing when a missing workspace dep has no migration that creates it", async () => {

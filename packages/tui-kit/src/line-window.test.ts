@@ -87,7 +87,7 @@ describe("lineWindow", () => {
   it("memoises heightOf within a single call", () => {
     // The walk revisits indices (up, down, backfill up). Consumers should not
     // need useCallback gymnastics to make an expensive estimator affordable.
-    const spy = vi.fn(() => 1);
+    const spy = vi.fn((_index: number) => 1);
     lineWindow({ itemCount: 40, cursor: 20, budgetLines: 20, heightOf: spy });
     const distinct = new Set(spy.mock.calls.map((c) => c[0]));
     expect(spy).toHaveBeenCalledTimes(distinct.size);

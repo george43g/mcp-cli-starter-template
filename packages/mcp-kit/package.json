@@ -37,6 +37,7 @@
   },
   "files": [
     "dist",
+    "!dist/tsconfig.tsbuildinfo",
     "src",
     "!src/**/*.test.ts",
     "README.md",

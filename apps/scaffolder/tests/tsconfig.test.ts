@@ -11,6 +11,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  addRootReferences,
+  isTsconfigPath,
+  withoutPublishedReferences,
+} from "../src/core/tsconfig-refs.js";
+import { TSCONFIG, TSCONFIG_TEST } from "../src/phases/07-shared-types/m1-shared-types.js";
 
 const REPO_ROOT = join(import.meta.dirname, "../../..");
 const BASE_TSCONFIG = join(REPO_ROOT, "packages/tsconfig/base.json");
@@ -67,5 +73,81 @@ describe("packages/tsconfig/base.json — the scaffolder's inline copy must matc
     };
 
     expect(templated.compilerOptions).toEqual(canonical.compilerOptions);
+  });
+});
+
+/**
+ * shared-types' tsconfig.json and tsconfig.test.json are inline templates in
+ * m1-shared-types.ts for the same reason base.json is: they carry the scope.
+ * Unlike base.json, the whole file is the contract (composite, where the build
+ * info lives, what the test project includes), so compare bytes, not options.
+ */
+describe("packages/shared-types tsconfigs — the scaffolder's inline copies must match", () => {
+  for (const [file, render] of [
+    ["tsconfig.json", TSCONFIG],
+    ["tsconfig.test.json", TSCONFIG_TEST],
+  ] as const) {
+    it(file, () => {
+      const canonical = readFileSync(join(REPO_ROOT, "packages/shared-types", file), "utf8");
+      expect(render("@george43g")).toBe(canonical);
+    });
+  }
+});
+
+describe("withoutPublishedReferences — a generated app references only what it vendors", () => {
+  it("drops the published kits and keeps shared-types, as the canonical app's tsconfig renders", () => {
+    const canonical = readFileSync(join(REPO_ROOT, "apps/example-repo-mcp/tsconfig.json"), "utf8");
+    const rendered = withoutPublishedReferences(canonical);
+    const refs = (JSON.parse(rendered) as { references: Array<{ path: string }> }).references;
+    expect(refs).toEqual([{ path: "../../packages/shared-types" }]);
+    // Every other byte is the template's own.
+    expect(rendered.replace(/"references":[\s\S]*?\]/, "")).toBe(
+      canonical.replace(/"references":[\s\S]*?\]/, ""),
+    );
+    expect(rendered).toContain('  "references": [{ "path": "../../packages/shared-types" }]\n');
+  });
+
+  it("leaves content without a references array alone", () => {
+    const content = '{\n  "compilerOptions": {}\n}\n';
+    expect(withoutPublishedReferences(content)).toBe(content);
+  });
+
+  it("only rewrites tsconfig files", () => {
+    expect(isTsconfigPath("apps/foo/tsconfig.json")).toBe(true);
+    expect(isTsconfigPath("packages/a/tsconfig.test.json")).toBe(true);
+    expect(isTsconfigPath("apps/foo/package.json")).toBe(false);
+  });
+});
+
+describe("addRootReferences — each port registers itself in the root solution", () => {
+  const EMPTY =
+    '{\n  "extends": "@acme/tsconfig/base.json",\n  "files": [],\n  "references": []\n}\n';
+
+  it("appends, keeps one line while it fits, and is idempotent", () => {
+    const once = addRootReferences(EMPTY, ["./apps/foo"]);
+    expect(once).toBe(
+      '{\n  "extends": "@acme/tsconfig/base.json",\n  "files": [],\n  "references": [{ "path": "./apps/foo" }]\n}\n',
+    );
+    expect(addRootReferences(once ?? "", ["./apps/foo", "apps/foo/tsconfig.json"])).toBe(once);
+  });
+
+  it("breaks one reference per line past 100 columns, the way Biome formats it", () => {
+    const out = addRootReferences(EMPTY, [
+      "./packages/shared-types",
+      "./packages/shared-types/tsconfig.test.json",
+      "./apps/foo",
+    ]);
+    expect(out).toContain(
+      '  "references": [\n' +
+        '    { "path": "./packages/shared-types" },\n' +
+        '    { "path": "./packages/shared-types/tsconfig.test.json" },\n' +
+        '    { "path": "./apps/foo" }\n' +
+        "  ]\n",
+    );
+  });
+
+  it("refuses a root tsconfig that is a real project rather than a solution", () => {
+    const project = '{\n  "compilerOptions": {},\n  "include": ["src"],\n  "references": []\n}\n';
+    expect(addRootReferences(project, ["./apps/foo"])).toBeUndefined();
   });
 });

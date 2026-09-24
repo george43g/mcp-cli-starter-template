@@ -16,7 +16,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "tsc -b",
     "stress": "turbo run stress",
     "check:docs": "node scripts/check-docs-links.mjs",
     "check:stdout-purity": "node scripts/check-stdout-purity.mjs",

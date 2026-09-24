@@ -115,6 +115,24 @@ entry with a justifying comment. The tracked `example/` output is a third
 surface: regenerate it with `pnpm regen:example` from the repo root when
 generated output changes.
 
+**`.tmpl` suffix.** A `lib/` file whose real name would make a tool treat
+the template as live config is stored as `<name>.tmpl`; `build-templates.mjs`
+emits it under `<name>` and the golden test compares it against `<name>`'s
+canonical. `08-app/lib/tsconfig.json.tmpl` is the one that needs it: named
+`tsconfig.json`, the editor adopted it as the project for all of `08-app/lib/`
+and reported errors on template text. `golden.test.ts` fails if a
+`tsconfig.json`/`jsconfig.json` reappears under any `lib/`. The sibling
+`src/phases/tsconfig.json` (`noCheck`, extends this app's tsconfig, referenced
+by no build) catches every other `lib/` file, which would otherwise fall into
+an inferred project that still reports unresolved imports.
+
+**Project references in generated output.** Porting a template through
+`portPackage` drops tsconfig references to packages the generated repo takes
+from npm (`withoutPublishedReferences`, in the same pass that rewrites their
+`workspace:*` ranges), and `rootReferences` appends the ported workspace to
+the root solution tsconfig so its `tsc -b` covers it. A root tsconfig that is
+not solution-shaped (`"files": []`) is left alone with a note.
+
 `regen:example`, CI's sync check and the release workflow's post-bump resync
 all call one script — `scripts/regen-example.mjs`. Change the regen sequence
 there, never in a workflow step: two hand-synced copies is how it drifted

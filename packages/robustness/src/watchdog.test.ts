@@ -111,8 +111,15 @@ describe("createWatchdog", () => {
   });
 });
 
+/**
+ * The shutdown port a watchdog accepts. `WatchdogOptions["shutdownController"]`
+ * alone includes `undefined` (the property is optional), which
+ * exactOptionalPropertyTypes then refuses to pass back in as a present value.
+ */
+type ShutdownPort = NonNullable<WatchdogOptions["shutdownController"]>;
+
 /** A shutdown controller whose cleanup registrations are observable. */
-function trackingShutdown(store: Set<() => void>): WatchdogOptions["shutdownController"] {
+function trackingShutdown(store: Set<() => void>): ShutdownPort {
   return {
     registerCleanup: (fn) => store.add(fn as () => void),
     unregisterCleanup: (fn) => store.delete(fn as () => void),
@@ -215,7 +222,7 @@ describe("force-exit net when a kill triggers shutdown", () => {
    * A shutdown controller that runs its cleanups (as a real one does) and then
    * hangs — the wedged-cleanup case the 5s force exit exists to escape.
    */
-  function hangingShutdown(store: Set<() => void>): WatchdogOptions["shutdownController"] {
+  function hangingShutdown(store: Set<() => void>): ShutdownPort {
     let shuttingDown = false;
     return {
       registerCleanup: (fn) => store.add(fn as () => void),
@@ -391,7 +398,7 @@ describe("watchdog kill attributes the shutdown cause", () => {
 
 describe("observe-only breach hook", () => {
   /** A shutdown controller that records what the watchdog asked it to do. */
-  function recordingShutdown(shutdowns: number[]): WatchdogOptions["shutdownController"] {
+  function recordingShutdown(shutdowns: number[]): ShutdownPort {
     return {
       registerCleanup: () => {},
       unregisterCleanup: () => {},

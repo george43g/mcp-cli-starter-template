@@ -1,24 +1,21 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2022"],
-    "types": ["node"],
-    "strict": true,
-    "exactOptionalPropertyTypes": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "noFallthroughCasesInSwitch": true,
-    "noEmit": true,
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "forceConsistentCasingInFileNames": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true
-  },
-  "exclude": ["node_modules", "**/dist", "**/build", "**/coverage", "**/*.tsbuildinfo"]
+  "extends": "@george43g/tsconfig/base.json",
+  "files": [],
+  "references": [
+    { "path": "./packages/cli-kit" },
+    { "path": "./packages/cli-kit/tsconfig.test.json" },
+    { "path": "./packages/mcp-kit" },
+    { "path": "./packages/mcp-kit/tsconfig.test.json" },
+    { "path": "./packages/robustness" },
+    { "path": "./packages/robustness/tsconfig.test.json" },
+    { "path": "./packages/secret-store" },
+    { "path": "./packages/secret-store/tsconfig.test.json" },
+    { "path": "./packages/shared-types" },
+    { "path": "./packages/shared-types/tsconfig.test.json" },
+    { "path": "./packages/tui-kit" },
+    { "path": "./packages/tui-kit/tsconfig.test.json" },
+    { "path": "./apps/example-repo-mcp" },
+    { "path": "./apps/scaffolder" }
+  ]
 }

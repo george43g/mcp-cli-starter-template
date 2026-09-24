@@ -199,6 +199,16 @@ so a broken matcher cannot read as "clean".
 **If you add a test-running task to the generated turbo config, give it
 `build`.**
 
+### The generated TypeScript projects
+
+The root `tsconfig.json` is a `tsc -b` solution, and `pnpm typecheck` is
+`tsc -b` over it. `07-shared-types` registers `packages/shared-types` and its
+`tsconfig.test.json` (which is what type-checks its tests — the package's own
+tsconfig excludes them); `08-app` registers `apps/<name>`, whose tsconfig
+references `packages/shared-types`. `add` appends the new app the same way.
+The kits come from npm, so the template's references to their workspace
+directories are dropped at write time.
+
 ## Diff-safe retrofit
 
 `apply` defaults to **dry-run** and a safe target profile. Generic repositories

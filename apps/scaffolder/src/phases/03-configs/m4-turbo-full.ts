@@ -67,7 +67,7 @@ const TURBO_JSON = `{
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "inputs": ["src/**", "tests/**", "tsconfig.json"]
+      "inputs": ["src/**", "tests/**", "tsconfig*.json"]
     },
     "lint": {
       "outputs": [],

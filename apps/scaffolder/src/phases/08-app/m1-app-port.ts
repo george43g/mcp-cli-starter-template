@@ -55,7 +55,15 @@ export default class AppPortMigration extends Migration {
         error: new Error(`Refusing to overwrite existing ${pkgDir} in add mode`),
       };
     }
-    return createOnlyOnBareTree(ctx, (c) => portPackage(c, { pkgDir, libPrefix: "08-app/lib/" }));
+    return createOnlyOnBareTree(ctx, (c) =>
+      portPackage(c, {
+        pkgDir,
+        libPrefix: "08-app/lib/",
+        // `add` appends to the solution, so a second app is built by `tsc -b`
+        // too rather than sitting outside every type-check.
+        rootReferences: [`./${pkgDir}`],
+      }),
+    );
   }
 
   override retrofitIntent(ctx: MigrationContext): RetrofitIntent | undefined {
