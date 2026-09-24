@@ -283,6 +283,8 @@ pnpm completions:install                      # auto-detect $SHELL and install i
 
 `pnpm check:usage` and CI enforce freshness from the initial scaffold onward.
 
+The check regenerates with the `usage` version pinned in `mise.toml` (the nearest one at or above the app that pins it), the same version `pnpm artifacts` writes with — a different `usage` on PATH, such as a global `usage@latest`, would otherwise report every artifact as drifted. With mise installed it runs `usage@<pin>` through mise whatever PATH says; without mise it accepts the `usage` on PATH only if `usage --version` matches the pin, and otherwise exits 2 naming both versions instead of reporting drift.
+
 `completions:install` (script: `scripts/install-completions.sh`) handles the well-known locations for each shell:
 
 | Shell | Default install path |
