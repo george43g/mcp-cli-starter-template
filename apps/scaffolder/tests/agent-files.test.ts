@@ -97,7 +97,7 @@ describe("11-agent-files target-aware output", () => {
     await new AgentFilesMigration().apply(await context(cwd));
     const agents = await readFile(join(cwd, "AGENTS.md"), "utf8");
     expect(agents).toContain("## Workspace topology");
-    expect(agents).toContain("13 lifecycle assertions");
+    expect(agents).toContain("15 lifecycle assertions");
     expect(existsSync(join(cwd, ".mcp.json"))).toBe(true);
     const skills = await readFile(join(cwd, "skills.md"), "utf8");
     expect(skills).not.toContain(".agents/skills");

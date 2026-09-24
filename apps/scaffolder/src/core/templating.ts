@@ -89,3 +89,45 @@ export function substitute(content: string, vars: TemplateVars): string {
   });
   return out;
 }
+
+/**
+ * Conditional blocks for templates that describe the generated tree, so a doc
+ * can say only what was actually generated:
+ *
+ *     <!-- if:rust-accel -->
+ *     ...kept when flags["rust-accel"] is true...
+ *     <!-- endif:rust-accel -->
+ *
+ * `if:!flag` inverts. Marker lines are always removed. Only the cloned-tool
+ * templates exempt from the golden byte-equality check carry markers, since a
+ * canonical file cannot. An unknown flag throws: a typo would otherwise drop
+ * the block silently in every generated repo.
+ */
+const BLOCK_RE = /^[ \t]*<!-- (if|endif):(!?)([a-z][a-z0-9-]*) -->[ \t]*$/;
+
+export function renderFeatureBlocks(
+  content: string,
+  flags: Readonly<Record<string, boolean>>,
+): string {
+  if (!content.includes("<!-- if:")) return content;
+  const out: string[] = [];
+  const stack: Array<{ flag: string; keep: boolean }> = [];
+  for (const line of content.split("\n")) {
+    const m = line.match(BLOCK_RE);
+    if (!m) {
+      if (stack.every((s) => s.keep)) out.push(line);
+      continue;
+    }
+    const [, kind, negate, flag = ""] = m;
+    if (!(flag in flags)) {
+      throw new Error(`Unknown template flag "${flag}"; known: ${Object.keys(flags).join(", ")}`);
+    }
+    if (kind === "if") {
+      stack.push({ flag: `${negate}${flag}`, keep: negate ? !flags[flag] : flags[flag] === true });
+    } else if (stack.pop()?.flag !== `${negate}${flag}`) {
+      throw new Error(`Unbalanced template block: endif:${negate}${flag}`);
+    }
+  }
+  if (stack.length > 0) throw new Error(`Unclosed template block: if:${stack.at(-1)?.flag}`);
+  return out.join("\n");
+}

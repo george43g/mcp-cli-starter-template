@@ -21,6 +21,7 @@
 
 import {
   appliedStatus,
+  bootstrapsBareTree,
   Migration,
   type MigrationContext,
   type MigrationResult,
@@ -38,7 +39,8 @@ export default class AgentFilesMigration extends Migration {
   override readonly existingPolicy = "safe-any-existing" as const;
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
-    const fullTemplate = ctx.mode !== "existing" || ctx.target.starterLayout;
+    const fullTemplate =
+      ctx.mode !== "existing" || ctx.target.starterLayout || bootstrapsBareTree(ctx);
     const templateResult = fullTemplate
       ? await portPackage(ctx, { pkgDir: "", libPrefix: "11-agent-files/lib/" })
       : await writeMinimalAgentFiles(ctx);

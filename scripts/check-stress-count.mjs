@@ -62,7 +62,11 @@ const RECORD_FILES = new Set([
 ]);
 
 const TEXT_EXT = /\.(md|mdx|ts|tsx|mts|mjs|js|yml|yaml|toml|json|txt)$/;
-const COUNT = /(\d+)[\s-]assertions?\b/g;
+// One optional qualifier word between the number and the noun: the generated
+// AGENTS.md said "13 lifecycle assertions" for weeks after the harness reached
+// 15, because the pattern wanted the two adjacent. "13 of 13 assertions" still
+// reads as one quote: "of" is followed by a digit, so only the second 13 matches.
+const COUNT = /(\d+)(?:[\s-]+[A-Za-z]+)?[\s-]+assertions?\b/g;
 
 export function expectedFromHarness(fromRoot = root) {
   const src = readFileSync(join(fromRoot, HARNESS), "utf8");

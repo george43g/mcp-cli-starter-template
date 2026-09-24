@@ -24,7 +24,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import type { FsHelper } from "../core/fs.js";
+import { createOnlyFs } from "../core/fs.js";
 import type { Migration, MigrationContext } from "../core/migration.js";
 import type { MigrationRunResult, PhaseRunResult } from "../core/phase-runner.js";
 import { applyPublishedRanges } from "../core/runtime-source.js";
@@ -303,33 +303,9 @@ function checkRequirements(pkgDir: string, reqs: Requirement[]): string[] {
   return [...new Set(problems)];
 }
 
-/**
- * FsHelper that never modifies an existing file: writes to a path already on
- * disk are skipped and recorded. The add-mode fs runs force=true, so without
- * this the migrations below would overwrite a consumer's files.
- */
-export function createOnlyFs(inner: FsHelper, skipped: string[]): FsHelper {
-  return {
-    ...inner,
-    async writeIfChanged(relPath, content) {
-      if (inner.exists(relPath)) {
-        skipped.push(relPath);
-        return "unchanged";
-      }
-      return inner.writeIfChanged(relPath, content);
-    },
-    async symlink(target, linkRelPath) {
-      if (inner.exists(linkRelPath)) {
-        skipped.push(linkRelPath);
-        return "unchanged";
-      }
-      return inner.symlink(target, linkRelPath);
-    },
-    async remove(relPath) {
-      throw new Error(`create-only fs refuses to remove ${relPath}`);
-    },
-  };
-}
+// Lives in core/fs.ts since `apply --existing-strategy full` on a bare tree
+// uses it too; re-exported so existing importers keep working.
+export { createOnlyFs };
 
 export const WORKSPACE_DEPS_PHASE_ID = "add-mcp-app/workspace-deps";
 

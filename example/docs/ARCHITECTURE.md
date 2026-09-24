@@ -135,7 +135,7 @@ the rest of the chain only adds places to look when it is absent.
 
 Each surface is independently deletable:
 
-- **No TUI**: delete `apps/example/src/tui/`, the `example-tui` bin entry in `package.json`, the `tui` subcommand from `src/cli.ts`, and the TUI entry from `vite.config.ts`. Optionally delete `packages/tui-kit` from `pnpm-workspace.yaml`.
+- **No TUI**: delete `apps/example/src/tui/`, the `tui` subcommand from `src/cli.ts` (there is one bin, `example`; the TUI is a subcommand of it, not a bin of its own), and the TUI entry from `vite.config.ts`. Optionally drop `@george43g/tui-kit` from the app's `dependencies`.
 - **No HTTP**: delete the `http` subcommand from `src/cli.ts`, the `--http` branch from `src/index.ts`, case #9 from `scripts/stress-mcp.ts`, and `MCP_HTTP_TOKEN` from `.env.example`.
 - **No Rust**: delete `apps/rust-accel/`, `src/native-bridge.ts`, and the `tryLoadNative()` call in `src/tools/noop.ts`. Remove `MIRRORED_SCHEMAS` from `packages/shared-types/src/index.ts` and the drift-check test.
 - **No `get_logs`**: delete `src/tools/get-logs.ts` and remove it from `src/tools/registry.ts`.

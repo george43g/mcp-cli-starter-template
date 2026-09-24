@@ -42,7 +42,7 @@
     "check:stale-plans": "node scripts/check-stale-plans.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.5",
+    "@biomejs/biome": "2.5.14",
     "@george43g/tsconfig": "workspace:*",
     "@george43g/vitest-config": "workspace:*",
     "@types/node": "^24.13.3",

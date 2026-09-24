@@ -19,6 +19,8 @@ export interface GitHelper {
   status(): Promise<string>;
   /** Returns the absolute path to the repo root. */
   root(): Promise<string | undefined>;
+  /** Returns a remote's fetch URL, or undefined when it is not configured. */
+  remoteUrl(name?: string): Promise<string | undefined>;
 }
 
 export function makeGit(shell: ShellHelper): GitHelper {
@@ -53,5 +55,21 @@ export function makeGit(shell: ShellHelper): GitHelper {
       });
       return r.exitCode === 0 ? r.stdout || undefined : undefined;
     },
+    async remoteUrl(name = "origin") {
+      const r = await shell.tryRun("git", ["remote", "get-url", name], { dryRunOverride: false });
+      return r.exitCode === 0 ? r.stdout || undefined : undefined;
+    },
   };
+}
+
+/**
+ * `owner/repo` for a GitHub remote URL (https, ssh, or scp-style), else
+ * undefined — a non-GitHub remote has no GitHub Actions badge to point at.
+ */
+export function githubSlug(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  const m = url
+    .trim()
+    .match(/^(?:https?:\/\/|ssh:\/\/git@|git@)github\.com[/:]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/);
+  return m ? `${m[1]}/${m[2]}` : undefined;
 }

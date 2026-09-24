@@ -81,9 +81,9 @@ See `apps/example-repo-mcp/.env.example` for the full list of recognized variabl
 ## Verify
 
 ```bash
-example-repo-cli doctor          # preflight (Node version, native module, config dir)
-example-repo-cli health          # call health_check
-example-repo-cli noop --input "hi"  # call the demo tool
+example-repo doctor              # preflight (Node version, native module, config dir)
+example-repo health              # call health_check
+example-repo noop --input "hi"   # call the demo tool
 ```
 
 If anything fails, run with `EXAMPLE_REPO_DEV=1` to register the `get_logs` MCP tool, then ask your MCP host to call it.

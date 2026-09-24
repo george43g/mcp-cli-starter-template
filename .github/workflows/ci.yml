@@ -214,10 +214,10 @@ jobs:
           # catches a different class of "scaffolder unit tests pass but
           # output is broken" regression.
           pnpm verify
-          # Stress: 13 lifecycle assertions (handshake, health, parallel,
+          # Stress: 15 lifecycle assertions (handshake, health, parallel,
           # timeout, SIGTERM, RSS watchdog, HTTP roundtrip). Skipped if
           # --no-rust-accel removed the http transport; we kept HTTP in
-          # this run so all 13 must pass.
+          # this run so all 15 must pass.
           node scripts/for-each-mcp-app.mjs stress
 
       - name: Stress harness (15 assertions including HTTP)
@@ -278,6 +278,15 @@ jobs:
   windows:
     name: windows-latest · node 24
     runs-on: windows-latest
+    # A hang must fail in minutes, not hold a runner for GitHub's 6-hour
+    # default: PR #130's run a9807f8 sat 5h after turbo finished, on cmd.exe's
+    # "Terminate batch job (Y/N)?" prompt.
+    timeout-minutes: 30
+    # bash, not the default pwsh: pwsh resolves `pnpm` to the pnpm.cmd batch
+    # shim, and that batch wrapper is what owns the prompt above.
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -14,6 +14,8 @@
  */
 
 import {
+  bootstrapsBareTree,
+  createOnlyOnBareTree,
   Migration,
   type MigrationContext,
   type MigrationResult,
@@ -33,9 +35,11 @@ export default class AppPortMigration extends Migration {
 
   // Skip in `apply` (existing-repo) mode: porting the whole canonical app
   // would overwrite the user's actual src/. The retrofitIntent below is what
-  // gets shown instead. Init + add both go through `apply()`.
+  // gets shown instead. Init + add both go through `apply()`, and so does a
+  // `--existing-strategy full` run on a tree with no package.json — there is
+  // no src/ to overwrite, and the port runs create-only.
   override async shouldRun(ctx: MigrationContext): Promise<boolean> {
-    return ctx.mode !== "existing";
+    return ctx.mode !== "existing" || bootstrapsBareTree(ctx);
   }
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
@@ -51,10 +55,7 @@ export default class AppPortMigration extends Migration {
         error: new Error(`Refusing to overwrite existing ${pkgDir} in add mode`),
       };
     }
-    return portPackage(ctx, {
-      pkgDir,
-      libPrefix: "08-app/lib/",
-    });
+    return createOnlyOnBareTree(ctx, (c) => portPackage(c, { pkgDir, libPrefix: "08-app/lib/" }));
   }
 
   override retrofitIntent(ctx: MigrationContext): RetrofitIntent | undefined {
@@ -73,7 +74,7 @@ export default class AppPortMigration extends Migration {
           scope.replace(/^@/, "") +
           "/mcp-kit: buildDispatcher + sanitize + wrapUntrusted + toMcpTools.",
         "Collapse to a single bin per app — index/cli/tui sharing a dispatcher (Vite library mode, 3 entries, shebang banner).",
-        "Port scripts/stress-mcp.ts (13 lifecycle assertions) and run it in CI.",
+        "Port scripts/stress-mcp.ts (15 lifecycle assertions) and run it in CI.",
       ],
       prompt:
         `Retrofit my existing MCP server to match the architecture of ` +

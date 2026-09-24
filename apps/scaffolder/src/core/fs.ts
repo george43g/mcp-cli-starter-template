@@ -156,3 +156,32 @@ export function makeFs(options: FsOptions): FsHelper {
     },
   };
 }
+
+/**
+ * FsHelper that never modifies an existing file: writes to a path already on
+ * disk are skipped and recorded. add-mcp-app's fs runs force=true, and `apply --existing-strategy full`
+ * lays the app into a tree it did not create; without this either would
+ * overwrite a consumer's files.
+ */
+export function createOnlyFs(inner: FsHelper, skipped: string[]): FsHelper {
+  return {
+    ...inner,
+    async writeIfChanged(relPath, content) {
+      if (inner.exists(relPath)) {
+        skipped.push(relPath);
+        return "unchanged";
+      }
+      return inner.writeIfChanged(relPath, content);
+    },
+    async symlink(target, linkRelPath) {
+      if (inner.exists(linkRelPath)) {
+        skipped.push(linkRelPath);
+        return "unchanged";
+      }
+      return inner.symlink(target, linkRelPath);
+    },
+    async remove(relPath) {
+      throw new Error(`create-only fs refuses to remove ${relPath}`);
+    },
+  };
+}

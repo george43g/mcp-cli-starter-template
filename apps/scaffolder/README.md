@@ -24,6 +24,39 @@ npx @george43g/mcp-scaffold apply --target ~/repos/my-existing-mcp --report-json
 npx @george43g/mcp-scaffold list
 ```
 
+## Running from a source checkout
+
+`mcp-scaffold` on PATH is usually a pnpm global link to this directory, which
+runs `dist/cli.js` — and nothing rebuilds `dist/` on `git pull`. So when
+`src/` or `bin/` holds a file newer than `dist/cli.js`, the CLI refuses to run:
+
+```
+mcp-scaffold: STALE BUILD: src/core/program.ts is newer than dist/cli.js (…) — refusing to run.
+  rebuild:   pnpm --filter @george43g/mcp-scaffold build
+  override:  MCP_SCAFFOLD_ALLOW_STALE=1 mcp-scaffold …
+```
+
+It only fires from a checkout: the published package ships no `src/`.
+`src/generated/` is ignored, since every test run rewrites it.
+
+## Generated docs follow the generated tree
+
+The agent guide, `docs/PROJECT_STATE.md` and the README describe what the run
+actually produced: no `apps/rust-accel/` under `--no-rust-accel`, and the
+runtime kits listed as npm dependencies rather than `packages/` source. The
+README's CI badge points at the target's own GitHub `origin` (a comment when it
+has none, or when the target sits inside another checkout), npm installs are
+marked "once published", and the hero GIFs stay commented out until the
+screenshots workflow renders them. The templates carry `<!-- if:flag -->` …
+`<!-- endif:flag -->` blocks for this (`if:!flag` inverts); only templates
+exempt from the golden byte-equality check may use them.
+
+Generated repos pin `@biomejs/biome` exactly and stamp `biome.json`'s `$schema`
+from the same constant (`src/core/biome-version.ts`); a caret range let a fresh
+install pull a newer CLI than the schema, and every lint warned twice.
+`tests/biome-version.test.ts` keeps the constant, this repo's own pin and both
+of its `biome.json` files in step.
+
 ## Commands
 
 ```
@@ -120,6 +153,15 @@ Existing-target policy:
 - Complete starter-derived layouts continue receiving compatible full
   migrations.
 - `--existing-strategy full` and a named `migrate <id>` are explicit opt-ins.
+- `--existing-strategy full` on a tree with **no root `package.json`** (a
+  docs-only repo, say) also runs the layers that are otherwise `init`-only —
+  root workspace files, `apps/<name>/`, and `apps/rust-accel/` unless
+  `--no-rust-accel` — **create-only**: a file already there is kept even under
+  `--force`, and the recap lists what was kept. Without this, `full` laid down
+  configs, CI and agent docs around an app that did not exist. With a root
+  `package.json`, project code already lives there, so those layers still skip
+  and leave their RETROFIT.md breadcrumb: porting a second app beside an
+  existing one is a merge, not a copy.
 
 ## What gets generated
 
@@ -191,7 +233,7 @@ For migrations that **couldn't auto-apply** to your repo (the 'new'-only ones th
 
 This is the bridge between "the scaffolder applied what it safely could" and "here's what you still need to do." Read it after every apply.
 
-Existing targets are inspected before migrations run: the tool name is derived from `package.json` when `--name` is omitted, and the package manager is detected from an explicit flag, package metadata, then lockfiles. Non-starter phase 11 runs emit only a minimal `AGENTS.md`, safe symlinks, a Cursor rule, and project skill skeletons using the detected package manager and actual scripts. The recap lists those skeletons under **Action required**.
+Existing targets are inspected before migrations run: the tool name is derived from `package.json` when `--name` is omitted, and the package manager is detected from an explicit flag, package metadata, then lockfiles. With none of those, a `package.json` means npm; no `package.json` means pnpm, because there is no repo to detect and every manifest the run writes is pnpm's. Non-starter phase 11 runs emit only a minimal `AGENTS.md`, safe symlinks, a Cursor rule, and project skill skeletons using the detected package manager and actual scripts. The recap lists those skeletons under **Action required**.
 
 Fresh scaffolds remain intentionally **pnpm-only**. Passing npm or Bun to `init` or `migrate --mode new` fails before filesystem writes; npm/Bun detection in existing mode is for accurate target documentation, while full infrastructure migrations remain pnpm/Turborepo-oriented.
 
