@@ -160,65 +160,82 @@ function exitOf(
   });
 }
 
+/**
+ * Windows cannot deliver SIGTERM. `child.kill("SIGTERM")` there is
+ * TerminateProcess: the child dies at once and no handler runs, so it reports
+ * `signal: "SIGTERM", code: null` however correct the app is (measured on
+ * windows-latest). The tests below that assert a TRAPPED signal are POSIX
+ * contracts and skip there; everything else in this file still runs.
+ */
+const NO_POSIX_SIGNALS = process.platform === "win32";
+
 describe("http transport lifecycle", () => {
-  it("traps SIGTERM and exits gracefully instead of being killed by it", async () => {
-    const logDir = await mkdtemp(join(tmpdir(), "http-lifecycle-"));
-    const { child, url, stderr } = await startHttpChild(logDir);
+  it.skipIf(NO_POSIX_SIGNALS)(
+    "traps SIGTERM and exits gracefully instead of being killed by it",
+    async () => {
+      const logDir = await mkdtemp(join(tmpdir(), "http-lifecycle-"));
+      const { child, url, stderr } = await startHttpChild(logDir);
 
-    try {
-      // The server really is serving before we signal it.
-      const health = await fetch(`${url}/health`);
-      await health.text();
-      expect(health.status).toBe(200);
+      try {
+        // The server really is serving before we signal it.
+        const health = await fetch(`${url}/health`);
+        await health.text();
+        expect(health.status).toBe(200);
 
-      const exited = exitOf(child, stderr);
-      child.kill("SIGTERM");
-      const result = await exited;
+        const exited = exitOf(child, stderr);
+        child.kill("SIGTERM");
+        const result = await exited;
 
-      // Two independent assertions, because they fail for different reasons.
-      //
-      // `signal === null` is the one that names this test: a process killed by
-      // an untrapped SIGTERM reports `signal: "SIGTERM", code: null`, and one
-      // that trapped it and chose to leave reports `code: 0, signal: null`.
-      // This is only meaningful because `child` is the app — asserted against
-      // the tsx wrapper it measured the wrapper's teardown instead, which is
-      // how it came to report `expected 143 to be +0` for a correctly behaving
-      // server.
-      expect(
-        { code: result.code, signal: result.signal },
-        `expected a graceful self-exit. stderr:\n${stderr()}`,
-      ).toEqual({ code: 0, signal: null });
+        // Two independent assertions, because they fail for different reasons.
+        //
+        // `signal === null` is the one that names this test: a process killed by
+        // an untrapped SIGTERM reports `signal: "SIGTERM", code: null`, and one
+        // that trapped it and chose to leave reports `code: 0, signal: null`.
+        // This is only meaningful because `child` is the app — asserted against
+        // the tsx wrapper it measured the wrapper's teardown instead, which is
+        // how it came to report `expected 143 to be +0` for a correctly behaving
+        // server.
+        expect(
+          { code: result.code, signal: result.signal },
+          `expected a graceful self-exit. stderr:\n${stderr()}`,
+        ).toEqual({ code: 0, signal: null });
 
-      // And the cause was recorded, which no exit code can show: the marker
-      // must name the signal, not a hardcoded literal.
-      const entries = await readLogEntries(logDir);
-      const shutdown = entries.find((e) => e.msg === "shutdown");
-      expect(shutdown, `no shutdown marker. stderr:\n${stderr()}`).toBeDefined();
-      expect(shutdown?.data?.reason).toBe("signal:SIGTERM");
-    } finally {
-      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
-    }
-  }, 60_000);
+        // And the cause was recorded, which no exit code can show: the marker
+        // must name the signal, not a hardcoded literal.
+        const entries = await readLogEntries(logDir);
+        const shutdown = entries.find((e) => e.msg === "shutdown");
+        expect(shutdown, `no shutdown marker. stderr:\n${stderr()}`).toBeDefined();
+        expect(shutdown?.data?.reason).toBe("signal:SIGTERM");
+      } finally {
+        if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+      }
+    },
+    60_000,
+  );
 
-  it("writes startup and shutdown markers, so a clean stop is not read as a crash", async () => {
-    const logDir = await mkdtemp(join(tmpdir(), "http-lifecycle-"));
-    const { child, stderr } = await startHttpChild(logDir);
+  it.skipIf(NO_POSIX_SIGNALS)(
+    "writes startup and shutdown markers, so a clean stop is not read as a crash",
+    async () => {
+      const logDir = await mkdtemp(join(tmpdir(), "http-lifecycle-"));
+      const { child, stderr } = await startHttpChild(logDir);
 
-    try {
-      const exited = exitOf(child, stderr);
-      child.kill("SIGTERM");
-      await exited;
+      try {
+        const exited = exitOf(child, stderr);
+        child.kill("SIGTERM");
+        await exited;
 
-      const messages = (await readLogEntries(logDir)).map((e) => e.msg);
-      expect(messages).toContain("startup");
-      expect(messages).toContain("shutdown");
-      // Write-once: the controller's exit listener sweeps the cleanup registry
-      // synchronously, so a guard is the only thing keeping this at one.
-      expect(messages.filter((m) => m === "shutdown")).toHaveLength(1);
-    } finally {
-      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
-    }
-  }, 60_000);
+        const messages = (await readLogEntries(logDir)).map((e) => e.msg);
+        expect(messages).toContain("startup");
+        expect(messages).toContain("shutdown");
+        // Write-once: the controller's exit listener sweeps the cleanup registry
+        // synchronously, so a guard is the only thing keeping this at one.
+        expect(messages.filter((m) => m === "shutdown")).toHaveLength(1);
+      } finally {
+        if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+      }
+    },
+    60_000,
+  );
 
   /**
    * `MCP_MAX_RSS_MB=50` is the exact knob stress case #8 uses to make the
@@ -260,6 +277,8 @@ describe("http transport lifecycle", () => {
       // Still exits cleanly afterwards — observing must not wedge shutdown.
       // `code: 0, signal: null` is a real assertion here only because the
       // child is the app rather than a tsx wrapper; see the header comment.
+      // POSIX only: see NO_POSIX_SIGNALS. The `finally` still stops it.
+      if (NO_POSIX_SIGNALS) return;
       const exited = exitOf(child, stderr);
       child.kill("SIGTERM");
       const result = await exited;

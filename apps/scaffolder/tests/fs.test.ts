@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdtemp, symlink as nodeSymlink, readFile, readlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeFs } from "../src/core/fs.js";
 
@@ -115,6 +115,18 @@ describe("fs helper", () => {
     it("throws on absolute paths outside cwd", () => {
       const fs = makeFs({ cwd, dryRun: false });
       expect(() => fs.safe("/tmp/elsewhere")).toThrow(/escapes target cwd/);
+    });
+
+    // The string-prefix check this replaced got this right only because it
+    // appended "/"; the `relative()` check must too.
+    it("throws on a sibling whose name merely starts with cwd's", () => {
+      const fs = makeFs({ cwd, dryRun: false });
+      expect(() => fs.safe(`${cwd}-evil${sep}x`)).toThrow(/escapes target cwd/);
+    });
+
+    it("accepts a file whose name starts with two dots", () => {
+      const fs = makeFs({ cwd, dryRun: false });
+      expect(() => fs.safe("..config")).not.toThrow();
     });
   });
 

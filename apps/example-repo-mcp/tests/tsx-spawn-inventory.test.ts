@@ -42,11 +42,6 @@ const ALLOWED = new Map<string, string>([
       "reads that child's exit status and the report is written by the parent " +
       "from samples already collected. Owns no external state to leak.",
   ],
-  [
-    "tests/repl-pipe.test.ts",
-    "Never signals its child: closes stdin and waits for a natural exit, which " +
-      "is outside the relay's reach entirely.",
-  ],
 ]);
 
 /** A line that mentions the path in prose rather than constructing one. */

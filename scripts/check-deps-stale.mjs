@@ -35,11 +35,15 @@
  * one is the half that needs the registry.
  */
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+// fileURLToPath, not `.pathname`: on Windows `.pathname` is "/C:/…" and
+// percent-encoded (RUNNER~1 becomes RUNNER%7E1), so every path built on it is
+// wrong. Measured on windows-latest. Keeps the trailing separator.
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const SCOPE = "@george43g/";
 
 function readLock() {
@@ -181,11 +185,15 @@ for (const name of names) {
   }
   let latest = null;
   try {
-    latest = execFileSync("npm", ["view", name, "version"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-      timeout: 20000,
-    }).trim();
+    const opts = { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 20000 };
+    // npm is npm.cmd on Windows, which execFile cannot run (ENOENT) — that
+    // read as "registry unreachable" for every package. `name` comes from the
+    // lockfile and is a package name, so a plain cmd.exe string is safe.
+    latest = (
+      process.platform === "win32"
+        ? execSync(`npm view ${name} version`, opts)
+        : execFileSync("npm", ["view", name, "version"], opts)
+    ).trim();
   } catch {
     latest = null;
   }

@@ -104,7 +104,11 @@ that instant. Branding from inside a function is therefore correct only by call
 ordering: anything that logs earlier wins the directory for the whole process,
 and the logs still work — they are just in the wrong place, silently.
 
-**If you add an entry point, import `./log-brand.js` first.** If you rename the
+**If you add an entry point, import `./log-brand.js` first.** Detect that it is
+the executed file the way `src/cli.ts` and `src/index.ts` do — compare
+`import.meta.url` with `pathToFileURL(realpathSync(process.argv[1])).href` —
+never with `argv[1].endsWith("/src/…")`: Windows paths use backslashes, so
+that check is false there and the process exits 0 having started nothing. If you rename the
 package, nothing needs changing; the slug is derived from `APP_NAME`.
 
 Two caveats worth knowing before you rely on the directory name:

@@ -24,7 +24,7 @@
 
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -141,6 +141,11 @@ const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
   "12-ci-release/lib/.github/workflows/readme-check.yml",
 ]);
 
+/** `relative` with `/` on every OS — the table and exemptions are POSIX keys. */
+function posixRel(from: string, to: string): string {
+  return relative(from, to).split(sep).join("/");
+}
+
 async function walkFiles(root: string, acc: string[] = []): Promise<string[]> {
   let entries: import("node:fs").Dirent[];
   try {
@@ -158,7 +163,7 @@ async function walkFiles(root: string, acc: string[] = []): Promise<string[]> {
 
 /** Resolve a lib/ absolute path to its canonical absolute path. */
 function libToCanonical(libAbs: string): string | undefined {
-  const libRel = relative(PHASES_DIR, libAbs); // e.g. "08-app/lib/src/cli.ts"
+  const libRel = posixRel(PHASES_DIR, libAbs); // e.g. "08-app/lib/src/cli.ts"
   // Find the longest matching prefix in the table.
   let best: { libPrefix: string; canonical: string } | undefined;
   for (const [libPrefix, canonical] of LIB_TO_CANONICAL) {
@@ -180,7 +185,7 @@ describe("golden-output drift", () => {
     const allLibFiles = await walkFiles(PHASES_DIR);
     // Only files under *\/lib\/** count — phase index.ts and migration files are not lib.
     const libFiles = allLibFiles.filter((f) => {
-      const rel = relative(PHASES_DIR, f);
+      const rel = posixRel(PHASES_DIR, f);
       return /^\d{2}-[^/]+\/lib(\/|$)/.test(rel);
     });
 
@@ -189,7 +194,7 @@ describe("golden-output drift", () => {
     const mismatches: Array<{ lib: string; canonical: string; reason: string }> = [];
 
     for (const libAbs of libFiles) {
-      const libRel = relative(PHASES_DIR, libAbs);
+      const libRel = posixRel(PHASES_DIR, libAbs);
       if (EXEMPT_LIB_PATHS.has(libRel)) continue;
       const canonicalAbs = libToCanonical(libAbs);
       if (!canonicalAbs) {

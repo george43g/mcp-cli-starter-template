@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -192,12 +192,19 @@ describe("init names the root so it cannot shadow the app", () => {
     const root = JSON.parse(await readFile(join(cwd, "package.json"), "utf8"));
     expect(root.name).toBe("foo-workspace");
     expect(root.private).toBe(true);
-    const where = execFileSync("pnpm", ["--filter", "foo", "exec", "pwd"], {
+    // `node -e` rather than `pwd` (absent on Windows), and a shell on win32
+    // because pnpm there is a .cmd shim that execFile cannot spawn directly.
+    // One command string, not an args array: Node 24 deprecates args + shell
+    // (DEP0190). Every token here is a literal.
+    const where = execSync('pnpm --filter foo exec node -e "console.log(process.cwd())"', {
       cwd,
       encoding: "utf8",
       env: { ...process.env, npm_config_verify_deps_before_run: "false" },
     });
-    expect(realpathSync(where.trim())).toBe(realpathSync(join(cwd, "apps", "foo")));
+    // `.native` expands Windows 8.3 short names (RUNNER~1 vs runneradmin):
+    // the temp dir comes back short, the child's cwd long, and the JS
+    // realpath leaves both as given.
+    expect(realpathSync.native(where.trim())).toBe(realpathSync.native(join(cwd, "apps", "foo")));
   }, 60_000);
 });
 

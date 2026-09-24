@@ -257,3 +257,67 @@ jobs:
           name: stress-report-${{ matrix.os }}
           path: apps/**/stress-*-report.json
           if-no-files-found: ignore
+
+  # A Windows leg, THIS repo only — never the stamped ci.yml under
+  # 12-ci-release/lib or example/. This repo is public, so Windows minutes are
+  # free; a generated repo is private by default and billed (Windows at 2x
+  # Linux), which the cost note on `build-test` above explains in dollars.
+  #
+  # Why it exists: browser-tab-mcp ran the generated app on windows-latest and
+  # found three classes of defect that no POSIX leg can see — `spawn("pnpm")`
+  # (pnpm is pnpm.cmd there), `node_modules/.bin/tsx` (tsx.cmd), and test
+  # regexes that assume `/` in printed paths. It is lean on purpose: only the
+  # suites that spawn processes or print paths. Everything that is pure
+  # computation over the same files is already answered by the ubuntu leg.
+  #
+  # A separate job, not a third matrix entry: every step in `build-test` would
+  # need a new `if`, and a job outside the matrix can neither cancel it nor be
+  # cancelled by it. No Rust: the runner image ships rustup, and a napi compile
+  # would add minutes to measure nothing this job is for — so the build names
+  # the TS surfaces instead of running `pnpm build`.
+  windows:
+    name: windows-latest · node 24
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # the build stamp counts commits; see build-test
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.29.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (TS only — packages, then each MCP app's build:ts)
+        run: |
+          pnpm turbo run build --filter="./packages/*"
+          node scripts/for-each-mcp-app.mjs build:ts
+
+      # Measured once, then removed (run 2 of PR #129): src/index.ts's old
+      # `endsWith("/src/index.ts")` entry guard is false on Windows, and the file-URL guard boots.
+      - name: Repo script unit tests
+        if: ${{ !cancelled() }}
+        run: pnpm test:scripts
+
+      - name: MCP app tests (spawns, signals, tmpdir, printed paths)
+        if: ${{ !cancelled() }}
+        # Straight through the script, not `pnpm test`: with no npm_execpath it
+        # takes the cmd.exe fallback in for-each-mcp-app, which is the path the
+        # original ENOENT came from.
+        run: node scripts/for-each-mcp-app.mjs test
+
+      - name: Scaffolder tests (golden drift + phases; ~10s)
+        if: ${{ !cancelled() }}
+        # `!cancelled()` on each suite: one red suite must not hide the
+        # others. Its test script regenerates its own templates first.
+        run: pnpm --filter @george43g/mcp-scaffold test
