@@ -105,7 +105,13 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
   `!dist/tsconfig.tsbuildinfo` so it never ships. Tests live in a sibling
   `tsconfig.test.json` that references its package; apps reference the packages
   they import. That graph is what lets "find references" reach from a package
-  into the apps and tests. **Test hooks marked `@internal`** are stripped from
+  into the apps and tests — **only when the repo is opened by its real path.**
+  Measured 2026-09-25, one tree: 17 references to `resolveSecret` via
+  `/private/var/…`, 15 via the `/var/…` symlink to it, with both app call sites
+  missing. pnpm's workspace links resolve to real paths, so a symlinked
+  workspace root never matches the referenced project. An empty cross-package
+  result under a symlinked path is not evidence of "unused": `cd "$(pwd -P)"`
+  first. **Test hooks marked `@internal`** are stripped from
   the published `.d.ts`, which is also what a referencing project compiles
   against — so a package whose tests import one (today only robustness) has a
   `tsconfig.internal.json` (same sources, `stripInternal: false`, output in
