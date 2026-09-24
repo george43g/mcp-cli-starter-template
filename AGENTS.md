@@ -77,6 +77,7 @@ packages/
 | `pnpm test:coverage` | Same suites + enforce each workspace's coverage floor |
 | `pnpm test:no-native` | Force TS fallback (`MCP_DISABLE_NATIVE=1`) |
 | `pnpm typecheck` | `tsc -b` over the root solution `tsconfig.json`: every package, every package's `tsconfig.test.json`, both apps. Test files were outside every project until 2026-09 — 46 errors nobody had compiled. Writes each package's `dist/` exactly as `pnpm build` does (verified byte-identical) |
+| `pnpm check:test-projects` | Every `apps/*`/`packages/*` test file belongs to a project reachable from the root `tsconfig.json`. Vitest strips types without checking them, so an orphaned test file is type-checked by nothing, silently. Uses `tsc --showConfig`, so TypeScript stays the authority on what a project contains |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
 | `pnpm check:docs` | Docs integrity: relative links, agent-file symlinks, docs index coverage |
 | `pnpm check:stdout-purity` | No `console.*` call in an MCP app's `src/` — JSON-RPC owns stdout after the stdio transport connects. Exists because the stamped AGENTS.md claimed "CI grep enforces this" for months while nothing did, and the false sentence replicated into descendant repos. A claimed guard is worse than no guard |
@@ -88,7 +89,7 @@ packages/
 | `pnpm check:workflows` | `actionlint` (pinned in `mise.toml`) over all three workflow surfaces. Requires `mise install` first |
 | `pnpm check:turbo-tasks` | Every turbo task that RUNS tests must depend on its OWN `build`, not just `^build`. Caught twice in one hour: `^build` builds *dependencies*, so a test spawning its own `dist/` passes where a stale build exists and dies in a fresh clone — which is how a release job failed after every PR check went green |
 | `pnpm check:deps-stale` | Asks the **registry** whether our first-party deps are current. **NOT in `verify`** — `verify` is network-free by design. Runs weekly via `.github/workflows/deps-stale.yml`. Catches the one thing every offline check is blind to: a tree that agrees with itself and is uniformly behind. Exit 2 = registry unreachable, which is **not** a pass |
-| `pnpm verify` | lint + script tests + docs + stress count + manifests + registry boundary + workflows + turbo tasks + typecheck + test:coverage + build (the CI shape) |
+| `pnpm verify` | lint + script tests + docs + stress count + manifests + registry boundary + workflows + turbo tasks + test projects + typecheck + test:coverage + build (the CI shape) |
 | `pnpm stress` | 15-assertion MCP stress harness against `apps/example-repo-mcp/` |
 | `pnpm regen:example` | Rebuild the tracked `example/` output from the scaffolder |
 
@@ -211,7 +212,7 @@ Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
 ## Validation & CI
 
 `.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, node 24:
-install → lint → docs check → manifest check → typecheck (`tsc -b`) → build →
+install → lint → docs check → manifest check → test-projects check → typecheck (`tsc -b`) → build →
 test + coverage gates → test:no-native → usage(1) artifact freshness →
 npm pack dry-run → scaffolder E2E smoke → 15-assertion stress harness →
 example/ sync check.
