@@ -20,7 +20,7 @@
 
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -137,7 +137,10 @@ async function main() {
     if (!existsSync(libDir)) continue;
     const files = await walk(libDir);
     for (const f of files) {
-      const rel = relative(PHASES_DIR, f); // e.g. "04-robustness/lib/env.ts"
+      // POSIX key on every OS: callers look templates up by "08-app/lib/…",
+      // and `relative` answers with `\` on Windows, which left every lookup
+      // missing there.
+      const rel = relative(PHASES_DIR, f).split(sep).join("/"); // e.g. "04-robustness/lib/env.ts"
       const content = await readFile(f, "utf8");
       entries.push({ key: rel, content });
     }

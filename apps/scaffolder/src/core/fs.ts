@@ -17,7 +17,7 @@ import {
   unlink,
   writeFile,
 } from "node:fs/promises";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 const SHEBANG = Buffer.from("#!");
 const EXECUTABLE_MODE = 0o755;
@@ -67,7 +67,12 @@ export function makeFs(options: FsOptions): FsHelper {
 
   function safe(relPath: string): string {
     const abs = isAbsolute(relPath) ? relPath : resolve(cwd, relPath);
-    if (!abs.startsWith(cwd + "/") && abs !== cwd) {
+    // `relative`, not `startsWith(cwd + "/")`: Windows paths use `\`, so the
+    // string check rejected EVERY path there and no write could happen —
+    // measured on windows-latest. Inside cwd means a relative path that
+    // neither climbs out (`..`) nor lands on another drive (absolute).
+    const rel = relative(cwd, abs);
+    if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
       throw new Error(`Path "${relPath}" escapes target cwd "${cwd}"`);
     }
     return abs;
@@ -125,7 +130,13 @@ export function makeFs(options: FsOptions): FsHelper {
         if (code !== "ENOENT") throw error;
       }
       if (existing) {
-        if (existing.isSymbolicLink() && (await readlink(abs)) === target) return "unchanged";
+        // Separator-blind: Node stores a relative Windows link target with `\`,
+        // so `readlink` never equals a `/`-spelled target there and every
+        // re-run would read a correct link as divergent.
+        const slash = (p: string) => p.replace(/\\/g, "/");
+        if (existing.isSymbolicLink() && slash(await readlink(abs)) === slash(target)) {
+          return "unchanged";
+        }
         if (!force) return "divergent-skipped";
         if (options.dryRun) return "would-update";
         await unlink(abs);

@@ -47,7 +47,7 @@ function changedDependencyFiles(phases: readonly PhaseRunResult[]): string[] {
   for (const phase of phases) {
     for (const row of phase.results) {
       for (const file of row.result.filesChanged ?? []) {
-        const base = file.split("/").pop() ?? file;
+        const base = file.split(/[\\/]/).pop() ?? file;
         if (DEPENDENCY_FILES.includes(base)) hits.add(file);
       }
     }
