@@ -44,7 +44,9 @@ async function targetGithubSlug(ctx: MigrationContext): Promise<string | undefin
   const root = await ctx.git.root();
   if (!root) return undefined;
   try {
-    if (realpathSync(root) !== realpathSync(ctx.cwd)) return undefined;
+    // `.native`: on Windows git reports the long path while a temp cwd can be
+    // an 8.3 short name (RUNNER~1); only the native realpath expands both.
+    if (realpathSync.native(root) !== realpathSync.native(ctx.cwd)) return undefined;
   } catch {
     return undefined;
   }
