@@ -92,7 +92,10 @@ const ROOT_PACKAGE_JSON = (name: string) =>
         lint: "biome check .",
         "lint:fix": "biome check --write .",
         format: "biome format --write .",
-        typecheck: "turbo run typecheck",
+        // `tsc -b` over the root solution tsconfig.json, not a per-workspace
+        // turbo fan-out: the solution is what reaches the test projects
+        // (packages/*/tsconfig.test.json), which no workspace script checks.
+        typecheck: "tsc -b",
         stress: "turbo run stress",
         // Docs integrity gate (index coverage + relative links + agent-file
         // symlinks). Ships via 10-docs-readme's scripts/check-docs-links.mjs.

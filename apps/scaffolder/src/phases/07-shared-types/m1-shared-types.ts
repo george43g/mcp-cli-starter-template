@@ -49,15 +49,39 @@ const PKG_JSON = (scope: string) => `{
 `;
 
 // Custom tsconfig — excludes both src/**/*.test.ts AND tests/** (drift test).
-const TSCONFIG = (scope: string) => `{
+// Composite so the app and the test project can reference it; the build info
+// lives in dist/ so a deleted dist/ can never be mistaken for up to date.
+// Byte-identical to packages/shared-types/tsconfig.json once the scope is
+// substituted (tests/tsconfig.test.ts asserts it).
+export const TSCONFIG = (scope: string) => `{
   "extends": "${scope}/tsconfig/node.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "noEmit": false
+    "noEmit": false,
+    "composite": true,
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo"
   },
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts", "tests/**", "node_modules", "dist"]
+}
+`;
+
+// The test project: the files TSCONFIG excludes, type-checked against the
+// package through a project reference. Byte-identical to
+// packages/shared-types/tsconfig.test.json once the scope is substituted.
+export const TSCONFIG_TEST = (scope: string) => `{
+  "extends": "${scope}/tsconfig/node.json",
+  "compilerOptions": {
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "rootDir": ".",
+    "outDir": "./node_modules/.cache/tsc-test",
+    "tsBuildInfoFile": "./node_modules/.cache/tsc-test/tsconfig.tsbuildinfo",
+    "lib": ["ES2024"]
+  },
+  "include": ["src/**/*.test.ts", "tests/**/*.ts"],
+  "references": [{ "path": "./tsconfig.json" }]
 }
 `;
 
@@ -81,12 +105,15 @@ export default class SharedTypesMigration extends Migration {
   readonly appliesTo = "both" as const;
 
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
+    const scope = ctx.config.global.scope.peek() ?? "@george43g";
     return portPackage(ctx, {
       pkgDir: "packages/shared-types",
       packageJson: PKG_JSON,
       tsconfig: TSCONFIG,
       vitestConfig: VITEST_CONFIG,
       libPrefix: "07-shared-types/lib/",
+      extraFiles: [["packages/shared-types/tsconfig.test.json", TSCONFIG_TEST(scope)]],
+      rootReferences: ["./packages/shared-types", "./packages/shared-types/tsconfig.test.json"],
     });
   }
 }

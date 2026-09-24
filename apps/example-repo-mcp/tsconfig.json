@@ -1,10 +1,20 @@
 {
   "extends": "@george43g/tsconfig/react.json",
   "compilerOptions": {
-    "outDir": "./dist",
+    "outDir": "./node_modules/.cache/tsc",
     "rootDir": ".",
-    "noEmit": true
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/tsconfig.tsbuildinfo"
   },
   "include": ["src/**/*", "tests/**/*", "scripts/**/*"],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "exclude": ["node_modules", "dist", "coverage"],
+  "references": [
+    { "path": "../../packages/cli-kit" },
+    { "path": "../../packages/mcp-kit" },
+    { "path": "../../packages/robustness" },
+    { "path": "../../packages/secret-store" },
+    { "path": "../../packages/shared-types" },
+    { "path": "../../packages/tui-kit" }
+  ]
 }

@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "stripInternal": false,
+    "emitDeclarationOnly": true,
+    "outDir": "./node_modules/.cache/tsc-internal",
+    "tsBuildInfoFile": "./node_modules/.cache/tsc-internal/tsconfig.tsbuildinfo"
+  },
+  "references": [{ "path": "../robustness" }]
+}

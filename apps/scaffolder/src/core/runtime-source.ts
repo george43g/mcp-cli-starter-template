@@ -19,6 +19,7 @@
  */
 
 import { PUBLISHED_PACKAGES } from "../generated/published-versions.js";
+import { isTsconfigPath, withoutPublishedReferences } from "./tsconfig-refs.js";
 
 /**
  * Public npm name → caret range, for every package a generated repo takes from
@@ -68,4 +69,16 @@ export function applyPublishedRanges(content: string): string {
     out = out.replaceAll(`"${name}": "workspace:*"`, `"${name}": "${range}"`);
   }
   return out;
+}
+
+/**
+ * Everything that changes when a template lands in a repo that takes the
+ * published packages from npm: their `workspace:*` ranges become registry
+ * ranges, and a tsconfig's project references to their (absent) source
+ * directories are dropped. One function so `portPackage` and
+ * `renderAppFiles` cannot render the same file two different ways.
+ */
+export function applyRegistryBoundary(relPath: string, content: string): string {
+  const ranged = applyPublishedRanges(content);
+  return isTsconfigPath(relPath) ? withoutPublishedReferences(ranged) : ranged;
 }

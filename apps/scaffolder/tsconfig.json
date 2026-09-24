@@ -1,9 +1,11 @@
 {
   "extends": "@george43g/tsconfig/node.json",
   "compilerOptions": {
-    "outDir": "dist",
+    "outDir": "./node_modules/.cache/tsc",
     "rootDir": ".",
-    "noEmit": true
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/tsconfig.tsbuildinfo"
   },
   "include": ["bin", "src", "tests"],
   "exclude": ["src/phases/**/lib/**", "dist", "coverage"]

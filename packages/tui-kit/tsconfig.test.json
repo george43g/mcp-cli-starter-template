@@ -1,0 +1,17 @@
+{
+  "extends": "@george43g/tsconfig/react.json",
+  "compilerOptions": {
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "rootDir": ".",
+    "outDir": "./node_modules/.cache/tsc-test",
+    "tsBuildInfoFile": "./node_modules/.cache/tsc-test/tsconfig.tsbuildinfo",
+    "lib": ["ES2024", "DOM"]
+  },
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx"],
+  "references": [
+    { "path": "./tsconfig.json" },
+    { "path": "../robustness" },
+    { "path": "./tsconfig.internal.json" }
+  ]
+}

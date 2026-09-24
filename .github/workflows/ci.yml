@@ -116,8 +116,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm check:registry-boundary
 
-
-      - name: Typecheck
+      - name: Typecheck (tsc -b over the root solution — packages, apps AND tests)
         if: matrix.os == 'ubuntu-latest'
         run: pnpm typecheck
 

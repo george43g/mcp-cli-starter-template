@@ -8,9 +8,10 @@
 
 import { TEMPLATES } from "../generated/templates.js";
 import { type MigrationContext, type MigrationResult, rustAccelGenerated } from "./migration.js";
-import { applyPublishedRanges } from "./runtime-source.js";
+import { applyRegistryBoundary } from "./runtime-source.js";
 import { requireRepoName } from "./target-inspection.js";
 import { nameUpperOf, renderFeatureBlocks, substitute } from "./templating.js";
+import { addRootReferences } from "./tsconfig-refs.js";
 
 export interface PackagePortOptions {
   /** Target subdir, e.g. "packages/robustness". */
@@ -29,6 +30,12 @@ export interface PackagePortOptions {
   flags?: Readonly<Record<string, boolean>>;
   /** Last-step rewrite of one rendered file (target path, content). */
   transform?: (targetPath: string, content: string) => string;
+  /**
+   * Projects to register in the root solution tsconfig.json, relative to the
+   * repo root (e.g. "./packages/shared-types"). `tsc -b` only builds what the
+   * root references, so a workspace left out is type-checked by nothing.
+   */
+  rootReferences?: readonly string[];
 }
 
 /** Flags every ported template may branch on — what this run actually generates. */
@@ -85,21 +92,40 @@ export async function portPackage(
     const targetPath = substitute(`${prefix}${rel}`, vars);
     // Published packages come from the registry, always. substitute() has
     // already shielded their names from scope rewriting, so this only has to
-    // swap the `workspace:*` protocol for the real range.
+    // swap the `workspace:*` protocol for the real range — and drop tsconfig
+    // references to their source directories, which do not exist here.
     const rendered = renderFeatureBlocks(
-      applyPublishedRanges(substitute(TEMPLATES[key] ?? "", vars)),
+      applyRegistryBoundary(targetPath, substitute(TEMPLATES[key] ?? "", vars)),
       flags,
     );
     const content = opts.transform ? opts.transform(targetPath, rendered) : rendered;
     recordOutcome(targetPath, await ctx.fs.writeIfChanged(targetPath, content));
   }
 
+  const notes: string[] = [];
+  if (opts.rootReferences && opts.rootReferences.length > 0) {
+    const current = await ctx.fs.read("tsconfig.json");
+    // No root tsconfig (a dry run before 03-configs has written one): nothing
+    // to register into yet.
+    if (current !== undefined) {
+      const next = addRootReferences(current, opts.rootReferences);
+      if (next === undefined) {
+        notes.push(
+          `root tsconfig.json is not a solution (\`"files": []\` + \`"references"\`) — ` +
+            `left alone; reference ${opts.rootReferences.join(", ")} from it by hand so ` +
+            "`tsc -b` type-checks them",
+        );
+      } else {
+        recordOutcome("tsconfig.json", await ctx.fs.writeIfChanged("tsconfig.json", next));
+      }
+    }
+  }
+
   if (filesChanged.length === 0 && filesDivergent.length === 0) {
-    return { status: "noop" };
+    return notes.length > 0 ? { status: "noop", notes } : { status: "noop" };
   }
   const status = ctx.dryRun ? "would-apply" : "applied";
   const verb = ctx.dryRun ? "would write" : "wrote";
-  const notes: string[] = [];
   if (filesChanged.length > 0) notes.push(`${verb} ${filesChanged.length} files`);
   if (filesDivergent.length > 0) {
     notes.push(`${filesDivergent.length} divergent (preserved; pass --force to overwrite)`);
