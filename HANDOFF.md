@@ -512,8 +512,8 @@ The older landing decisions below are retained for history:
   — real-repository evaluation
 - [skills/mcp-starter-architect/SKILL.md](skills/mcp-starter-architect/SKILL.md)
   — scaffolder/retrofit operating guide
-- [skills/cli-artifacts/SKILL.md](skills/cli-artifacts/SKILL.md)
-- [skills/workspace-scaffolding/SKILL.md](skills/workspace-scaffolding/SKILL.md)
+- [.agents/skills/cli-artifacts/SKILL.md](.agents/skills/cli-artifacts/SKILL.md)
+- [.agents/skills/workspace-scaffolding/SKILL.md](.agents/skills/workspace-scaffolding/SKILL.md)
 
 The former external plan at
 `/Users/george/.claude/plans/2-programmable-mcp-scaffolder.md` is absent. Do not

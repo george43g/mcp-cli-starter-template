@@ -43,8 +43,12 @@ export interface FsHelper {
   exists(relPath: string): boolean;
   /** mkdir -p */
   ensureDir(relPath: string): Promise<void>;
-  /** Create a symlink (or no-op if it already points where it should). */
-  symlink(target: string, linkRelPath: string): Promise<WriteOutcome>;
+  /**
+   * Create a symlink (or no-op if it already points where it should). Pass
+   * `type: "dir"` for a directory link: Windows needs the kind up front, and
+   * Node only infers it when the target already exists.
+   */
+  symlink(target: string, linkRelPath: string, type?: "dir" | "file"): Promise<WriteOutcome>;
   /** Delete a file/symlink. No-op if missing. */
   remove(relPath: string): Promise<void>;
 }
@@ -120,7 +124,7 @@ export function makeFs(options: FsOptions): FsHelper {
       if (options.dryRun) return;
       await mkdir(abs, { recursive: true });
     },
-    async symlink(target, linkRelPath) {
+    async symlink(target, linkRelPath, type) {
       const abs = safe(linkRelPath);
       let existing: Awaited<ReturnType<typeof lstat>> | undefined;
       try {
@@ -140,12 +144,12 @@ export function makeFs(options: FsOptions): FsHelper {
         if (!force) return "divergent-skipped";
         if (options.dryRun) return "would-update";
         await unlink(abs);
-        await symlink(target, abs);
+        await symlink(target, abs, type);
         return "updated";
       }
       if (options.dryRun) return "would-create";
       await mkdir(dirname(abs), { recursive: true });
-      await symlink(target, abs);
+      await symlink(target, abs, type);
       return "created";
     },
     async remove(relPath) {
@@ -173,12 +177,12 @@ export function createOnlyFs(inner: FsHelper, skipped: string[]): FsHelper {
       }
       return inner.writeIfChanged(relPath, content);
     },
-    async symlink(target, linkRelPath) {
+    async symlink(target, linkRelPath, type) {
       if (inner.exists(linkRelPath)) {
         skipped.push(linkRelPath);
         return "unchanged";
       }
-      return inner.symlink(target, linkRelPath);
+      return inner.symlink(target, linkRelPath, type);
     },
     async remove(relPath) {
       throw new Error(`create-only fs refuses to remove ${relPath}`);

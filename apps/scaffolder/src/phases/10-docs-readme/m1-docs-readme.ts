@@ -13,7 +13,9 @@
  *   - LICENSE — MIT.
  *   - llms-install.md — user-facing setup guide for end users of cloned tools.
  *   - scripts/ — the repo guards the generated CI actually invokes:
- *     check-docs-links.mjs, check-stdout-purity.mjs,
+ *     check-docs-links.mjs (+ its scripts/lib/agents-chain.mjs, the AGENTS.md
+ *     chain budget), check-skills.mjs (the guarded repo-skill layout gate
+ *     `pnpm verify` runs), check-stdout-purity.mjs,
  *     check-release-tokens.mjs (+ its scripts/lib/release-tokens.mjs), and
  *     for-each-mcp-app.mjs + mcp-apps.mjs (+ their scripts/lib/mcp-apps.mjs),
  *     which the generated ci.yml uses to select apps for its usage, pack and

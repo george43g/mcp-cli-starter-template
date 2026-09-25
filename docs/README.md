@@ -14,6 +14,8 @@ solely for this repo and can be edited freely.
 | Doc | Read when |
 |---|---|
 | [PROJECT_STATE.md](PROJECT_STATE.md) | Resuming work: continuation state, verification evidence, dependency decisions, deferred work |
+| [CONVENTIONS.md](CONVENTIONS.md) | Why a root `AGENTS.md` convention exists: the incident or decision behind it |
+| [CHECKS.md](CHECKS.md) | Why a `verify` gate or CI workflow exists, and what it does not catch |
 | [plans/README.md](plans/README.md) | Starting multi-hour/risky work: the checked-in ExecPlan convention |
 | [scaffolder-cli/index.md](scaffolder-cli/index.md) | Generated CLI reference for `mcp-scaffold` (via `mise run docs`) |
 | [scaffolder-cli/retrofit-findings.md](scaffolder-cli/retrofit-findings.md) | Retrofit safety invariants and their resolution history — preserve these |

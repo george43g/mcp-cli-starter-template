@@ -127,7 +127,7 @@ curl -X POST http://127.0.0.1:8080/mcp \
 
 ## Adding a new tool (for the agent maintaining the codebase)
 
-See `.claude/skills/mcp-tool-author/SKILL.md` for the full checklist. Short
+See `.agents/skills/mcp-tool-author/SKILL.md` for the full checklist. Short
 version:
 1. Define Zod `input`/`output` schemas in `src/tools/<name>.ts` with
    `.describe(...)` on every field.

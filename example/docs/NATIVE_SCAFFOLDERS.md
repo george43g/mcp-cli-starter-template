@@ -38,7 +38,7 @@ tests remain meaningful.
 
 Generated repositories include:
 
-- `skills/workspace-scaffolding/SKILL.md` for choosing and integrating native
+- `.agents/skills/workspace-scaffolding/SKILL.md` for choosing and integrating native
   leaf generators.
-- `skills/cli-artifacts/SKILL.md` for retaining CLI help, completions, and
+- `.agents/skills/cli-artifacts/SKILL.md` for retaining CLI help, completions, and
   manpage generation even when the MCP app is removed.

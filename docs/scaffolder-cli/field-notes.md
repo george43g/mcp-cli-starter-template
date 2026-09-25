@@ -11,7 +11,7 @@ are ideas, not commitments; none is scheduled unless promoted into
    (`.usage.kdl`, completions, manpage, markdown docs, freshness check) ships
    only inside `08-app/m1-app-port`, which ports an entire Node MCP app.
    "Add completions to an existing CLI" is served by the manual procedure in
-   [skills/cli-artifacts/SKILL.md](../../skills/cli-artifacts/SKILL.md)
+   [.agents/skills/cli-artifacts/SKILL.md](../../.agents/skills/cli-artifacts/SKILL.md)
    ("Add the system to another CLI package"). Opportunity: extract a
    dedicated, parameterizable migration (bin name, target directory,
    command-tree source) so `mcp-scaffold migrate cli-artifacts` works against

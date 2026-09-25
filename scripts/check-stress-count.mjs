@@ -61,7 +61,9 @@ const RECORD_FILES = new Set([
   "scripts/check-stress-count.test.mjs",
 ]);
 
-const TEXT_EXT = /\.(md|mdx|ts|tsx|mts|mjs|js|yml|yaml|toml|json|txt)$/;
+// `.tmpl` is a lib/ template stored under a name no tool loads (the generated
+// AGENTS.md is 11-agent-files/lib/AGENTS.md.tmpl); it is still prose that ships.
+const TEXT_EXT = /\.(md|mdx|ts|tsx|mts|mjs|js|yml|yaml|toml|json|txt)(\.tmpl)?$/;
 // One optional qualifier word between the number and the noun: the generated
 // AGENTS.md said "13 lifecycle assertions" for weeks after the harness reached
 // 15, because the pattern wanted the two adjacent. "13 of 13 assertions" still

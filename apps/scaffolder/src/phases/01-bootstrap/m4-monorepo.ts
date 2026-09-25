@@ -105,8 +105,13 @@ const ROOT_PACKAGE_JSON = (name: string) =>
         // 2026-09 fleet audit found the false sentence replicated into two
         // descendant repos. Ships via 10-docs-readme's scripts/.
         "check:stdout-purity": "node scripts/check-stdout-purity.mjs",
+        // Repo-skill layout (.agents/skills + .claude/skills links) via the
+        // machine's link-repo-skills. Guarded: prints a skip line and passes
+        // where the repo-scoped-skills skill is not installed (CI, a fresh
+        // clone). Ships via 10-docs-readme's scripts/.
+        "check:skills": "node scripts/check-skills.mjs",
         verify:
-          "pnpm lint && pnpm check:docs && pnpm check:stdout-purity && pnpm typecheck && pnpm test && pnpm build",
+          "pnpm lint && pnpm check:docs && pnpm check:skills && pnpm check:stdout-purity && pnpm typecheck && pnpm test && pnpm build",
         clean: "turbo run clean && rm -rf node_modules .turbo coverage",
       },
       devDependencies: {

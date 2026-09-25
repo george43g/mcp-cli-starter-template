@@ -6,6 +6,8 @@
  * 1. Relative links in repo-facing markdown resolve to real files.
  * 2. CLAUDE.md stays a symlink pointing at AGENTS.md.
  * 3. Every top-level docs/*.md has a row in the docs index (docs/README.md).
+ * 4. Every root-to-leaf AGENTS.md chain fits Codex's combined budget with
+ *    headroom (scripts/lib/agents-chain.mjs).
  *
  * Template surfaces (example/, apps/scaffolder/src/phases/[star]/lib/) are
  * excluded: their links are written for the generated repo's layout.
@@ -14,6 +16,7 @@
 import { existsSync, lstatSync, readlinkSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { checkAgentsChains, describeChains } from "./lib/agents-chain.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -32,6 +35,7 @@ const SCAN_ROOTS = [
   "apps/scaffolder/README.md",
   "docs",
   "skills",
+  ".agents/skills",
 ];
 
 /** Symlink → required target, both relative to repo root. */
@@ -135,10 +139,16 @@ for (const fileAbs of [...new Set(markdownFiles)]) {
 }
 checkSymlinks();
 await checkIndexCoverage();
+const agentsChains = checkAgentsChains(root, { projectRoots: ["example"] });
+failures.push(...agentsChains.failures);
 
 if (failures.length > 0) {
   console.error(`docs integrity check failed (${failures.length} problem(s)):\n`);
   for (const failure of failures) console.error(`  • ${failure}\n`);
   process.exit(1);
 }
-console.log(`docs integrity check passed (${markdownFiles.length} markdown files scanned).`);
+for (const note of agentsChains.notes) console.log(`note: ${note}`);
+console.log(
+  `docs integrity check passed (${markdownFiles.length} markdown files scanned; ` +
+    `${describeChains(agentsChains)}).`,
+);

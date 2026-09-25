@@ -126,6 +126,16 @@ and reported errors on template text. `golden.test.ts` fails if a
 by no build) catches every other `lib/` file, which would otherwise fall into
 an inferred project that still reports unresolved imports.
 
+**No symlinks in `lib/`.** `build-templates.mjs` and the golden test walk
+regular files only, so a symlink under `lib/` would never ship. Phase 11
+creates links at stamp time instead: `CLAUDE.md` → `AGENTS.md`, and one
+`.claude/skills/<name>` → `../../.agents/skills/<name>` per stamped skill
+(`src/phases/11-agent-files/skill-links.ts`). In an existing repo a skill at a
+legacy path is left in place and reported, and a symlink the OS refuses
+(Windows without Developer Mode) becomes a follow-up, not a failure.
+`11-agent-files/lib/AGENTS.md.tmpl` is the generated guide, stored under a
+name no tool loads (DEFERRED #51).
+
 **Project references in generated output.** Porting a template through
 `portPackage` drops tsconfig references to packages the generated repo takes
 from npm (`withoutPublishedReferences`, in the same pass that rewrites their

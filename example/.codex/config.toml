@@ -1,0 +1,12 @@
+[mcp_servers.example-dev]
+command = "pnpm"
+args = ["tsx", "apps/example/scripts/mcp-dev-proxy.ts"]
+
+[mcp_servers.example-dev.env]
+MCP_DEV = "1"
+MCP_DEV_ENTRY = "apps/example/src/index.ts"
+MCP_DEV_WATCH_DIR = "apps/example/src"
+
+[mcp_servers.mise]
+command = "mise"
+args = ["mcp"]
