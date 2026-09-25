@@ -123,6 +123,52 @@ That is why `packages/cli-kit` and `packages/tui-kit` simply dropped their
 made publishable, following `packages/robustness`, which resolves both through the
 root workspace hoist.
 
+### Commit rules: how a message becomes a version
+
+The root `AGENTS.md` states each rule in a line. This is why each one exists.
+
+- **A commit's type is read against every published package whose directory
+  it touches.** `semantic-release-monorepo` filters commits by path and ignores
+  the scope in the subject. So a `feat(vitest-config): …` commit that edits
+  `packages/robustness/vitest.config.ts` counts as a `feat` for **robustness**,
+  and that is how `robustness@0.3.0` came to be published by a coverage-config
+  change. Use `chore:`/`test:`/`docs:` for anything inside
+  `packages/{robustness,cli-kit,tui-kit,secret-store}/` that does not change the
+  package's published behaviour. The workflow's `paths` also exclude test and
+  tooling files, as a second safeguard.
+- **A commit's type is read against its whole diff, not its headline.** The
+  rule above catches a commit scoped too narrowly; this one catches the
+  opposite case. `fix(cli-kit): drain piped REPL input` also added
+  `formatResult`, `showMeta`, and the `json`/`last-error` built-ins, and they
+  shipped in `cli-kit@0.3.1` as a patch. Nothing broke, because the additions
+  are optional, but the version understated the change. There is no honest way
+  to correct that afterwards short of an empty `feat` commit.
+- **A breaking marker on a 0.x package publishes 1.0.0, not the next minor.**
+  `@semantic-release/commit-analyzer` has no `releaseRules` override here, and
+  its default maps any breaking change to a **major**. Unlike some tools, it
+  does not hold a `0.x` package at `0.x`. `feat(cli-kit)!:` with the breaking
+  footer was planned as `0.4.0` and published as **`cli-kit@1.0.0`**, which is
+  immutable. This is kept on purpose (DEFERRED #34): staying on 0.x adds no
+  protection, because `^1.x` does not cross a major either. All 0.x buys is
+  blocking *additive* minors, which consumers want to receive automatically.
+- **Never spell a release-control token in commit prose.** `semantic-release`
+  finds the breaking-change footer token ANYWHERE in a commit body, including
+  inside a sentence describing a past incident. A `docs:` commit whose body
+  explained the previous mishap published `cli-kit@2.0.0`, a major whose
+  `dist/` was byte-identical to `1.0.0`. That was two unplanned majors in one
+  session, both caused by message text (DEFERRED #35). `pnpm test:scripts` and
+  the `release-tokens` job now reject the token unless the subject also
+  carries `!`. To write about it, use lowercase prose and do not spell the
+  literal. The job catches spurious majors, **not** a breaking change
+  published as a minor (DEFERRED #37). [CHECKS.md](CHECKS.md#ci-workflows)
+  explains why it runs in two workflows.
+- **Rendered output is not covered by semver.** A patch that improves a
+  rendering breaks any consumer that snapshots stdout: no API change, no type
+  error, nothing thrown. `cli-kit@2.0.1` broke 8 of one consumer's 12 snapshot
+  tests. When changing what a kit prints, say so in its README. cli-kit's
+  standing promise is that *results and meta footers are stable; chrome is
+  not*.
+
 ### Adding a package to the pipeline
 
 The order is forced by npm: a Trusted Publisher can only be configured for a

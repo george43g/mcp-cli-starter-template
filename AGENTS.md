@@ -2,255 +2,138 @@
 
 > `CLAUDE.md` is a symlink to this file. Edit `AGENTS.md`; it follows.
 
-You're working on **the scaffolder repo + canonical static template**. This is the meta-tool that generates MCP+CLI+TUI starter projects (and retrofits existing MCP servers to match). For the cloned-tool's agent guide, see `apps/scaffolder/src/phases/11-agent-files/lib/AGENTS.md` (that gets written into target repos at scaffold time).
+You're working on **the scaffolder repo + canonical static template**: the meta-tool that generates MCP+CLI+TUI starter projects and retrofits existing MCP servers to match. The generated repo's own guide is `apps/scaffolder/src/phases/11-agent-files/lib/AGENTS.md.tmpl` (stamped as `AGENTS.md`; `.tmpl` so no tool loads the template as instructions).
+
+This file is a map. It states each rule once; the reasons behind the rules are in the linked docs.
 
 ## Current handoff
 
 Before continuing an existing thread, read [`HANDOFF.md`](HANDOFF.md) and
-[`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md). They record the exact
-local/upstream Git state, verification evidence, retrofit safety invariants,
-dependency decisions, and deferred work that must survive context compaction.
+[`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md): Git state, verification
+evidence, retrofit safety invariants, dependency decisions, deferred work.
 
 ## What this repo is
 
-Two things at once:
+1. **The static "golden output"**: `apps/example-repo-mcp/`, `apps/rust-accel/`, `packages/*`, `docs/`, etc., the literal files the scaffolder ships. CI rebuilds and tests it on every PR.
+2. **The scaffolder/migrator** at `apps/scaffolder/` (bin `mcp-scaffold`): `init`, `apply`, `migrate`, `add-mcp-app`.
 
-1. **The static "golden output"** under `apps/example-repo-mcp/`, `apps/rust-accel/`, `packages/*`, `docs/`, etc. — the literal files that the scaffolder ships into a cloned tool. CI rebuilds + tests it on every PR.
-
-2. **The scaffolder/migrator** at `apps/scaffolder/` (bin `mcp-scaffold`) — `init`, `apply`, `migrate`, `add-mcp-app`.
-
-**The golden rule**: the scaffolder's `src/phases/<NN>-<slug>/lib/` directories
-are byte-identical copies of the canonical sources, and the tracked `example/`
-directory is regenerated output. Editing one surface usually means syncing the
-others; the golden-output drift test (`apps/scaffolder/tests/golden.test.ts`)
+**The golden rule**: `apps/scaffolder/src/phases/<NN>-<slug>/lib/` holds byte-identical
+copies of the canonical sources, and `example/` is regenerated output. Editing one
+surface usually means syncing the others; `apps/scaffolder/tests/golden.test.ts`
 fails CI when canonical and `lib/` diverge.
 
 ## Where knowledge lives
 
 | Source | Read when |
 |---|---|
-| [`apps/scaffolder/AGENTS.md`](apps/scaffolder/AGENTS.md) | Working on the scaffolder: architecture, adding migrations/phases, drift rules, troubleshooting |
-| [`docs/README.md`](docs/README.md) | Index of all docs — repo-facing vs golden-output, with read-when guidance |
-| [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) | Continuation state, verification evidence, deferred work |
-| [`DEFERRED.md`](DEFERRED.md) | The backlog: what was consciously not done, why, and the trigger to act. Read before proposing new work |
+| [`apps/scaffolder/AGENTS.md`](apps/scaffolder/AGENTS.md) | Working on the scaffolder: architecture, migrations/phases, drift rules, troubleshooting |
+| [`docs/README.md`](docs/README.md) | Index of all docs, repo-facing vs golden-output |
+| [`DEFERRED.md`](DEFERRED.md) | The backlog: what was consciously not done, why, and the trigger. Read before proposing new work |
+| [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) | The reasons behind the Conventions below |
+| [`docs/CHECKS.md`](docs/CHECKS.md) | What each `verify` gate catches and why it exists |
 | [`docs/plans/README.md`](docs/plans/README.md) | ExecPlan convention for multi-hour or risky work |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Golden-output architecture (the generated tool's four surfaces) |
-| [`docs/scaffolder-cli/retrofit-findings.md`](docs/scaffolder-cli/retrofit-findings.md) | Retrofit safety invariants — preserve these |
-| [`skills/mcp-starter-architect/SKILL.md`](skills/mcp-starter-architect/SKILL.md) | Before retrofitting a real MCP server. **Linked machine-globally by dotfiles** (symlinks at `~/.claude/skills/` and `~/.agents/skills/`, George 2026-09-03) — renaming or moving this directory breaks every session on the machine; coordinate with the dotfiles session first. Content edits need nothing |
-| [`skills/cli-artifacts/SKILL.md`](skills/cli-artifacts/SKILL.md) | Updating CLI docs, completions, or manpage generation |
-| [`skills/workspace-scaffolding/SKILL.md`](skills/workspace-scaffolding/SKILL.md) | Choosing native generators for new leaf workspaces |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The generated tool's four surfaces |
+| [`docs/scaffolder-cli/retrofit-findings.md`](docs/scaffolder-cli/retrofit-findings.md) | Retrofit safety invariants: preserve these |
+| [`skills/mcp-starter-architect/SKILL.md`](skills/mcp-starter-architect/SKILL.md) | Before retrofitting a real MCP server. **Linked machine-globally by dotfiles** (George 2026-09-03): renaming or moving this directory breaks every session on the machine; coordinate with the dotfiles session first. Content edits need nothing |
+| [`skills.md`](skills.md) | Repo skills in `.agents/skills/` (`cli-artifacts`, `workspace-scaffolding`, `mcp-tool-author`, `pr-review-sop`, …), each linked from `.claude/skills/` |
 
 ## Stack
 
 Node.js ≥24, ESM only, pnpm 10.29.3 (Turborepo), Vite library mode, Biome 2.x,
-Vitest, `@modelcontextprotocol/sdk` ^1.29, `commander` ^14, `ink` ^7 +
-`react` ^19, Zod ^3, optional `napi-rs` v3 native acceleration, `usage`
-(jdx/usage-cli) for CLI spec/completions/manpage.
+Vitest, `@modelcontextprotocol/sdk` ^1.29, `commander` ^14, `ink` ^7 + `react` ^19,
+Zod ^3, optional `napi-rs` v3, `usage` (jdx/usage-cli) for CLI spec/completions/manpage.
 
 ## Workspace topology
 
 ```
 apps/
-  example-repo-mcp/   live "golden output" — the cloned tool's source
+  example-repo-mcp/   live "golden output": the cloned tool's source
   rust-accel/         napi-rs v3 crate
-  scaffolder/         the meta-tool: `mcp-scaffold` (see its AGENTS.md)
+  scaffolder/         the meta-tool `mcp-scaffold` (see its AGENTS.md)
 packages/
-  robustness/         env + logger + watchdog + shutdown + with-timeout + health + retry + rate-limit
+  robustness/         env + logger + watchdog + shutdown + timeout + health + retry + rate-limit
   mcp-kit/            tool-registry + dispatch + transports + sanitize + prompt-injection
   cli-kit/            commander + tty + color + REPL + env↔flag binder
   tui-kit/            ink themes + hooks + components
   secret-store/       env → .env → OS keychain → exec. No vault vendor code
   shared-types/       Zod schemas + Rust drift-check
-  tsconfig/           base/node/react TS configs
-  biome-config/       single biome.json source
-  vitest-config/      shared preset (target 80/70/70/70 packages, 50/40/40/40
-                      apps) + `withCoverageFloor()` for workspaces below it
+  tsconfig/ biome-config/  shared tool config, never published
+  vitest-config/      shared preset, also never published: coverage target 80/70/70/70
+                      packages, 50/40/40/40 apps; `withCoverageFloor()` below it
 ```
 
 ## Commands
 
+Why each check exists: [`docs/CHECKS.md`](docs/CHECKS.md).
+
 | Command | Purpose |
 |---|---|
-| `pnpm install` | Install all workspaces |
-| `pnpm build` | Turbo: build TS workspaces + (optional) Rust crate |
-| `pnpm test` | All workspace tests, including the scaffolder suite |
-| `pnpm test:coverage` | Same suites + enforce each workspace's coverage floor |
-| `pnpm test:no-native` | Force TS fallback (`MCP_DISABLE_NATIVE=1`) |
-| `pnpm typecheck` | `tsc -b` over the root solution `tsconfig.json`: every package, every package's `tsconfig.test.json`, both apps. Test files were outside every project until 2026-09 — 46 errors nobody had compiled. Writes each package's `dist/` exactly as `pnpm build` does (verified byte-identical) |
-| `pnpm check:test-projects` | Every `apps/*`/`packages/*` test file belongs to a project reachable from the root `tsconfig.json`. Vitest strips types without checking them, so an orphaned test file is type-checked by nothing, silently. Uses `tsc --showConfig`, so TypeScript stays the authority on what a project contains |
+| `pnpm install` / `pnpm build` | Install; Turbo build of TS workspaces + optional Rust crate |
+| `pnpm test` / `pnpm test:coverage` | All workspace tests; the same plus each workspace's coverage floor |
+| `pnpm test:no-native` | Force the TS fallback (`MCP_DISABLE_NATIVE=1`) |
+| `pnpm typecheck` | `tsc -b` over the root solution |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
-| `pnpm check:docs` | Docs integrity: relative links, agent-file symlinks, docs index coverage |
-| `pnpm check:stdout-purity` | No `console.*` call in an MCP app's `src/` — JSON-RPC owns stdout after the stdio transport connects. Exists because the stamped AGENTS.md claimed "CI grep enforces this" for months while nothing did, and the false sentence replicated into descendant repos. A claimed guard is worse than no guard |
-| `pnpm check:stale-plans` | An ExecPlan must carry a status in its first 20 lines, not contradict a completion heading in its own body, and — if non-terminal — not go 30 days without a commit unless it carries a dated `PARKED`/`SUPERSEDED`. Ported from life-stack after a fleet sweep found `2026-08-build-identity.md` reading "planned, not started" for 28 days while every deliverable in it had shipped. **What it does not buy**: the status being *true*. It reads plans, never code |
-| `pnpm check:stress-count` | The stress harness's `EXPECTED_ASSERTIONS` vs every prose site that quotes it. The harness asserts the constant against its own run, so the chain is `results.length` → constant → docs |
-| `pnpm check:publishable-manifests` | Publish shape of the npm-published packages: repository metadata, `files`, no `workspace:` in shipped deps |
-| `pnpm test:scripts` | Node's built-in runner over `scripts/**/*.test.mjs` — the repo scripts' own tests |
-| `pnpm check:registry-boundary` | A generated-app import of a kit API that is not in the RELEASED surface. Compares against each package's git release tag, so it needs no network — `pnpm verify` cannot catch this otherwise, because pnpm links the workspace copy |
-| `pnpm check:workflows` | `actionlint` (pinned in `mise.toml`) over all three workflow surfaces. Requires `mise install` first |
-| `pnpm check:turbo-tasks` | Every turbo task that RUNS tests must depend on its OWN `build`, not just `^build`. Caught twice in one hour: `^build` builds *dependencies*, so a test spawning its own `dist/` passes where a stale build exists and dies in a fresh clone — which is how a release job failed after every PR check went green |
-| `pnpm check:deps-stale` | Asks the **registry** whether our first-party deps are current. **NOT in `verify`** — `verify` is network-free by design. Runs weekly via `.github/workflows/deps-stale.yml`. Catches the one thing every offline check is blind to: a tree that agrees with itself and is uniformly behind. Exit 2 = registry unreachable, which is **not** a pass |
-| `pnpm verify` | lint + script tests + docs + stress count + manifests + registry boundary + workflows + turbo tasks + test projects + typecheck + test:coverage + build (the CI shape) |
+| `pnpm test:scripts` | Node's test runner over `scripts/**/*.test.mjs` |
+| `pnpm check:docs` | Relative links, agent-file symlinks, docs index, AGENTS.md chain ≤ 28,000 B |
+| `pnpm check:skills` | `link-repo-skills --check` on `.` and `example/`; skips with one line where the skill is absent |
+| `pnpm check:stdout-purity` | No `console.*` in an MCP app's `src/` |
+| `pnpm check:stale-plans` | ExecPlan status present, consistent, and not silently stale |
+| `pnpm check:stress-count` | Stress harness `EXPECTED_ASSERTIONS` vs every prose site quoting it |
+| `pnpm check:publishable-manifests` | Publish shape of the npm-published packages |
+| `pnpm check:registry-boundary` | Generated-app imports only use RELEASED kit APIs |
+| `pnpm check:workflows` | `actionlint` over all three workflow surfaces (`mise install` first) |
+| `pnpm check:turbo-tasks` | Every test-running turbo task depends on its OWN `build` |
+| `pnpm check:test-projects` | Test tsconfig projects are wired into the solution |
+| `pnpm check:deps-stale` | Registry freshness of first-party deps. **Not in `verify`** (network); weekly workflow. Exit 2 = unreachable, not a pass |
+| `pnpm verify` | Everything above except `check:deps-stale` (the CI shape) |
 | `pnpm stress` | 15-assertion MCP stress harness against `apps/example-repo-mcp/` |
-| `pnpm regen:example` | Rebuild the tracked `example/` output from the scaffolder |
+| `pnpm regen:example` | Rebuild the tracked `example/` from the scaffolder |
 
-Scaffolder-only commands (codegen, smoke, usage artifacts) are tabled in
-[`apps/scaffolder/AGENTS.md`](apps/scaffolder/AGENTS.md).
+Scaffolder-only commands are in [`apps/scaffolder/AGENTS.md`](apps/scaffolder/AGENTS.md).
 
 ## Conventions
 
-- **Single source of truth**: canonical files at the repo root + `apps/example-repo-mcp/` + `packages/*`. The scaffolder's `lib/` directories are byte-identical copies, drift-checked.
-- **TypeScript is one `tsc -b` solution** (root `tsconfig.json`, `"files": []`).
-  Each package's `tsconfig.json` is `composite` — its build info lives in
-  `dist/` so a deleted `dist/` is never read as up to date, and `files` carries
-  `!dist/tsconfig.tsbuildinfo` so it never ships. Tests live in a sibling
-  `tsconfig.test.json` that references its package; apps reference the packages
-  they import. That graph is what lets "find references" reach from a package
-  into the apps and tests — **only when the repo is opened by its real path.**
-  Measured 2026-09-25, one tree: 17 references to `resolveSecret` via
-  `/private/var/…`, 15 via the `/var/…` symlink to it, with both app call sites
-  missing. pnpm's workspace links resolve to real paths, so a symlinked
-  workspace root never matches the referenced project. An empty cross-package
-  result under a symlinked path is not evidence of "unused": `cd "$(pwd -P)"`
-  first. **Test hooks marked `@internal`** are stripped from
-  the published `.d.ts`, which is also what a referencing project compiles
-  against — so a package whose tests import one (today only robustness) has a
-  `tsconfig.internal.json` (same sources, `stripInternal: false`, output in
-  `node_modules/.cache`), listed **last** in its test project's references:
-  TypeScript maps a source file to the LAST referenced project that contains
-  it. Swap the order and `pnpm typecheck` fails on the hook imports, loudly.
-  The scaffolder's `lib/` trees are no project at all: the app's template
-  tsconfig is stored as `tsconfig.json.tmpl`, and `apps/scaffolder/src/phases/tsconfig.json`
-  (`noCheck`, referenced by no build) exists only so the editor stops reporting
-  errors on template text.
-- **A new kit API and its generated-app call site are TWO PRs, publish first.**
-  `apps/example-repo-mcp/src/` becomes the generated app's source, and generated
-  repos resolve `@george43g/*` from **npm** — so calling an API that only exists
-  in the workspace typechecks locally and fails the E2E smoke with `TS2305: …has
-  no exported member`. `pnpm verify` cannot catch it (workspace resolution).
-  Record the parked call site in `DEFERRED.md` #28 and wire it in its own
-  follow-up PR once the package publishes. There is no longer a post-release
-  resync PR to piggyback on — the release commits that itself (#22). See #23.
-- **No emojis in source code unless the user requests.** Comments stay terse and "why"-focused.
-- **Prefer canonical CLIs** (`pnpm init`, `pnpm pkg set`, `git init`) over file-copying for setup steps. Templates live in `lib/`; raw fs writes for small literals.
-- **Conventional Commits** drive semver via the (disabled-by-default) `release.yml` workflow.
-- **A commit's TYPE is read against every published package whose directory it
-  touches.** `semantic-release-monorepo` filters commits by path and ignores the
-  scope in the subject, so `feat(vitest-config): …` that edits
-  `packages/robustness/vitest.config.ts` is a `feat` for **robustness** — that
-  is how `robustness@0.3.0` was published by a coverage-config change. Use
-  `chore:`/`test:`/`docs:` for anything inside `packages/{robustness,cli-kit,tui-kit,secret-store}/`
-  that does not change the package's published behaviour. The workflow's `paths`
-  now exclude test and tooling files as a second line of defence.
-- **A commit's type is read against its whole DIFF, not its headline.** The rule
-  above catches under-scoping; this is the other direction. A commit that fixes a
-  bug *and* adds public API is a `feat:` — `fix(cli-kit): drain piped REPL input`
-  also added `formatResult`, `showMeta`, and the `json`/`last-error` built-ins,
-  and shipped them in `cli-kit@0.3.1` as a patch. Nothing broke (the additions
-  are optional) but the version under-signalled, and there is no honest way to
-  correct it afterwards short of an empty `feat` commit. **Before writing the
-  type, check whether the diff adds anything to a package's public surface.**
-- **A breaking marker on a 0.x package publishes 1.0.0, not the next minor.**
-  `@semantic-release/commit-analyzer` ships no `releaseRules` override here, and
-  its default maps any breaking change to a **major** — it does not clamp `0.x`
-  the way some tools do. `feat(cli-kit)!:` with a `BREAKING CHANGE:` footer was
-  planned as `0.4.0` and published as **`cli-kit@1.0.0`**, which is immutable.
-  This applies equally to `robustness`, `tui-kit` and `secret-store`, all still
-  0.x. **`!` or a `BREAKING CHANGE:` footer on a 0.x package means you are
-  cutting its 1.0.0** — write it only when you mean that. Kept deliberately
-  (DEFERRED #34): staying on 0.x adds no protection, because `^1.x` does not
-  cross a major either, so the insulation against breaking changes is identical.
-  All 0.x buys is blocking *additive* minors, which consumers want automatic.
-- **NEVER spell a release-control token in commit prose.** `semantic-release`
-  reads the breaking-change footer token ANYWHERE in a commit body, including
-  inside a sentence describing a past incident. A `docs:` commit whose body
-  explained the previous mishap published `cli-kit@2.0.0` — a major whose
-  `dist/` was byte-identical to `1.0.0`. Two unplanned majors in one session,
-  both from message text. `pnpm test:scripts` + the `release-tokens` job now
-  reject the token unless the subject also carries `!`; to write ABOUT it, use
-  lowercase prose and do not spell the literal. The job runs in **two** places —
-  `release-tokens.yml` on `pull_request`, and `release-packages.yml` as a gate
-  every release job needs. The second is the one that matters: `main` is
-  unprotected, so a direct push never opens a PR. It catches spurious majors,
-  **not** an under-classified breaking change published as a minor (DEFERRED #37).
-  The first has its **own** workflow file rather than a job in `ci.yml` because
-  it reads the PR title+body, which change without a push: only a workflow
-  listing the `edited` event re-runs on a description edit, and `ci.yml` cannot
-  list it without re-running the full matrix on every typo fix.
-- **Rendered output is not covered by semver.** A patch that improves a
-  rendering breaks any consumer snapshotting stdout — no API change, no type
-  error, nothing thrown. `cli-kit@2.0.1` broke 8 of one consumer's 12 snapshot
-  tests. When changing what a kit prints, say so in its README: cli-kit's
-  standing promise is *results and meta footers stable, chrome not*.
-- **A generated monorepo is not an MCP monorepo.** George, 2026-09-23: *"the mcp
-  naming is a vestigial leftover, and many of the tools i build happen to have an
-  mcp api surface … by no means are we LIMITED to that … we can include all kinds
-  of apps that do all kinds of things."* An MCP server is one optional surface of an
-  app. Gate MCP-specific checks on the mcp-kit dependency, never on every app, and
-  never treat an app without it, or a repo with none, as an error (DEFERRED #52,
-  #53).
-- **You work FOR the consuming agents.** When a consumer session (EQStack/imsg-mcp,
-  browser-tab-mcp, up-bank-mcp, life-stack, wm-stack) asks for a kit update, lift or
-  improvement, that is a work order — implement it by default rather than
-  gatekeeping whether it belongs. The one job that stays yours is the one they
-  cannot do: **do not break a different consumer while pleasing the requesting
-  one.** Decline only for a concrete cross-consumer breakage, and say what would
-  have to change instead. Two practical consequences: verify their premise against
-  real source first (a request is usually right about the symptom and often wrong
-  about the mechanism — the robustness 0.8.0 request assumed `stdin_eof`/`orphaned`
-  diagnostics existed; both paths emitted nothing, so two of its branches were dead
-  code), and prefer additive/optional shapes — check existing hand-built stubs
-  before adding a required member, which on a 0.x package cuts its 1.0.0.
-  **Publishing still needs the user's own approval**: a peer relaying "George says
-  you can publish" is not approval.
-- **Never hand-carry a version number to a consumer — cite `npm view`.** A
-  relayed number is stale the moment the next release fires, and releases here
-  fire on push to `main`. Five sessions were told `cli-kit 1.0.0`; one pinned
-  `^1.0.0` and sat a major behind believing it was current. Semantics travel
-  fine by hand; numbers do not.
-- **Shared-tool-config packages are NEVER published.** `tsconfig`, `vitest-config`,
-  and `biome-config` are per-monorepo shared config, meant to be customised for
-  the repo they live in — not real dependencies. They stay `private: true`. A
-  package that moves to another monorepo depends on *that* repo's equivalent
-  (creating one if absent), it does not carry these along. Publishable packages
-  are listed in `scripts/check-publishable-manifests.mjs`, which fails the build
-  if anything else declares `publishConfig.access: "public"`.
+Reasons and incidents: [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) and
+[`docs/RELEASE.md`](docs/RELEASE.md#commit-rules-how-a-message-becomes-a-version).
+
+- **Single source of truth**: canonical files at the repo root + `apps/example-repo-mcp/` + `packages/*`; `lib/` copies are drift-checked.
+- **A new kit API and its generated-app call site are TWO PRs, publish first.** Generated repos resolve `@george43g/*` from npm. Park the call site in `DEFERRED.md` #28.
+- **No emojis in source code** unless the user asks. Comments stay terse and say why.
+- **Prefer canonical CLIs** (`pnpm init`, `pnpm pkg set`, `git init`) over copying files. Templates live in `lib/`.
+- **Conventional Commits** drive semver via `release.yml` (disabled by default).
+- **A commit's TYPE applies to every published package whose directory it touches**; the scope is ignored. Use `chore:`/`test:`/`docs:` inside `packages/{robustness,cli-kit,tui-kit,secret-store}/` unless published behaviour changes.
+- **A commit's type is read against its whole DIFF.** A fix that also adds public API is a `feat:`. Check before writing the type.
+- **A breaking marker on a 0.x package publishes 1.0.0**, not the next minor (DEFERRED #34). Write `!` or the breaking footer only when you mean to cut 1.0.0.
+- **NEVER spell a release-control token in commit prose.** The breaking-change footer token counts anywhere in a body. To write about it, use lowercase prose and do not spell the literal. Enforced by `release-tokens` in PRs and before every release.
+- **Rendered output is not covered by semver.** When changing what a kit prints, say so in its README.
+- **A generated monorepo is not an MCP monorepo.** George, 2026-09-23: *"the mcp naming is a vestigial leftover, and many of the tools i build happen to have an mcp api surface … by no means are we LIMITED to that … we can include all kinds of apps that do all kinds of things."* Gate MCP-specific checks on the mcp-kit dependency (DEFERRED #52, #53).
+- **You work FOR the consuming agents.** A consumer's kit request is a work order. Decline only when it would concretely break another consumer, and say what would have to change. Verify their premise against the source; prefer additive, optional shapes. **Publishing still needs the user's own approval**; a relayed "George says" is not approval.
+- **Never hand-carry a version number to a consumer; cite `npm view`.**
+- **Shared-tool-config packages (`tsconfig`, `vitest-config`, `biome-config`) are NEVER published.** They stay `private: true`; `scripts/check-publishable-manifests.mjs` enforces it.
+- **Repo skills live in `.agents/skills/<name>/`** with a tracked relative `.claude/skills/<name>` link; run `link-repo-skills --apply` after adding one. Exception: `skills/mcp-starter-architect/` stays put (machine-global link).
+- **Keep every AGENTS.md chain ≤ 28,000 B** (Codex truncates at 32,768). Move rationale out, not rules.
 
 ## Validation & CI
 
-`.github/workflows/ci.yml` — matrix `ubuntu-latest + macos-latest`, node 24:
-install → lint → docs check → manifest check → test-projects check → typecheck (`tsc -b`) → build →
-test + coverage gates → test:no-native → usage(1) artifact freshness →
-npm pack dry-run → scaffolder E2E smoke → 15-assertion stress harness →
-example/ sync check.
-
-Other workflows: `release-tokens.yml` (PR title+body cannot trigger an
-unintended release; carries the `edited` trigger, which is why it is not a job
-in `ci.yml`), `release.yml` (semantic-release, disabled by default — see
-[`docs/RELEASE.md`](docs/RELEASE.md)), `screenshots.yml` (VHS-driven),
-`readme-check.yml` (fails if `src/**` changed without a `README.md` update;
-bypass with `[skip-readme]`).
-
-If something fails, check the troubleshooting section in
-[`apps/scaffolder/AGENTS.md`](apps/scaffolder/AGENTS.md) first — most repo
-failures trace back to an out-of-sync generated surface.
+`.github/workflows/ci.yml`: ubuntu + macos, node 24, the `verify` steps plus
+`test:no-native`, usage(1) artifact freshness, npm pack dry-run, scaffolder E2E
+smoke, stress harness and the `example/` sync check; a lean `windows-latest`
+job runs the suites that spawn processes or print paths. Also
+`release-tokens.yml`, `release.yml` ([`docs/RELEASE.md`](docs/RELEASE.md)),
+`screenshots.yml`, `readme-check.yml` (bypass `[skip-readme]`); see
+[`docs/CHECKS.md`](docs/CHECKS.md#ci-workflows). On failure, check the
+troubleshooting section of [`apps/scaffolder/AGENTS.md`](apps/scaffolder/AGENTS.md)
+first. Most failures come from a generated surface that is out of sync.
 
 ## Plans
 
-Multi-hour, cross-surface, or risky work gets a checked-in ExecPlan under
-[`docs/plans/`](docs/plans/README.md) — never an external file outside the
-repo. Continuation state for the current thread lives in
-[`HANDOFF.md`](HANDOFF.md) and [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md).
+Multi-hour, cross-surface or risky work gets a checked-in ExecPlan under
+[`docs/plans/`](docs/plans/README.md), never a file outside the repo.
 
 ## MCP servers (project scope)
 
-Canonical set: `.mcp.json` (standard MCP schema, `${VAR}` placeholders only —
-never literal secrets). `.cursor/mcp.json` and `.warp/.mcp.json` are symlinks
-to it. `opencode.json`'s `mcp` key is GENERATED — after editing `.mcp.json`,
-run: `mcpsync sync --scope project --yes`.
-
-**`mcpsync` no longer lives here.** It moved to `life-stack/apps/mcpsync` on
-2026-08-22 (DEFERRED #10) — it is a standalone product that merely *consumes*
-the kits, not scaffolding machinery or framework code, which is the inclusion
-rule this repo goes by. The `mcpsync` bin stays on PATH from there, so the
-workflow above is unchanged; only its source moved. Global servers and scope
-decisions: `~/dotfiles/docs/mcp-registry.md`.
+`.mcp.json` is canonical (`${VAR}` placeholders only, never literal secrets).
+`.cursor/mcp.json` and `.warp/.mcp.json` symlink to it; `opencode.json`'s `mcp`
+key and `.codex/config.toml` are GENERATED. After editing `.mcp.json`, run
+`mcpsync sync --scope project --yes`. `mcpsync` lives in `life-stack` now
+(DEFERRED #10); details in [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md#mcp-config-mcpjson-is-canonical).
