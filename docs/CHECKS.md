@@ -16,7 +16,14 @@ project root to its working directory against one 32,768-byte budget
 (`project_doc_max_bytes`) and drops the rest without telling the model. On
 2026-09-26 the root guide (19,572 B) plus `example/AGENTS.md` (14,639 B) came to
 34,211 B, so Codex working in `example/` lost the end of the generated guide.
-28,000 leaves room for the next rule. `example/` is measured twice: under this
+28,000 leaves room for the next rule. The chain is counted the way Codex
+builds it, and agrees with the shared `check-instruction-chain`
+(harness-engineering skill) on its pinned cases: per directory
+`AGENTS.override.md` wins over `AGENTS.md`, a whitespace-only override still
+hides the `AGENTS.md` beside it, a symlink counts its target's bytes every time
+it appears, and only tracked files count. A generated repo before its first
+`git add` has none tracked, so the check says it checked nothing rather than
+passing; outside a git work tree it fails. `example/` is measured twice: under this
 repo's root, and as the root of the generated repo it is. The implementation is
 [`scripts/lib/agents-chain.mjs`](../scripts/lib/agents-chain.mjs), which the
 scaffolder also stamps, so generated repos enforce the same budget.

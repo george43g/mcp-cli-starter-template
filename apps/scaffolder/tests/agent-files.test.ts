@@ -1,5 +1,14 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, readlink, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readlink,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +23,18 @@ import AgentFilesMigration from "../src/phases/11-agent-files/m1-agent-files.js"
 import { drawRecap } from "../src/ui/recap.js";
 
 const cleanup: string[] = [];
+
+/**
+ * A skill link's target with `/` on every OS, after proving it resolves to the
+ * skill directory. Node stores a relative Windows link target with `\`, so the
+ * raw readlink is `..\..\.agents\skills\<name>` there (the fs helper's own
+ * "already correct" comparison is separator-blind for the same reason).
+ */
+async function skillLink(cwd: string, name: string): Promise<string> {
+  const link = join(cwd, ".claude/skills", name);
+  expect(await realpath(link)).toBe(await realpath(join(cwd, ".agents/skills", name)));
+  return (await readlink(link)).replace(/\\/g, "/");
+}
 
 async function fixture(
   packageJson: Record<string, unknown>,
@@ -78,9 +99,7 @@ describe("11-agent-files target-aware output", () => {
     expect(agents).toContain("`node --test`");
     expect(agents).not.toMatch(/mcp-starter|Turborepo/);
     expect(existsSync(join(cwd, ".agents/skills/openwrt-mcp/SKILL.md"))).toBe(true);
-    expect(await readlink(join(cwd, ".claude/skills/openwrt-mcp"))).toBe(
-      "../../.agents/skills/openwrt-mcp",
-    );
+    expect(await skillLink(cwd, "openwrt-mcp")).toBe("../../.agents/skills/openwrt-mcp");
     expect(existsSync(join(cwd, "skills"))).toBe(false);
     expect(existsSync(join(cwd, ".cursor/rules/openwrt-mcp.mdc"))).toBe(true);
     expect(await readlink(join(cwd, "CLAUDE.md"))).toBe("AGENTS.md");
@@ -115,9 +134,7 @@ describe("11-agent-files target-aware output", () => {
       "pr-review-sop",
     ]) {
       expect(existsSync(join(cwd, `.agents/skills/${skill}/SKILL.md`))).toBe(true);
-      expect(await readlink(join(cwd, `.claude/skills/${skill}`))).toBe(
-        `../../.agents/skills/${skill}`,
-      );
+      expect(await skillLink(cwd, skill)).toBe(`../../.agents/skills/${skill}`);
       // Resolves: Claude Code reads the same SKILL.md through the link.
       expect(existsSync(join(cwd, `.claude/skills/${skill}/SKILL.md`))).toBe(true);
     }
@@ -150,9 +167,7 @@ describe("11-agent-files target-aware output", () => {
       expect(followUps).toContain("git mv skills/foo-mcp .agents/skills/foo-mcp");
     }
     // Skills with no legacy copy are still stamped and linked.
-    expect(await readlink(join(cwd, ".claude/skills/pr-review-sop"))).toBe(
-      "../../.agents/skills/pr-review-sop",
-    );
+    expect(await skillLink(cwd, "pr-review-sop")).toBe("../../.agents/skills/pr-review-sop");
   });
 
   it("creates only missing skill links on re-run and keeps a divergent one", async () => {

@@ -16,7 +16,7 @@
 import { existsSync, lstatSync, readlinkSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
-import { checkAgentsChains } from "./lib/agents-chain.mjs";
+import { checkAgentsChains, describeChains } from "./lib/agents-chain.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -147,11 +147,8 @@ if (failures.length > 0) {
   for (const failure of failures) console.error(`  • ${failure}\n`);
   process.exit(1);
 }
-const largest = agentsChains.chains.reduce(
-  (a, b) => (b.bytes > (a?.bytes ?? -1) ? b : a),
-  undefined,
-);
+for (const note of agentsChains.notes) console.log(`note: ${note}`);
 console.log(
   `docs integrity check passed (${markdownFiles.length} markdown files scanned; ` +
-    `${agentsChains.chains.length} AGENTS.md chain(s), largest ${largest ? `${largest.bytes} B (${largest.files.join(" + ")})` : "none"}).`,
+    `${describeChains(agentsChains)}).`,
 );
