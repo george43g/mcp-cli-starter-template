@@ -50,8 +50,9 @@ example-repo/                           # the cloned tool, one git repo
 │   ├── biome-config/               # single biome.json source
 │   └── vitest-config/              # shared preset
 ├── docs/                           # Mintlify config + MDX + reference markdown
-├── skills/example-repo/                # project-specific skill (rewritten by AI)
-├── .claude/skills/                 # mcp-tool-author + pr-review-sop (canonical)
+├── .agents/skills/                 # every repo skill: example-repo (rewritten by AI),
+│                                   #   cli-artifacts, workspace-scaffolding, mcp-tool-author, pr-review-sop
+├── .claude/skills/<name>           # relative symlink per skill → ../../.agents/skills/<name>
 ├── .github/workflows/              # ci + release (disabled) + readme-check + screenshots
 ├── .mcp.json / opencode.json / .cursor/mcp.json   # dev MCP proxy entries
 ├── AGENTS.md                       # canonical agent guide
@@ -239,12 +240,14 @@ Manual retrofit: even if you don't adopt Mintlify, the **public-style README** w
 
 - `AGENTS.md` — canonical agent guide (~180-line file with stack, commands, env layout, MCP best practices, watchdog thresholds, lifecycle, debugging, permissions, guardrails, troubleshooting).
 - `CLAUDE.md` — a **symlink** to `AGENTS.md`. Editing either updates both. No `.cursorrules` is written: Cursor reads `AGENTS.md` and `.cursor/rules/*.mdc` (dropped 2026-09-21).
-- `.mcp.json`, `opencode.json`, `.cursor/mcp.json` — dev MCP proxy entries using **relative paths** (the static template lesson: absolute paths break when the repo gets cloned to a new location).
+- `.mcp.json`, `opencode.json`, `.cursor/mcp.json`, `.codex/config.toml` — dev MCP proxy entries using **relative paths** (the static template lesson: absolute paths break when the repo gets cloned to a new location).
 - `.cursor/rules/example-repo.mdc` — Cursor rules file pointing at AGENTS.md.
 - `.claude/settings.local.json` — permissions allowlist for read-only Bash + pnpm/git/gh + Context7 MCP + the dev MCP server.
-- `.claude/skills/mcp-tool-author/SKILL.md` — checklist for adding a new MCP tool (8 steps).
-- `.claude/skills/pr-review-sop/SKILL.md` — PR review SOP (security audit, CI checks, conventional commits).
-- `skills/example-repo/SKILL.md` — project-specific skill scaffold with top-comment instructions for the AI to rewrite once the tool exists.
+- `.agents/skills/mcp-tool-author/SKILL.md` — checklist for adding a new MCP tool (8 steps).
+- `.agents/skills/pr-review-sop/SKILL.md` — PR review SOP (security audit, CI checks, conventional commits).
+- `.agents/skills/example-repo/SKILL.md` — project-specific skill scaffold with top-comment instructions for the AI to rewrite once the tool exists.
+- `.agents/skills/{cli-artifacts,workspace-scaffolding}/` — portable workspace skills.
+- `.claude/skills/<name>` — one relative symlink per skill, `../../.agents/skills/<name>`, created at stamp time (Claude Code reads only `.claude/skills`; Codex, opencode and Cursor read `.agents/skills`). In an existing repo a skill still at a legacy path (`.claude/skills/<name>/` real directory, or `skills/<name>/`) is left in place and reported; move it with `git mv` and run `link-repo-skills --apply`.
 - `skills.md` — root index.
 - `.github/PULL_REQUEST_TEMPLATE.md` + `.github/ISSUE_TEMPLATE/{bug,feature}.md`.
 
@@ -432,7 +435,7 @@ If you're retrofitting BY HAND (not via the scaffolder), apply rules in this ord
 
 ## What this skill is NOT for
 
-- **Adding a single tool to an existing MCP server**: use `mcp-tool-author` (lives in `.claude/skills/mcp-tool-author/SKILL.md`).
+- **Adding a single tool to an existing MCP server**: use `mcp-tool-author` (lives in `.agents/skills/mcp-tool-author/SKILL.md`).
 - **Reviewing PRs**: use `pr-review-sop`.
 - **Routine debugging** of a tool that's already production-grade.
 

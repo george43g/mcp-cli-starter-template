@@ -6,11 +6,15 @@
  *   - CLAUDE.md (symlink → AGENTS.md)
  *   - .mcp.json, opencode.json, .cursor/mcp.json (dev-MCP entries — relative paths)
  *   - .cursor/rules/example-repo.mdc (Cursor rules pointer)
- *   - .claude/settings.local.json + .claude/skills/{mcp-tool-author,pr-review-sop}/
- *   - skills/example-repo/SKILL.md, portable workspace skills, skills.md
+ *   - .codex/config.toml (Codex's project MCP config, same servers as .mcp.json)
+ *   - .claude/settings.local.json
+ *   - .agents/skills/{example-repo,cli-artifacts,workspace-scaffolding,
+ *     mcp-tool-author,pr-review-sop}/ + skills.md
+ *   - .claude/skills/<name> → ../../.agents/skills/<name>, one link per skill
+ *     (skill-links.ts), so Claude Code and every other tool read one copy
  *   - .github/PULL_REQUEST_TEMPLATE.md + .github/ISSUE_TEMPLATE/{bug,feature}.md
  *
- * Path-level substitution: paths like `skills/example-repo/SKILL.md` and
+ * Path-level substitution: paths like `.agents/skills/example-repo/SKILL.md` and
  * `.cursor/rules/example-repo.mdc` get resolved at write time (portPackage now
  * substitutes both content AND path).
  *
@@ -28,6 +32,19 @@ import {
 } from "../../core/migration.js";
 import { portPackage } from "../../core/package-port.js";
 import { requireRepoName } from "../../core/target-inspection.js";
+import { nameUpperOf, substitute } from "../../core/templating.js";
+import { TEMPLATES } from "../../generated/templates.js";
+import {
+  AGENTS_SKILLS_DIR,
+  findLegacySkill,
+  type LegacySkill,
+  legacyFollowUp,
+  linkSkills,
+  refusedFollowUp,
+  skillNamesIn,
+} from "./skill-links.js";
+
+const LIB_PREFIX = "11-agent-files/lib/";
 
 const SKELETON_FOLLOW_UP =
   "Generated project skills are skeletons; complete them with the project's real tools and workflows.";
@@ -41,9 +58,23 @@ export default class AgentFilesMigration extends Migration {
   async apply(ctx: MigrationContext): Promise<MigrationResult> {
     const fullTemplate =
       ctx.mode !== "existing" || ctx.target.starterLayout || bootstrapsBareTree(ctx);
+    const name = requireRepoName(ctx.config);
+    const skillNames = fullTemplate ? templateSkillNames(name) : [name];
+    const legacy: LegacySkill[] = [];
+    for (const skill of skillNames) {
+      const found = await findLegacySkill(ctx, skill);
+      if (found) legacy.push(found);
+    }
+    const legacyNames = new Set(legacy.map((s) => s.name));
+    const skipLegacy = (targetPath: string) =>
+      skillNamesIn([targetPath]).some((skill) => legacyNames.has(skill));
+
     const templateResult = fullTemplate
-      ? await portPackage(ctx, { pkgDir: "", libPrefix: "11-agent-files/lib/" })
-      : await writeMinimalAgentFiles(ctx);
+      ? await portPackage(ctx, { pkgDir: "", libPrefix: LIB_PREFIX, skip: skipLegacy })
+      : await writeMinimalAgentFiles(
+          ctx,
+          legacy.find((s) => s.name === name),
+        );
 
     // Create the CLAUDE.md symlink pointing at AGENTS.md.
     const symlinkChanged: string[] = [];
@@ -52,24 +83,34 @@ export default class AgentFilesMigration extends Migration {
     if (linkOutcome === "divergent-skipped") symlinkDivergent.push("CLAUDE.md");
     else if (linkOutcome !== "unchanged") symlinkChanged.push("CLAUDE.md");
 
+    const skillLinks = await linkSkills(
+      ctx,
+      skillNames.filter((skill) => !legacyNames.has(skill)),
+    );
+    symlinkChanged.push(...skillLinks.changed);
+    symlinkDivergent.push(...skillLinks.divergent);
+
     const allChanged = [...(templateResult.filesChanged ?? []), ...symlinkChanged];
     const allDivergent = [...(templateResult.filesDivergent ?? []), ...symlinkDivergent];
+    const skillFollowUps = [legacyFollowUp(legacy), refusedFollowUp(skillLinks.refused)].filter(
+      (line): line is string => line !== undefined,
+    );
     const notes = [
       ...(templateResult.notes ?? []),
-      ...(symlinkChanged.length ? [`symlink: ${symlinkChanged.join(", ")} → AGENTS.md`] : []),
+      ...(symlinkChanged.length ? [`symlinks: ${symlinkChanged.join(", ")}`] : []),
       ...(symlinkDivergent.length
         ? [`preserved divergent links/files: ${symlinkDivergent.join(", ")}`]
         : []),
     ];
 
-    if (allChanged.length === 0 && allDivergent.length === 0) {
+    if (allChanged.length === 0 && allDivergent.length === 0 && skillFollowUps.length === 0) {
       return { status: "noop" };
     }
 
     const result: MigrationResult = {
       status: templateResult.status === "noop" ? appliedStatus(ctx.dryRun) : templateResult.status,
       notes,
-      followUps: [...(templateResult.followUps ?? []), SKELETON_FOLLOW_UP],
+      followUps: [...(templateResult.followUps ?? []), SKELETON_FOLLOW_UP, ...skillFollowUps],
     };
     if (allChanged.length > 0) result.filesChanged = allChanged;
     if (allDivergent.length > 0) result.filesDivergent = allDivergent;
@@ -78,14 +119,26 @@ export default class AgentFilesMigration extends Migration {
   }
 }
 
-async function writeMinimalAgentFiles(ctx: MigrationContext): Promise<MigrationResult> {
+/** Skill directories the full template stamps, with the repo name substituted. */
+function templateSkillNames(name: string): string[] {
+  const paths = Object.keys(TEMPLATES)
+    .filter((key) => key.startsWith(`${LIB_PREFIX}${AGENTS_SKILLS_DIR}/`))
+    .map((key) => substitute(key.slice(LIB_PREFIX.length), { name, nameUpper: nameUpperOf(name) }));
+  return skillNamesIn(paths);
+}
+
+async function writeMinimalAgentFiles(
+  ctx: MigrationContext,
+  legacySkill: LegacySkill | undefined,
+): Promise<MigrationResult> {
   const name = requireRepoName(ctx.config);
-  const files: ReadonlyArray<readonly [string, string]> = [
+  const skillPath = `${legacySkill?.path ?? `${AGENTS_SKILLS_DIR}/${name}`}/SKILL.md`;
+  const files: Array<readonly [string, string]> = [
     ["AGENTS.md", renderMinimalAgents(ctx, name)],
     [`.cursor/rules/${name}.mdc`, renderMinimalCursorRule()],
-    [`skills/${name}/SKILL.md`, renderMinimalSkill(name)],
-    ["skills.md", renderMinimalSkillsIndex(name)],
+    ["skills.md", renderMinimalSkillsIndex(name, skillPath)],
   ];
+  if (!legacySkill) files.push([skillPath, renderMinimalSkill(name)]);
   const filesChanged: string[] = [];
   const filesDivergent: string[] = [];
   for (const [path, content] of files) {
@@ -206,10 +259,12 @@ TODO: Add the most useful failure modes and recovery commands.
 `;
 }
 
-function renderMinimalSkillsIndex(name: string): string {
+function renderMinimalSkillsIndex(name: string, skillPath: string): string {
   return `# Skills index
 
-- [\`${name}\`](skills/${name}/SKILL.md) — project skill skeleton; complete it with the real tools and workflows before relying on it.
+Repo skills live in \`.agents/skills/<name>/\`; Claude Code reads \`.claude/skills/<name>\`, a relative symlink to the same directory.
+
+- [\`${name}\`](${skillPath}) — project skill skeleton; complete it with the real tools and workflows before relying on it.
 `;
 }
 

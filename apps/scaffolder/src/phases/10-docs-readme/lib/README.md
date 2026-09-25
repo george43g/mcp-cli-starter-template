@@ -16,7 +16,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=24](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)](https://nodejs.org)
 
-[Install](#install) · [Tools](#tools) · [Connect from your editor](#one-click-install) · [Docs](#docs) · [Skill for AI agents](#install-the-companion-skill)
+[Install](#install) · [Tools](#tools) · [Connect from your editor](#one-click-install) · [Docs](#docs) · [Skill for AI agents](#the-companion-skill)
 
 <!-- Hero images: docs/screenshots/*.gif do not exist until the screenshots
 workflow (.github/workflows/screenshots.yml, or `mise run screenshots`) renders
@@ -124,17 +124,15 @@ The starter ships two demo tools plus a dev-only log inspector. Replace these wi
 | `noop` | Echo a string (optionally upper-cased). Demonstrates the Rust acceleration fallback path. | read-only, idempotent |
 | `get_logs` | **Dev-mode only** (`EXAMPLE_REPO_DEV=1`). Returns the last N lines from the in-memory ring buffer. | read-only |
 
-## Install the companion skill
+## The companion skill
 
-This repo ships with a Claude skill that teaches an AI agent how to use your tool end-to-end. The skill lives at `skills/example-repo/SKILL.md` and is meant to be rewritten by you (or by the AI itself, after first reading the tool) to document the tool's actual behavior.
+This repo ships an agent skill that teaches an AI agent how to use your tool end-to-end. It lives at `.agents/skills/example-repo/SKILL.md` and is meant to be rewritten by you (or by the AI itself, after first reading the tool) to document the tool's actual behavior.
+
+Inside this repo every agent already sees it: Codex, opencode and Cursor read `.agents/skills/`, and Claude Code reads `.claude/skills/example-repo`, a tracked relative symlink to the same directory. To use it from other repos too, link it into your user skills directory:
 
 ```bash
-# Copy the skill into your global Claude skills dir
-mkdir -p ~/.claude/skills/example-repo
-cp skills/example-repo/SKILL.md ~/.claude/skills/example-repo/
-
-# Or symlink (so updates from this repo show up automatically)
-ln -s "$(pwd)/skills/example-repo/SKILL.md" ~/.claude/skills/example-repo/SKILL.md
+ln -s "$(pwd)/.agents/skills/example-repo" ~/.claude/skills/example-repo
+ln -s "$(pwd)/.agents/skills/example-repo" ~/.agents/skills/example-repo
 ```
 
 ## Docs
@@ -150,9 +148,9 @@ ln -s "$(pwd)/skills/example-repo/SKILL.md" ~/.claude/skills/example-repo/SKILL.
 | [`docs/RELEASE.md`](docs/RELEASE.md) | Enabling semantic-release for npm publish |
 | [`docs/NATIVE_SCAFFOLDERS.md`](docs/NATIVE_SCAFFOLDERS.md) | When to use official generators for new leaf workspaces |
 
-The repo-level `skills/cli-artifacts/SKILL.md` preserves usage docs,
+The repo-level `.agents/skills/cli-artifacts/SKILL.md` preserves usage docs,
 completions, and manpage generation if this MCP app is replaced or removed.
-`skills/workspace-scaffolding/SKILL.md` guides native generator selection for
+`.agents/skills/workspace-scaffolding/SKILL.md` guides native generator selection for
 new apps and packages.
 
 ## What's inside (template author's eyes only)
@@ -187,7 +185,7 @@ packages/
 mise.toml                   toolchain pins (node, pnpm) + named tasks
 .github/workflows/          ci.yml, release.yml (disabled by default), readme-check.yml, screenshots.yml
 docs/                       Mintlify-ready (docs.json + MDX pages)
-skills/example-repo/             Repo-installable companion skill (rewrite at scaffold time)
+.agents/skills/example-repo/             Repo-installable companion skill (rewrite at scaffold time)
 ```
 
 ## License

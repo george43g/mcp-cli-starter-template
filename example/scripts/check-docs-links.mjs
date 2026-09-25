@@ -6,6 +6,8 @@
  * 1. Relative links in the agent/docs surfaces resolve to real files.
  * 2. CLAUDE.md stays a symlink pointing at AGENTS.md.
  * 3. Every top-level docs/*.md has a row in the docs index (docs/README.md).
+ * 4. Every root-to-leaf AGENTS.md chain fits Codex's combined budget with
+ *    headroom (scripts/lib/agents-chain.mjs).
  *
  * Wired into `pnpm verify` and CI so a broken link, a severed agent-file
  * symlink, or a doc missing from the index fails the build. Node builtins
@@ -15,6 +17,7 @@
 import { existsSync, lstatSync, readlinkSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { checkAgentsChains } from "./lib/agents-chain.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -29,7 +32,7 @@ const SCAN_ROOTS = [
   "llms-install.md",
   "skills.md",
   "docs",
-  "skills",
+  ".agents/skills",
 ];
 
 /** Symlink → required target, both relative to repo root. */
@@ -130,10 +133,16 @@ for (const fileAbs of [...new Set(markdownFiles)]) {
 }
 checkSymlinks();
 await checkIndexCoverage();
+const agentsChains = checkAgentsChains(root);
+failures.push(...agentsChains.failures);
 
 if (failures.length > 0) {
   console.error(`docs integrity check failed (${failures.length} problem(s)):\n`);
   for (const failure of failures) console.error(`  • ${failure}\n`);
   process.exit(1);
 }
-console.log(`docs integrity check passed (${markdownFiles.length} markdown files scanned).`);
+const largest = agentsChains.chains.reduce((a, b) => (b.bytes > (a?.bytes ?? -1) ? b : a), undefined);
+console.log(
+  `docs integrity check passed (${markdownFiles.length} markdown files scanned; ` +
+    `${agentsChains.chains.length} AGENTS.md chain(s), largest ${largest ? `${largest.bytes} B (${largest.files.join(" + ")})` : "none"}).`,
+);

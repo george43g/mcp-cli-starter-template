@@ -28,6 +28,8 @@ export interface PackagePortOptions {
   extraFiles?: Array<[string, string]>;
   /** Extra `<!-- if:flag -->` values on top of the defaults (see templateFlags). */
   flags?: Readonly<Record<string, boolean>>;
+  /** Target paths to leave unwritten (e.g. a skill already at a legacy path). */
+  skip?: (targetPath: string) => boolean;
   /** Last-step rewrite of one rendered file (target path, content). */
   transform?: (targetPath: string, content: string) => string;
   /**
@@ -90,6 +92,7 @@ export async function portPackage(
     // legitimately contain `example-repo` markers (e.g. `skills/example-repo/SKILL.md`
     // → `skills/foo/SKILL.md`); content substitution is the standard case.
     const targetPath = substitute(`${prefix}${rel}`, vars);
+    if (opts.skip?.(targetPath)) continue;
     // Published packages come from the registry, always. substitute() has
     // already shielded their names from scope rewriting, so this only has to
     // swap the `workspace:*` protocol for the real range — and drop tsconfig

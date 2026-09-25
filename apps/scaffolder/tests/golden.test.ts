@@ -81,6 +81,11 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   // packages/ — it consumes the kits from npm — so it has no publishable set
   // to pack, and a stamped copy would name packages that do not exist there.
   ["10-docs-readme/lib/scripts/mcp-apps.mjs", "scripts/mcp-apps.mjs"],
+  // Generic for the same reason: the skill-layout gate and the AGENTS.md chain
+  // budget read only the tree they run in. check-docs-links.mjs (exempt above)
+  // imports the chain module, so both repos enforce one implementation.
+  ["10-docs-readme/lib/scripts/check-skills.mjs", "scripts/check-skills.mjs"],
+  ["10-docs-readme/lib/scripts/lib/agents-chain.mjs", "scripts/lib/agents-chain.mjs"],
   ["10-docs-readme/lib/scripts/for-each-mcp-app.mjs", "scripts/for-each-mcp-app.mjs"],
   ["10-docs-readme/lib/scripts/lib/mcp-apps.mjs", "scripts/lib/mcp-apps.mjs"],
   ["11-agent-files/lib", "."],
@@ -123,7 +128,9 @@ const EXEMPT_LIB_PATHS: ReadonlySet<string> = new Set([
   // AGENTS.md at the repo root describes the SCAFFOLDER (the meta-tool);
   // the lib copy is the CLONED-TOOL's agent guide with example-repo placeholders.
   // Different content by design.
-  "11-agent-files/lib/AGENTS.md",
+  // Stored as AGENTS.md.tmpl so no tool loads the template as live
+  // instructions (DEFERRED #51); build-templates emits it as AGENTS.md.
+  "11-agent-files/lib/AGENTS.md.tmpl",
   // The meta-repo's MCP client configs follow the dotfiles convention
   // (.mcp.json is canonical; .cursor/mcp.json symlinks to it; opencode.json's
   // mcp key is rendered from it — see the root AGENTS.md "MCP servers"

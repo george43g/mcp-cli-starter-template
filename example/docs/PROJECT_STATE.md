@@ -64,7 +64,7 @@ same set on ubuntu + macos):
 1. **Trim.** Delete surfaces you won't ship — each is self-contained (see
    [ARCHITECTURE.md](ARCHITECTURE.md)).
 2. **Add your first tool.** Follow
-   [`.claude/skills/mcp-tool-author/SKILL.md`](../.claude/skills/mcp-tool-author/SKILL.md):
+   [`.agents/skills/mcp-tool-author/SKILL.md`](../.agents/skills/mcp-tool-author/SKILL.md):
    define the Zod schema, register it, wire its timeout, add a stress case.
 3. **Rename if needed.** The bin/scope are already `example` / `@george43g`;
    adjust further in `package.json` and the workspace.

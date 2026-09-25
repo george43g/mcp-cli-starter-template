@@ -126,8 +126,12 @@ describe("migrate command safety defaults", () => {
       join(app, "completions", "fresh-tool.fish"),
       join(app, "man", "fresh-tool.1"),
       join(app, "docs", "cli", "index.md"),
-      join(cwd, "skills", "cli-artifacts", "SKILL.md"),
-      join(cwd, "skills", "workspace-scaffolding", "SKILL.md"),
+      join(cwd, ".agents", "skills", "cli-artifacts", "SKILL.md"),
+      join(cwd, ".agents", "skills", "workspace-scaffolding", "SKILL.md"),
+      // Claude Code reads the same skills through the per-skill link.
+      join(cwd, ".claude", "skills", "cli-artifacts", "SKILL.md"),
+      join(cwd, ".claude", "skills", "fresh-tool", "SKILL.md"),
+      join(cwd, ".codex", "config.toml"),
       join(cwd, "docs", "NATIVE_SCAFFOLDERS.md"),
     ]) {
       expect(existsSync(path), `expected generated path ${path}`).toBe(true);

@@ -84,7 +84,7 @@ describe("portPackage", () => {
   });
 
   it("substitutes example-repo placeholders in PATHS too", async () => {
-    // 11-agent-files ships skills/example-repo/SKILL.md as a lib path — the
+    // 11-agent-files ships .agents/skills/example-repo/SKILL.md as a lib path — the
     // example-repo in the PATH (not just content) must be substituted.
     const { cwd, ctx } = await makeTestCtx({ name: "foo" });
     cleanup.push(() => rm(cwd, { recursive: true, force: true }));
@@ -95,8 +95,8 @@ describe("portPackage", () => {
     });
 
     expect(result.status).toBe("applied");
-    expect(result.filesChanged).toContain("skills/foo/SKILL.md");
-    expect(result.filesChanged).not.toContain("skills/example-repo/SKILL.md");
+    expect(result.filesChanged).toContain(".agents/skills/foo/SKILL.md");
+    expect(result.filesChanged).not.toContain(".agents/skills/example-repo/SKILL.md");
   });
 
   it("substitutes @george43g when a different scope is set", async () => {

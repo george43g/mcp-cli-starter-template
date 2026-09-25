@@ -85,9 +85,9 @@ Per-app:
 
 Portable repo skills:
 
-- `skills/cli-artifacts/SKILL.md` keeps the CLI artifact pipeline usable if
+- `.agents/skills/cli-artifacts/SKILL.md` keeps the CLI artifact pipeline usable if
   this MCP app is renamed, replaced, or removed.
-- `skills/workspace-scaffolding/SKILL.md` explains when to use an official
+- `.agents/skills/workspace-scaffolding/SKILL.md` explains when to use an official
   native generator for a new leaf workspace and when to keep the repo template.
 
 ## Env layout (Vite-style precedence)

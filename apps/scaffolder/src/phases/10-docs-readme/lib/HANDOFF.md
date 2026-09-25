@@ -31,7 +31,7 @@ example-repo mcp   # run the built MCP server over stdio
 
 1. **Trim** the surfaces you won't ship (each is self-contained).
 2. **Add your first tool** — see
-   [the mcp-tool-author skill](.claude/skills/mcp-tool-author/SKILL.md), then
+   [the mcp-tool-author skill](.agents/skills/mcp-tool-author/SKILL.md), then
    re-run `pnpm stress`.
 3. **Enable the release pipeline** when you're ready to publish
    ([docs/RELEASE.md](docs/RELEASE.md)); it's present but disabled by default.
