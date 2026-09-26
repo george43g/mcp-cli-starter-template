@@ -2733,115 +2733,65 @@ tasks. Only this repo was written to; peer repos were read-only throughout.
 Nothing mid-flight. Acts on either Blocked-on-you item, peer evidence, or DEFERRED
 #49/#50/#54's triggers.
 
-## Checkpoint · mcp-starter-template · 2026-09-23
+## Checkpoint · mcp-starter-template · 2026-09-26
 
-Where this block and a conversation summary disagree, **this block is correct**.
+Where this block and a conversation summary disagree, this block is correct.
 
 ### State
-
-`main` at `a3fea01`, clean, level with origin, no open PRs, no worktrees, nothing
-mid-flight. Both of George's 2026-09-21 decisions are executed and closed.
+Idle at a safe point for the fleet relaunch (executive, 2026-09-26 20:05). `main` is level with origin at `17ff2c4`, and the tree is clean. There are no worktrees, no open PRs and nothing mid-flight.
 
 ### Constraints
-
-George, 2026-09-21, asked one question at a time (recorded with reasoning in
-DEFERRED #51): **(1) skip** the `delegating-work` pointer line in `AGENTS.md` —
-so do not add it; **(2) drop `.cursorrules` everywhere** — so do not reinstate it.
-Both are standing, not one-off.
+- George, 2026-09-23: *"the mcp naming is a vestigial leftover … by no means are we LIMITED to that … we can include all kinds of apps that do all kinds of things"*. This is now an AGENTS.md convention.
+- George, 2026-09-24: *"yes skip when no mcp apps, and drop the forced suffix"*.
+- George, 2026-09-24: the dev-tool and IDE setup is *"strictly the domain of *dotfiles* agent"*. No IDE or machine-config changes from this repo.
+- George, 2026-09-24: keep the Windows CI job permanently, in this repo only (not the template; generated repos are private and billed). TypeScript project references: option A, fix every test type error and gate on the full `tsc -b`.
+- George, 2026-09-25: approved the tui-kit patch release (published as 0.5.2 via PR #131).
+- Group asks go on `ag-all` with @mentions. The first one named owns the ask (executive, 2026-09-24).
 
 ### Done
-
-- `.cursorrules` removed from this repo and from scaffolded output (`d8608e6`).
-  `CLAUDE.md` → `AGENTS.md` untouched and still enforced.
-- CI gates no longer select by name (`52a5386`): apps are chosen by declaring
-  `@george43g/mcp-kit`, and an empty set exits 1. Pack coverage 2 → 6 —
-  `robustness`, `secret-store`, `mcp-kit` had been publishing with no tarball
-  dry-run.
-- `.codex/config.toml` tracked again and proven live by inversion (`6be387b`):
-  with the file moved aside both project servers vanish from `codex mcp list`;
-  restored, they return. That refuted `73c6419`'s "Codex never reads it".
-- Release-token guard split into `release-tokens.yml` so it carries the `edited`
-  trigger (`cab3e81`); DEFERRED #47 closed by the same measurement.
-- DEFERRED #51–#54 written; browser-tab-mcp's `-mcp` suffix query answered with
-  verified `file:line` and a priced pick.
+- #125 `d188b28`: add-mcp-app creates missing private workspace packages and refuses when an existing one is too old.
+- #126 `276e198`: MCP CI steps skip when a repo has no mcp-kit app.
+- #127 `3e75a6d`: app names are verbatim (no forced `-mcp`), and a fresh root package is `<name>-workspace`.
+- #128 `7883537`: five generated-app template defects (Windows temp dir, tool titles, Tools/Bins tables, native build script).
+- #129 `3c15dc5`: Windows-safe scaffolder and scripts, plus a permanent windows-latest CI job.
+- #130 `5a65086`: recall's retrofit findings 1–6, a stale-build guard, Biome pinned to 2.5.14.
+- #131 `34d5841`: tui-kit ships the `_resetDetectNerdFontCache` declaration. Published as tui-kit 0.5.2 (`npm view`, 2026-09-25).
+- #132 `1dba646`: one `tsc -b` solution, 46 test type errors fixed, `check:test-projects`. The release run printed "no relevant changes" for all five kits.
+- #133 `5cf5a67`: `check:usage` uses the mise-pinned `usage` version.
+- #134 `17ff2c4`: Codex parity. `link-repo-skills --check`: 6 linked, 0 problems. `check-instruction-chain`: max 24,909 of 32,768.
+- Broadcast to consumers on `ag-all` (2026-09-25). ACKs so far: recall and life-stack.
+- The dev-tooling research was handed to dotfiles and executive (`7e6bbd3`). dotfiles installed the LSP servers (dotfiles `b3a6e97`).
 
 ### Open
-
-- `mcp-suffix-optional` · mcp-starter-template — make the forced `-mcp` suffix
-  optional. Evidence still open, measured 2026-09-23: `apps/scaffolder/src/core/config.ts:29`
-  still throws on a name ending in `-mcp`. Priced in DEFERRED.md:4183.
-- `gate-every-app` · mcp-starter-template — #52's residue: the rule is "at least
-  one app, and every marked app", not "every app-like workspace", so a partially
-  retrofitted server is unselected and now invisibly. Evidence: DEFERRED.md:4163,
-  never attempted; needs George's call on how `apps/rust-accel` is exempted.
-- `robustness-prunelogs-flake` · mcp-starter-template — DEFERRED.md:4243. Evidence:
-  failed once on CI and passed on re-run with a one-line diff; deliberately not
-  fixed here, since a commit touching `packages/robustness/` is read as a release
-  for that package.
-- `template-guide-tmpl` · mcp-starter-template — rename `lib/AGENTS.md` to a name
-  no tool loads. Evidence: DEFERRED.md:4063, "Recommended, not started".
-- `handoff-checkpoint-adopt` · mcp-starter-template — every dated entry BELOW this
-  block is the old stacked format. Evidence measured 2026-09-23: `HANDOFF.md` was
-  2,734 lines with zero `## Checkpoint ·` blocks and no `handoff-archive/` before
-  this write. `checkpoint adopt` is the owner's one-off call, not mine to take.
+- `stamp-check-test-projects` · mcp-starter-template: generated repos don't get `check:test-projects` yet. Never attempted.
+- `opencode-mise-parity` · mcp-starter-template: the generated `opencode.json` lacks the `mise` server that `.mcp.json` has (implementer's report, #134). Never attempted.
+- `consumer-update-acks` · mcp-starter-template: 2 of 6 have ACKed the 2026-09-25 `ag-all` broadcast. Still waiting on browser-tab-mcp, eqstack, up-bank-mcp and wm-stack.
+- `template-agent-tooling` · mcp-starter-template: stamping the Biome hook and the LSP plugin into generated repos waits for dotfiles to say its convention has settled (dotfiles, 2026-09-24: "Don't stamp 2 or 3 … yet").
+- Deferred, each with its trigger: #54 pruneLogs flake, #55 POSIX-only root scripts, #56 pnpm overrides move for pnpm 11.
 
 ### Corrections
-
-- **The premise `.cursorrules` was decided on is false.** It was put to George as
-  "Cursor's docs do not list it", flagged documented-not-probed. Cursor's help site
-  still documents it in the future tense, and Zed and Cline read it. The surviving
-  justification is narrower and holds: it was a symlink to `AGENTS.md`, so a
-  redundant alias that CI *required*. Full verified/unknown split in
-  `docs/PROJECT_STATE.md` under the docs-check bullet.
-- Its footprint was first reported as 33 mentions; it is 36 lines across 22 files.
+- The `resolveSecret` references result (17) holds only when the repo is opened by its real path. Under a symlinked root such as `/var/…` it is 15. Recorded in AGENTS.md (`58d1fa7`).
+- recall's finding 7 ("pnpm ignores package.json overrides") is false for pnpm 10.29.3, and recall retracted it. It is recorded as #56 (pnpm-11 prep), not a defect.
+- Keeping `apps/scaffolder/src/phases/tsconfig.json` was my call, not George's. I misattributed it once and corrected it with the implementer.
 
 ### Traps
-
-- **`pnpm --filter` matching nothing exits 0**, so any gate built on a filter passes
-  green once its filter stops matching. `--fail-if-no-match` is accepted and
-  silently ignored on 10.29.3. Count matches instead:
-  `pnpm --filter <pat> list --depth -1 --json`.
-- **A green local `pnpm verify` does not mean a package's tests ran.** Turbo
-  replayed a cached `robustness` result in mine, which is why CI caught a failure I
-  had not. Read the turbo line before concluding a CI failure is or is not yours.
-- **A drill against a script that resolves its own root must copy the script into
-  the fixture.** Mine ran the new guard by absolute path and reported a PASS while
-  measuring the real repo (`scripts/lib/mcp-apps.mjs:36` uses `import.meta.dirname`).
-- **A subagent's counter-argument can be right on the fact and wrong on the
-  conclusion** — twice this session. Verify the conclusion separately from the
-  finding; both times the finding was valuable and the conclusion overstated.
+- `stripInternal` matches the literal tag text anywhere in a doc comment, prose included.
+- On Windows, compare paths with `realpathSync.native`: 8.3 short names (`RUNNER~1`) differ from the long form.
+- The Windows job needs `timeout-minutes` and `shell: bash`. Under pwsh, `pnpm.cmd` once hung 5 hours on "Terminate batch job (Y/N)?".
+- `gh pr checks --watch` returns immediately on the previous run's state after a push. Wait for `gh run list` to show the new head SHA first.
+- The global `mcp-scaffold` runs this checkout's `apps/scaffolder/dist`. Rebuild it after merging scaffolder changes, or the stale-build guard refuses to run.
 
 ### Tree
-
-`/Users/george/repos/mcp-cli-starter-template`, branch `main`, level with
-`origin/main` at `a3fea01` before this checkpoint's own commit. Clean, no dirty
-paths, no worktrees, no background tasks. Only this repo was written to all
-session; peer repos stayed read-only.
+`~/repos/mcp-cli-starter-template` on `main`, level with `origin/main` at `17ff2c4` before this commit. Clean, no worktrees, no open PRs.
 
 ### Blocked on you
-
-- `mcp-suffix-optional` — recommended (b), make it optional. Half its cost vanished
-  with `52a5386`, since CI no longer selects on the name.
-- `gate-every-app` — should an `apps/*` workspace without the mcp-kit marker fail
-  the build, with `rust-accel` exempted by hand or by another affirmative fact?
-
-### Elsewhere
-
-- `tmux-control-app` · browser-tab-mcp — holds their plan (PR #194); told the
-  selection fix has shipped and is theirs to adopt, and that the suffix decision is
-  George's alone.
-- `instruction-conventions` · dotfiles — withdrew their `delegating-work` pointer
-  ask 2026-09-22; verified no such line exists here, so nothing to undo.
+Nothing.
 
 ### Resume
-
-Nothing mid-flight and nothing queued. Act only on: George answering either
-Blocked-on-you item; peer evidence arriving; or a trigger firing for DEFERRED
-#49/#50/#54. If George takes `mcp-suffix-optional`, start at DEFERRED.md:4183 —
-the four costs are priced there and item 2 (stop deriving the command name by
-regex-stripping the package name) is worth doing even if the rest is declined.
+Nothing mid-flight. On restart, check `ag-in-mcp-cli-starter-template` and `ag-all` for consumer ACKs and peer messages. The next unstarted work is `opencode-mise-parity`, then `stamp-check-test-projects`.
 
 ## History
 
 <!-- BEGIN checkpoint-history (generated; do not edit) -->
+- 2026-09-23 · mcp-starter-template · `main` at `a3fea01`, clean, level with origin, no open PRs, no worktrees, nothing · open: `mcp-suffix-optional`, `gate-every-app`, `robustness-prunelogs-flake`, `template-guide-tmpl`, `handoff-checkpoint-adopt` · [full text](handoff-archive/mcp-starter-template/2026-09-23.md)
 <!-- END checkpoint-history -->
