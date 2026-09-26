@@ -10,6 +10,11 @@
         "MCP_DEV_ENTRY": "apps/example/src/index.ts",
         "MCP_DEV_WATCH_DIR": "apps/example/src"
       }
+    },
+    "mise": {
+      "type": "local",
+      "command": ["mise", "mcp"],
+      "enabled": true
     }
   }
 }

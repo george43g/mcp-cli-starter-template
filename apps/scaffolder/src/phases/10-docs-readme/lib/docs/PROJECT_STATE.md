@@ -58,13 +58,15 @@ don't need.
 The scaffold ships with its own proof; re-run it after any change (CI runs the
 same set on ubuntu + macos):
 
-- `pnpm verify` — lint + docs integrity + typecheck + tests + build (the CI shape).
+- `pnpm verify` — lint + docs integrity + test-project coverage + typecheck + tests + build (the CI shape).
 - `pnpm test` / `pnpm test:no-native` — unit + integration, native and
   TS-fallback paths.
 - `pnpm stress` — a 15-assertion lifecycle harness (handshake, health, timeout,
   watchdog kill, HTTP auth + session roundtrip).
 - `pnpm check:docs` — this doc, the index, the relative links, and the
   agent-file symlinks stay honest.
+- `pnpm check:test-projects` — every workspace test file is reached by the
+  root TypeScript solution that `pnpm typecheck` builds.
 
 ## Next steps
 

@@ -110,8 +110,9 @@ const ROOT_PACKAGE_JSON = (name: string) =>
         // where the repo-scoped-skills skill is not installed (CI, a fresh
         // clone). Ships via 10-docs-readme's scripts/.
         "check:skills": "node scripts/check-skills.mjs",
+        "check:test-projects": "node scripts/check-test-projects.mjs",
         verify:
-          "pnpm lint && pnpm check:docs && pnpm check:skills && pnpm check:stdout-purity && pnpm typecheck && pnpm test && pnpm build",
+          "pnpm lint && pnpm check:docs && pnpm check:skills && pnpm check:stdout-purity && pnpm check:test-projects && pnpm typecheck && pnpm test && pnpm build",
         clean: "turbo run clean && rm -rf node_modules .turbo coverage",
       },
       devDependencies: {

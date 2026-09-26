@@ -84,6 +84,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm check:stdout-purity
 
+      - name: Test files belong to typechecked projects
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm check:test-projects
+
       - name: Typecheck
         if: matrix.os == 'ubuntu-latest'
         run: pnpm typecheck

@@ -179,6 +179,19 @@ describe("init names the app verbatim", () => {
     const dev = mcp.mcpServers[`${name}-dev`];
     expect(dev, JSON.stringify(Object.keys(mcp.mcpServers))).toBeDefined();
     expect(dev.env.MCP_DEV_ENTRY).toBe(`apps/${name}/src/index.ts`);
+    const opencode = JSON.parse(await readFile(join(cwd, "opencode.json"), "utf8"));
+    expect(opencode.mcp.mise).toEqual({
+      type: "local",
+      command: [mcp.mcpServers.mise.command, ...mcp.mcpServers.mise.args],
+      enabled: true,
+    });
+
+    const rootPkg = JSON.parse(await readFile(join(cwd, "package.json"), "utf8"));
+    expect(rootPkg.scripts["check:test-projects"]).toBe("node scripts/check-test-projects.mjs");
+    expect(rootPkg.scripts.verify).toContain("pnpm check:test-projects && pnpm typecheck");
+    expect(existsSync(join(cwd, "scripts", "check-test-projects.mjs"))).toBe(true);
+    const ci = await readFile(join(cwd, ".github/workflows/ci.yml"), "utf8");
+    expect(ci).toContain("run: pnpm check:test-projects");
   });
 });
 

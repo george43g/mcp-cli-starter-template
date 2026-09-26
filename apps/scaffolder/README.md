@@ -209,6 +209,11 @@ references `packages/shared-types`. `add` appends the new app the same way.
 The kits come from npm, so the template's references to their workspace
 directories are dropped at write time.
 
+Generated repos also get `scripts/check-test-projects.mjs`. Their `pnpm verify`
+and Ubuntu CI run it before `tsc -b`, so a new test file cannot silently fall
+outside the root solution. The agent-file phase includes the `mise mcp` server
+in both `.mcp.json` and OpenCode's `opencode.json`.
+
 ## Diff-safe retrofit
 
 `apply` defaults to **dry-run** and a safe target profile. Generic repositories
