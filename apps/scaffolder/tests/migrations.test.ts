@@ -106,6 +106,7 @@ describe("01-bootstrap/m4-monorepo", () => {
         "check:docs",
         "check:skills",
         "check:stdout-purity",
+        "check:test-projects",
         "clean",
         "dev",
         "format",
@@ -122,8 +123,9 @@ describe("01-bootstrap/m4-monorepo", () => {
     expect(pkg.scripts["check:docs"]).toBe("node scripts/check-docs-links.mjs");
     expect(pkg.scripts["check:stdout-purity"]).toBe("node scripts/check-stdout-purity.mjs");
     expect(pkg.scripts["check:skills"]).toBe("node scripts/check-skills.mjs");
+    expect(pkg.scripts["check:test-projects"]).toBe("node scripts/check-test-projects.mjs");
     expect(pkg.scripts.verify).toMatch(
-      /lint.*check:docs.*check:skills.*check:stdout-purity.*typecheck.*test.*build/,
+      /lint.*check:docs.*check:skills.*check:stdout-purity.*check:test-projects.*typecheck.*test.*build/,
     );
 
     // Root tsconfig resolution requires the workspace config package to be linked here.

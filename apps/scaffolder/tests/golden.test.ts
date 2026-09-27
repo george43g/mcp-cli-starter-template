@@ -85,6 +85,9 @@ const LIB_TO_CANONICAL: ReadonlyArray<readonly [string, string]> = [
   // budget read only the tree they run in. check-docs-links.mjs (exempt above)
   // imports the chain module, so both repos enforce one implementation.
   ["10-docs-readme/lib/scripts/check-skills.mjs", "scripts/check-skills.mjs"],
+  // TypeScript's --showConfig resolves the project graph; one generic guard
+  // checks it in both this repo and every generated repo.
+  ["10-docs-readme/lib/scripts/check-test-projects.mjs", "scripts/check-test-projects.mjs"],
   ["10-docs-readme/lib/scripts/lib/agents-chain.mjs", "scripts/lib/agents-chain.mjs"],
   ["10-docs-readme/lib/scripts/for-each-mcp-app.mjs", "scripts/for-each-mcp-app.mjs"],
   ["10-docs-readme/lib/scripts/lib/mcp-apps.mjs", "scripts/lib/mcp-apps.mjs"],
