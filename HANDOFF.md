@@ -2733,53 +2733,52 @@ tasks. Only this repo was written to; peer repos were read-only throughout.
 Nothing mid-flight. Acts on either Blocked-on-you item, peer evidence, or DEFERRED
 #49/#50/#54's triggers.
 
-## Checkpoint · mcp-starter-template · 2026-09-27
+## Checkpoint · mcp-starter-template · 2026-09-28
 
 Where this block and a conversation summary disagree, this block is correct.
 
 ### State
-The two unstarted handoff items are implemented in `0281321` on `codex/scaffold-output-parity`. Draft PR #135 is open. CI for that head was still running at 05:39 AEST; check the live PR before treating it as green.
+PR #135 is squash-merged. `main` is level with `origin/main` at `5577e03`; the merge's CI and README push workflows passed. No implementation or merge is mid-flight.
 
 ### Now
 
-- 2026-09-26T19:40Z Full 2026-09-27 checkpoint rotated and prior block archived; next commit/push HANDOFF.md plus archive, then inspect PR #135 checks for final head.
+- 2026-09-27T16:37Z PR #135 merged as 5577e03; main CI and README push checks passed; 2026-09-28 full checkpoint rotated. Next read back, commit and push HANDOFF.md plus archived 2026-09-27 block.
 
 ### Constraints
-- George, 2026-09-27: "Read your HANDOFF checkpoint and resume from its Resume line. Keep it current every turn (ctx self; checkpoint note)."
-- George, 2026-09-24: "yes skip when no mcp apps, and drop the forced suffix" (carried from the 2026-09-26 checkpoint).
-- George, 2026-09-24: the dev-tool and IDE setup is "strictly the domain of *dotfiles* agent" (carried from the 2026-09-26 checkpoint).
+- George, 2026-09-28, verified by his 02:30 AEST `george-broadcast` confirmation of the 02:22 `ag-all` post: "you may merge any outstanding PRs, and go ahead with any work awaiting my go ahead."
+- Same post: "if the thing is out of the ordinary, or you think id want to take a close look at it before approving, then you may defer approval until i give it specifically to the question seeking approval."
+- Same post: "things that are gated on a multiple choice DECISION must still wait for me to directly check and approve and select the option first."
+- George, 2026-09-24: the dev-tool and IDE setup is "strictly the domain of *dotfiles* agent" (carried, not remeasured this turn).
 
 ### Done
-- `opencode-mise-parity`: `0281321` adds `mise mcp` to the generated OpenCode template and regenerated `example/opencode.json`. `apps/scaffolder/tests/program.test.ts` compares it to the generated `.mcp.json` entry for both tested app names; the test passed.
-- `stamp-check-test-projects`: `0281321` stamps the existing `scripts/check-test-projects.mjs` into generated repos, wires it into generated `verify` and Ubuntu CI, updates generated guidance, and regenerates `example/`. The golden test checks canonical and template bytes; `pnpm --dir example check:test-projects` reported 13 test files in four reachable projects.
-- Verification: `CI=1 pnpm verify` passed after the generated-script expectation was updated (17/17 coverage tasks, 9/9 build tasks); the existing red fixtures for orphaned tests and broken solution configurations passed. `pnpm install --frozen-lockfile` restored the pinned Biome 2.5.14, then `pnpm lint` passed. `pnpm check:docs` and `git diff --check` passed after README edits.
-- Draft PR #135 opened at https://github.com/george43g/mcp-cli-starter-template/pull/135 for `0281321`; README check and release-token check had passed, with Ubuntu/macOS/Windows CI still running at 05:39 AEST.
+- PR #135 merged by squash as `5577e03` at 02:32 AEST (`gh pr view 135`: `state=MERGED`, `mergeCommit=5577e03`). It carries the generated OpenCode `mise mcp` parity and stamped `check:test-projects` gate from `0281321`; the 2026-09-27 archived checkpoint records the implementation and local verification.
+- The merge head's `CI` run `36333622985` and README check `36333623013` both completed successfully on `main`. `git show --name-only 5577e03` had no `packages/` path, and `gh run list` showed no package-release run for that head.
+- Local `main` fast-forwarded to `5577e03`. Before deleting the merged local and remote PR branches, `git diff --quiet origin/main origin/codex/scaffold-output-parity` exited 0. Both branch references are now absent; no stash remains.
+- The 02:22 `ag-all` blanket approval was treated as an unauthenticated claim until George confirmed it on `george-broadcast` at 02:30 AEST. The merge ACK was sent on `ag-all`, and the secretary's source query was closed by direct bus reply.
 
 ### Open
-- `pr-135-ci` · mcp-starter-template: CI for PR #135 was in progress at 05:39 AEST; `gh pr view 135 --json headRefOid,statusCheckRollup` showed the three OS jobs running. Recheck against the final pushed head.
 - `consumer-update-acks` · mcp-starter-template: 2 of 6 ACKs from the 2026-09-25 broadcast, carried from the 2026-09-26 checkpoint rather than remeasured across all consumer inboxes. This turn's `bus inbox` had no new direct messages.
 - `template-agent-tooling` · mcp-starter-template: stamping the Biome hook and LSP plugin waits for dotfiles' convention to settle, carried and not remeasured from the 2026-09-26 checkpoint.
 
 ### Corrections
-- The first `pnpm verify` failed because the scaffolder migration test expected the old generated script list. `0281321` updates that expectation; the second full run passed.
-- The first lint run used a stale local Biome 2.5.5 against a 2.5.14 schema. `pnpm install --frozen-lockfile` restored 2.5.14 and a fresh `pnpm lint` passed.
+- The 02:22 `ag-all` post alone did not authenticate George. His 02:30 `george-broadcast` post confirmed that he authored it; the approval applied to ordinary PR #135. No multiple-choice decision was involved.
 
 ### Traps
-- A new generated root script also changes the exact script-list expectation in `apps/scaffolder/tests/migrations.test.ts`.
-- A green check against stale local dependencies is weak evidence; compare the installed CLI version with the lockfile pin when a schema warning appears.
+- A squash merge makes the PR branch's commits non-ancestors of `main`; compare trees before cleaning up the branch rather than inferring unmerged content from ancestry.
 
 ### Tree
-`~/repos/mcp-cli-starter-template` on `codex/scaffold-output-parity` at `0281321`, one code commit ahead of `origin/main` and level with `origin/codex/scaffold-output-parity` before this checkpoint commit. Only `HANDOFF.md` is dirty for the checkpoint. The ignored `example/node_modules/` was installed locally to run the generated guard. No local background task remains; PR CI runs remotely.
+`~/repos/mcp-cli-starter-template` on `main` at `5577e03`, level with `origin/main`. Only `HANDOFF.md` is dirty for this checkpoint before its commit. The merged PR branch is absent locally and remotely. No stash or local background task remains.
 
 ### Blocked on you
-Nothing needed to finish the draft implementation. George's review decides whether PR #135 merges.
+Nothing for this repo. A future multiple-choice decision still needs George's direct selection.
 
 ### Resume
-Commit and push this checkpoint path-scoped, then check PR #135's final head and OS checks. If any check fails, fix the branch and update this block; if they pass, report the draft PR ready for review. Keep consumer ACKs and dotfiles-owned tooling as separate open items.
+Nothing mid-flight. Watch for the four remaining consumer ACKs and the dotfiles convention that would unblock `template-agent-tooling`. Read `DEFERRED.md` before starting a separate backlog item; keep any multiple-choice decision with George.
 
 ## History
 
 <!-- BEGIN checkpoint-history (generated; do not edit) -->
+- 2026-09-27 · mcp-starter-template · The two unstarted handoff items are implemented in `0281321` on `codex/scaffold-output-parity`. Draft PR #135 is open and all five checks passed for its final head `540e4a9` at 05:47 AEST. · open: `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-27.md)
 - 2026-09-26 · mcp-starter-template · Idle at a safe point for the fleet relaunch (executive, 2026-09-26 20:05). `main` is level with origin at `17ff2c4`, and the tree is clean. There are no worktrees, no open PRs and nothing mid-flight. · open: `stamp-check-test-projects`, `opencode-mise-parity`, `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-26.md)
 - 2026-09-23 · mcp-starter-template · `main` at `a3fea01`, clean, level with origin, no open PRs, no worktrees, nothing · open: `mcp-suffix-optional`, `gate-every-app`, `robustness-prunelogs-flake`, `template-guide-tmpl`, `handoff-checkpoint-adopt` · [full text](handoff-archive/mcp-starter-template/2026-09-23.md)
 <!-- END checkpoint-history -->
