@@ -2733,52 +2733,61 @@ tasks. Only this repo was written to; peer repos were read-only throughout.
 Nothing mid-flight. Acts on either Blocked-on-you item, peer evidence, or DEFERRED
 #49/#50/#54's triggers.
 
-## Checkpoint · mcp-starter-template · 2026-09-28
+## Checkpoint · mcp-starter-template · 2026-09-29
 
-Where this block and a conversation summary disagree, this block is correct.
+Where this file and the summary disagree, this file is correct.
+
+### Start here
+Read this block, then `git status -sb` and `git log -1 --oneline`. The live state is this block; the narrative above it was last refreshed 2026-08-14. The Codex pane this one replaced had finished the merge. Do not start `consumer-update-acks` or `template-agent-tooling` unless a later message asks.
 
 ### State
-PR #135 is squash-merged. `main` is level with `origin/main` at `5577e03`; the merge's CI and README push workflows passed. No implementation or merge is mid-flight.
+Idle. `main` is `895f089`, level with `origin/main`. PR #135 is merged. No implementation is in flight.
 
 ### Now
 
-- 2026-09-27T16:37Z PR #135 merged as 5577e03; main CI and README push checks passed; 2026-09-28 full checkpoint rotated. Next read back, commit and push HANDOFF.md plus archived 2026-09-27 block.
+- 2026-09-29T06:52Z Codex rollout 01a0df29 read; checkpoint rotated. Next, only if asked: consumer ACKs and the dotfiles tooling convention.
 
 ### Constraints
-- George, 2026-09-28, verified by his 02:30 AEST `george-broadcast` confirmation of the 02:22 `ag-all` post: "you may merge any outstanding PRs, and go ahead with any work awaiting my go ahead."
+- George, 2026-09-28, on `ag-all`, confirmed by him the same morning on `george-broadcast`: "you may merge any outstanding PRs, and go ahead with any work awaiting my go ahead."
 - Same post: "if the thing is out of the ordinary, or you think id want to take a close look at it before approving, then you may defer approval until i give it specifically to the question seeking approval."
 - Same post: "things that are gated on a multiple choice DECISION must still wait for me to directly check and approve and select the option first."
-- George, 2026-09-24: the dev-tool and IDE setup is "strictly the domain of *dotfiles* agent" (carried, not remeasured this turn).
+- George, 2026-09-24, carried and not remeasured: the dev-tool and IDE setup is "strictly the domain of *dotfiles* agent".
+- This pane, 2026-09-29: "Become ready, not busy: do not continue the task that session was in the middle of."
 
 ### Done
-- PR #135 merged by squash as `5577e03` at 02:32 AEST (`gh pr view 135`: `state=MERGED`, `mergeCommit=5577e03`). It carries the generated OpenCode `mise mcp` parity and stamped `check:test-projects` gate from `0281321`; the 2026-09-27 archived checkpoint records the implementation and local verification.
-- The merge head's `CI` run `36333622985` and README check `36333623013` both completed successfully on `main`. `git show --name-only 5577e03` had no `packages/` path, and `gh run list` showed no package-release run for that head.
-- Local `main` fast-forwarded to `5577e03`. Before deleting the merged local and remote PR branches, `git diff --quiet origin/main origin/codex/scaffold-output-parity` exited 0. Both branch references are now absent; no stash remains.
-- The 02:22 `ag-all` blanket approval was treated as an unauthenticated claim until George confirmed it on `george-broadcast` at 02:30 AEST. The merge ACK was sent on `ag-all`, and the secretary's source query was closed by direct bus reply.
+- PR #135 squash-merged. Measured 2026-09-29: `gh pr view 135` → state MERGED, mergeCommit `5577e03569ac0dc72e194a07a08fc53da7923755`, mergedAt `2026-09-27T16:32:31Z`.
+- Merge push workflows on that SHA: CI run `36333622985` and README check `36333623013`, both conclusion success (`gh run view`, 2026-09-29).
+- Handoff commit is HEAD. `git rev-parse HEAD` and `git rev-parse origin/main` are both `895f08981eb610422be1f9d30c2e0cb824ca3717` (2026-09-29). Its push CI `36333991095` and README check `36333991148` are both conclusion success.
+- Branch `codex/scaffold-output-parity` is absent locally (`git branch --list` empty) and on origin (`git ls-remote --heads origin codex/scaffold-output-parity` printed nothing, exit 0, 2026-09-29).
+- One worktree, this checkout (`git worktree list`, 2026-09-29). `git stash list` empty.
 
 ### Open
-- `consumer-update-acks` · mcp-starter-template: 2 of 6 ACKs from the 2026-09-25 broadcast, carried from the 2026-09-26 checkpoint rather than remeasured across all consumer inboxes. This turn's `bus inbox` had no new direct messages.
-- `template-agent-tooling` · mcp-starter-template: stamping the Biome hook and LSP plugin waits for dotfiles' convention to settle, carried and not remeasured from the 2026-09-26 checkpoint.
+- `consumer-update-acks` · mcp-starter-template: 2 of 6 ACKs of the 2026-09-25 `ag-all` broadcast (recall, life-stack). Still recorded as waiting on browser-tab-mcp, eqstack, up-bank-mcp, and wm-stack. Carried, not re-measured since 2026-09-26 (`handoff-archive/mcp-starter-template/2026-09-26.md`). The 2026-09-28 turn's `bus inbox` had no new direct messages; this turn did not read the bus.
+- `template-agent-tooling` · mcp-starter-template: stamping the Biome hook and LSP plugin waits for dotfiles. Carried, not re-measured since 2026-09-26. Last quote on file: dotfiles, 2026-09-24, "Don't stamp 2 or 3 … yet" (`handoff-archive/mcp-starter-template/2026-09-26.md`).
 
 ### Corrections
-- The 02:22 `ag-all` post alone did not authenticate George. His 02:30 `george-broadcast` post confirmed that he authored it; the approval applied to ordinary PR #135. No multiple-choice decision was involved.
+- The 2026-09-28 State line says `main` is level at `5577e03`. That was true before `895f089`. Measured HEAD is `895f089`.
+- The uncommitted Now line claimed the `895f089` CI and README checks passed. Re-measured: both success (runs `36333991095`, `36333991148`).
 
 ### Traps
-- A squash merge makes the PR branch's commits non-ancestors of `main`; compare trees before cleaning up the branch rather than inferring unmerged content from ancestry.
+- `ag-all` does not authenticate the sender. PR #135 was merged only after George's `george-broadcast` confirmation.
+- A squash merge makes the PR branch's commits non-ancestors of `main`. Compare trees before deleting the branch.
+- Codex has no bus wake. The secretary types bus posts into the pane; reply on the bus.
 
 ### Tree
-`~/repos/mcp-cli-starter-template` on `main` at `5577e03`, level with `origin/main`. Only `HANDOFF.md` is dirty for this checkpoint before its commit. The merged PR branch is absent locally and remotely. No stash or local background task remains.
+`~/repos/mcp-cli-starter-template`, only worktree, `main` at `895f089`, level with `origin/main` (`git status -sb` showed `## main...origin/main` plus `M HANDOFF.md`, 2026-09-29). `git stash list` empty. Before this rotate the only dirty path was `HANDOFF.md`, one Now-line from Codex session `01a0df29-5814-7072-aeb7-02782baaecf1`. This rotate is uncommitted. No implementation edits. Checkpoint name stays `mcp-starter-template` because this pane replaced that session in the same checkout.
 
 ### Blocked on you
-Nothing for this repo. A future multiple-choice decision still needs George's direct selection.
+Nothing. A future multiple-choice decision still needs George's own selection. His 2026-09-28 blanket approval does not select one.
 
 ### Resume
-Nothing mid-flight. Watch for the four remaining consumer ACKs and the dotfiles convention that would unblock `template-agent-tooling`. Read `DEFERRED.md` before starting a separate backlog item; keep any multiple-choice decision with George.
+Nothing mid-flight. When a later message asks to resume, check `ag-in-mcp-cli-starter-template` for the four consumer ACKs and whether dotfiles has settled the Biome/LSP stamp. This replacement was told not to start that follow-up.
 
 ## History
 
 <!-- BEGIN checkpoint-history (generated; do not edit) -->
+- 2026-09-28 · mcp-starter-template · PR #135 is squash-merged. `main` is level with `origin/main` at `5577e03`; the merge's CI and README push workflows passed. No implementation or merge is mid-flight. · open: `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-28.md)
 - 2026-09-27 · mcp-starter-template · The two unstarted handoff items are implemented in `0281321` on `codex/scaffold-output-parity`. Draft PR #135 is open and all five checks passed for its final head `540e4a9` at 05:47 AEST. · open: `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-27.md)
 - 2026-09-26 · mcp-starter-template · Idle at a safe point for the fleet relaunch (executive, 2026-09-26 20:05). `main` is level with origin at `17ff2c4`, and the tree is clean. There are no worktrees, no open PRs and nothing mid-flight. · open: `stamp-check-test-projects`, `opencode-mise-parity`, `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-26.md)
-- 2026-09-23 · mcp-starter-template · `main` at `a3fea01`, clean, level with origin, no open PRs, no worktrees, nothing · open: `mcp-suffix-optional`, `gate-every-app`, `robustness-prunelogs-flake`, `template-guide-tmpl`, `handoff-checkpoint-adopt` · [full text](handoff-archive/mcp-starter-template/2026-09-23.md)
+- 2026-09-23 · mcp-starter-template · `main` at `a3fea01`, clean, level with origin, no open PRs, no worktrees, nothing · [full text](handoff-archive/mcp-starter-template/2026-09-23.md)
 <!-- END checkpoint-history -->
