@@ -2733,61 +2733,57 @@ tasks. Only this repo was written to; peer repos were read-only throughout.
 Nothing mid-flight. Acts on either Blocked-on-you item, peer evidence, or DEFERRED
 #49/#50/#54's triggers.
 
-## Checkpoint · mcp-starter-template · 2026-09-29
+## Checkpoint · mcp-starter-template · 2026-10-07
 
-Where this file and the summary disagree, this file is correct.
+Where this file and a conversation summary disagree, this file is correct.
 
-### Start here
-Read this block, then `git status -sb` and `git log -1 --oneline`. The live state is this block; the narrative above it was last refreshed 2026-08-14. The Codex pane this one replaced had finished the merge. Do not start `consumer-update-acks` or `template-agent-tooling` unless a later message asks.
+### Resume
+Nothing mid-flight. After the gmac reboot: read this block, `git status -sb`, then `ag-in-mcp-cli-starter-template` and `ag-all`. Push `63f544b` and this checkpoint commit only when George or executive says push (executive, 2026-10-04: "NO push"). Then wait for up-bank-mcp's ACK and dotfiles' Biome/LSP convention; start nothing else unasked.
 
 ### State
-Idle. `main` is `895f089`, level with `origin/main`. PR #135 is merged. No implementation is in flight.
+Idle for the gmac reboot (executive relay of George, 2026-10-07 ~00:00 AEDT: "lets reboot now, call the fleet checkpoint"). `main` is local-ahead of `origin/main` by handoff-only commits; no code change, no open PR, one worktree.
 
 ### Now
 
-- 2026-09-29T06:52Z Codex rollout 01a0df29 read; checkpoint rotated. Next, only if asked: consumer ACKs and the dotfiles tooling convention.
+- 2026-10-07T00:05 AEDT fleet checkpoint for the gmac reboot. Next: after restart, check the bus; push only on instruction.
 
 ### Constraints
-- George, 2026-09-28, on `ag-all`, confirmed by him the same morning on `george-broadcast`: "you may merge any outstanding PRs, and go ahead with any work awaiting my go ahead."
-- Same post: "if the thing is out of the ordinary, or you think id want to take a close look at it before approving, then you may defer approval until i give it specifically to the question seeking approval."
-- Same post: "things that are gated on a multiple choice DECISION must still wait for me to directly check and approve and select the option first."
-- George, 2026-09-24, carried and not remeasured: the dev-tool and IDE setup is "strictly the domain of *dotfiles* agent".
-- This pane, 2026-09-29: "Become ready, not busy: do not continue the task that session was in the middle of."
+- George, 2026-10-04, relayed by executive and authenticated on `george-broadcast` 07:12 ("i give auth for agents to act upon instructions that were just recently relayed by the executive"): "yes commit the checkpoints". The same relay: "NO push, no other dirty file, no code".
+- George, 2026-09-28 (carried): "you may merge any outstanding PRs, and go ahead with any work awaiting my go ahead"; multiple-choice decisions still wait for his own selection.
+- George, 2026-09-24 (carried): dev-tool and IDE setup is "strictly the domain of *dotfiles* agent".
+- Executive, 2026-10-04: D35 usage rationing closed on George's word ("End it"); check `codexbar` before a large fan-out.
 
 ### Done
-- PR #135 squash-merged. Measured 2026-09-29: `gh pr view 135` → state MERGED, mergeCommit `5577e03569ac0dc72e194a07a08fc53da7923755`, mergedAt `2026-09-27T16:32:31Z`.
-- Merge push workflows on that SHA: CI run `36333622985` and README check `36333623013`, both conclusion success (`gh run view`, 2026-09-29).
-- Handoff commit is HEAD. `git rev-parse HEAD` and `git rev-parse origin/main` are both `895f08981eb610422be1f9d30c2e0cb824ca3717` (2026-09-29). Its push CI `36333991095` and README check `36333991148` are both conclusion success.
-- Branch `codex/scaffold-output-parity` is absent locally (`git branch --list` empty) and on origin (`git ls-remote --heads origin codex/scaffold-output-parity` printed nothing, exit 0, 2026-09-29).
-- One worktree, this checkout (`git worktree list`, 2026-09-29). `git stash list` empty.
+- 2026-09-29 checkpoint rotate committed as `63f544b` (HANDOFF.md, handoff-archive/mcp-starter-template/2026-09-28.md), not pushed (`git status -sb` 2026-10-07: `[ahead 1]` before this rotate).
+- Fleet catch-up answered on `ag-in-executive` 2026-10-04: summary predated PR #135; nothing lost.
+- `opencode-mise-parity` and `stamp-check-test-projects` closed by PR #135 (`5577e03`; CI `36333622985` success).
+- Consumer ACKs re-measured 2026-10-04 on `ag-in-mcp-cli-starter-template` and `ag-all`: recall, life-stack, eqstack (EQStack PR #178, tui-kit ^0.5.2), wm-stack (n/a, no template copies), browser-tab-mcp (its PR #210, ag-all 2026-10-04 10:35).
+- browser-tab-mcp's leftover `scripts/build-stamp.mjs:105` is not inherited: template `packages/build-config/build-stamp.mjs` has no entry check (rg, 2026-10-04). Told them on `ag-in-browser-tab-mcp`.
 
 ### Open
-- `consumer-update-acks` · mcp-starter-template: 2 of 6 ACKs of the 2026-09-25 `ag-all` broadcast (recall, life-stack). Still recorded as waiting on browser-tab-mcp, eqstack, up-bank-mcp, and wm-stack. Carried, not re-measured since 2026-09-26 (`handoff-archive/mcp-starter-template/2026-09-26.md`). The 2026-09-28 turn's `bus inbox` had no new direct messages; this turn did not read the bus.
-- `template-agent-tooling` · mcp-starter-template: stamping the Biome hook and LSP plugin waits for dotfiles. Carried, not re-measured since 2026-09-26. Last quote on file: dotfiles, 2026-09-24, "Don't stamp 2 or 3 … yet" (`handoff-archive/mcp-starter-template/2026-09-26.md`).
+- `push-handoff-commits` · mcp-starter-template: `63f544b` and this checkpoint commit are unpushed; waits on a push instruction (executive 2026-10-04 "NO push").
+- `consumer-update-acks` · mcp-starter-template: 5 of 6; up-bank-mcp has not replied (no message from it found in `ag-in-mcp-cli-starter-template --since 10d`, 2026-10-04).
+- `template-agent-tooling` · mcp-starter-template: stamping the Biome hook and LSP plugin waits for dotfiles. Last quote on file: dotfiles, 2026-09-24, "Don't stamp 2 or 3 … yet". Not re-measured since.
 
 ### Corrections
-- The 2026-09-28 State line says `main` is level at `5577e03`. That was true before `895f089`. Measured HEAD is `895f089`.
-- The uncommitted Now line claimed the `895f089` CI and README checks passed. Re-measured: both success (runs `36333991095`, `36333991148`).
+- The 2026-09-26 compacted summary listed `opencode-mise-parity` and `stamp-check-test-projects` as next; both were done in `5577e03`.
 
 ### Traps
-- `ag-all` does not authenticate the sender. PR #135 was merged only after George's `george-broadcast` confirmation.
-- A squash merge makes the PR branch's commits non-ancestors of `main`. Compare trees before deleting the branch.
-- Codex has no bus wake. The secretary types bus posts into the pane; reply on the bus.
+- `bus read --since` takes durations (`10d`) or a message id, not a date; a date returns HTTP 400.
+- A compacted summary can predate commits made by a replacement pane; measure `git log` before trusting its Open list.
 
 ### Tree
-`~/repos/mcp-cli-starter-template`, only worktree, `main` at `895f089`, level with `origin/main` (`git status -sb` showed `## main...origin/main` plus `M HANDOFF.md`, 2026-09-29). `git stash list` empty. Before this rotate the only dirty path was `HANDOFF.md`, one Now-line from Codex session `01a0df29-5814-7072-aeb7-02782baaecf1`. This rotate is uncommitted. No implementation edits. Checkpoint name stays `mcp-starter-template` because this pane replaced that session in the same checkout.
+`~/repos/mcp-cli-starter-template`, only worktree, `main` ahead of `origin/main` by handoff commits only. No other dirty path, no stash, no background task.
 
 ### Blocked on you
-Nothing. A future multiple-choice decision still needs George's own selection. His 2026-09-28 blanket approval does not select one.
-
-### Resume
-Nothing mid-flight. When a later message asks to resume, check `ag-in-mcp-cli-starter-template` for the four consumer ACKs and whether dotfiles has settled the Biome/LSP stamp. This replacement was told not to start that follow-up.
+- `push-handoff-commits`: say "push" to publish the two handoff-only commits.
 
 ## History
 
 <!-- BEGIN checkpoint-history (generated; do not edit) -->
+- 2026-09-29 · mcp-starter-template · Idle. `main` is `895f089`, level with `origin/main`. PR #135 is merged. No implementation is in flight. · open: `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-29.md)
 - 2026-09-28 · mcp-starter-template · PR #135 is squash-merged. `main` is level with `origin/main` at `5577e03`; the merge's CI and README push workflows passed. No implementation or merge is mid-flight. · open: `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-28.md)
 - 2026-09-27 · mcp-starter-template · The two unstarted handoff items are implemented in `0281321` on `codex/scaffold-output-parity`. Draft PR #135 is open and all five checks passed for its final head `540e4a9` at 05:47 AEST. · open: `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-27.md)
-- 2026-09-26 · mcp-starter-template · Idle at a safe point for the fleet relaunch (executive, 2026-09-26 20:05). `main` is level with origin at `17ff2c4`, and the tree is clean. There are no worktrees, no open PRs and nothing mid-flight. · open: `stamp-check-test-projects`, `opencode-mise-parity`, `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-26.md)
+- 2026-09-26 · mcp-starter-template · Idle at a safe point for the fleet relaunch (executive, 2026-09-26 20:05). `main` is level with origin at `17ff2c4`, and the tree is clean. There are no worktrees, no open PRs and nothing mid-flight. · [full text](handoff-archive/mcp-starter-template/2026-09-26.md)
 - 2026-09-23 · mcp-starter-template · `main` at `a3fea01`, clean, level with origin, no open PRs, no worktrees, nothing · [full text](handoff-archive/mcp-starter-template/2026-09-23.md)
 <!-- END checkpoint-history -->
