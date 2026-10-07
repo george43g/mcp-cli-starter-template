@@ -55,6 +55,7 @@ packages/
   mcp-kit/            tool-registry + dispatch + transports + sanitize + prompt-injection
   cli-kit/            commander + tty + color + REPL + env↔flag binder
   tui-kit/            ink themes + hooks + components
+  keymap/             vim keymap notation + matcher + legend; zero deps, ESM + browser IIFE
   secret-store/       env → .env → OS keychain → exec. No vault vendor code
   shared-types/       Zod schemas + Rust drift-check
   tsconfig/ biome-config/  shared tool config, never published

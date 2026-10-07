@@ -149,7 +149,7 @@ apps/
     mise.toml             docs/completions/manpage tasks
 
 packages/
-  robustness, mcp-kit, cli-kit, tui-kit, secret-store, shared-types,
+  robustness, mcp-kit, cli-kit, tui-kit, keymap, secret-store, shared-types,
   tsconfig, biome-config, vitest-config
 
 completions/scaffolder/   bash + zsh + fish completions for mcp-scaffold

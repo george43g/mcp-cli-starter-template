@@ -5,6 +5,8 @@
   "references": [
     { "path": "./packages/cli-kit" },
     { "path": "./packages/cli-kit/tsconfig.test.json" },
+    { "path": "./packages/keymap" },
+    { "path": "./packages/keymap/tsconfig.test.json" },
     { "path": "./packages/mcp-kit" },
     { "path": "./packages/mcp-kit/tsconfig.test.json" },
     { "path": "./packages/robustness" },

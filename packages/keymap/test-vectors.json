@@ -1,0 +1,235 @@
+{
+  "$comment": "Conformance vectors for @george43g/keymap's matcher. Each case: build defineKeymap(presets[preset]) with no overrides, createMatcher(keymap, { sequenceTimeoutMs, counts: true, now }), feed inputs[i] at time at[i] (ms; 0 for every input when at is absent), and compare each result with expected[i] by deep equality. A handler written by hand must produce the same intents.",
+  "version": 1,
+  "sequenceTimeoutMs": 500,
+  "cases": [
+    {
+      "name": "j and down arrow move down",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "j" }, { "key": "down" }],
+      "expected": [
+        { "type": "match", "id": "down", "count": 1 },
+        { "type": "match", "id": "down", "count": 1 }
+      ]
+    },
+    {
+      "name": "k and up arrow move up",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "k" }, { "key": "up" }],
+      "expected": [
+        { "type": "match", "id": "up", "count": 1 },
+        { "type": "match", "id": "up", "count": 1 }
+      ]
+    },
+    {
+      "name": "ctrl-d/u/e/y scroll",
+      "preset": "vimNavigation",
+      "inputs": [
+        { "key": "d", "ctrl": true },
+        { "key": "u", "ctrl": true },
+        { "key": "e", "ctrl": true },
+        { "key": "y", "ctrl": true }
+      ],
+      "expected": [
+        { "type": "match", "id": "halfPageDown", "count": 1 },
+        { "type": "match", "id": "halfPageUp", "count": 1 },
+        { "type": "match", "id": "lineDown", "count": 1 },
+        { "type": "match", "id": "lineUp", "count": 1 }
+      ]
+    },
+    {
+      "name": "gg is top; a single g is only pending",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "g" }, { "key": "g" }],
+      "at": [0, 100],
+      "expected": [{ "type": "pending" }, { "type": "match", "id": "top", "count": 1 }]
+    },
+    {
+      "name": "g then g after the timeout starts over",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "g" }, { "key": "g" }, { "key": "g" }],
+      "at": [0, 501, 600],
+      "expected": [
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "match", "id": "top", "count": 1 }
+      ]
+    },
+    {
+      "name": "exactly at the timeout still completes",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "g" }, { "key": "g" }],
+      "at": [0, 500],
+      "expected": [{ "type": "pending" }, { "type": "match", "id": "top", "count": 1 }]
+    },
+    {
+      "name": "G is bottom, shift on a character is ignored",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "G" }, { "key": "G", "shift": true }, { "key": "end" }],
+      "expected": [
+        { "type": "match", "id": "bottom", "count": 1 },
+        { "type": "match", "id": "bottom", "count": 1 },
+        { "type": "match", "id": "bottom", "count": 1 }
+      ]
+    },
+    {
+      "name": "home is top",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "home" }],
+      "expected": [{ "type": "match", "id": "top", "count": 1 }]
+    },
+    {
+      "name": "page keys",
+      "preset": "vimNavigation",
+      "inputs": [
+        { "key": "pagedown" },
+        { "key": "f", "ctrl": true },
+        { "key": "pageup" },
+        { "key": "b", "ctrl": true }
+      ],
+      "expected": [
+        { "type": "match", "id": "pageDown", "count": 1 },
+        { "type": "match", "id": "pageDown", "count": 1 },
+        { "type": "match", "id": "pageUp", "count": 1 },
+        { "type": "match", "id": "pageUp", "count": 1 }
+      ]
+    },
+    {
+      "name": "count prefix 12j",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "1" }, { "key": "2" }, { "key": "j" }],
+      "expected": [
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "match", "id": "down", "count": 12 }
+      ]
+    },
+    {
+      "name": "count resets after a match",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "3" }, { "key": "k" }, { "key": "k" }],
+      "expected": [
+        { "type": "pending" },
+        { "type": "match", "id": "up", "count": 3 },
+        { "type": "match", "id": "up", "count": 1 }
+      ]
+    },
+    {
+      "name": "0 alone is not a count start",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "0" }, { "key": "j" }],
+      "expected": [{ "type": "none" }, { "type": "match", "id": "down", "count": 1 }]
+    },
+    {
+      "name": "0 after a digit extends the count",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "1" }, { "key": "0" }, { "key": "j" }],
+      "expected": [
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "match", "id": "down", "count": 10 }
+      ]
+    },
+    {
+      "name": "count caps at four digits",
+      "preset": "vimNavigation",
+      "inputs": [
+        { "key": "1" },
+        { "key": "2" },
+        { "key": "3" },
+        { "key": "4" },
+        { "key": "5" },
+        { "key": "j" }
+      ],
+      "expected": [
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "match", "id": "down", "count": 1234 }
+      ]
+    },
+    {
+      "name": "a count followed by an unbound key is dropped",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "5" }, { "key": "x" }, { "key": "j" }],
+      "expected": [
+        { "type": "pending" },
+        { "type": "none" },
+        { "type": "match", "id": "down", "count": 1 }
+      ]
+    },
+    {
+      "name": "count applies to gg",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "4" }, { "key": "g" }, { "key": "g" }],
+      "expected": [
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "match", "id": "top", "count": 4 }
+      ]
+    },
+    {
+      "name": "a key that breaks a pending g is matched on its own and keeps the count",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "5" }, { "key": "g" }, { "key": "j" }],
+      "expected": [
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "match", "id": "down", "count": 5 }
+      ]
+    },
+    {
+      "name": "a timed-out pending g drops its count too",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "5" }, { "key": "g" }, { "key": "j" }],
+      "at": [0, 0, 501],
+      "expected": [
+        { "type": "pending" },
+        { "type": "pending" },
+        { "type": "match", "id": "down", "count": 1 }
+      ]
+    },
+    {
+      "name": "ctrl+digit is not a count",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "5", "ctrl": true }, { "key": "j" }],
+      "expected": [{ "type": "none" }, { "type": "match", "id": "down", "count": 1 }]
+    },
+    {
+      "name": "unmodified d is not ctrl-d",
+      "preset": "vimNavigation",
+      "inputs": [{ "key": "d" }, { "key": "d", "alt": true }],
+      "expected": [{ "type": "none" }, { "type": "none" }]
+    },
+    {
+      "name": "scroll-only preset: letters are not bound",
+      "preset": "vimScrollOnly",
+      "inputs": [{ "key": "j" }, { "key": "k" }, { "key": "g" }, { "key": "G" }],
+      "expected": [{ "type": "none" }, { "type": "none" }, { "type": "none" }, { "type": "none" }]
+    },
+    {
+      "name": "scroll-only preset: ctrl-d/u/e/y",
+      "preset": "vimScrollOnly",
+      "inputs": [
+        { "key": "d", "ctrl": true },
+        { "key": "u", "ctrl": true },
+        { "key": "e", "ctrl": true },
+        { "key": "y", "ctrl": true }
+      ],
+      "expected": [
+        { "type": "match", "id": "halfPageDown", "count": 1 },
+        { "type": "match", "id": "halfPageUp", "count": 1 },
+        { "type": "match", "id": "lineDown", "count": 1 },
+        { "type": "match", "id": "lineUp", "count": 1 }
+      ]
+    },
+    {
+      "name": "scroll-only preset: counts still apply",
+      "preset": "vimScrollOnly",
+      "inputs": [{ "key": "3" }, { "key": "e", "ctrl": true }],
+      "expected": [{ "type": "pending" }, { "type": "match", "id": "lineDown", "count": 3 }]
+    }
+  ]
+}

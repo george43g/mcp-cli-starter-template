@@ -25,6 +25,11 @@ export const PUBLISHABLE = new Set([
   "packages/tui-kit",
   "packages/secret-store",
   "packages/mcp-kit",
+  // Added 2026-10-07 with the package itself. Its release-packages.yml job and
+  // Trusted Publisher follow the manual bootstrap publish (docs/RELEASE.md
+  // § Adding a package, steps 3-5), so until then the sentence above is
+  // aspirational for this one entry.
+  "packages/keymap",
   // apps/mcpsync was here until 2026-08-22. George decided it MIGRATES WITHOUT
   // PUBLISHING (DEFERRED #10), so it is `private: true` and carries no
   // publishConfig — it leaves as a private tool installed from a local path,
