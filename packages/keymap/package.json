@@ -1,0 +1,74 @@
+{
+  "name": "@george43g/keymap",
+  "version": "0.1.0",
+  "description": "Framework-agnostic vim-style keymaps: one logical-key notation, declarable bindings with overridable defaults and conflict diagnostics, a pure sequence/count matcher with Ink and DOM adapters, and legend/hint/cheatsheet/--keys generators. Zero runtime dependencies; ships an ESM entry and a single-file browser IIFE.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/george43g/mcp-cli-starter-template.git",
+    "directory": "packages/keymap"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "keymap-legend": "./dist/bin/keymap-legend.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./iife": "./dist/keymap.iife.js",
+    "./test-vectors.json": "./test-vectors.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "!dist/tsconfig.tsbuildinfo",
+    "src",
+    "!src/**/*.test.ts",
+    "test-vectors.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && vite build",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pack:check": "pnpm build && npm pack --dry-run --json",
+    "clean": "rm -rf dist coverage",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/npm": "^13.1.5",
+    "@types/node": "^24.13.3",
+    "@vitest/coverage-v8": "^3.2.7",
+    "semantic-release": "^24.2.0",
+    "semantic-release-monorepo": "^8.0.2",
+    "typescript": "^5.7.0",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
+  },
+  "keywords": [
+    "keymap",
+    "keybindings",
+    "vim",
+    "hotkeys",
+    "ink",
+    "tui",
+    "cheatsheet"
+  ],
+  "author": "George G"
+}
