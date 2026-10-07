@@ -14,7 +14,11 @@ The package includes:
   palette derived from one accent color, plus `safe`/rich glyph presets and
   contrast helpers (`contrastRatio`, `relativeLuminance`, `tint`, `rotateHue`).
 - `useVimKeys` — j/k/gg/G/half-page navigation with a numeric count buffer,
-  forwarding anything it doesn't handle to `onUnhandled`.
+  forwarding anything it doesn't handle to `onUnhandled`. Optional ctrl-e/y
+  line and page up/down handlers. The keys come from `@george43g/keymap`.
+- `createVimKeyRouter` — the same dispatch as a pure function, for an app
+  that keeps exactly one `useInput`; `vimKeyHints` — `HelpBar` hints from the
+  same key table.
 - `useMouse` — opt-in mouse reporting, with `TuiMouseEvent` for the payload.
 - `useDevStats(visible)` — reads watchdog state for a live diagnostics panel.
   Pass the panel's visibility: while hidden it stops the 2s sampling interval
@@ -322,6 +326,107 @@ warning only for a confirmed absence and a soft hint for `null`.
 `reason` distinguishes "not on PATH" from "timed out" when a user reports the
 warning. The result is cached per process (the probe costs ~1s); the exported
 cache reset is a test seam only.
+
+## Vim keys
+
+`useVimKeys`, `createVimKeyRouter` and `vimKeyHints` share one key table, the
+`vimNavigation` preset from
+[`@george43g/keymap`](https://www.npmjs.com/package/@george43g/keymap), and
+one matcher, so every tool gets the same vim semantics. `@george43g/keymap` is
+an ordinary dependency (it has no runtime dependencies and no shared state), so
+you do not install it yourself unless you import it to pass a custom `keymap`.
+
+| Keys | Handler | Consumed when |
+|---|---|---|
+| `j` `k`, down, up (count: `5j`) | `onMove(delta)` | always |
+| `gg` | `onTop()` | always |
+| `G` | `onBottom()` | always |
+| ctrl-d, ctrl-u | `onHalfPageDown()`, `onHalfPageUp()` | always |
+| ctrl-e, ctrl-y | `onLineDown(count)`, `onLineUp(count)` | the handler is supplied |
+| page down or ctrl-f, page up or ctrl-b | `onPageDown(count)`, `onPageUp(count)` | the handler is supplied |
+| anything else, or a pasted chunk | `onUnhandled(input, key)` | never |
+
+The last four handlers are new and **opt-in**: a key whose handler you do not
+pass is not consumed, so it reaches `onUnhandled` exactly as before. An app
+that already bound ctrl-f itself keeps it. For the same reason home and end are
+not bound by default. To bind them, pass the whole preset:
+
+```tsx
+import { defineKeymap, vimNavigation } from "@george43g/keymap";
+
+// Module scope: `keymap` and `ggTimeoutMs` are read on the first render only.
+const keymap = defineKeymap(vimNavigation); // gg/home → top, G/end → bottom
+
+useVimKeys({ keymap, onTop, onBottom, onMove, onLineDown: (n) => scroll(n) });
+```
+
+`keymap` takes any `defineKeymap` result, so you can rebind a key that clashes
+with your own (`overrides: { lineDown: "ctrl+j" }`). The hook dispatches only
+the preset's ids. Keep the defaults where you can: the same key doing the same
+thing in every tool is the point.
+
+### One input router: `createVimKeyRouter`
+
+An app that allows exactly one `useInput` — a second dispatcher is how a `q`
+typed into a text field once quit an app — calls the router from inside it.
+`useVimKeys` is a thin wrapper over this function.
+
+```tsx
+import { createVimKeyRouter } from "@george43g/tui-kit";
+
+const vim = createVimKeyRouter(); // once, e.g. in a useRef
+
+useInput((input, key) => {
+  if (mode === "edit") return editText(input, key);
+  // Handlers are passed per call, so they always see the current state.
+  if (vim(input, key, { onMove: (d) => setRow((r) => r + d), onTop, onBottom })) return;
+  if (input === "q") exit();
+});
+```
+
+It returns `true` when it consumed the key, and otherwise calls `onUnhandled`
+(when given) and returns `false`. `vim.getCount()` reads and clears the typed
+count, for a count bound to your own key (`5x`). `vim.reset()` forgets the count
+and a pending `g`, for example on a mode change. Options: `keymap`,
+`ggTimeoutMs` (default 500), and `now` (a clock, for tests).
+
+### Help text: `vimKeyHints`
+
+```tsx
+<HelpBar hints={[...vimKeyHints(undefined, ["down", "up", "top", "bottom"]), { key: "q", label: "quit" }]} />
+```
+
+`vimKeyHints(keymap?, ids?, style?)` renders the same table the router matches,
+so the help bar cannot disagree with the keys. Pass the ids your app handles;
+an unknown id throws. `style` is `"vim"` (`<C-d>`, the default), `"plain"`
+(`ctrl+d`) or `"symbols"` (`⌃D`). The hint text is rendered output and not
+covered by semver.
+
+### Behaviour kept from before `@george43g/keymap`
+
+Rendered output is unchanged, and so is every key existing callers relied on. A
+differential test runs thousands of key sequences through the router and a copy
+of the previous hook and requires identical handler calls. Kept on purpose:
+
+- A count survives `G`, ctrl-d, ctrl-u and a key you handle in `onUnhandled`,
+  which is what lets `onUnhandled` read it with `getCount()`.
+- A lone `0` is swallowed, not forwarded.
+- Modifiers are ignored on the old keys: ctrl-k still moves up, and
+  shift-down still moves down. This applies only to a key your `keymap` does
+  not bind exactly.
+
+Two differences, both in input no current caller produces on purpose:
+
+- **A pending `g` is cancelled by any other key** except a digit. Before, it
+  survived, so `g j g` moved down and *then* jumped to the top. Now the second
+  `g` starts a new `gg`, as in vim.
+- **Key-release events are ignored.** Only Ink's kitty keyboard mode with
+  event types turned on sends them, and the old hook treated each one as a
+  second press.
+
+And one in configuration: `ggTimeoutMs` (like the new `keymap`) is read on the
+first render. The old hook re-read it on every render; no known caller changes
+it at runtime.
 
 ## Subpath exports
 

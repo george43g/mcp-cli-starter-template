@@ -373,6 +373,9 @@ importers:
 
   packages/tui-kit:
     dependencies:
+      '@george43g/keymap':
+        specifier: '>=0.1.0 <1'
+        version: 0.1.0
       fullscreen-ink:
         specifier: ^0.1.0
         version: 0.1.0(@types/react@19.2.17)
@@ -701,6 +704,11 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@george43g/keymap@0.1.0':
+    resolution: {integrity: sha512-zBrmI6G5up9esvtg1GtNkszJTRuxWCz4E5FIRqp9ezqr+rNy2QfGxIHtXV3SFLVOWN1V5WHE6w/5ttM95ZnqCA==}
+    engines: {node: '>=24'}
+    hasBin: true
 
   '@hono/node-server@2.0.11':
     resolution: {integrity: sha512-bjD221KPLoJTWUwso1J6fGKiTXEUFedG/s0visavY4zakFPkeGURMRNly+FhBHs7T8Dz4qHaZIMX9ZoJHSJtKA==}
@@ -4078,6 +4086,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.1':
     optional: true
+
+  '@george43g/keymap@0.1.0': {}
 
   '@hono/node-server@2.0.11(hono@4.12.29)':
     dependencies:

@@ -50,6 +50,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@george43g/keymap": ">=0.1.0 <1",
     "fullscreen-ink": "^0.1.0"
   },
   "peerDependencies": {
