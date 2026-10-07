@@ -2,7 +2,10 @@
 
 ## Status
 
-`active`. George's answers are recorded below. PR 1, which adds the package only, is being built.
+`active`. PR 2, moving tui-kit onto the package, is next.
+
+- 2026-10-07: PR 1 (#136) merged as `0d95464`.
+- 2026-10-08: George bootstrap-published 0.1.0, tagged `keymap-v0.1.0` and set up the Trusted Publisher. The `release-packages.yml` job was added after that.
 
 - 2026-10-07: request relayed by executive on `ag-in-mcp-starter-template` (bus id zvicMpv48Car), quoting George's words from a dotfiles `wm ask` card, which executive could not verify: *"keyboard shortcuts that are vim-like are always welcome - being able to scroll/navigate the question text using ctrl-d/u, G/gg ctrl-e/y… because these specific vim language shortcuts are now used in so many of my tools, i dont want them manually implemented each time. This is a shared code library that belongs in the starter-template repo"*. Two read-only surveys ran: one of existing libraries and one of how each consumer handles keys today. This design follows from them.
 
@@ -107,7 +110,7 @@ Recorded verbatim in executive's brief: `~/repos/executive/docs/brief/2026-10-04
   - So the package ships both outputs.
 - **Q3: "Both".** A `--keys` flag and a legend file written at build time.
 - **Q4: "Only ctrl-d/u/e/y on cards (Recommended)".**
-- **Q5: not asked.** Executive assumed gg is top, which matches this design's recommendation. It stays open for George to overturn.
+- **Q5: gg is top.** George confirmed it on 2026-10-08 ("keymap-q5-gg: sure").
 
 ### Sequence
 
