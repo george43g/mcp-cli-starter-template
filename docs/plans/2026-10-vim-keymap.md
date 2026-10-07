@@ -1,8 +1,8 @@
-# Shared vim-style keymap: design for discussion
+# Shared vim-style keymap: `@george43g/keymap`
 
 ## Status
 
-`paused`. This is a design waiting for George to choose among the options below; nothing is built.
+`active`. George's answers are recorded below. PR 1, which adds the package only, is being built.
 
 - 2026-10-07: request relayed by executive on `ag-in-mcp-starter-template` (bus id zvicMpv48Car), quoting George's words from a dotfiles `wm ask` card, which executive could not verify: *"keyboard shortcuts that are vim-like are always welcome - being able to scroll/navigate the question text using ctrl-d/u, G/gg ctrl-e/y… because these specific vim language shortcuts are now used in so many of my tools, i dont want them manually implemented each time. This is a shared code library that belongs in the starter-template repo"*. Two read-only surveys ran: one of existing libraries and one of how each consumer handles keys today. This design follows from them.
 
@@ -96,9 +96,28 @@ No third-party library is adopted. The record, from npm data for 2026-09-28 to 1
 
 No which-key-style legend generator was found on npm. Ink's `useInput` passes logical key values, not physical codes, so the shared notation uses logical keys: `ctrl+d`, `G`, and space-separated steps such as `g g`. That is the subset both the DOM and Ink can parse.
 
-### Open
+### George's answers (2026-10-07)
 
-Q1 to Q5 are George's decisions.
+Recorded verbatim in executive's brief: `~/repos/executive/docs/brief/2026-10-04-needs-george-answers.md:58-62` (executive `eec0c4c`, fourth round). Relayed on `ag-in-mcp-starter-template` (bQumMenXvNpS).
+
+- **Q1: a NEW package, plus the migration.** *"new keymap package and do the migration - maybe tuikit imports and uses this package or maybe the two are just separated... some tools might end up with conflicting keybindings so just be weary to allow changing default ones, but sticking to default encouraged to promote a consistent appearance. The package should also have ways of helping or assisting the consumer to render/display/generate a key map, cheat sheet or help text or hints showing the user which keys to press to do what."*
+- **Q2: "Bundle console, vendor modals (Recommended)".**
+  - life-stack's console gets an esbuild bundle and imports the npm entry.
+  - wm-stack vendors a single-file IIFE build and checks it against a hash for drift.
+  - So the package ships both outputs.
+- **Q3: "Both".** A `--keys` flag and a legend file written at build time.
+- **Q4: "Only ctrl-d/u/e/y on cards (Recommended)".**
+- **Q5: not asked.** Executive assumed gg is top, which matches this design's recommendation. It stays open for George to overturn.
+
+### Sequence
+
+Two-PR rule (AGENTS.md):
+
+1. **PR 1:** the `@george43g/keymap` package alone.
+2. **Bootstrap publish.** This is George's: a manual `pnpm --filter @george43g/keymap publish` under his npm login, then a Trusted Publisher entry on npmjs.com (`docs/RELEASE.md` § Adding a package).
+3. **Release wiring:** a `release-packages.yml` job.
+4. **PR 2:** tui-kit's `useVimKeys` rebuilt on the package, with ctrl-e/y, and the template app adopting it.
+5. **Peer repos migrate,** each consumer in its own repo, from a work order sent on the bus.
 
 ### Rejected
 
