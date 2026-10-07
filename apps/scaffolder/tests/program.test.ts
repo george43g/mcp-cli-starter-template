@@ -102,8 +102,12 @@ describe("migrate command safety defaults", () => {
     }
     const pkg = JSON.parse(await readFile(join(cwd, "apps", "fresh-tool", "package.json"), "utf8"));
     // Derived, not literal — a hardcoded range here is what let the scaffolder
-    // ship "^0.1.0" while robustness was on 0.2.1.
-    for (const { name } of PUBLISHED_PACKAGES) {
+    // ship "^0.1.0" while robustness was on 0.2.1. Only the kits the app
+    // declares: a published package need not be an app dependency, and a new
+    // one cannot be until its first publish (keymap, 2026-10-07).
+    const declared = PUBLISHED_PACKAGES.filter(({ name }) => name in pkg.dependencies);
+    expect(declared.length).toBeGreaterThanOrEqual(5);
+    for (const { name } of declared) {
       expect(pkg.dependencies[name]).toBe(rangeFor(name));
       expect(pkg.dependencies[name]).not.toContain("workspace:");
     }
