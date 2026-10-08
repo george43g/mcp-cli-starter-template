@@ -2,10 +2,15 @@
 
 ## Status
 
-`active`. PR 2, moving tui-kit onto the package, is next.
+`active`. All the kit-side work is done; what remains is consumer migration in the consumers' own repos.
 
 - 2026-10-07: PR 1 (#136) merged as `0d95464`.
-- 2026-10-08: George bootstrap-published 0.1.0, tagged `keymap-v0.1.0` and set up the Trusted Publisher. The `release-packages.yml` job was added after that.
+- 2026-10-08: George bootstrap-published 0.1.0, tagged `keymap-v0.1.0` and set up the Trusted Publisher. #137 added the `release-packages.yml` job.
+- 2026-10-08: wm-stack vendored the IIFE (wm-stack `28d44cf`). Both hashes matched and all 23 test vectors pass; ask cards use `vimScrollOnly` with `counts: false`.
+- 2026-10-08: PR 2 (#138, `4e9a4aa`) published tui-kit 0.6.0, whose `useVimKeys` runs on keymap. It adds `createVimKeyRouter` and `vimKeyHints`. The consumer notice went out on `ag-all`.
+- 2026-10-08: PR 3 (#139, `1dc3e1d`): the template TUI routes every key through one input router, which fixes ctrl-d also toggling dev stats. It adds ctrl-e/y, the `keys` command and `--keys` flag, and `dist/keys.json`, written by `build:ts`.
+- Consumer acknowledgements of 0.6.0: browser-tab-mcp and tmux-control-mcp (browser-tab-mcp #215). Waiting on recall, life-stack (mcpsync and the console), up-bank-mcp and EQStack.
+- Open request: browser-tab-mcp did not adopt `vimKeyHints`, because its help bar drops hints by priority. An optional `priority` field was proposed, to be built only if they will use it.
 
 - 2026-10-07: request relayed by executive on `ag-in-mcp-starter-template` (bus id zvicMpv48Car), quoting George's words from a dotfiles `wm ask` card, which executive could not verify: *"keyboard shortcuts that are vim-like are always welcome - being able to scroll/navigate the question text using ctrl-d/u, G/gg ctrl-e/y… because these specific vim language shortcuts are now used in so many of my tools, i dont want them manually implemented each time. This is a shared code library that belongs in the starter-template repo"*. Two read-only surveys ran: one of existing libraries and one of how each consumer handles keys today. This design follows from them.
 
