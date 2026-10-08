@@ -807,6 +807,10 @@ consumer (`analysis` is a 13-line shell; `voice-mcp` overlaps only weakly).
   components read `theme.<domainKey>` directly.
 - `useVimKeys` double-dispatch (old gap 7): it registers its own `useInput` and would fight imsg's
   mode-aware handler; `StatusBar`/`HelpBar`/`DevStatsPanel` are same-name-different-component.
+  **Kit-side answer 2026-10-08**: `createVimKeyRouter()` is the same vim dispatch as a plain
+  `(input, key, handlers) => handled` function, so a one-router app calls it from its own
+  `useInput`; `useVimKeys` is now a thin wrapper over it, and both take their semantics from
+  `@george43g/keymap` (`docs/plans/2026-10-vim-keymap.md`). The component name clash stays open.
 - Remaining upstream candidates (ranked): log-level filtering; a Prometheus metrics module;
   `--yaml` output; grapheme-aware `visual-width.ts`; `detectNerdFont()`, which complements
   `GLYPH_PRESETS.powerline` (today it can silently render blanks).

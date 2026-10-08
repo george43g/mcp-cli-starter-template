@@ -31,5 +31,11 @@ export {
   viewportRows,
   visibleWindow,
 } from "./viewport.js";
+export {
+  createVimKeyRouter,
+  type VimKeyRouter,
+  type VimKeyRouterOptions,
+  vimKeyHints,
+} from "./vim-key-router.js";
 export { clusterWidth, fitToWidth, truncateToWidth, visualWidth } from "./visual-width.js";
 export { type Allocation, allocateWidths, type ColumnSpec } from "./width-alloc.js";

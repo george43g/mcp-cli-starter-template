@@ -9,9 +9,12 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * at all. Every Ink component was therefore untestable-by-configuration, not
  * merely untested. That is fixed; the components remain uncovered.
  *
- * `useVimKeys` is excluded from the catch-up work on purpose — DEFERRED #16a
- * changes its double-dispatch behaviour, so tests written against today's
- * semantics would encode the bug.
+ * `useVimKeys` was left out of the catch-up work at first, because DEFERRED
+ * #16a was to change its double-dispatch behaviour and tests written then
+ * would have encoded the bug. The remedy kept the hook's
+ * contract: its dispatch now lives in the pure `createVimKeyRouter`, which a
+ * one-router app calls from its own `useInput` instead of the hook, and which
+ * is tested directly — including a differential test against the old hook.
  *
  * Raised 19 → 31 → 32 → 33 as MemoryCache, palette, and viewport gained
  * tests, then 33 → 42 when useDevStats gained the package's first `.test.tsx`
@@ -51,9 +54,14 @@ import { shared, withCoverageFloor } from "@george43g/vitest-config/vitest.share
  * platform-independent, so they raise the floor safely on the other three axes
  * while diluting — not removing — that wobble on this one.
  */
+/**
+ * Ratcheted 64/89/84/64 → 69/89/87/69 when useVimKeys moved onto
+ * `@george43g/keymap` behind the tested `createVimKeyRouter`. Measured
+ * 70.41/91.91/88.46; branches stay at 89 for the font-detect reason above.
+ */
 export default withCoverageFloor(shared, {
-  statements: 64,
+  statements: 69,
   branches: 89,
-  functions: 84,
-  lines: 64,
+  functions: 87,
+  lines: 69,
 });
