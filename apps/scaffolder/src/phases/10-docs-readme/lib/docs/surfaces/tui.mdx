@@ -11,12 +11,25 @@ example-repo tui
 
 | Keys | Action |
 |------|--------|
-| `j` / `k` | Move down / up |
-| `gg` | Jump to top (double-press; uses the same number-buffer pattern as vim) |
-| `G` | Jump to bottom |
-| `Ctrl+D` / `Ctrl+U` | Half-page down / up |
+| `j` / `k`, Down / Up | Move down / up (with a count: `5j`) |
+| `gg` / Home | Jump to top (double-press, as in vim) |
+| `G` / End | Jump to bottom |
+| `Ctrl+D` / `Ctrl+U` | Half-page down / up; the view and the cursor move together |
+| `Ctrl+E` / `Ctrl+Y` | Scroll one line; the cursor stays put unless it would leave the screen |
+| `Ctrl+F` / `Ctrl+B`, PageDown / PageUp | Page down / up |
 | `d` | Toggle dev-stats panel |
 | `q` / `Esc` | Quit |
+
+Every binding is declared in one table, `src/tui/keymap.ts`: the shared vim
+preset from `@george43g/keymap` plus the app's own keys, so a clash shows up in
+`keymap.diagnostics`. The help bar renders from it, and so does the cheatsheet
+output:
+
+```bash
+example-repo keys          # tab-separated: source, key, description, owner, file:line
+example-repo --keys        # the same, as a flag, for cheatsheet collectors
+example-repo --json keys   # the legend object; `pnpm build` also writes it to dist/keys.json
+```
 
 ## Theme system
 

@@ -15,6 +15,7 @@ flag --json help="Emit machine-readable JSON output"
 flag "-q --quiet" help="Suppress non-error output"
 flag "-v --verbose" help="Log debug-level info to stderr"
 flag --no-color help="Disable colors"
+flag --keys help="Print the TUI key bindings (tab-separated rows) and exit"
 cmd mcp help="Run the MCP server (stdio default; --http for Streamable HTTP)" {
     flag --http help="Use Streamable HTTP transport (requires MCP_HTTP_TOKEN)"
     flag --port help="HTTP port (default 8080)" {
@@ -29,6 +30,7 @@ cmd doctor help="Run preflight checks (Node version, native module, config dir)"
 cmd repl help="Interactive REPL driving the in-process dispatcher" {
     alias console
 }
+cmd keys help="Print the TUI key bindings (tab-separated rows; --json for the legend)"
 cmd health help="Print server health snapshot (calls health_check in-process)"
 cmd noop help="Demo: call the noop tool" {
     flag --input help="Input string to echo" required=#true {

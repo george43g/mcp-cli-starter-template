@@ -63,6 +63,13 @@ export default defineConfig({
       output: {
         entryFileNames: "[name].js",
         chunkFileNames: "[name]-[hash].js",
+        // The key table is imported by the cli entry (the `keys` command) AND
+        // by the lazily loaded TUI chunk. Left to itself, Rollup hoists the
+        // cli entry's code into a shared chunk behind a re-exporting
+        // `dist/cli.js` facade, and the bin's `import.meta.url` main check
+        // then never matches: every subcommand exits 0 printing nothing.
+        // Its own chunk keeps `dist/cli.js` the real entry.
+        manualChunks: (id) => (id.endsWith("/src/tui/keymap.ts") ? "keymap" : undefined),
       },
       plugins: [
         banner((chunk) => {

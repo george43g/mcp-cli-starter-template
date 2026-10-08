@@ -24,7 +24,7 @@ The TUI entry reads these at startup and passes them to `<ThemeProvider>`.
 
 `packages/tui-kit/src/hooks/`:
 
-- **useVimKeys** — number-buffer prefix + `gg` double-press + j/k/G/^d/^u dispatch. Mode-aware via `enabled` boolean (suspend during modals). The starter App uses it for the demo list.
+- **useVimKeys** / **createVimKeyRouter** — the shared vim keys from `@george43g/keymap`: count prefix, `gg` double-press, j/k/G, ^d/^u, ^e/^y, ^f/^b. `useVimKeys` registers its own `useInput`; `createVimKeyRouter` is called from inside YOURS and returns whether it consumed the key. The starter App uses the router, so ONE `useInput` sees every key: two hooks would both see ctrl-d, and a `d` binding in the second one would fire too. Its keys, nav and app alike, are declared in one table, `src/tui/keymap.ts`.
 - **useMouse** — SGR mouse protocol (`?1000h` + `?1006h`). **Critical**: never enables `?1003h` (any-event tracking) — that fires on every pixel of motion and pins the event loop. The watchdog would kill the process eventually, but it's the kind of bug that takes hours to track down.
 - **useDevStats** — samples `process.cpuUsage()` + `process.memoryUsage()` + watchdog state on a 2s timer. Drives the `DevStatsPanel` component.
 
@@ -34,7 +34,7 @@ The TUI entry reads these at startup and passes them to `<ThemeProvider>`.
 
 - **DevStatsPanel** — toggleable with the `d` key in the host App. Shows pid, uptime, CPU%, heap MB, RSS MB, event-loop p99, last activity, engine label (`rust`/`ts`).
 - **StatusBar** — mode indicator + message slot, with optional right-aligned hint.
-- **HelpBar** — keybinding legend; pass an array of `{ key, label }`.
+- **HelpBar** — keybinding legend; pass an array of `{ key, label }`. Build it with `vimKeyHints(keymap, ids)` so it renders from the same table the keys route through.
 - **renderFullScreen** — fullscreen-ink wrapper. Integrates with the shutdown registry so the screen unmounts during graceful shutdown (signal, EOF, orphan reparent).
 
 ## Bounded-memory patterns

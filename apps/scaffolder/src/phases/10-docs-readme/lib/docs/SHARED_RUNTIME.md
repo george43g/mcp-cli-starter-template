@@ -14,6 +14,7 @@ them. Their source is not copied into your repo:
 | `@george43g/cli-kit` | commander program builder, TTY/colour/output helpers, env↔flag binder, REPL |
 | `@george43g/tui-kit` | Ink theme system, hooks, components |
 | `@george43g/secret-store` | env → `.env` → OS keychain → exec (opt-in) |
+| `@george43g/keymap` | vim key notation, declared keymaps with conflict diagnostics, matcher, legend/`--keys` output |
 
 Customise policy through configuration rather than forking: `createWatchdog()`
 and `createShutdownController()` take an environment prefix, thresholds, idle

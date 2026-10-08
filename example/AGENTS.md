@@ -57,6 +57,7 @@ The runtime kits are **not** in `packages/`: the app depends on them from npm.
 | `@george43g/cli-kit` | commander helpers + tty/color/output + env↔flag binder + interactive REPL |
 | `@george43g/tui-kit` | ink theme system + hooks (useDevStats, useMouse, useVimKeys) + components |
 | `@george43g/secret-store` | env → .env → OS keychain → exec secret lookup |
+| `@george43g/keymap` | the vim key table (`src/tui/keymap.ts`): notation, conflict diagnostics, help/`--keys` output |
 
 ## Commands
 
