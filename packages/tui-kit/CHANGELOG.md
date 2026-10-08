@@ -1,3 +1,10 @@
+# [@george43g/tui-kit-v0.6.0](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.5.2...tui-kit-v0.6.0) (2026-10-08)
+
+
+### Features
+
+* **tui-kit:** build useVimKeys on @george43g/keymap ([#138](https://github.com/george43g/mcp-cli-starter-template/issues/138)) ([4e9a4aa](https://github.com/george43g/mcp-cli-starter-template/commit/4e9a4aa581887307cad4f4be0bdc556c9c0b81bd))
+
 # [@george43g/tui-kit-v0.5.2](https://github.com/george43g/mcp-cli-starter-template/compare/tui-kit-v0.5.1...tui-kit-v0.5.2) (2026-09-24)
 
 
