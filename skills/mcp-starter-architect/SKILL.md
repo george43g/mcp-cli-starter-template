@@ -63,7 +63,7 @@ example-repo/                           # the cloned tool, one git repo
 
 **Bin model**: ONE bin per tool (`example-repo`), subcommands route to MCP/TUI/doctor/repl/etc. The single bin keeps the public surface small and lets all surfaces share the in-process dispatcher (zero drift between MCP `tools/list` and `--help`).
 
-**Stack**: Node 24+, ESM only, pnpm 10.x workspace, Turborepo, Vite library mode, Biome 2.x, Vitest 3.x, MCP SDK ^1.29, Commander ^14, Ink 7 + React 19, Zod ^3, napi-rs v3 (optional).
+**Stack**: Node 24+, ESM only, pnpm 10.x workspace, Turborepo, Vite library mode, Biome 2.x, Vitest 3.x, MCP SDK ^1.29, Commander ^14, Ink 7 + React 19, Zod ^4, napi-rs v3 (optional).
 
 ---
 
@@ -170,7 +170,7 @@ Manual retrofit: drop these as workspace packages; the cli-kit `runRepl` is the 
 ### 06-mcp-kit — the MCP-layer toolkit
 
 `packages/mcp-kit/`:
-- **tool-registry.ts** — `ToolDefinition<TInput, TOutput>` type. Each tool exports input/output Zod schemas + a handler. `makeRegistry(defs)` builds the registry; `toMcpTools(includeDevOnly)` converts to MCP SDK shape with `zodToJsonSchema`.
+- **tool-registry.ts** — `ToolDefinition<TInput, TOutput>` type. Each tool exports input/output Zod schemas + a handler. `makeRegistry(defs)` builds the registry; `toMcpTools(includeDevOnly)` converts to MCP SDK shape via `toMcpSchema` (Zod 4 → JSON Schema 2020-12, no `$schema`).
 - **dispatch.ts** — `buildDispatcher(registry, opts)` returns a function honoring all 6 invariants. Configurable per-tool timeouts via `opts.timeouts`.
 - **transports/stdio.ts** — `startStdio({ server, entrypoint })` — sets up `StdioServerTransport`, logs startup/shutdown, registers cleanup.
 - **transports/http.ts** — `startHttpServer({ server, port, bind, getCounters })` — Streamable HTTP with bearer auth (constant-time compare via crypto.timingSafeEqual), `/health` endpoint, session ID management (`mcp-session-id` echoed). Bind defaults `127.0.0.1` — **terminate TLS at a reverse proxy** (Caddy/nginx/Cloudflare Tunnel).
