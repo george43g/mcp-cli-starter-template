@@ -6,7 +6,7 @@
  * Not a separate bin — the single `example-repo` bin dispatches via subcommands.
  *
  * To remove TUI support: delete this file + `src/tui/`, drop the `tui`
- * subcommand from `src/cli.ts`.
+ * subcommand from `src/cli.ts`, and the `keys` command (`src/commands/keys.ts`).
  */
 
 // MUST be first — brands the log directory at module scope, before anything

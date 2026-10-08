@@ -8,10 +8,12 @@
  *   health              Print a health snapshot (calls health_check in-process)
  *   noop --input ...    Demo: call the noop tool in-process
  *   repl                Drop into an interactive REPL driving the dispatcher
+ *   keys (or --keys)    Print the TUI key bindings
  *
  * To remove HTTP support: delete `src/commands/http.ts` and the
  *   `registerHttpCommand(program)` call below.
- * To remove TUI support: delete the `tui` subcommand below + `src/tui/`.
+ * To remove TUI support: delete the `tui` subcommand below + `src/tui/`, and
+ *   `src/commands/keys.ts` + its `registerKeysCommand(program)` call.
  */
 
 // MUST be first — brands the log directory at module scope, before anything
@@ -25,6 +27,7 @@ import { color, isInteractive } from "@george43g/cli-kit";
 import { Command } from "commander";
 import { checkLocalAccess, formatAccessReport } from "./access-check.js";
 import { applyHttpEnvFromOpts, registerHttpCommand } from "./commands/http.js";
+import { registerKeysCommand } from "./commands/keys.js";
 import { callMcpTool } from "./dispatcher.js";
 import { runMcpServer } from "./index.js";
 import { APP_NAME, buildStamp, CLI_NAME } from "./meta.js";
@@ -88,6 +91,9 @@ export async function main(argv: readonly string[] = process.argv): Promise<void
       const { runTui } = await import("./tui/index.js");
       await runTui();
     });
+
+  // `keys` + `--keys`: the TUI's key table, for humans and cheatsheet collectors.
+  registerKeysCommand(program);
 
   program
     .command("doctor")

@@ -28,6 +28,7 @@ on `PATH`:
 | `health` | in-process dispatch | Call `health_check` and print the result |
 | `noop` | in-process dispatch | Call `noop` (`--input <text>`, `--upper`) |
 | `repl` (alias `console`) | in-process dispatch | Interactive REPL over every tool |
+| `keys` (or the `--keys` flag) | n/a | Print the TUI key bindings as tab-separated rows; `--json` for the legend |
 
 `dist/index.js` is a second entry point, not a bin: it starts the server
 directly (stdio, or `--http`), and is what the `.mcpb` bundle's `manifest.json` spawns.
@@ -46,6 +47,33 @@ directly (stdio, or `--http`), and is what the `.mcpb` bundle's `manifest.json` 
 Every tool sets `annotations.title`, the name MCP hosts show in their UIs.
 `tests/tool-contract.test.ts` fails when a registered tool lacks one, or when
 this table and `src/tools/registry.ts` disagree in either direction.
+
+## TUI keys
+
+Every key the TUI binds is declared in one table, `src/tui/keymap.ts`: the
+shared vim preset from `@george43g/keymap` plus the app's own keys. The help
+bar, `example-repo keys` and the `dist/keys.json` legend written by `pnpm build`
+all render from that table.
+
+| Keys | Action |
+|------|--------|
+| `j` / `k`, Down / Up (with a count: `5j`) | Move down / up |
+| `gg` / `G`, Home / End | Top / bottom |
+| ctrl-d / ctrl-u | Half a page down / up; the view and the cursor move together |
+| ctrl-e / ctrl-y | Scroll one line; the cursor stays put unless it would leave the screen |
+| ctrl-f / ctrl-b, PageDown / PageUp | A page down / up |
+| `d` | Toggle the dev stats panel |
+| `q`, Esc | Quit |
+
+To add a key, add a binding to `appBindings` in `src/tui/keymap.ts` and handle
+its id in the `switch` in `src/tui/App.tsx`. `tests/tui-keys.test.tsx` fails if
+it clashes with another binding. Keep the vim defaults where you can: the same
+key doing the same thing in every tool is the point.
+
+All keys go through ONE `useInput` in `App.tsx`: the vim router sees each key
+first, and only a key it did not consume reaches the app's bindings. Do not add
+a second `useInput` for a new key. Both hooks see every key, which is how
+ctrl-d once also toggled the dev stats.
 
 ## Adding a tool
 
@@ -241,7 +269,7 @@ deletes the old ones.
 ## Removing surfaces
 
 - **Drop HTTP support**: delete `src/commands/http.ts` and its `registerHttpCommand(mcpCmd)` call in `src/cli.ts`, the `--http` branch from `src/index.ts`, and case #9 from `scripts/stress-mcp.ts`. Remove `MCP_HTTP_TOKEN` from `.env.example`. If nothing else in your tool resolves a secret, drop `@george43g/secret-store` from `package.json` too.
-- **Drop TUI support**: delete `src/tui/`, then the `tui` subcommand from `src/cli.ts` and from the `## Bins` table.
+- **Drop TUI support**: delete `src/tui/` and `src/commands/keys.ts`, then the `tui` subcommand and the `registerKeysCommand(program)` call from `src/cli.ts`, the `tui` and `keys` rows from the `## Bins` table, the `build:keys` step from `package.json`, and `@george43g/keymap` from its dependencies.
 - **Drop Rust acceleration**: delete `apps/rust-accel/`, the `src/native-bridge.ts` file, and the `tryLoadNative()` call in `src/tools/noop.ts`.
 - **Drop `get_logs`**: delete `src/tools/get-logs.ts` and remove it from the registry.
 

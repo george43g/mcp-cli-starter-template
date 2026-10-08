@@ -5,44 +5,81 @@
  *   - DevStatsPanel (toggled with `d`)
  *   - StatusBar + HelpBar
  *
- * Keybindings: vim-style j/k/gg/G + Ctrl-D/U for movement; `d` toggles
- * dev stats; `q` or Esc quits.
+ * Keys come from ONE table, `./keymap.ts`: the shared vim navigation preset
+ * (j/k, gg/G, ctrl-d/u half page, ctrl-e/y scroll a line, ctrl-f/b page) plus
+ * the app's own keys (`d` dev stats, `q`/Esc quit). Run `example-repo keys`
+ * for the full list.
+ *
+ * ONE `useInput` routes every key: the vim router sees it first, and only a
+ * key it did not consume reaches the app's own bindings. Two `useInput`
+ * hooks would both see every key, which is how ctrl-d once also toggled the
+ * dev stats here. Add a mode (a text field, a modal) by returning early at the
+ * top of the same handler, never by adding a second hook.
  */
 
-import { DevStatsPanel, HelpBar, StatusBar, useTheme, useVimKeys } from "@george43g/tui-kit";
+import {
+  createVimKeyRouter,
+  DevStatsPanel,
+  HelpBar,
+  StatusBar,
+  useTerminalSize,
+  useTheme,
+  viewportRows,
+  vimKeyHints,
+} from "@george43g/tui-kit";
 import { Box, Text, useApp, useInput } from "ink";
 import { useState } from "react";
 import { APP_NAME, buildStamp } from "../meta.js";
 import { engineLabel } from "../native-bridge.js";
+import { appAction, keymap } from "./keymap.js";
+import { type ListView, moveTo, pageBy, scrollBy } from "./scroll.js";
 
 const ITEMS = Array.from({ length: 30 }, (_, i) => ({
   id: i + 1,
   label: `Item ${i + 1} — replace this with your own data source`,
 }));
 
+/** The header row above the list; `viewportRows` already reserves the bars. */
+const HEADER_ROWS = 1;
+
+const HINTS = vimKeyHints(keymap, ["down", "top", "bottom", "halfPageDown", "devStats", "quit"]);
+
 export function App() {
   const theme = useTheme();
   const { exit } = useApp();
-  const [cursor, setCursor] = useState(0);
+  const [view, setView] = useState<ListView>({ cursor: 0, top: 0 });
   const [showStats, setShowStats] = useState(false);
+  // Created once: the router holds a pending `g` and a typed count between keys.
+  const [vim] = useState(() => createVimKeyRouter({ keymap }));
 
-  useVimKeys({
-    onMove: (delta) => setCursor((c) => Math.max(0, Math.min(ITEMS.length - 1, c + delta))),
-    onTop: () => setCursor(0),
-    onBottom: () => setCursor(ITEMS.length - 1),
-    onHalfPageDown: () => setCursor((c) => Math.min(ITEMS.length - 1, c + 10)),
-    onHalfPageUp: () => setCursor((c) => Math.max(0, c - 10)),
-    onUnhandled: () => {},
-  });
+  const rows = Math.max(1, viewportRows(useTerminalSize().rows) - HEADER_ROWS);
+  const half = Math.max(1, Math.floor(rows / 2));
+  const total = ITEMS.length;
 
   useInput((input, key) => {
-    if (input === "q" || key.escape) exit();
-    if (input === "d") setShowStats((v) => !v);
+    const consumed = vim(input, key, {
+      onMove: (delta) => setView((v) => moveTo(v, v.cursor + delta, total, rows)),
+      onTop: () => setView((v) => moveTo(v, 0, total, rows)),
+      onBottom: () => setView((v) => moveTo(v, total - 1, total, rows)),
+      onHalfPageDown: () => setView((v) => pageBy(v, half, total, rows)),
+      onHalfPageUp: () => setView((v) => pageBy(v, -half, total, rows)),
+      onPageDown: (n) => setView((v) => pageBy(v, n * rows, total, rows)),
+      onPageUp: (n) => setView((v) => pageBy(v, -n * rows, total, rows)),
+      onLineDown: (n) => setView((v) => scrollBy(v, n, total, rows)),
+      onLineUp: (n) => setView((v) => scrollBy(v, -n, total, rows)),
+    });
+    if (consumed) return;
+    switch (appAction(input, key)) {
+      case "quit":
+        exit();
+        break;
+      case "devStats":
+        setShowStats((s) => !s);
+        break;
+    }
   });
 
-  const visibleStart = Math.max(0, cursor - 10);
-  const visibleEnd = Math.min(ITEMS.length, visibleStart + 20);
-  const visible = ITEMS.slice(visibleStart, visibleEnd);
+  const visible = ITEMS.slice(view.top, view.top + rows);
 
   return (
     <Box flexDirection="column" height="100%">
@@ -56,8 +93,7 @@ export function App() {
       <Box flexDirection="row" flexGrow={1} paddingX={1}>
         <Box flexDirection="column" flexGrow={1}>
           {visible.map((item, i) => {
-            const idx = visibleStart + i;
-            const isCursor = idx === cursor;
+            const isCursor = view.top + i === view.cursor;
             const text = `${String(item.id).padStart(3)} ${item.label}`;
             return isCursor ? (
               <Text key={item.id} color={theme.palette.bg} backgroundColor={theme.palette.accent}>
@@ -79,18 +115,10 @@ export function App() {
 
       <StatusBar
         mode="browse"
-        message={`${cursor + 1} / ${ITEMS.length}`}
+        message={`${view.cursor + 1} / ${total}`}
         hint={`engine: ${engineLabel()}`}
       />
-      <HelpBar
-        hints={[
-          { key: "j/k", label: "move" },
-          { key: "gg/G", label: "top/bottom" },
-          { key: "^d/^u", label: "half-page" },
-          { key: "d", label: "dev stats" },
-          { key: "q", label: "quit" },
-        ]}
-      />
+      <HelpBar hints={HINTS} />
     </Box>
   );
 }

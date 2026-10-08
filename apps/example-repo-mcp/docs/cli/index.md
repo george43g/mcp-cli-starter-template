@@ -23,11 +23,16 @@ Log debug-level info to stderr
 
 Disable colors
 
+### `--keys`
+
+Print the TUI key bindings (tab-separated rows) and exit
+
 ## Subcommands
 
 - [`example-repo mcp [FLAGS]`](/mcp.md)
 - [`example-repo tui`](/tui.md)
 - [`example-repo doctor`](/doctor.md)
 - [`example-repo repl`](/repl.md)
+- [`example-repo keys`](/keys.md)
 - [`example-repo health`](/health.md)
 - [`example-repo noop <--input <text>> [--upper]`](/noop.md)
