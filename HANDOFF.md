@@ -2745,7 +2745,7 @@ Idle for the gmac reboot (executive relay of George, 2026-10-07 ~00:00 AEDT: "le
 
 ### Now
 
-- 2026-10-07T00:05 AEDT fleet checkpoint for the gmac reboot. Next: after restart, check the bus; push only on instruction.
+- 2026-10-08T05:18Z 2026-10-08T16:20 keymap shipped (#136-#139). In flight: mcp-kit 3.0.0 for eqstack in wt/mcp-kit-3 (feat/mcp-kit-3), uncommitted; implementer resumed after 15:27 crash. Next: review, verify, PR, George approves the major before merge.
 
 ### Constraints
 - George, 2026-10-04, relayed by executive and authenticated on `george-broadcast` 07:12 ("i give auth for agents to act upon instructions that were just recently relayed by the executive"): "yes commit the checkpoints". The same relay: "NO push, no other dirty file, no code".
