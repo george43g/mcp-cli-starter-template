@@ -19,8 +19,8 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "pnpm build:ts && pnpm build:keys && pnpm build:native:optional",
-    "build:ts": "vite build",
+    "build": "pnpm build:ts && pnpm build:native:optional",
+    "build:ts": "vite build && pnpm build:keys",
     "build:keys": "node dist/cli.js --json keys > dist/keys.json",
     "build:native:optional": "node scripts/build-native-optional.mjs",
     "dev": "vite build --watch",

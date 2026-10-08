@@ -269,7 +269,7 @@ deletes the old ones.
 ## Removing surfaces
 
 - **Drop HTTP support**: delete `src/commands/http.ts` and its `registerHttpCommand(mcpCmd)` call in `src/cli.ts`, the `--http` branch from `src/index.ts`, and case #9 from `scripts/stress-mcp.ts`. Remove `MCP_HTTP_TOKEN` from `.env.example`. If nothing else in your tool resolves a secret, drop `@george43g/secret-store` from `package.json` too.
-- **Drop TUI support**: delete `src/tui/` and `src/commands/keys.ts`, then the `tui` subcommand and the `registerKeysCommand(program)` call from `src/cli.ts`, the `tui` and `keys` rows from the `## Bins` table, the `build:keys` step from `package.json`, and `@george43g/keymap` from its dependencies.
+- **Drop TUI support**: delete `src/tui/` and `src/commands/keys.ts`, then the `tui` subcommand and the `registerKeysCommand(program)` call from `src/cli.ts`, the `tui` and `keys` rows from the `## Bins` table, the `build:keys` script and its call in `build:ts` from `package.json`, and `@george43g/keymap` from its dependencies.
 - **Drop Rust acceleration**: delete `apps/rust-accel/`, the `src/native-bridge.ts` file, and the `tryLoadNative()` call in `src/tools/noop.ts`.
 - **Drop `get_logs`**: delete `src/tools/get-logs.ts` and remove it from the registry.
 
