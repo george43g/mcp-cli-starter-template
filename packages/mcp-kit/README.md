@@ -4,8 +4,95 @@ MCP server building blocks: a tool registry, a dispatcher with timeout / perf /
 abort / error-wrapping baked in, stdio + Streamable HTTP transports, `sanitize()`
 for untrusted content, and UUID-gated prompt-injection helpers.
 
-Not yet on npm. It is vendored into generated repos today; see `DEFERRED.md` #25
-in the template repo for the publish sequence.
+Peers: `zod` ^4 and `@george43g/robustness`. Upgrading from 2.x? See
+[Migrating from 2.x](#migrating-from-2x-to-300) — the wire schemas changed dialect.
+
+## Schemas: one Zod definition, JSON Schema 2020-12 on the wire
+
+Each tool declares a Zod `input` and `output`. `makeRegistry()` derives both
+wire schemas from them with `toMcpSchema()`; there is no hand-written JSON
+Schema path, so the schema a client sees cannot drift from the validator the
+dispatcher runs.
+
+```ts
+import { toMcpSchema } from "@george43g/mcp-kit";
+
+toMcpSchema(NoopInputSchema, "input", "noop");
+// → { type: "object", properties: { … }, required: [ … ] }   (no "$schema")
+```
+
+- **Dialect 2020-12, `$schema` stripped.** 2020-12 is MCP's default dialect,
+  and a schema with no label gives no client a dialect to refuse. mcp-kit 2.x
+  emitted draft-07 via `zod-to-json-schema`, and Claude Code 2.1.292 throws on
+  `"$schema": "http://json-schema.org/draft-07/schema#"` — every 2.x tool broke.
+- **`io` is real.** `inputSchema` describes what a caller may send (a
+  `.default()` field is optional); `outputSchema` describes what parsing yields
+  (that field is required, and objects carry `additionalProperties: false`).
+- **Unrepresentable types throw at `makeRegistry()`**, naming the tool:
+  `z.date()`, `z.bigint()`, an output-side `.transform()`. Use an ISO string, a
+  number, or move the transform out of the schema.
+- **The top level must be a `z.object`.** MCP requires `type: "object"`.
+- **Recursive schemas keep `$defs` / `$ref`** (or a root `$ref: "#"`): a cycle
+  cannot be inlined. That is valid 2020-12, and the conformance helper below
+  compiles it.
+
+## Per-request tool filter (scope gating)
+
+```ts
+const registry = makeRegistry(tools, {
+  filter: (tool, ctx) =>
+    !tool.name.startsWith("gmail_send") || (ctx.authInfo?.scopes.includes("gmail.send") ?? false),
+});
+
+server.setRequestHandler(ListToolsRequestSchema, async (_req, extra) => ({
+  tools: registry.toMcpTools(includeDevOnly, extra),
+}));
+server.setRequestHandler(CallToolRequestSchema, async (req, extra) =>
+  dispatch(req.params.name, req.params.arguments ?? {}, extra.signal, extra),
+);
+```
+
+- The filter lives on the **registry**, so the listing and the dispatcher apply
+  the same predicate. A refused call answers **exactly like an unknown tool**.
+  Hiding a tool from `tools/list` while it still answers by name is the hole
+  `devOnly` fell into once.
+- `ctx` is `{ authInfo?, sessionId?, requestInfo? }` — a subset of the SDK's
+  `RequestHandlerExtra`, so pass `extra` straight through. In-process calls (a
+  CLI, a test) pass nothing and the filter sees `{}`; decide what no `authInfo`
+  means for your tools.
+- Synchronous, evaluated per request. **A throwing filter counts as `false`**.
+
+## Testing: `@george43g/mcp-kit/testing`
+
+```ts
+import { assertMcpConformance, validateStructured } from "@george43g/mcp-kit/testing";
+
+it("every tool is accepted by a 2020-12 client", () => {
+  assertMcpConformance(makeAppRegistry(), {
+    samples: { noop: { input: [{ input: "x" }], output: [{ echo: "x", engine: "ts", durationMicros: 1 }] } },
+  });
+});
+
+it("noop's structuredContent matches its outputSchema", async () => {
+  const result = await callMcpTool("noop", { input: "x" });
+  expect(validateStructured(noopTool, result).errors).toEqual([]);
+});
+```
+
+- `assertMcpConformance(registry | definitions | Tool[])` compiles every input
+  and output schema under **Ajv2020 in strict mode** with no draft-07
+  meta-schema loaded — so a draft-07 label fails here exactly as it failed in
+  Claude Code. It collects every problem and throws one `McpConformanceError`.
+  A registry is checked in full: devOnly and filtered tools too.
+- `validateStructured(tool, result)` is the SDK client's own `tools/call` check:
+  structured content required unless `isError`, and validated against
+  `outputSchema` when present. It returns `{ valid, errors }`.
+- `ajv` / `ajv-formats` are dependencies of this package, imported only by this
+  entry. `@modelcontextprotocol/sdk` already depends on both, so they add nothing
+  to an install, and a server that never imports `/testing` never loads them.
+- `allowUnionTypes` is on: `type: ["string", "number"]` is valid 2020-12 (Zod
+  emits it for `z.union([z.string(), z.number()])`); Ajv's strict mode flags it
+  only as style.
 
 ## The dispatcher is the point
 
@@ -127,6 +214,60 @@ Three differences from `sanitize()`, each deliberate:
 The marker matters more than it looks: a **silently** shortened document is
 indistinguishable from a document that really ended there, and a model reading it
 will answer confidently from the fragment it received.
+
+## Migrating from 2.x to 3.0.0
+
+**Why:** 2.x emitted draft-07 JSON Schema, and Claude Code 2.1.292+ (a
+2020-12-only client) throws on it, so every tool from every 2.x server failed in
+new sessions. 3.0.0 moves to Zod 4's native converter and 2020-12.
+
+Breaking changes, each with its migration:
+
+1. **`zod` is a peer, `^4`** (was a dependency, `^3.23`). Install `zod@^4` in
+   your app and drop `zod-to-json-schema`. Zod 4's `zod` root keeps `z.object`,
+   `.describe()`, `.default()`, `z.enum`, `z.infer`; see Zod's own v4 migration
+   guide for `.errors` → `.issues`, `z.string().email()` → `z.email()` (the old
+   form still works), and error-map changes.
+2. **Wire schemas are JSON Schema 2020-12 with no `$schema`** (were draft-07,
+   labelled). Clients that pinned draft-07 behaviour see 2020-12 keywords:
+   `prefixItems` for tuples, `$defs` for recursion. Nothing to do unless you
+   post-process `inputSchema` — and if you stripped `$schema` yourself as a
+   hot-fix, delete that code.
+3. **Input objects are open; output objects stay closed.** `inputSchema` is
+   the input side of the schema (`io: "input"`) and no longer carries
+   `additionalProperties: false`, so a client may send extra keys — the
+   dispatcher's Zod parse strips them, as before. `.default()` fields stay
+   optional on input (unchanged) and required on output. `outputSchema` keeps
+   `additionalProperties: false`, as in 2.x.
+4. **`makeRegistry()` throws at construction for an unrepresentable schema**,
+   naming the tool: `z.date()`, `z.bigint()`, `z.map()`, `z.set()`,
+   `z.symbol()`, `z.undefined()`, an output-side `.transform()`. 2.x emitted a
+   best-effort schema silently — `z.date()` became `{type: "string", format:
+   "date-time"}`, `z.map()` an array of pairs. **The common case is a `z.date()`
+   output field:** return `date.toISOString()` and declare
+   `z.string().datetime()` (or `z.iso.datetime()`).
+5. **`makeRegistry()` throws when a tool's input or output is not a
+   `z.object`** (MCP requires `type: "object"`). Wrap the value:
+   `z.object({ result: … })`.
+6. **`ToolRegistry` has a new required member, `allows(def, ctx?)`**, and
+   `toMcpTools()` takes an optional second argument. Only a hand-written
+   `ToolRegistry` implementation breaks; build it with `makeRegistry()`.
+7. **"Invalid arguments" text changes wording**: the per-field lines come from
+   Zod 4's messages (`Invalid input: expected string, received number`, was
+   `Expected string, received number`). Rendered output is not covered by
+   semver; listed because a test that snapshots the text will notice.
+8. **The SDK dependency floor is unchanged (`^1.29.0`)** — 1.29 already accepts
+   `zod ^3.25 || ^4`. Listed so nobody hunts for it.
+
+Additive, no action needed: `toMcpSchema()`, the registry `filter` option and
+the `ctx` argument to `dispatch`, and the `@george43g/mcp-kit/testing` entry.
+
+Add one test so this never regresses silently:
+
+```ts
+import { assertMcpConformance } from "@george43g/mcp-kit/testing";
+it("tools conform", () => void assertMcpConformance(makeAppRegistry()));
+```
 
 ## Upgrading to 1.0.0
 

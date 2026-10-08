@@ -31,7 +31,7 @@ import {
 import type { ZodError } from "zod";
 import { wrapToolError } from "./prompt-injection.js";
 import { sanitize } from "./sanitize.js";
-import type { ContentBlock, ToolRegistry } from "./tool-registry.js";
+import type { ContentBlock, ToolFilterContext, ToolRegistry } from "./tool-registry.js";
 
 /**
  * Replace the absolute home-directory prefix with `~` in anything headed for a
@@ -121,14 +121,29 @@ export interface BuildDispatcherOptions {
   devOnlyEnabled?: () => boolean;
 }
 
-export type Dispatch = (name: string, args: unknown, signal?: AbortSignal) => Promise<ToolResult>;
+/**
+ * Call a tool by name.
+ *
+ * `ctx` is what the registry's `filter` (see `makeRegistry`) is evaluated
+ * against. From an MCP `tools/call` handler, pass the handler's `extra`:
+ * `dispatch(name, args, extra.signal, extra)`. An in-process caller omits it,
+ * and the filter sees `{}`.
+ */
+export type Dispatch = (
+  name: string,
+  args: unknown,
+  signal?: AbortSignal,
+  ctx?: ToolFilterContext,
+) => Promise<ToolResult>;
 
 function defaultTimeoutMs(): number {
   return envNum("MCP_TOOL_TIMEOUT_DEFAULT_MS", 30_000);
 }
 
 function formatZodError(err: ZodError): string {
-  return err.errors.map((e) => `  - ${e.path.join(".") || "(root)"}: ${e.message}`).join("\n");
+  return err.issues
+    .map((e) => `  - ${e.path.map(String).join(".") || "(root)"}: ${e.message}`)
+    .join("\n");
 }
 
 export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
@@ -149,7 +164,7 @@ export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
   }
 
   const fallback = defaultTimeoutMs();
-  return async (name, args, signal) => {
+  return async (name, args, signal, ctx = {}) => {
     noteActivity();
     opts.onCall?.(name);
     const def = opts.registry.get(name);
@@ -162,8 +177,12 @@ export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
     // construction, which the readonly type discourages but does not prevent.
     // If that ever happens the tool is gated, not exposed.
     const devGated = def?.devOnly === true && !(opts.devOnlyEnabled?.() ?? false);
+    // The registry's per-request filter gates the CALL path with the same
+    // predicate that gates the listing. Hiding a tool from tools/list while it
+    // still answers by name is the hole `devOnly` already fell into once.
+    const filtered = def !== undefined && !opts.registry.allows(def, ctx);
 
-    if (!def || devGated) {
+    if (!def || devGated || filtered) {
       opts.onError?.(name, new Error("unknown_tool"));
       return {
         content: [

@@ -236,3 +236,69 @@ describe("devOnlyEnabled — hiding a tool is not disabling it", () => {
     expect((await dispatch("echo", { input: "x" })).isError).toBeUndefined();
   });
 });
+
+describe("registry filter on the call path", () => {
+  // A filter that only hid a tool from tools/list would leave it callable by
+  // name — the hole devOnly fell into once. The dispatcher must apply the same
+  // predicate, and a refusal must look exactly like an unknown tool.
+  const scopes = (s: string[]) => ({ authInfo: { token: "t", clientId: "c", scopes: s } });
+  const scoped = makeRegistry([echo], {
+    filter: (_t, ctx) => ctx.authInfo?.scopes.includes("echo") ?? false,
+  });
+  const strip = (b: unknown) => JSON.stringify(b).replace(/no_such_tool|echo/g, "<name>");
+
+  it("refuses a filtered tool, indistinguishably from an unknown one", async () => {
+    let handlerRan = false;
+    const spy = makeRegistry(
+      [
+        {
+          ...echo,
+          handler: async (i: { input: string }) => {
+            handlerRan = true;
+            return { echo: i.input };
+          },
+        },
+      ],
+      { filter: () => false },
+    );
+    const dispatch = buildDispatcher({ registry: spy });
+    const refused = await dispatch("echo", { input: "x" }, undefined, scopes(["echo"]));
+    const unknown = await dispatch("no_such_tool", {});
+    expect(refused.isError).toBe(true);
+    expect(handlerRan).toBe(false);
+    expect(strip(refused.content[0])).toEqual(strip(unknown.content[0]));
+  });
+
+  it("passes the per-call ctx to the filter", async () => {
+    const dispatch = buildDispatcher({ registry: scoped });
+    expect((await dispatch("echo", { input: "x" }, undefined, scopes([]))).isError).toBe(true);
+    const ok = await dispatch("echo", { input: "x" }, undefined, scopes(["echo"]));
+    expect(ok.isError).toBeUndefined();
+    expect(ok.structuredContent).toEqual({ echo: "x" });
+  });
+
+  it("evaluates an in-process call (no ctx) against {}", async () => {
+    const dispatch = buildDispatcher({ registry: scoped });
+    expect((await dispatch("echo", { input: "x" })).isError).toBe(true);
+  });
+
+  it("fails closed when the filter throws", async () => {
+    const throwing = makeRegistry([echo], {
+      filter: () => {
+        throw new Error("gate bug");
+      },
+    });
+    const dispatch = buildDispatcher({ registry: throwing });
+    expect((await dispatch("echo", { input: "x" })).isError).toBe(true);
+  });
+});
+
+describe("invalid arguments under zod 4", () => {
+  it("names the failing path from ZodError.issues", async () => {
+    const dispatch = buildDispatcher({ registry });
+    const r = await dispatch("echo", { input: 3 });
+    expect(r.isError).toBe(true);
+    const block = r.content[0];
+    expect(block?.type === "text" ? block.text : "").toMatch(/- input: /);
+  });
+});

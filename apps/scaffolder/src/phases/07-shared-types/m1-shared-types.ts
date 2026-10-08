@@ -35,8 +35,7 @@ const PKG_JSON = (scope: string) => `{
     "clean": "rm -rf dist coverage"
   },
   "dependencies": {
-    "zod": "^3.23.0",
-    "zod-to-json-schema": "^3.25.0"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "${scope}/tsconfig": "workspace:*",
