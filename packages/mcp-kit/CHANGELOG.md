@@ -1,3 +1,10 @@
+# [@george43g/mcp-kit-v3.1.0](https://github.com/george43g/mcp-cli-starter-template/compare/mcp-kit-v3.0.0...mcp-kit-v3.1.0) (2026-10-15)
+
+
+### Features
+
+* **mcp-kit:** add a filter deny reason and opt-in strictArgs ([#141](https://github.com/george43g/mcp-cli-starter-template/issues/141)) ([20c35ee](https://github.com/george43g/mcp-cli-starter-template/commit/20c35ee36117040648d50e5ec53ffee6a3c6c534)), closes [#28](https://github.com/george43g/mcp-cli-starter-template/issues/28)
+
 # [@george43g/mcp-kit-v3.0.0](https://github.com/george43g/mcp-cli-starter-template/compare/mcp-kit-v2.0.0...mcp-kit-v3.0.0) (2026-10-15)
 
 
