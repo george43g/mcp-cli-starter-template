@@ -1,3 +1,13 @@
+# [@george43g/mcp-kit-v3.0.0](https://github.com/george43g/mcp-cli-starter-template/compare/mcp-kit-v2.0.0...mcp-kit-v3.0.0) (2026-10-15)
+
+
+* feat(mcp-kit)!: emit JSON Schema 2020-12 from zod 4, add tool filter and /testing ([#140](https://github.com/george43g/mcp-cli-starter-template/issues/140)) ([4efde48](https://github.com/george43g/mcp-cli-starter-template/commit/4efde48d4b5bdb6029e3f73639d8130d8fa61c9e))
+
+
+### BREAKING CHANGES
+
+* mcp-kit 3.0.0 requires zod 4 as a peer and emits JSON Schema 2020-12 without $schema; see packages/mcp-kit/README.md "Migrating from 2.x to 3.0.0".
+
 # [@george43g/mcp-kit-v2.0.0](https://github.com/george43g/mcp-cli-starter-template/compare/mcp-kit-v1.0.0...mcp-kit-v2.0.0) (2026-08-30)
 
 
