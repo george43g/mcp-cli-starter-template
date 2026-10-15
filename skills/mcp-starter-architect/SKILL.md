@@ -1,6 +1,9 @@
 ---
 name: mcp-starter-architect
 description: Use when scaffolding a new MCP+CLI+TUI tool from scratch, or when retrofitting an existing MCP server to match production-grade patterns. Covers the full 12-phase scaffolder rule-set (toolchain, robustness, dispatcher invariants, watchdog, MCP guardrails, native acceleration, docs, CI, release flow) with manual application steps per rule.
+metadata:
+  owner: mcp-starter-template
+  origin: fleet
 ---
 
 # mcp-starter-architect
