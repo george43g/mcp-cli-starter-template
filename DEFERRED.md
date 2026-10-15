@@ -1751,6 +1751,7 @@ piggyback a deferred call site onto. Anything parked here needs its own follow-u
 |---|---|---|
 | `cli-kit` (REPL serial queue) | Mirror `apps/example-repo-mcp/tests/repl-pipe.test.ts` into `08-app/lib/tests/`, rebuild templates, `pnpm regen:example`. Held back deliberately: the scaffolder E2E smoke installs cli-kit **from npm**, so shipping the test to generated repos before the release would fail the smoke against the published (broken) loop — #23 exactly. | ✅ cleared once `cli-kit@0.3.1` published |
 | `robustness` minor (logger level gate) | Add `MCP_LOG_LEVEL` to `apps/example-repo-mcp/.env.example` and its `08-app/lib/` mirror. | ✅ cleared once `robustness@0.6.0` published |
+| `mcp-kit@3.1.0` (`strictArgs`, filter `{ deny }`) | Turn `strictArgs: true` on in `apps/example-repo-mcp/src/tools/registry.ts` and its `08-app/lib/` mirror, add a misspelled-argument test, `pnpm regen:example`. Requested by eqstack; George decided 2026-10-15 that the kit ships it opt-in, default off. | open: waits on the 3.1.0 publish |
 
 **The table works — keep using it.** Both rows cleared within an hour of their release, which is
 the point: the alternative was remembering two reverted call sites across four PRs and two release
