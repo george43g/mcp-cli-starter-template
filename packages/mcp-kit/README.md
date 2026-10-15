@@ -62,6 +62,78 @@ server.setRequestHandler(CallToolRequestSchema, async (req, extra) =>
   means for your tools.
 - Synchronous, evaluated per request. **A throwing filter counts as `false`**.
 
+### Refusing with a reason: `{ deny }` (3.1.0)
+
+`false` makes a tool look like it does not exist, which is right when its
+existence is the secret and a dead end when the caller could fix the problem.
+Return `{ deny: "reason" }` instead and the tool is hidden from `tools/list`
+the same way, but a `tools/call` to it gets the reason:
+
+```ts
+const registry = makeRegistry(tools, {
+  filter: (tool, ctx) =>
+    hasScopes(ctx, tool.scopes) ||
+    { deny: "not available. You may need to re-authenticate with additional scopes" },
+});
+
+await dispatch("gmail_send", { to: "…" });
+// → { isError: true, content: [{ type: "text", text:
+//     'Tool "gmail_send" failed: not available. You may need to re-authenticate with additional scopes' }] }
+```
+
+- The reason is wrapped like every other dispatcher error
+  (`Tool "<name>" failed: <deny>`). Write it as a sentence an agent can act on.
+- `false` keeps the unknown-tool wording, a throw still counts as `false`, and
+  so does `{ deny: "" }`: an empty reason tells the caller nothing.
+- A gated `devOnly` tool answers as unknown even if the filter would deny it
+  with a reason; the filter is not consulted for it.
+- `registry.allows()` still returns a boolean (`false` for `{ deny }`).
+  `registry.evaluate(def, ctx)` returns `{ allowed: true }` or
+  `{ allowed: false, deny? }`. It is optional on the `ToolRegistry` type, so a
+  hand-written 3.0 registry still compiles; the dispatcher falls back to
+  `allows()` for one, and its refusals then use the unknown-tool wording.
+
+## Strict arguments: `strictArgs` (3.1.0, off by default)
+
+Zod strips an argument the schema does not declare. So when an agent misspells
+an OPTIONAL argument, the call succeeds and the handler runs on the default as
+if the argument had never been sent. Nothing tells the agent it was ignored.
+`strictArgs` refuses the call instead, before parsing and before the handler:
+
+```ts
+const registry = makeRegistry(tools, { strictArgs: true }); // every tool
+const chat: ToolDefinition = { /* … */ strictArgs: false }; // a tool opts back out
+
+await dispatch("chat_history", { chatIdentifer: "x", cursor: "c" });
+// Tool "chat_history" failed: unknown argument chatIdentifer; did you mean chatIdentifier?
+// unknown argument cursor
+// Hint: Valid arguments: chatIdentifier, limit.
+```
+
+- **Set it on the registry, override it per tool.** `ToolDefinition.strictArgs`
+  wins over `makeRegistry`'s `strictArgs` in either direction.
+- **"Unknown" means "not in the advertised `inputSchema`'s top-level
+  `properties`."** So it behaves the same for a refined or transformed
+  `z.object` and for an intersection, which Zod merges into one object.
+- **The advertised `inputSchema` does not change.** No `additionalProperties:
+  false` is added; clients see the same open schema whether this is on or off.
+- **Valid input parses exactly as before.** The check only compares argument
+  names; parsing still runs the tool's own schema, so defaults and transforms
+  are untouched.
+- **Top level only.** A nested `z.object` still strips unknown keys. To reject
+  them, declare that field `z.strictObject(…)`; Zod then reports it as
+  `Invalid arguments: … Unrecognized key: "frm"`, without a suggestion.
+- **An input that declares itself open is not checked**: `z.looseObject`,
+  `.catchall()` or `z.record` at the top level has no unknown keys.
+- A suggestion is offered when a declared name is within 2 edits (insertion,
+  deletion, substitution or swapping two adjacent letters), and those edits
+  are at most half its length. At most 20 unknown keys are named per error.
+  Echoed keys have control characters and newlines replaced.
+- `registry.unknownArgs(def, args)` returns `[{ key, suggestion? }]`, and is
+  optional on the type for the same reason as `evaluate`. Without it, the
+  dispatcher still honours a tool's own `strictArgs: true`.
+- The error text is rendered output and is not covered by semver.
+
 ## Testing: `@george43g/mcp-kit/testing`
 
 ```ts

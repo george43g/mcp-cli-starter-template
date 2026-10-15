@@ -45,6 +45,7 @@ const REGISTRY_PACKAGES = new Map([
   ["@george43g/tui-kit", "tui-kit"],
   ["@george43g/secret-store", "secret-store"],
   ["@george43g/keymap", "keymap"],
+  ["@george43g/mcp-kit", "mcp-kit"],
 ]);
 
 const failures = [];

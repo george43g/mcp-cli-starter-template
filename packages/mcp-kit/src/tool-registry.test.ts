@@ -208,3 +208,122 @@ describe("makeRegistry filter reads live state", () => {
     expect(r.allows(send)).toBe(false);
   });
 });
+
+describe("makeRegistry filter: { deny }", () => {
+  const reason = "not available. You may need to re-authenticate with additional scopes";
+
+  it("hides a denied tool from tools/list exactly like false", () => {
+    const r = makeRegistry([prod, dev], {
+      filter: (t) => (t.name === "prod_tool" ? { deny: reason } : true),
+    });
+    expect(r.toMcpTools(true).map((t) => t.name)).toEqual(["dev_tool"]);
+    expect(r.allows(prod)).toBe(false);
+  });
+
+  it("evaluate() carries the deny reason, and only for { deny }", () => {
+    const r = (result: boolean | { deny: string }) =>
+      makeRegistry([prod], { filter: () => result });
+    expect(r({ deny: reason }).evaluate?.(prod)).toEqual({ allowed: false, deny: reason });
+    expect(r(false).evaluate?.(prod)).toEqual({ allowed: false });
+    expect(r(true).evaluate?.(prod)).toEqual({ allowed: true });
+    expect(makeRegistry([prod]).evaluate?.(prod)).toEqual({ allowed: true });
+  });
+
+  it("treats an empty reason, a throw, or a non-boolean as a plain false", () => {
+    expect(makeRegistry([prod], { filter: () => ({ deny: "  " }) }).evaluate?.(prod)).toEqual({
+      allowed: false,
+    });
+    const throwing = makeRegistry([prod], {
+      filter: () => {
+        throw new Error("gate bug");
+      },
+    });
+    expect(throwing.evaluate?.(prod)).toEqual({ allowed: false });
+    // A JS caller returning a truthy non-boolean is not "allowed".
+    const truthy = makeRegistry([prod], { filter: (() => 1) as unknown as () => boolean });
+    expect(truthy.evaluate?.(prod)).toEqual({ allowed: false });
+  });
+});
+
+describe("makeRegistry strictArgs", () => {
+  const chat: ToolDefinition = {
+    name: "chat_history",
+    description: "Read a chat",
+    input: z.object({ chatIdentifier: z.string(), limit: z.number().default(20) }),
+    output: z.object({ n: z.number() }),
+    annotations: { readOnlyHint: true },
+    handler: async ({ limit }) => ({ n: limit }),
+  };
+  const typo = { chatIdentifer: "x" };
+
+  it("is off by default", () => {
+    expect(makeRegistry([chat]).unknownArgs?.(chat, typo)).toEqual([]);
+  });
+
+  it("names each undeclared key, with a suggestion when one is close", () => {
+    const r = makeRegistry([chat], { strictArgs: true });
+    expect(r.unknownArgs?.(chat, { ...typo, cursor: 1, limit: 3 })).toEqual([
+      { key: "chatIdentifer", suggestion: "chatIdentifier" },
+      { key: "cursor" },
+    ]);
+    expect(r.unknownArgs?.(chat, { chatIdentifier: "x" })).toEqual([]);
+  });
+
+  it("lets a tool override the registry default in either direction", () => {
+    const strictTool = { ...chat, name: "strict_tool", strictArgs: true };
+    const looseTool = { ...chat, name: "loose_tool", strictArgs: false };
+    const off = makeRegistry([strictTool, looseTool]);
+    const on = makeRegistry([strictTool, looseTool], { strictArgs: true });
+    expect(off.unknownArgs?.(strictTool, typo)).toHaveLength(1);
+    expect(on.unknownArgs?.(looseTool, typo)).toEqual([]);
+  });
+
+  it("leaves the advertised inputSchema unchanged (still open)", () => {
+    const plain = makeRegistry([chat]).toMcpTools();
+    const strict = makeRegistry([chat], { strictArgs: true }).toMcpTools();
+    expect(strict).toEqual(plain);
+    expect(strict[0]?.inputSchema).not.toHaveProperty("additionalProperties");
+  });
+
+  it("checks plain-object arguments only", () => {
+    const r = makeRegistry([chat], { strictArgs: true });
+    for (const args of [null, undefined, "x", 3, ["chatIdentifer"]]) {
+      expect(r.unknownArgs?.(chat, args)).toEqual([]);
+    }
+  });
+
+  it("reads the declared keys through refine, transform and intersection", () => {
+    const base = z.object({ a: z.string() });
+    const shapes = {
+      refined: base.refine(() => true),
+      transformed: base.transform((v) => v),
+      intersection: z.intersection(base, z.object({ b: z.string() })),
+    };
+    for (const [name, input] of Object.entries(shapes)) {
+      const def: ToolDefinition = { ...prod, name, input };
+      const r = makeRegistry([def], { strictArgs: true });
+      expect(r.unknownArgs?.(def, { a: "1", b: "2", c: "3" }).map((u) => u.key)).toEqual(
+        name === "intersection" ? ["c"] : ["b", "c"],
+      );
+    }
+  });
+
+  it("does nothing for an input that declares itself open", () => {
+    const shapes = {
+      loose: z.looseObject({ a: z.string() }),
+      catchall: z.object({ a: z.string() }).catchall(z.string()),
+      record: z.record(z.string(), z.string()),
+    };
+    for (const [name, input] of Object.entries(shapes)) {
+      const def: ToolDefinition = { ...prod, name, input };
+      expect(makeRegistry([def], { strictArgs: true }).unknownArgs?.(def, { zzz: "1" })).toEqual(
+        [],
+      );
+    }
+  });
+
+  it("checks a definition from outside the registry against its own schema", () => {
+    const r = makeRegistry([prod], { strictArgs: true });
+    expect(r.unknownArgs?.(chat, typo).map((u) => u.key)).toEqual(["chatIdentifer"]);
+  });
+});
