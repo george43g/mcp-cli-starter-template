@@ -500,3 +500,69 @@ At: 2026-10-15T04:51:55Z
 Agent: mcp-starter-template
 Field: Ended
 Value: 2026-10-15T04:51:55Z
+
+Item: mcp-kit-3-1
+At: 2026-10-15T05:09:44Z
+Agent: mcp-starter-template
+Field: Status
+Value: done
+
+Item: mcp-kit-3-1
+At: 2026-10-15T05:09:44Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T05:09:44Z
+
+Item: mcp-kit-3-1
+At: 2026-10-15T05:09:44Z
+Agent: mcp-starter-template
+Field: Evidence
+Value: #141 merged 20c35ee; release 599f3bb; npm view @george43g/mcp-kit@3.1.0 version -> 3.1.0
+
+Item: mcp-kit-3-1
+At: 2026-10-15T05:09:44Z
+Agent: mcp-starter-template
+Field: Ended
+Value: 2026-10-15T05:09:44Z
+
+Item: template-strict-args-on
+At: 2026-10-15T05:09:44Z
+Agent: mcp-starter-template
+Field: Status
+Value: started
+
+Item: template-strict-args-on
+At: 2026-10-15T05:09:44Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T05:09:44Z
+
+Item: template-strict-args-on
+At: 2026-10-15T05:09:44Z
+Agent: mcp-starter-template
+Field: Started
+Value: 2026-10-15T05:09:44Z
+
+Item: template-strict-args-on
+At: 2026-10-15T05:20:26Z
+Agent: mcp-starter-template
+Field: Status
+Value: done
+
+Item: template-strict-args-on
+At: 2026-10-15T05:20:26Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T05:20:26Z
+
+Item: template-strict-args-on
+At: 2026-10-15T05:20:26Z
+Agent: mcp-starter-template
+Field: Evidence
+Value: #142 merged 002f0e7; test fails with strictArgs off (inversion)
+
+Item: template-strict-args-on
+At: 2026-10-15T05:20:26Z
+Agent: mcp-starter-template
+Field: Ended
+Value: 2026-10-15T05:20:26Z

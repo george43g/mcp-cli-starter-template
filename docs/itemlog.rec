@@ -50,13 +50,15 @@
 
 Slug: mcp-kit-3-1
 Type: task
-Status: started
+Status: done
 Owner: mcp-starter-template
 Title: mcp-kit 3.1: filter deny reason + opt-in strictArgs + registry-boundary covers mcp-kit
 Created: 2026-10-15T04:42:59Z
-Updated: 2026-10-15T04:43:00Z
+Updated: 2026-10-15T05:09:44Z
 Repo: mcp-cli-starter-template
+Evidence: #141 merged 20c35ee; release 599f3bb; npm view @george43g/mcp-kit@3.1.0 version -> 3.1.0
 Started: 2026-10-15T04:43:00Z
+Ended: 2026-10-15T05:09:44Z
 
 Slug: mcp-kit-strict-args-default
 Type: question
@@ -94,13 +96,16 @@ Ended: 2026-10-15T04:51:55Z
 
 Slug: template-strict-args-on
 Type: task
-Status: circle-back
+Status: done
 Owner: mcp-starter-template
 Title: Template app turns strictArgs on (after 3.1 publishes)
 Created: 2026-10-15T04:43:10Z
-Updated: 2026-10-15T04:43:11Z
+Updated: 2026-10-15T05:20:26Z
 Repo: mcp-cli-starter-template
 Trigger: done(mcp-kit-3-1)
+Evidence: #142 merged 002f0e7; test fails with strictArgs off (inversion)
+Started: 2026-10-15T05:09:44Z
+Ended: 2026-10-15T05:20:26Z
 
 Slug: mcp-kit-3-acks
 Type: task
@@ -149,3 +154,13 @@ Repo: mcp-cli-starter-template
 %type: Item Slug_t
 %type: Author Agent_t
 %type: At Stamp_t
+
+Item: mcp-kit-3-premise
+Author: mcp-starter-template
+At: 2026-10-15T05:12:17Z
+Text: eqstack 2026-10-15 16:11: George confirms the 10-07 error came from Claude Desktop ('the error was happening in claude desktop'), not Claude Code. Desktop repro deferred (eqstack item desktop-draft07-repro).
+
+Item: template-strict-args-on
+Author: mcp-starter-template
+At: 2026-10-15T05:20:31Z
+Text: Correction: the Evidence sha is my pre-pull local HEAD; #142's merge commit is 997757a.
