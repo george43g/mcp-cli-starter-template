@@ -17,7 +17,10 @@ import { healthCheckTool } from "./health-check.js";
 import { noopTool } from "./noop.js";
 
 export function makeAppRegistry(): ToolRegistry {
-  return makeRegistry([healthCheckTool, noopTool, getLogsTool]);
+  // strictArgs: a misspelled argument fails with "did you mean …?" instead of
+  // being silently dropped, so the agent learns about it. The advertised
+  // inputSchema stays open; turn it off per tool with `strictArgs: false`.
+  return makeRegistry([healthCheckTool, noopTool, getLogsTool], { strictArgs: true });
 }
 
 export function devModeEnabled(): boolean {
