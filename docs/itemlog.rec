@@ -76,15 +76,21 @@ Ended: 2026-10-15T04:43:09Z
 
 Slug: mcp-kit-3-premise
 Type: question
-Status: next
+Status: done
 Owner: mcp-starter-template
 Title: Does Claude Code actually reject draft-07 tool schemas?
 Definition: browser-tab-mcp ran draft-07 servers fine on CC 2.1.300 -p; the 3.0 premise came from eqstack and was never reproduced here. Decides whether consumers must migrate or can just strip the $schema label.
 Created: 2026-10-15T04:43:09Z
-Updated: 2026-10-15T04:43:09Z
+Updated: 2026-10-15T04:51:55Z
 Repo: mcp-cli-starter-template
 BlockedOn: eqstack
 Asks: Paste the verbatim client error, CC version and surface, and a failing schema
+Answer: eqstack, 2026-10-15 15:48 (bus xiGNE4FHl3B0): the error is real, verbatim from George's paste 2026-10-07 09:54Z:
++ "Error: Tool 'resolve_conversation' has an invalid outputSchema: JSON Schema declares an unsupported dialect ("$schema": "http://json-schema.org/draft-07/schema#"). The default validator supports JSON Schema 2020-12 only; pass a pre-configured Ajv instance to AjvJs"
++ Server imsg-mcp 1.25.5 (before the #184 strip). Surface and version unknown; the string ships in CC 2.1.300 and Claude Desktop 2.37337.1, Desktop is the likely surface. Does NOT reproduce with claude -p on 2.1.300 (draft-07 input+output schemas with structuredContent passed). PICK: strip $schema now, kit 3 on each consumer's own schedule; an Ajv2020 strict compile (kit 3 /testing) is the guard.
+AnsweredBy: eqstack
+Evidence: answered by eqstack
+Ended: 2026-10-15T04:51:55Z
 
 Slug: template-strict-args-on
 Type: task

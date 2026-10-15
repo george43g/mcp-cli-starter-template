@@ -462,3 +462,41 @@ At: 2026-10-15T04:43:12Z
 Agent: mcp-starter-template
 Field: Repo
 Value: mcp-cli-starter-template
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:51:55Z
+Agent: mcp-starter-template
+Field: Status
+Value: done
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:51:55Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:51:55Z
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:51:55Z
+Agent: mcp-starter-template
+Field: Answer
+Value: eqstack, 2026-10-15 15:48 (bus xiGNE4FHl3B0): the error is real, verbatim from George's paste 2026-10-07 09:54Z:
++ "Error: Tool 'resolve_conversation' has an invalid outputSchema: JSON Schema declares an unsupported dialect ("$schema": "http://json-schema.org/draft-07/schema#"). The default validator supports JSON Schema 2020-12 only; pass a pre-configured Ajv instance to AjvJs"
++ Server imsg-mcp 1.25.5 (before the #184 strip). Surface and version unknown; the string ships in CC 2.1.300 and Claude Desktop 2.37337.1, Desktop is the likely surface. Does NOT reproduce with claude -p on 2.1.300 (draft-07 input+output schemas with structuredContent passed). PICK: strip $schema now, kit 3 on each consumer's own schedule; an Ajv2020 strict compile (kit 3 /testing) is the guard.
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:51:55Z
+Agent: mcp-starter-template
+Field: AnsweredBy
+Value: eqstack
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:51:55Z
+Agent: mcp-starter-template
+Field: Evidence
+Value: answered by eqstack
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:51:55Z
+Agent: mcp-starter-template
+Field: Ended
+Value: 2026-10-15T04:51:55Z
