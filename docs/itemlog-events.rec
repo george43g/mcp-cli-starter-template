@@ -566,3 +566,15 @@ At: 2026-10-15T05:20:26Z
 Agent: mcp-starter-template
 Field: Ended
 Value: 2026-10-15T05:20:26Z
+
+Item: mcp-kit-3-acks
+At: 2026-10-15T05:37:15Z
+Agent: mcp-starter-template
+Field: Title
+Value: Kit consumers adopt 3.0 or strip $schema: recall migrated (26658f1); browser-tab + tmux-control stripped (#219 a94c8b0); up-bank pending; eqstack paused by George
+
+Item: mcp-kit-3-acks
+At: 2026-10-15T05:37:15Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T05:37:15Z

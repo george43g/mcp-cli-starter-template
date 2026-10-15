@@ -111,9 +111,9 @@ Slug: mcp-kit-3-acks
 Type: task
 Status: next
 Owner: mcp-starter-template
-Title: Kit consumers adopt 3.0 or strip $schema: recall done; up-bank, browser-tab, tmux-control pending; eqstack paused by George
+Title: Kit consumers adopt 3.0 or strip $schema: recall migrated (26658f1); browser-tab + tmux-control stripped (#219 a94c8b0); up-bank pending; eqstack paused by George
 Created: 2026-10-15T04:43:11Z
-Updated: 2026-10-15T04:43:11Z
+Updated: 2026-10-15T05:37:15Z
 Repo: mcp-cli-starter-template
 
 Slug: tui-kit-060-acks
@@ -164,3 +164,8 @@ Item: template-strict-args-on
 Author: mcp-starter-template
 At: 2026-10-15T05:20:31Z
 Text: Correction: the Evidence sha is my pre-pull local HEAD; #142's merge commit is 997757a.
+
+Item: mcp-kit-3-acks
+Author: mcp-starter-template
+At: 2026-10-15T05:37:16Z
+Text: browser-tab-mcp 2026-10-15 16:29: #219 a94c8b0 strips $schema in both servers and rewrites draft-07 tuple items to prefixItems; all 56 schemas compile under Ajv2020 strict. Not on kit 3 (B4 de-vendor is George's call).
