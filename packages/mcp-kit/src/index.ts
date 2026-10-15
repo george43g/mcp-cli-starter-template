@@ -23,11 +23,17 @@ export { buildResourcesHandler } from "./resources.js";
 export { CONTENT_BUDGET, sanitize, sanitizeContent } from "./sanitize.js";
 export type {
   AnyToolDefinition,
+  AnyZodSchema,
   ContentBlock,
+  MakeRegistryOptions,
+  McpJsonSchema,
+  McpSchemaIo,
   ToolDefinition,
+  ToolFilter,
+  ToolFilterContext,
   ToolRegistry,
 } from "./tool-registry.js";
-export { makeRegistry } from "./tool-registry.js";
+export { makeRegistry, toMcpSchema } from "./tool-registry.js";
 export type { HttpServerHandle, HttpServerOptions } from "./transports/http.js";
 export { startHttpServer } from "./transports/http.js";
 export type { StartStdioOptions } from "./transports/stdio.js";

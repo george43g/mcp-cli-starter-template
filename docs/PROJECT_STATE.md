@@ -503,7 +503,7 @@ verification:
 - TypeScript 5 to 7
 - Vite 7 to 8
 - Vitest 3 to 4
-- Zod 3 to 4
+- ~~Zod 3 to 4~~ — done with `@george43g/mcp-kit` 3.0.0 (2026-10-08), which needed it for JSON Schema 2020-12
 
 Do not bundle those major migrations into an unrelated dependency push.
 

@@ -41,7 +41,7 @@ fails CI when canonical and `lib/` diverge.
 
 Node.js ≥24, ESM only, pnpm 10.29.3 (Turborepo), Vite library mode, Biome 2.x,
 Vitest, `@modelcontextprotocol/sdk` ^1.29, `commander` ^14, `ink` ^7 + `react` ^19,
-Zod ^3, optional `napi-rs` v3, `usage` (jdx/usage-cli) for CLI spec/completions/manpage.
+Zod ^4, optional `napi-rs` v3, `usage` (jdx/usage-cli) for CLI spec/completions/manpage.
 
 ## Workspace topology
 
