@@ -31,7 +31,16 @@ import {
 import type { ZodError } from "zod";
 import { wrapToolError } from "./prompt-injection.js";
 import { sanitize } from "./sanitize.js";
-import type { ContentBlock, ToolFilterContext, ToolRegistry } from "./tool-registry.js";
+import {
+  type AnyToolDefinition,
+  type ContentBlock,
+  type ToolFilterContext,
+  type ToolFilterDecision,
+  type ToolRegistry,
+  toMcpSchema,
+  type UnknownArgument,
+} from "./tool-registry.js";
+import { declaredArgs, findUnknownArgs } from "./unknown-args.js";
 
 /**
  * Replace the absolute home-directory prefix with `~` in anything headed for a
@@ -146,6 +155,40 @@ function formatZodError(err: ZodError): string {
     .join("\n");
 }
 
+/** At most this many unknown keys are named in one error; the rest are counted. */
+const MAX_UNKNOWN_REPORTED = 20;
+
+function formatUnknownArgs(unknown: UnknownArgument[]): string {
+  const lines = unknown.slice(0, MAX_UNKNOWN_REPORTED).map(({ key, suggestion }) => {
+    // The key is caller-supplied and echoed back: neutralise control characters,
+    // including the newlines sanitize() keeps, so a key cannot forge a line.
+    const shown = (sanitize(key, 128) ?? "").replace(/[\t\n\r]/g, "\uFFFD");
+    return suggestion === undefined
+      ? `unknown argument ${shown}`
+      : `unknown argument ${shown}; did you mean ${suggestion}?`;
+  });
+  const rest = unknown.length - MAX_UNKNOWN_REPORTED;
+  if (rest > 0) lines.push(`and ${rest} more unknown argument(s)`);
+  return lines.join("\n");
+}
+
+// Declared top-level argument names per definition, derived from the wire
+// input schema on first need. Weak so a definition can still be collected.
+const declaredCache = new WeakMap<AnyToolDefinition, readonly string[] | null>();
+function declaredFor(def: AnyToolDefinition): readonly string[] | null {
+  if (!declaredCache.has(def)) {
+    declaredCache.set(def, declaredArgs(toMcpSchema(def.input, "input", def.name)));
+  }
+  return declaredCache.get(def) ?? null;
+}
+
+function unknownArgsHint(def: AnyToolDefinition): string {
+  const declared = declaredFor(def) ?? [];
+  return declared.length === 0
+    ? "This tool takes no arguments."
+    : `Valid arguments: ${declared.join(", ")}.`;
+}
+
 export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
   // Make the ambiguous state unrepresentable, at construction, before a single
   // request can be served. See `devOnlyEnabled` above for why this is a throw
@@ -164,6 +207,20 @@ export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
   }
 
   const fallback = defaultTimeoutMs();
+  const { registry } = opts;
+  // A registry built by `makeRegistry()` has both methods; a hand-written one
+  // from 3.0 may not, and still gets the boolean gate and per-tool strictArgs.
+  const evaluate = (def: AnyToolDefinition, ctx: ToolFilterContext): ToolFilterDecision =>
+    registry.evaluate
+      ? registry.evaluate(def, ctx)
+      : registry.allows(def, ctx)
+        ? { allowed: true }
+        : { allowed: false };
+  const unknownArgs = (def: AnyToolDefinition, args: unknown): UnknownArgument[] => {
+    if (registry.unknownArgs) return registry.unknownArgs(def, args);
+    if (def.strictArgs !== true) return [];
+    return findUnknownArgs(declaredFor(def), args);
+  };
   return async (name, args, signal, ctx = {}) => {
     noteActivity();
     opts.onCall?.(name);
@@ -180,15 +237,43 @@ export function buildDispatcher(opts: BuildDispatcherOptions): Dispatch {
     // The registry's per-request filter gates the CALL path with the same
     // predicate that gates the listing. Hiding a tool from tools/list while it
     // still answers by name is the hole `devOnly` already fell into once.
-    const filtered = def !== undefined && !opts.registry.allows(def, ctx);
+    // Evaluated only for a tool that exists and is not dev-gated, so a deny
+    // reason can never reveal a dev-only tool.
+    const decision: ToolFilterDecision =
+      def !== undefined && !devGated ? evaluate(def, ctx) : { allowed: false };
 
-    if (!def || devGated || filtered) {
+    // `{ deny }`: the filter chose to tell the caller why, so it can recover.
+    if (!decision.allowed && decision.deny !== undefined) {
+      opts.onError?.(name, new Error("tool_denied"));
+      return {
+        content: [{ type: "text", text: wrapToolError(name, decision.deny) }],
+        isError: true,
+      };
+    }
+
+    if (!def || !decision.allowed) {
       opts.onError?.(name, new Error("unknown_tool"));
       return {
         content: [
           {
             type: "text",
             text: wrapToolError(name, "Unknown tool name.", "Check the result of tools/list."),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // strictArgs: refuse an undeclared argument name before parsing, because
+    // parsing would strip it silently and run the handler without it.
+    const unknown = unknownArgs(def, args ?? {});
+    if (unknown.length > 0) {
+      opts.onError?.(name, new Error("unknown_arguments"));
+      return {
+        content: [
+          {
+            type: "text",
+            text: wrapToolError(name, formatUnknownArgs(unknown), unknownArgsHint(def)),
           },
         ],
         isError: true,

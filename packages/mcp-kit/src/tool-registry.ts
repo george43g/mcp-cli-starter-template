@@ -15,6 +15,7 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { RequestInfo, Tool, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { declaredArgs, findUnknownArgs } from "./unknown-args.js";
 
 /**
  * A single MCP content block a tool may emit.
@@ -63,6 +64,12 @@ export interface ToolDefinition<
   timeoutMs?: number;
   /** When true, only register the tool if `MCP_DEV=1`. Used for `get_logs`. */
   devOnly?: boolean;
+  /**
+   * Reject a call that carries an argument name this tool does not declare,
+   * before the handler runs. Overrides the registry's `strictArgs` for this
+   * tool, in either direction. See `MakeRegistryOptions.strictArgs`.
+   */
+  strictArgs?: boolean;
   /** Handler: receives parsed input + AbortSignal, returns structured output. */
   handler: (input: z.infer<TInput>, signal?: AbortSignal) => Promise<z.infer<TOutput>>;
   /**
@@ -109,8 +116,48 @@ export interface ToolFilterContext {
 }
 
 /**
- * Per-request tool gate: return `false` to hide a tool from `tools/list` AND
- * refuse calls to it.
+ * A filter's refusal WITH a reason the caller may see. Returned instead of
+ * `false` when the caller can do something about it (re-authenticate, ask for
+ * a scope), so the refusal is recoverable instead of a dead end.
+ */
+export interface ToolDeny {
+  /**
+   * Shown to the caller as the error text of a `tools/call` to the tool,
+   * wrapped like every other dispatcher error:
+   * `Tool "<name>" failed: <deny>`. Must be non-empty; an empty string is
+   * treated as a plain `false`.
+   */
+  deny: string;
+}
+
+/** What a `ToolFilter` may return. */
+export type ToolFilterResult = boolean | ToolDeny;
+
+/**
+ * The registry's verdict on one tool for one request, from
+ * `ToolRegistry.evaluate`. `deny` is present only when the filter returned
+ * `{ deny }`; a plain `false`, a throw, or any other value has none, and the
+ * dispatcher then answers exactly as for an unknown tool.
+ */
+export type ToolFilterDecision = { allowed: true } | { allowed: false; deny?: string };
+
+/** One argument name a strict tool does not declare, from `ToolRegistry.unknownArgs`. */
+export interface UnknownArgument {
+  /** The name as the caller sent it. */
+  key: string;
+  /** The declared argument it most likely meant (within 2 edits), if any. */
+  suggestion?: string;
+}
+
+/**
+ * Per-request tool gate. Return `true` to allow the tool, `false` to hide it
+ * from `tools/list` AND refuse calls to it as if it did not exist, or
+ * `{ deny: "reason" }` to hide it the same way but refuse a call with that
+ * reason instead of the unknown-tool wording.
+ *
+ * `false` is the right answer when the tool's existence is itself the secret;
+ * `{ deny }` when the caller can recover, e.g. gmail's
+ * `{ deny: "not available. You may need to re-authenticate with additional scopes" }`.
  *
  * Synchronous on purpose: it runs inside `toMcpTools()`, which is synchronous,
  * and a scope check is a set lookup. Resolve anything slow (a token
@@ -123,7 +170,7 @@ export interface ToolFilterContext {
 export type ToolFilter<TDef extends AnyToolDefinition = AnyToolDefinition> = (
   tool: TDef,
   ctx: ToolFilterContext,
-) => boolean;
+) => ToolFilterResult;
 
 /**
  * `TDef` lets a consumer carry its own per-tool metadata into the filter
@@ -142,6 +189,30 @@ export interface MakeRegistryOptions<TDef extends AnyToolDefinition = AnyToolDef
    * from `tools/list` would leave it callable by name (see `devOnly`).
    */
   filter?: ToolFilter<TDef>;
+  /**
+   * Default for every tool's `strictArgs`; a tool's own `strictArgs` wins.
+   * Off unless set.
+   *
+   * When on, a call that names an argument the tool's advertised `inputSchema`
+   * does not list under its top-level `properties` is refused BEFORE parsing
+   * and before the handler, naming each unknown key with a "did you mean"
+   * suggestion when a declared key is within 2 edits:
+   * `unknown argument chatIdentifer; did you mean chatIdentifier?`.
+   * When off, Zod strips an unknown key silently and the handler runs as if
+   * the argument had not been sent, which is how a misspelled optional
+   * argument quietly falls back to its default.
+   *
+   * - The advertised `inputSchema` is unchanged: no `additionalProperties:
+   *   false` is added, so clients see the same open schema either way.
+   * - Valid input parses exactly as without it: the check only reads the
+   *   argument names, and parsing still runs the tool's own schema.
+   * - Top level only. A nested `z.object` still strips unknown keys; declare
+   *   it `z.strictObject` to reject them (Zod's own error, no suggestion).
+   * - A tool whose input declares itself open at the top level
+   *   (`z.looseObject`, `.catchall()`, `z.record`) has no unknown keys, and
+   *   the option does nothing for it.
+   */
+  strictArgs?: boolean;
 }
 
 export interface ToolRegistry {
@@ -149,9 +220,23 @@ export interface ToolRegistry {
   get(name: string): AnyToolDefinition | undefined;
   /**
    * Whether `def` passes the registry's filter for this request. Always `true`
-   * when no filter was configured; `false` when the filter throws.
+   * when no filter was configured; `false` when the filter returns `false` or
+   * `{ deny }`, or throws.
    */
   allows(def: AnyToolDefinition, ctx?: ToolFilterContext): boolean;
+  /**
+   * `allows`, plus the filter's `{ deny }` reason. Optional so a hand-written
+   * registry from 3.0 still type-checks; `makeRegistry()` always provides it,
+   * and the dispatcher falls back to `allows` without it.
+   */
+  evaluate?(def: AnyToolDefinition, ctx?: ToolFilterContext): ToolFilterDecision;
+  /**
+   * The argument names in `args` that `def` does not declare, when `def` is
+   * strict (its own `strictArgs`, else the registry's); `[]` otherwise, and
+   * `[]` when `args` is not a plain object. Optional for the same reason as
+   * `evaluate`; without it the dispatcher honours a tool's own `strictArgs`.
+   */
+  unknownArgs?(def: AnyToolDefinition, args: unknown): UnknownArgument[];
   /**
    * Convert tools to MCP SDK shape: devOnly tools only when `includeDevOnly`,
    * and only tools the filter allows for `ctx`. Schemas are converted once, at
@@ -216,6 +301,16 @@ export function toMcpSchema(schema: z.ZodType, io: McpSchemaIo, toolName?: strin
   return json as McpJsonSchema;
 }
 
+/** Read a filter's return value. Anything but `true` or a non-empty `{ deny }` is a plain refusal. */
+function decide(result: unknown): ToolFilterDecision {
+  if (result === true) return { allowed: true };
+  if (result !== null && typeof result === "object") {
+    const deny = (result as { deny?: unknown }).deny;
+    if (typeof deny === "string" && deny.trim() !== "") return { allowed: false, deny };
+  }
+  return { allowed: false };
+}
+
 export function makeRegistry<TDef extends AnyToolDefinition = AnyToolDefinition>(
   defs: TDef[],
   opts: MakeRegistryOptions<TDef> = {},
@@ -237,23 +332,38 @@ export function makeRegistry<TDef extends AnyToolDefinition = AnyToolDefinition>
       } as unknown as Tool,
     ]),
   );
-  const { filter } = opts;
-  const allows = (def: AnyToolDefinition, ctx: ToolFilterContext = {}): boolean => {
-    if (!filter) return true;
+  const { filter, strictArgs = false } = opts;
+  // Derived from the wire schema computed above, once per definition.
+  const declared = new Map(
+    defs.map((d) => [d, declaredArgs((wire.get(d) as Tool).inputSchema as McpJsonSchema)]),
+  );
+  const evaluate = (def: AnyToolDefinition, ctx: ToolFilterContext = {}): ToolFilterDecision => {
+    if (!filter) return { allowed: true };
     try {
       // Only definitions from `defs` reach here in practice; the dispatcher
       // looks them up through `get()`.
-      return filter(def as TDef, ctx) === true;
+      return decide(filter(def as TDef, ctx));
     } catch {
-      return false;
+      return { allowed: false };
     }
   };
+  const allows = (def: AnyToolDefinition, ctx?: ToolFilterContext): boolean =>
+    evaluate(def, ctx).allowed;
   return {
     tools: defs,
     get(name) {
       return byName.get(name);
     },
     allows,
+    evaluate,
+    unknownArgs(def, args) {
+      if (!(def.strictArgs ?? strictArgs)) return [];
+      // A definition from outside `defs` has no precomputed entry; derive it.
+      const keys = declared.has(def as TDef)
+        ? (declared.get(def as TDef) ?? null)
+        : declaredArgs(toMcpSchema(def.input, "input", def.name));
+      return findUnknownArgs(keys, args);
+    },
     toMcpTools(includeDevOnly = false, ctx: ToolFilterContext = {}): Tool[] {
       return defs
         .filter((d) => (includeDevOnly || !d.devOnly) && allows(d, ctx))

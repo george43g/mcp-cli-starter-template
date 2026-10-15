@@ -29,9 +29,13 @@ export type {
   McpJsonSchema,
   McpSchemaIo,
   ToolDefinition,
+  ToolDeny,
   ToolFilter,
   ToolFilterContext,
+  ToolFilterDecision,
+  ToolFilterResult,
   ToolRegistry,
+  UnknownArgument,
 } from "./tool-registry.js";
 export { makeRegistry, toMcpSchema } from "./tool-registry.js";
 export type { HttpServerHandle, HttpServerOptions } from "./transports/http.js";
