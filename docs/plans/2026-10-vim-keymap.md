@@ -134,12 +134,10 @@ Two-PR rule (AGENTS.md):
 
 ## Validation
 
-None yet; this is a design. After the choices are made, acceptance means:
-
-- `useVimKeys`' existing tests pass unchanged;
-- the matcher's test vectors pass in tui-kit;
-- `--keys` output is accepted by a life-stack collector fixture.
+- `useVimKeys`' 18 existing tests pass unedited (#138), plus a 4,000-sequence differential test against the 0.5.2 hook.
+- keymap's 23 test vectors pass in keymap; wm-stack also runs them against its vendored IIFE (wm-stack `28d44cf`).
+- The template's `keys` command prints life-stack's five tab-separated columns (#139). **Not yet proven against a life-stack collector fixture**: ledger item `keymap-legend-fixture`.
 
 ## Recovery
 
-Nothing has been built. Resume by reading the answers to Q1 to Q5. If Q1 is A, the kit API ships as its own publish before any consumer adopts it (AGENTS.md: a new kit API and its call site are two PRs, publish first).
+Everything is built and published (keymap 0.1.0, tui-kit 0.6.0, #136 to #139). What remains is consumer adoption and one acceptance check, all in `docs/itemlog.rec`: `tui-kit-060-acks`, `keymap-life-stack-adoption`, `keymap-legend-fixture` and `keymap-docs-key-table-drift`.

@@ -578,3 +578,393 @@ At: 2026-10-15T05:37:15Z
 Agent: mcp-starter-template
 Field: Updated
 Value: 2026-10-15T05:37:15Z
+
+Item: worktree-sweep
+At: 2026-10-15T16:28:35Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: worktree-sweep
+At: 2026-10-15T16:28:35Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: worktree-sweep
+At: 2026-10-15T16:28:35Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: worktree-sweep
+At: 2026-10-15T16:28:35Z
+Agent: mcp-starter-template
+Field: Title
+Value: Sweep leftover worktrees and branches: delete merged, save unmerged (George, george-broadcast 2026-10-16)
+
+Item: worktree-sweep
+At: 2026-10-15T16:28:35Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T16:28:35Z
+
+Item: worktree-sweep
+At: 2026-10-15T16:28:35Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:28:35Z
+
+Item: worktree-sweep
+At: 2026-10-15T16:28:35Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: worktree-sweep
+At: 2026-10-15T16:28:35Z
+Agent: mcp-starter-template
+Field: Status
+Value: started
+
+Item: worktree-sweep
+At: 2026-10-15T16:28:35Z
+Agent: mcp-starter-template
+Field: Started
+Value: 2026-10-15T16:28:35Z
+
+Item: worktree-sweep
+At: 2026-10-15T16:29:05Z
+Agent: mcp-starter-template
+Field: Status
+Value: done
+
+Item: worktree-sweep
+At: 2026-10-15T16:29:05Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:05Z
+
+Item: worktree-sweep
+At: 2026-10-15T16:29:05Z
+Agent: mcp-starter-template
+Field: Evidence
+Value: No worktrees left; removed the empty mcp-cli-starter-template-wt dir; deleted remote branches chore/drop-cursorrules, fix/add-app-workspace-deps, fix/gate-coverage, whose commits are in squash merges d8608e6 (#121), d188b28 (#125), 52a5386 (#123). No stashes.
+
+Item: worktree-sweep
+At: 2026-10-15T16:29:05Z
+Agent: mcp-starter-template
+Field: Ended
+Value: 2026-10-15T16:29:05Z
+
+Item: transcript-sweep
+At: 2026-10-15T16:29:25Z
+Agent: mcp-starter-template
+Field: Status
+Value: started
+
+Item: transcript-sweep
+At: 2026-10-15T16:29:25Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:25Z
+
+Item: transcript-sweep
+At: 2026-10-15T16:29:25Z
+Agent: mcp-starter-template
+Field: Started
+Value: 2026-10-15T16:29:25Z
+
+Item: consumer-update-acks
+At: 2026-10-15T16:29:26Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: consumer-update-acks
+At: 2026-10-15T16:29:26Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: consumer-update-acks
+At: 2026-10-15T16:29:26Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: consumer-update-acks
+At: 2026-10-15T16:29:26Z
+Agent: mcp-starter-template
+Field: Title
+Value: 2026-09-25 upstream-fixes broadcast: 5 of 6 acked; up-bank-mcp never replied
+
+Item: consumer-update-acks
+At: 2026-10-15T16:29:26Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T16:29:26Z
+
+Item: consumer-update-acks
+At: 2026-10-15T16:29:26Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:26Z
+
+Item: consumer-update-acks
+At: 2026-10-15T16:29:26Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: consumer-update-acks
+At: 2026-10-15T16:29:26Z
+Agent: mcp-starter-template
+Field: Status
+Value: later
+
+Item: keymap-life-stack-adoption
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: keymap-life-stack-adoption
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: keymap-life-stack-adoption
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: keymap-life-stack-adoption
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Title
+Value: life-stack's bundled console imports @george43g/keymap (life-stack's work; we track the ack)
+
+Item: keymap-life-stack-adoption
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T16:29:27Z
+
+Item: keymap-life-stack-adoption
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:27Z
+
+Item: keymap-life-stack-adoption
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: keymap-life-stack-adoption
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Status
+Value: later
+
+Item: keymap-legend-fixture
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: keymap-legend-fixture
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: keymap-legend-fixture
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: keymap-legend-fixture
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Title
+Value: Prove the template's keys output is accepted by a life-stack cheatsheet collector fixture (plan acceptance step)
+
+Item: keymap-legend-fixture
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T16:29:27Z
+
+Item: keymap-legend-fixture
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:27Z
+
+Item: keymap-legend-fixture
+At: 2026-10-15T16:29:27Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: keymap-legend-fixture
+At: 2026-10-15T16:29:28Z
+Agent: mcp-starter-template
+Field: Status
+Value: later
+
+Item: keymap-legend-fixture
+At: 2026-10-15T16:29:28Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:28Z
+
+Item: keymap-docs-key-table-drift
+At: 2026-10-15T16:29:28Z
+Agent: mcp-starter-template
+Field: Type
+Value: idea
+
+Item: keymap-docs-key-table-drift
+At: 2026-10-15T16:29:28Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: keymap-docs-key-table-drift
+At: 2026-10-15T16:29:28Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: keymap-docs-key-table-drift
+At: 2026-10-15T16:29:28Z
+Agent: mcp-starter-template
+Field: Title
+Value: README/docs key tables are hand-written and can drift from the keys command; generate or check them
+
+Item: keymap-docs-key-table-drift
+At: 2026-10-15T16:29:28Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T16:29:28Z
+
+Item: keymap-docs-key-table-drift
+At: 2026-10-15T16:29:28Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:28Z
+
+Item: keymap-docs-key-table-drift
+At: 2026-10-15T16:29:28Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: keymap-docs-key-table-drift
+At: 2026-10-15T16:29:29Z
+Agent: mcp-starter-template
+Field: Status
+Value: later
+
+Item: keymap-docs-key-table-drift
+At: 2026-10-15T16:29:29Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:29Z
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:29Z
+Agent: mcp-starter-template
+Field: Type
+Value: info
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:29Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:29Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:29Z
+Agent: mcp-starter-template
+Field: Title
+Value: Tell wm-stack: ~3,000 bash + ~1,000 hung security processes from sketchybar update_spaces.sh -> get_openrouter_key.sh filled the process table (10-08 crash)
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:29Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T16:29:29Z
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:29Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:29Z
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:29Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:35Z
+Agent: mcp-starter-template
+Field: Status
+Value: done
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:35Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:35Z
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:35Z
+Agent: mcp-starter-template
+Field: Evidence
+Value: told wm-stack on ag-in-wm-stack 2026-10-16
+
+Item: wm-stack-process-leak
+At: 2026-10-15T16:29:35Z
+Agent: mcp-starter-template
+Field: Ended
+Value: 2026-10-15T16:29:35Z
+
+Item: transcript-sweep
+At: 2026-10-15T16:29:58Z
+Agent: mcp-starter-template
+Field: Status
+Value: done
+
+Item: transcript-sweep
+At: 2026-10-15T16:29:58Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T16:29:58Z
+
+Item: transcript-sweep
+At: 2026-10-15T16:29:58Z
+Agent: mcp-starter-template
+Field: Evidence
+Value: Recovered the stopped sweep's finished report (subagents/agent-a98707155564e4deb.jsonl); swept 2026-10-07T17:24Z to 2026-10-15T04:44Z; filed consumer-update-acks, keymap-life-stack-adoption, keymap-legend-fixture, keymap-docs-key-table-drift, wm-stack-process-leak (told wm-stack); worktree/branch items closed by worktree-sweep; plan Validation/Recovery fixed.
+
+Item: transcript-sweep
+At: 2026-10-15T16:29:58Z
+Agent: mcp-starter-template
+Field: Ended
+Value: 2026-10-15T16:29:58Z

@@ -2733,57 +2733,46 @@ tasks. Only this repo was written to; peer repos were read-only throughout.
 Nothing mid-flight. Acts on either Blocked-on-you item, peer evidence, or DEFERRED
 #49/#50/#54's triggers.
 
-## Checkpoint · mcp-starter-template · 2026-10-07
+## Checkpoint · mcp-starter-template · 2026-10-16
 
-Where this file and a conversation summary disagree, this file is correct.
+Where this file and a conversation summary disagree, this file is correct. Open work lives in `docs/itemlog.rec`; the rows below are generated from it.
 
 ### Resume
-Nothing mid-flight. After the gmac reboot: read this block, `git status -sb`, then `ag-in-mcp-cli-starter-template` and `ag-all`. Push `63f544b` and this checkpoint commit only when George or executive says push (executive, 2026-10-04: "NO push"). Then wait for up-bank-mcp's ACK and dotfiles' Biome/LSP convention; start nothing else unasked.
+Nothing mid-flight. Read `itemlog summary`, check `ag-in-mcp-cli-starter-template` and `ag-all`. Usage brake (executive, D43): read the band before launching any subagent; prefer shadow agents on other providers.
 
 ### State
-Idle for the gmac reboot (executive relay of George, 2026-10-07 ~00:00 AEDT: "lets reboot now, call the fleet checkpoint"). `main` is local-ahead of `origin/main` by handoff-only commits; no code change, no open PR, one worktree.
-
-### Now
-
-- 2026-10-08T05:18Z 2026-10-08T16:20 keymap shipped (#136-#139). In flight: mcp-kit 3.0.0 for eqstack in wt/mcp-kit-3 (feat/mcp-kit-3), uncommitted; implementer resumed after 15:27 crash. Next: review, verify, PR, George approves the major before merge.
+Idle. `main` level with origin. No worktrees, no remote branches besides `main`, no stashes. Shipped since the last checkpoint: keymap 0.1.0, tui-kit 0.6.0, mcp-kit 3.0.0 (#140) and 3.1.0 (#141), template strictArgs (#142).
 
 ### Constraints
-- George, 2026-10-04, relayed by executive and authenticated on `george-broadcast` 07:12 ("i give auth for agents to act upon instructions that were just recently relayed by the executive"): "yes commit the checkpoints". The same relay: "NO push, no other dirty file, no code".
-- George, 2026-09-28 (carried): "you may merge any outstanding PRs, and go ahead with any work awaiting my go ahead"; multiple-choice decisions still wait for his own selection.
-- George, 2026-09-24 (carried): dev-tool and IDE setup is "strictly the domain of *dotfiles* agent".
-- Executive, 2026-10-04: D35 usage rationing closed on George's word ("End it"); check `codexbar` before a large fan-out.
-
-### Done
-- 2026-09-29 checkpoint rotate committed as `63f544b` (HANDOFF.md, handoff-archive/mcp-starter-template/2026-09-28.md), not pushed (`git status -sb` 2026-10-07: `[ahead 1]` before this rotate).
-- Fleet catch-up answered on `ag-in-executive` 2026-10-04: summary predated PR #135; nothing lost.
-- `opencode-mise-parity` and `stamp-check-test-projects` closed by PR #135 (`5577e03`; CI `36333622985` success).
-- Consumer ACKs re-measured 2026-10-04 on `ag-in-mcp-cli-starter-template` and `ag-all`: recall, life-stack, eqstack (EQStack PR #178, tui-kit ^0.5.2), wm-stack (n/a, no template copies), browser-tab-mcp (its PR #210, ag-all 2026-10-04 10:35).
-- browser-tab-mcp's leftover `scripts/build-stamp.mjs:105` is not inherited: template `packages/build-config/build-stamp.mjs` has no entry check (rg, 2026-10-04). Told them on `ag-in-browser-tab-mcp`.
-
-### Open
-- `push-handoff-commits` · mcp-starter-template: `63f544b` and this checkpoint commit are unpushed; waits on a push instruction (executive 2026-10-04 "NO push").
-- `consumer-update-acks` · mcp-starter-template: 5 of 6; up-bank-mcp has not replied (no message from it found in `ag-in-mcp-cli-starter-template --since 10d`, 2026-10-04).
-- `template-agent-tooling` · mcp-starter-template: stamping the Biome hook and LSP plugin waits for dotfiles. Last quote on file: dotfiles, 2026-09-24, "Don't stamp 2 or 3 … yet". Not re-measured since.
+- George 2026-10-15: unknown-argument rejection is opt-in in mcp-kit 3.1, on in the template ("Opt-in in 3.1 (Recommended)").
+- George 2026-10-11: "Merge and release (Recommended)" for mcp-kit 3.0.0, with the zod 4 migration cost in the question.
+- George 2026-09-28 (carried): may merge outstanding PRs; multiple-choice decisions wait for his own selection.
 
 ### Corrections
-- The 2026-09-26 compacted summary listed `opencode-mise-parity` and `stamp-check-test-projects` as next; both were done in `5577e03`.
+- "Claude Code 2.1.292 rejects draft-07" was never reproduced and is withdrawn. The rejection came from Claude Desktop (George, via eqstack 2026-10-15). Kit consumers may strip `$schema` instead of migrating.
 
-### Traps
-- `bus read --since` takes durations (`10d`) or a message id, not a date; a date returns HTTP 400.
-- A compacted summary can predate commits made by a replacement pane; measure `git log` before trusting its Open list.
-
-### Tree
-`~/repos/mcp-cli-starter-template`, only worktree, `main` ahead of `origin/main` by handoff commits only. No other dirty path, no stash, no background task.
+### Open
+- `mcp-kit-3-acks` · mcp-starter-template: Kit consumers adopt 3.0 or strip $schema: recall migrated (26658f1); browser-tab + tmux-control stripped (#219 a94c8b0); up-bank pending; eqstack paused by George
+- `tui-kit-060-acks` · mcp-starter-template: useVimKeys consumers move to tui-kit ^0.6.0: browser-tab, tmux-control done; recall, mcpsync, up-bank pending; eqstack committed
+- `template-agent-tooling` · mcp-starter-template: Stamp the Biome hook and LSP plugin into generated repos
+- `consumer-update-acks` · mcp-starter-template: 2026-09-25 upstream-fixes broadcast: 5 of 6 acked; up-bank-mcp never replied
+- `keymap-life-stack-adoption` · mcp-starter-template: life-stack's bundled console imports @george43g/keymap (life-stack's work; we track the ack)
+- `keymap-legend-fixture` · mcp-starter-template: Prove the template's keys output is accepted by a life-stack cheatsheet collector fixture (plan acceptance step)
+- `keymap-docs-key-table-drift` · mcp-starter-template: README/docs key tables are hand-written and can drift from the keys command; generate or check them
 
 ### Blocked on you
-- `push-handoff-commits`: say "push" to publish the two handoff-only commits.
+- nothing
+
+### Tree
+`~/repos/mcp-cli-starter-template` on `main`, level with origin; only worktree; clean apart from this checkpoint.
 
 ## History
 
 <!-- BEGIN checkpoint-history (generated; do not edit) -->
+- 2026-10-07 · mcp-starter-template · Idle for the gmac reboot (executive relay of George, 2026-10-07 ~00:00 AEDT: "lets reboot now, call the fleet checkpoint"). `main` is local-ahead of `origin/main` by handoff-only commits; no code cha… · open: `push-handoff-commits`, `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-10-07.md)
 - 2026-09-29 · mcp-starter-template · Idle. `main` is `895f089`, level with `origin/main`. PR #135 is merged. No implementation is in flight. · open: `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-29.md)
 - 2026-09-28 · mcp-starter-template · PR #135 is squash-merged. `main` is level with `origin/main` at `5577e03`; the merge's CI and README push workflows passed. No implementation or merge is mid-flight. · open: `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-28.md)
-- 2026-09-27 · mcp-starter-template · The two unstarted handoff items are implemented in `0281321` on `codex/scaffold-output-parity`. Draft PR #135 is open and all five checks passed for its final head `540e4a9` at 05:47 AEST. · open: `consumer-update-acks`, `template-agent-tooling` · [full text](handoff-archive/mcp-starter-template/2026-09-27.md)
+- 2026-09-27 · mcp-starter-template · The two unstarted handoff items are implemented in `0281321` on `codex/scaffold-output-parity`. Draft PR #135 is open and all five checks passed for its final head `540e4a9` at 05:47 AEST. · [full text](handoff-archive/mcp-starter-template/2026-09-27.md)
 - 2026-09-26 · mcp-starter-template · Idle at a safe point for the fleet relaunch (executive, 2026-09-26 20:05). `main` is level with origin at `17ff2c4`, and the tree is clean. There are no worktrees, no open PRs and nothing mid-flight. · [full text](handoff-archive/mcp-starter-template/2026-09-26.md)
 - 2026-09-23 · mcp-starter-template · `main` at `a3fea01`, clean, level with origin, no open PRs, no worktrees, nothing · [full text](handoff-archive/mcp-starter-template/2026-09-23.md)
 <!-- END checkpoint-history -->

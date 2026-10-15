@@ -136,12 +136,74 @@ Repo: mcp-cli-starter-template
 
 Slug: transcript-sweep
 Type: task
-Status: next
+Status: done
 Owner: mcp-starter-template
 Title: Sweep my own transcripts a week back for lost items (executive, 2026-10-15)
 Created: 2026-10-15T04:43:12Z
-Updated: 2026-10-15T04:43:12Z
+Updated: 2026-10-15T16:29:58Z
 Repo: mcp-cli-starter-template
+Evidence: Recovered the stopped sweep's finished report (subagents/agent-a98707155564e4deb.jsonl); swept 2026-10-07T17:24Z to 2026-10-15T04:44Z; filed consumer-update-acks, keymap-life-stack-adoption, keymap-legend-fixture, keymap-docs-key-table-drift, wm-stack-process-leak (told wm-stack); worktree/branch items closed by worktree-sweep; plan Validation/Recovery fixed.
+Started: 2026-10-15T16:29:25Z
+Ended: 2026-10-15T16:29:58Z
+
+Slug: worktree-sweep
+Type: task
+Status: done
+Owner: mcp-starter-template
+Title: Sweep leftover worktrees and branches: delete merged, save unmerged (George, george-broadcast 2026-10-16)
+Created: 2026-10-15T16:28:35Z
+Updated: 2026-10-15T16:29:05Z
+Repo: mcp-cli-starter-template
+Evidence: No worktrees left; removed the empty mcp-cli-starter-template-wt dir; deleted remote branches chore/drop-cursorrules, fix/add-app-workspace-deps, fix/gate-coverage, whose commits are in squash merges d8608e6 (#121), d188b28 (#125), 52a5386 (#123). No stashes.
+Started: 2026-10-15T16:28:35Z
+Ended: 2026-10-15T16:29:05Z
+
+Slug: consumer-update-acks
+Type: task
+Status: later
+Owner: mcp-starter-template
+Title: 2026-09-25 upstream-fixes broadcast: 5 of 6 acked; up-bank-mcp never replied
+Created: 2026-10-15T16:29:26Z
+Updated: 2026-10-15T16:29:26Z
+Repo: mcp-cli-starter-template
+
+Slug: keymap-life-stack-adoption
+Type: task
+Status: later
+Owner: mcp-starter-template
+Title: life-stack's bundled console imports @george43g/keymap (life-stack's work; we track the ack)
+Created: 2026-10-15T16:29:27Z
+Updated: 2026-10-15T16:29:27Z
+Repo: mcp-cli-starter-template
+
+Slug: keymap-legend-fixture
+Type: task
+Status: later
+Owner: mcp-starter-template
+Title: Prove the template's keys output is accepted by a life-stack cheatsheet collector fixture (plan acceptance step)
+Created: 2026-10-15T16:29:27Z
+Updated: 2026-10-15T16:29:28Z
+Repo: mcp-cli-starter-template
+
+Slug: keymap-docs-key-table-drift
+Type: idea
+Status: later
+Owner: mcp-starter-template
+Title: README/docs key tables are hand-written and can drift from the keys command; generate or check them
+Created: 2026-10-15T16:29:28Z
+Updated: 2026-10-15T16:29:29Z
+Repo: mcp-cli-starter-template
+
+Slug: wm-stack-process-leak
+Type: info
+Status: done
+Owner: mcp-starter-template
+Title: Tell wm-stack: ~3,000 bash + ~1,000 hung security processes from sketchybar update_spaces.sh -> get_openrouter_key.sh filled the process table (10-08 crash)
+Created: 2026-10-15T16:29:29Z
+Updated: 2026-10-15T16:29:35Z
+Repo: mcp-cli-starter-template
+Evidence: told wm-stack on ag-in-wm-stack 2026-10-16
+Ended: 2026-10-15T16:29:35Z
 
 %rec: Comment
 %doc: A note on an item, by an agent or George. Append-only.
@@ -169,3 +231,13 @@ Item: mcp-kit-3-acks
 Author: mcp-starter-template
 At: 2026-10-15T05:37:16Z
 Text: browser-tab-mcp 2026-10-15 16:29: #219 a94c8b0 strips $schema in both servers and rewrites draft-07 tuple items to prefixItems; all 56 schemas compile under Ajv2020 strict. Not on kit 3 (B4 de-vendor is George's call).
+
+Item: consumer-update-acks
+Author: mcp-starter-template
+At: 2026-10-15T16:29:26Z
+Text: George 2026-10-16: the up-bank agent is not running; revisit when it is.
+
+Item: mcp-kit-3-acks
+Author: mcp-starter-template
+At: 2026-10-15T16:29:26Z
+Text: George 2026-10-16: up-bank agent not running. EQStack: George paused all EQStack build work until he hands over his notes corpus (eqstack, 2026-10-15).
