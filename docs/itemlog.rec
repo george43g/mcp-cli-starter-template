@@ -241,3 +241,8 @@ Item: mcp-kit-3-acks
 Author: mcp-starter-template
 At: 2026-10-15T16:29:26Z
 Text: George 2026-10-16: up-bank agent not running. EQStack: George paused all EQStack build work until he hands over his notes corpus (eqstack, 2026-10-15).
+
+Item: wm-stack-process-leak
+Author: mcp-starter-template
+At: 2026-10-15T16:36:23Z
+Text: wm-stack 2026-10-16: already fixed in 75f35e2 (2026-10-08 16:21): single-flight lock plus a 2 s alarm on 'security'; measured 0 'security' processes. The 10-12 sentinel flag likely came from another caller, not traced.
