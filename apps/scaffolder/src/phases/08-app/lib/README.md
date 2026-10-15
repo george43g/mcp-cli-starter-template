@@ -48,6 +48,12 @@ Every tool sets `annotations.title`, the name MCP hosts show in their UIs.
 `tests/tool-contract.test.ts` fails when a registered tool lacks one, or when
 this table and `src/tools/registry.ts` disagree in either direction.
 
+The registry turns on mcp-kit's `strictArgs`: a call with an argument the tool
+does not declare fails before the handler runs, naming the key and the likely
+intended one (`unknown argument uper; did you mean upper?`), instead of the key
+being silently dropped. The advertised input schema stays open. A tool can opt
+out with `strictArgs: false` in its definition.
+
 ## TUI keys
 
 Every key the TUI binds is declared in one table, `src/tui/keymap.ts`: the
