@@ -100,6 +100,12 @@ describe("error paths", () => {
     expect(r.isError).toBe(true);
     expect(textOf(r.content[0])).toMatch(/Invalid arguments/);
   });
+
+  it("rejects a misspelled argument and names the right one", async () => {
+    const r = await callMcpTool("noop", { input: "hi", uper: true });
+    expect(r.isError).toBe(true);
+    expect(textOf(r.content[0])).toMatch(/unknown argument uper; did you mean upper\?/);
+  });
 });
 
 describe("resources", () => {
