@@ -1,0 +1,464 @@
+# itemlog-events: the append-only event log beside itemlog.rec. Folding it# reproduces every Item there (`itemlog check`). Write only through `itemlog`.
+
+%rec: Event
+%doc: 
++ One line of the append-only log. Folding a repo's events in At order
++ (file order breaks ties) reproduces its Items: the first event for an Item
++ creates it with Slug = Item; an event sets Field to its Value; an event
++ with no Value clears Field. For a repeatable field (DependsOn, By, Link)
++ the event's Value lines are the field's whole new list. The fold is
++ last-writer-wins per field.
+%mandatory: Item At Agent Field
+%allowed: Item At Agent Field Value
+%unique: Item At Agent Field
+%typedef: Slug_t regexp /^[a-z0-9]+(-[a-z0-9]+)*$/
+%typedef: Agent_t regexp #^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(/[A-Za-z0-9._-]+)?$#
+%typedef: Stamp_t regexp /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$/
+%type: Item Slug_t
+%type: Agent Agent_t
+%type: At Stamp_t
+%type: Field enum Type Status Owner Title Definition Created Updated Repo MovedTo BlockedOn Asks AskId Answer AnsweredBy Trigger DependsOn Parent Plan Priority Due Progress ProgressAt By Model Evidence Source Link Started Paused Ended
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:42:59Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:42:59Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:42:59Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:42:59Z
+Agent: mcp-starter-template
+Field: Title
+Value: mcp-kit 3.1: filter deny reason + opt-in strictArgs + registry-boundary covers mcp-kit
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:42:59Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T04:42:59Z
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:42:59Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:42:59Z
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:42:59Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:43:00Z
+Agent: mcp-starter-template
+Field: Status
+Value: started
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:43:00Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:43:00Z
+
+Item: mcp-kit-3-1
+At: 2026-10-15T04:43:00Z
+Agent: mcp-starter-template
+Field: Started
+Value: 2026-10-15T04:43:00Z
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Type
+Value: question
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Title
+Value: Should unknown-argument rejection be the kit default?
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Definition
+Value: eqstack relayed card 7 'Reject unknown tool arguments: Adopt now (kit-wide)'; default-on is a semver major for every kit consumer.
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T04:43:09Z
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:43:09Z
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: BlockedOn
+Value: george
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Asks
+Value: Pick opt-in in 3.1 or default-on (4.0)
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Status
+Value: done
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Answer
+Value: Opt-in in 3.1 (Recommended)
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: AnsweredBy
+Value: george
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Evidence
+Value: answered by george
+
+Item: mcp-kit-strict-args-default
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Ended
+Value: 2026-10-15T04:43:09Z
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Type
+Value: question
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Title
+Value: Does Claude Code actually reject draft-07 tool schemas?
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Definition
+Value: browser-tab-mcp ran draft-07 servers fine on CC 2.1.300 -p; the 3.0 premise came from eqstack and was never reproduced here. Decides whether consumers must migrate or can just strip the $schema label.
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T04:43:09Z
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:43:09Z
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: BlockedOn
+Value: eqstack
+
+Item: mcp-kit-3-premise
+At: 2026-10-15T04:43:09Z
+Agent: mcp-starter-template
+Field: Asks
+Value: Paste the verbatim client error, CC version and surface, and a failing schema
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:10Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:10Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:10Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:10Z
+Agent: mcp-starter-template
+Field: Title
+Value: Template app turns strictArgs on (after 3.1 publishes)
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:10Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T04:43:10Z
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:10Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:43:10Z
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:10Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Status
+Value: circle-back
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:43:11Z
+
+Item: template-strict-args-on
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Trigger
+Value: done(mcp-kit-3-1)
+
+Item: mcp-kit-3-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: mcp-kit-3-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: mcp-kit-3-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: mcp-kit-3-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Title
+Value: Kit consumers adopt 3.0 or strip $schema: recall done; up-bank, browser-tab, tmux-control pending; eqstack paused by George
+
+Item: mcp-kit-3-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T04:43:11Z
+
+Item: mcp-kit-3-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:43:11Z
+
+Item: mcp-kit-3-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: tui-kit-060-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: tui-kit-060-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: tui-kit-060-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: tui-kit-060-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Title
+Value: useVimKeys consumers move to tui-kit ^0.6.0: browser-tab, tmux-control done; recall, mcpsync, up-bank pending; eqstack committed
+
+Item: tui-kit-060-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T04:43:11Z
+
+Item: tui-kit-060-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:43:11Z
+
+Item: tui-kit-060-acks
+At: 2026-10-15T04:43:11Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: template-agent-tooling
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: template-agent-tooling
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: template-agent-tooling
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: template-agent-tooling
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Title
+Value: Stamp the Biome hook and LSP plugin into generated repos
+
+Item: template-agent-tooling
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T04:43:12Z
+
+Item: template-agent-tooling
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:43:12Z
+
+Item: template-agent-tooling
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template
+
+Item: template-agent-tooling
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Status
+Value: later
+
+Item: transcript-sweep
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Type
+Value: task
+
+Item: transcript-sweep
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Status
+Value: next
+
+Item: transcript-sweep
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Owner
+Value: mcp-starter-template
+
+Item: transcript-sweep
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Title
+Value: Sweep my own transcripts a week back for lost items (executive, 2026-10-15)
+
+Item: transcript-sweep
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Created
+Value: 2026-10-15T04:43:12Z
+
+Item: transcript-sweep
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Updated
+Value: 2026-10-15T04:43:12Z
+
+Item: transcript-sweep
+At: 2026-10-15T04:43:12Z
+Agent: mcp-starter-template
+Field: Repo
+Value: mcp-cli-starter-template

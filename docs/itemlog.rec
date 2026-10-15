@@ -1,0 +1,145 @@
+# itemlog: this repo's items and their comments. Write only through `itemlog`# (skills/itemlog in g-agent-skills); never recins or recset by hand.# The descriptors below are copied verbatim from the canonical# skills/itemlog/itemlog.descriptor.rec; `itemlog check` fails on drift.
+
+%rec: Item
+%doc: 
++ One fleet item. Slug is unique fleet-wide (itemlog check --fleet), so
++ DependsOn, Parent and a done(<slug>) Trigger may name an item in another
++ repo. needs-you is derived, never stored: BlockedOn = george and Status not
++ done or dropped. MovedTo names the repo an item was moved to (`itemlog
++ move`); only a dropped copy carries it, and it is the one copy of a slug
++ that may share the slug with another ledger. A question keeps why it was
++ asked (Definition) and, once answered, the answer verbatim (Answer, may
++ span lines) and who gave it (AnsweredBy); `itemlog done` requires both on
++ a question, the descriptor does not (questions done before 2026-10-15). Priority is a per-owner rank, 1 =
++ that owner's most important; Due is a date or an ISO 8601 time.
++ Repeatable: DependsOn, By, Link; every other field at most once. Write only through `itemlog`, which
++ holds the doclock and appends the matching Event records: a bare recins or
++ recset loses writes silently.
+%key: Slug
+%mandatory: Type Status Owner Title Created Updated Repo
+%allowed: Slug Type Status Owner Title Definition Created Updated Repo MovedTo BlockedOn Asks AskId Answer AnsweredBy Trigger DependsOn Parent Plan Priority Due Progress ProgressAt By Model Evidence Source Link Started Paused Ended
+%unique: Type Status Owner Title Definition Created Updated Repo MovedTo BlockedOn Asks AskId Answer AnsweredBy Trigger Parent Plan Priority Due Progress ProgressAt Model Evidence Source Started Paused Ended
+%typedef: Slug_t regexp /^[a-z0-9]+(-[a-z0-9]+)*$/
+%typedef: Agent_t regexp #^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(/[A-Za-z0-9._-]+)?$#
+%typedef: Stamp_t regexp /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$/
+%type: Slug,DependsOn,Parent Slug_t
+%type: Owner,By,AnsweredBy Agent_t
+%type: BlockedOn regexp /^(george|[A-Za-z0-9][A-Za-z0-9._-]{0,63})$/
+%type: Repo,MovedTo regexp /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+%type: Type enum question task decision idea info message cron incident commitment
+%type: Status enum next started later circle-back paused done dropped
+%type: Created,Updated,Started,Paused,Ended,ProgressAt Stamp_t
+%type: Title,Asks,Trigger line
+%type: AskId regexp /^ask-[0-9]+-[0-9]+$/
+%type: Plan range 0 MAX
+%type: Priority int
+%type: Due regexp /^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2}))?$/
+%type: Progress regexp /^([0-9]|[1-9][0-9]|100|[a-z][a-z0-9-]*)$/
+%constraint: Status = 'next' => #Started = 0
+%constraint: Status = 'started' => #Started > 0
+%constraint: Status = 'done' => (#Ended > 0 && #Evidence > 0)
+%constraint: Status = 'dropped' => (#Ended > 0 && #Evidence > 0)
+%constraint: Status = 'circle-back' => #Trigger > 0
+%constraint: Status = 'paused' => #Paused > 0
+%constraint: Type = 'question' => #BlockedOn > 0
+%constraint: Type = 'question' => #Definition > 0
+%constraint: #BlockedOn > 0 => #Asks > 0
+%constraint: #Progress > 0 => #ProgressAt > 0
+%constraint: #Priority = 0 || Priority >= 1
+%constraint: !#MovedTo || Status = 'dropped'
+
+Slug: mcp-kit-3-1
+Type: task
+Status: started
+Owner: mcp-starter-template
+Title: mcp-kit 3.1: filter deny reason + opt-in strictArgs + registry-boundary covers mcp-kit
+Created: 2026-10-15T04:42:59Z
+Updated: 2026-10-15T04:43:00Z
+Repo: mcp-cli-starter-template
+Started: 2026-10-15T04:43:00Z
+
+Slug: mcp-kit-strict-args-default
+Type: question
+Status: done
+Owner: mcp-starter-template
+Title: Should unknown-argument rejection be the kit default?
+Definition: eqstack relayed card 7 'Reject unknown tool arguments: Adopt now (kit-wide)'; default-on is a semver major for every kit consumer.
+Created: 2026-10-15T04:43:09Z
+Updated: 2026-10-15T04:43:09Z
+Repo: mcp-cli-starter-template
+BlockedOn: george
+Asks: Pick opt-in in 3.1 or default-on (4.0)
+Answer: Opt-in in 3.1 (Recommended)
+AnsweredBy: george
+Evidence: answered by george
+Ended: 2026-10-15T04:43:09Z
+
+Slug: mcp-kit-3-premise
+Type: question
+Status: next
+Owner: mcp-starter-template
+Title: Does Claude Code actually reject draft-07 tool schemas?
+Definition: browser-tab-mcp ran draft-07 servers fine on CC 2.1.300 -p; the 3.0 premise came from eqstack and was never reproduced here. Decides whether consumers must migrate or can just strip the $schema label.
+Created: 2026-10-15T04:43:09Z
+Updated: 2026-10-15T04:43:09Z
+Repo: mcp-cli-starter-template
+BlockedOn: eqstack
+Asks: Paste the verbatim client error, CC version and surface, and a failing schema
+
+Slug: template-strict-args-on
+Type: task
+Status: circle-back
+Owner: mcp-starter-template
+Title: Template app turns strictArgs on (after 3.1 publishes)
+Created: 2026-10-15T04:43:10Z
+Updated: 2026-10-15T04:43:11Z
+Repo: mcp-cli-starter-template
+Trigger: done(mcp-kit-3-1)
+
+Slug: mcp-kit-3-acks
+Type: task
+Status: next
+Owner: mcp-starter-template
+Title: Kit consumers adopt 3.0 or strip $schema: recall done; up-bank, browser-tab, tmux-control pending; eqstack paused by George
+Created: 2026-10-15T04:43:11Z
+Updated: 2026-10-15T04:43:11Z
+Repo: mcp-cli-starter-template
+
+Slug: tui-kit-060-acks
+Type: task
+Status: next
+Owner: mcp-starter-template
+Title: useVimKeys consumers move to tui-kit ^0.6.0: browser-tab, tmux-control done; recall, mcpsync, up-bank pending; eqstack committed
+Created: 2026-10-15T04:43:11Z
+Updated: 2026-10-15T04:43:11Z
+Repo: mcp-cli-starter-template
+
+Slug: template-agent-tooling
+Type: task
+Status: later
+Owner: mcp-starter-template
+Title: Stamp the Biome hook and LSP plugin into generated repos
+Created: 2026-10-15T04:43:12Z
+Updated: 2026-10-15T04:43:12Z
+Repo: mcp-cli-starter-template
+
+Slug: transcript-sweep
+Type: task
+Status: next
+Owner: mcp-starter-template
+Title: Sweep my own transcripts a week back for lost items (executive, 2026-10-15)
+Created: 2026-10-15T04:43:12Z
+Updated: 2026-10-15T04:43:12Z
+Repo: mcp-cli-starter-template
+
+%rec: Comment
+%doc: A note on an item, by an agent or George. Append-only.
+%mandatory: Item Author At Text
+%allowed: Item Author At Text
+%unique: Item Author At Text
+%typedef: Slug_t regexp /^[a-z0-9]+(-[a-z0-9]+)*$/
+%typedef: Agent_t regexp #^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(/[A-Za-z0-9._-]+)?$#
+%typedef: Stamp_t regexp /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$/
+%type: Item Slug_t
+%type: Author Agent_t
+%type: At Stamp_t
