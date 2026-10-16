@@ -2743,6 +2743,10 @@ Nothing mid-flight. Read `itemlog summary`, check `ag-in-mcp-cli-starter-templat
 ### State
 Idle. `main` level with origin. No worktrees, no remote branches besides `main`, no stashes. Shipped since the last checkpoint: keymap 0.1.0, tui-kit 0.6.0, mcp-kit 3.0.0 (#140) and 3.1.0 (#141), template strictArgs (#142).
 
+### Now
+
+- 2026-10-16T09:01Z 2026-10-16 idle, nothing mid-flight; main level with origin, no worktrees. Open items in docs/itemlog.rec (consumer acks only). Next: on restart read itemlog summary and the bus; fleet throttle restricted, no subagents.
+
 ### Constraints
 - George 2026-10-15: unknown-argument rejection is opt-in in mcp-kit 3.1, on in the template ("Opt-in in 3.1 (Recommended)").
 - George 2026-10-11: "Merge and release (Recommended)" for mcp-kit 3.0.0, with the zod 4 migration cost in the question.
