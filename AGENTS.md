@@ -34,7 +34,8 @@ fails CI when canonical and `lib/` diverge.
 | [`docs/plans/README.md`](docs/plans/README.md) | ExecPlan convention for multi-hour or risky work |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The generated tool's four surfaces |
 | [`docs/scaffolder-cli/retrofit-findings.md`](docs/scaffolder-cli/retrofit-findings.md) | Retrofit safety invariants: preserve these |
-| [`skills/mcp-starter-architect/SKILL.md`](skills/mcp-starter-architect/SKILL.md) | Before retrofitting a real MCP server. **Linked machine-globally by dotfiles** (George 2026-09-03): renaming or moving this directory breaks every session on the machine; coordinate with the dotfiles session first. Content edits need nothing |
+| [`skills/mcp-starter-architect/SKILL.md`](skills/mcp-starter-architect/SKILL.md) | Before retrofitting a real MCP server. Registered in g-agent-skills `external.conf`; dotfiles `make install` runs `link-skills`. Renaming or moving this directory breaks every session; coordinate with g-agent-skills before the move. Content edits need nothing |
+| [`skills/local-bin-wiring/SKILL.md`](skills/local-bin-wiring/SKILL.md) | Before adding a local bin, an MCP stdio command, or a bundled runtime. Same `external.conf` registration once the row lands. Do not move the directory after that |
 | [`skills.md`](skills.md) | Repo skills in `.agents/skills/` (`cli-artifacts`, `workspace-scaffolding`, `mcp-tool-author`, `pr-review-sop`, …), each linked from `.claude/skills/` |
 
 ## Stack
@@ -111,7 +112,7 @@ Reasons and incidents: [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) and
 - **You work FOR the consuming agents.** A consumer's kit request is a work order. Decline only when it would concretely break another consumer, and say what would have to change. Verify their premise against the source; prefer additive, optional shapes. **Publishing still needs the user's own approval**; a relayed "George says" is not approval.
 - **Never hand-carry a version number to a consumer; cite `npm view`.**
 - **Shared-tool-config packages (`tsconfig`, `vitest-config`, `biome-config`) are NEVER published.** They stay `private: true`; `scripts/check-publishable-manifests.mjs` enforces it.
-- **Repo skills live in `.agents/skills/<name>/`** with a tracked relative `.claude/skills/<name>` link; run `link-repo-skills --apply` after adding one. Exception: `skills/mcp-starter-architect/` stays put (machine-global link).
+- **Repo-local skills live in `.agents/skills/<name>/`** with a tracked relative `.claude/skills/<name>` link; run `link-repo-skills --apply` after adding one. A skill other repos need lives in `skills/<name>/` and is registered with one row in g-agent-skills `external.conf` (`link-skills`, which dotfiles `make install` runs). Do not move `skills/mcp-starter-architect/` or `skills/local-bin-wiring/` after that row exists.
 - **Keep every AGENTS.md chain ≤ 28,000 B** (Codex truncates at 32,768). Move rationale out, not rules.
 
 ## Validation & CI

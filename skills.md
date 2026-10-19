@@ -17,3 +17,8 @@ Topic skills:
 
 - [`mcp-tool-author`](.agents/skills/mcp-tool-author/SKILL.md) — checklist for adding new MCP tools
 - [`pr-review-sop`](.agents/skills/pr-review-sop/SKILL.md) — security + quality SOP for PR review
+
+Tool-global skills live in `skills/<name>/` and stay in this repo. One row in g-agent-skills `external.conf` symlinks the directory into the global skill stores. `mappings.conf` does not list skills.
+
+- [`mcp-starter-architect`](skills/mcp-starter-architect/SKILL.md) — scaffold or retrofit an MCP server
+- [`local-bin-wiring`](skills/local-bin-wiring/SKILL.md) — argv-safe launch wrapper for a local CLI or MCP stdio server. Production install: [PRODUCTION.md](skills/local-bin-wiring/PRODUCTION.md)
